@@ -20,8 +20,13 @@ import {
     formatPendampingEmptyShop,
     formatPendampingNumbersOnlyFallback,
     looksLikeKasirLedgerQuestion,
+    PENDAMPING_TENANT_UNRESOLVED_COPY,
 } from './studio-umkm-pendamping.prompts';
 import { executeUmkmReadTool, stripDisallowedKetikActions } from './studio-umkm-read-tools';
+import {
+    formatPendampingDisabled,
+    isUmkmPendampingEnabled,
+} from './studio-umkm.util';
 import {
     ensureConsultBookCite,
     primaryPdfPageFromChunk,
@@ -92,6 +97,48 @@ export class StudioUmkmPendampingService implements OnModuleInit {
     setCurriculumForTests(content: string) {
         this.curriculum = content.slice(0, CURRICULUM_MAX_CHARS);
         this.curriculumMiss = !this.curriculum.trim();
+    }
+
+    /**
+     * Shared gate + coach for Sim handleMessage and internal kasir-consult coach mode.
+     */
+    async gateAndCoach(input: {
+        text: string;
+        tenantId: string;
+        config?: StudioContextConfig;
+        notebookId?: string;
+    }): Promise<string> {
+        if (!isUmkmPendampingEnabled(input.config)) {
+            return formatPendampingDisabled();
+        }
+        return this.coach(
+            input.text,
+            input.tenantId,
+            input.config,
+            input.notebookId,
+        );
+    }
+
+    /** Live WA: resolve owner phone → same coach path as Admin Sim. */
+    async coachFromOwnerPhone(input: {
+        phone: string;
+        aliasText: string;
+    }): Promise<{ status: 'hit' | 'error'; text: string }> {
+        const digits = normalizePhoneDigits(input.phone || '');
+        if (digits.length < 8) {
+            return { status: 'error', text: PENDAMPING_TENANT_UNRESOLVED_COPY };
+        }
+        const ctx = await this.umkm.resolveUmkmContextByOwnerPhone(digits);
+        if (!ctx) {
+            return { status: 'error', text: PENDAMPING_TENANT_UNRESOLVED_COPY };
+        }
+        const text = await this.gateAndCoach({
+            text: input.aliasText,
+            tenantId: ctx.tenantId,
+            config: ctx.contextConfig,
+            notebookId: ctx.notebookId,
+        });
+        return { status: 'hit', text };
     }
 
     /** Resolve playbook path — src next to this file, or dist sibling curriculum/. */

@@ -35,6 +35,20 @@ _DEFAULT_URL = "http://middleware:4001/internal/kasir-consult"
 _TIMEOUT_SEC = int(os.environ.get("KASIR_CONSULT_TIMEOUT_SEC") or "60")
 _QUESTION_MAX = 500
 
+_COACH_ALIASES = frozenset({"pendamping", "saran bisnis", "pendamping bisnis"})
+
+
+def _normalize_pendamping_alias(question: str) -> str:
+    t = (question or "").strip().lower()
+    t = re.sub(r"\s+", " ", t)
+    t = re.sub(r"[.!?]+$", "", t).strip()
+    return t
+
+
+def is_coach_alias(question: str) -> bool:
+    """Exact pendamping coach aliases — Nest coach mode (not kurikulum-only RAG)."""
+    return _normalize_pendamping_alias(question) in _COACH_ALIASES
+
 
 _LEDGER_RES = (
     re.compile(r"\bcek\s*stok\b", re.I),
@@ -116,7 +130,9 @@ def handle_consult(params: dict[str, Any] | None = None, **kwargs: Any) -> str:
         if not question:
             return CONSULT_EMPTY_Q
 
-        if looks_like_kasir_ledger_question(question):
+        coach_mode = is_coach_alias(question)
+
+        if not coach_mode and looks_like_kasir_ledger_question(question):
             return CONSULT_LEDGER_REDIRECT_COPY
 
         key = (os.environ.get("KASIR_CONSULT_KEY") or "").strip()
@@ -126,7 +142,13 @@ def handle_consult(params: dict[str, Any] | None = None, **kwargs: Any) -> str:
 
         payload: dict[str, Any] = {"question": question}
         phone = _resolve_phone_best_effort(params, kwargs)
-        if phone:
+        if coach_mode:
+            payload["mode"] = "coach"
+            if not phone:
+                logger.warning("kasir_consult coach: phone missing")
+                return CONSULT_BUSY_COPY
+            payload["phone"] = phone
+        elif phone:
             payload["phone"] = phone
 
         body = json.dumps(payload).encode("utf-8")
@@ -157,11 +179,12 @@ TOOL_SPEC = (
     {
         "name": "kasir_consult",
         "description": (
-            "Konsultasi bisnis dari buku kurikulum UKM (bukan stok/omzet toko). "
-            "Panggil saat user diawali *tanya* / *konsultasi* / *pendamping* + "
-            "pertanyaan bisnis (modal, harga jual konsep, manajemen usaha). "
+            "Konsultasi bisnis / pendamping (bukan stok/omzet langsung). "
+            "Exact *pendamping* / *saran bisnis* / *pendamping bisnis* → coach gabungan "
+            "(angka toko + playbook). "
+            "*tanya* / *konsultasi* + pertanyaan → kurikulum buku saja. "
             "Jangan pakai untuk cek stok / jual / laporan — itu tool kasir DB. "
-            "Argumen: question = isi pertanyaan (boleh tanpa kata tanya)."
+            "Argumen: question = teks user (alias pendamping atau pertanyaan setelah tanya/konsultasi)."
         ),
         "parameters": {
             "type": "object",

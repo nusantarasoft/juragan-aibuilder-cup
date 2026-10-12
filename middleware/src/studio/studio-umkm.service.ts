@@ -688,14 +688,24 @@ export class StudioUmkmService {
             }
             this.clearWizard(tenantId, phone, conversationId);
             this.logIntake('pendamping');
-            return this.pendamping.coach(text, tenantId, config, options?.notebookId);
+            return this.pendamping.gateAndCoach({
+                text,
+                tenantId,
+                config,
+                notebookId: options?.notebookId,
+            });
         }
         // Digit 7 special-case only when enabled. When OFF, fall through so stamp
         // menu digit 7 (if any) still works — D9 "flag OFF → stamp 7 normal".
         if (isPendampingDigit(text) && isUmkmPendampingEnabled(config)) {
             this.clearWizard(tenantId, phone, conversationId);
             this.logIntake('pendamping');
-            return this.pendamping.coach(text, tenantId, config, options?.notebookId);
+            return this.pendamping.gateAndCoach({
+                text,
+                tenantId,
+                config,
+                notebookId: options?.notebookId,
+            });
         }
         if (intent === 'ask') {
             this.clearWizard(tenantId, phone, conversationId);
@@ -2397,12 +2407,49 @@ export class StudioUmkmService {
      * Used by consult metrics inject (avoid WhatsApp↔Pendamping circular DI).
      */
     async resolveTenantIdByOwnerPhone(phone: string): Promise<string | null> {
+        const ctx = await this.resolveUmkmContextByOwnerPhone(phone);
+        return ctx?.tenantId || null;
+    }
+
+    /**
+     * Owner phone → tenant + notebook context (WA shared inbox).
+     * Used by live-WA pendamping coach HTTP path (Hermes → Nest).
+     */
+    async resolveUmkmContextByOwnerPhone(phone: string): Promise<{
+        tenantId: string;
+        notebookId: string;
+        contextConfig: StudioContextConfig;
+    } | null> {
         const { data, error } = await this.admin()
             .from('studio_whatsapp_config')
             .select('tenant_id,enabled,notebook_id,business_phone,allowlist_phones');
         assertNoSupabaseError(error, 'Failed to resolve tenant by owner phone');
         const cfg = pickTenantConfigBySenderPhone((data || []) as any, phone);
-        return cfg?.tenant_id || null;
+        if (!cfg?.tenant_id || !cfg.notebook_id) return null;
+
+        const { data: notebook, error: nbErr } = await this.admin()
+            .from('studio_notebooks')
+            .select('context_config')
+            .eq('id', cfg.notebook_id)
+            .maybeSingle();
+        assertNoSupabaseError(nbErr, 'Failed to load notebook for owner phone');
+
+        const existingCfg =
+            typeof notebook?.context_config === 'object' && notebook?.context_config
+                ? (notebook.context_config as StudioContextConfig)
+                : {};
+        const contextConfig: StudioContextConfig = {
+            ...DEFAULT_STUDIO_UMKM_CONTEXT,
+            ...existingCfg,
+            umkm_mode: true,
+            tenant_id: cfg.tenant_id,
+        };
+
+        return {
+            tenantId: cfg.tenant_id,
+            notebookId: cfg.notebook_id,
+            contextConfig,
+        };
     }
 
     async buildCombinedReportMessage(

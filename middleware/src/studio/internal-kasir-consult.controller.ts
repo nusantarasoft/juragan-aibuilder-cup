@@ -20,8 +20,10 @@ import { StudioUmkmPendampingService } from './studio-umkm-pendamping.service';
 
 type ConsultBody = {
     question?: string;
-    /** Owner WA digits — used only when KASIR_CONSULT_INJECT_METRICS is on. */
+    /** Owner WA digits — required for coach mode; optional for kurikulum consult. */
     phone?: string;
+    /** `coach` = Pendamping Gabungan (store tools + playbook + notebook RAG). Default = kurikulum RAG only. */
+    mode?: string;
 };
 
 function isTruthyFlag(raw: string | undefined): boolean {
@@ -66,6 +68,21 @@ export class InternalKasirConsultController {
 
         const phone =
             typeof body?.phone === 'string' ? body.phone.trim().slice(0, 32) : undefined;
+
+        const mode = String(body?.mode || '')
+            .trim()
+            .toLowerCase();
+        if (mode === 'coach') {
+            if (!phone?.trim()) {
+                throw new HttpException('phone required for coach mode', HttpStatus.BAD_REQUEST);
+            }
+            this.logger.log('path=kasir_consult mode=coach');
+            const coach = await this.pendamping.coachFromOwnerPhone({
+                phone,
+                aliasText: question.trim(),
+            });
+            return { status: coach.status, text: coach.text };
+        }
 
         const result = await this.pendamping.consultFromNotebook(question, undefined, {
             phone,

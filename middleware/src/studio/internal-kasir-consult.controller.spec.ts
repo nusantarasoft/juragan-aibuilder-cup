@@ -13,6 +13,10 @@ describe('InternalKasirConsultController', () => {
             text: 'Jawaban dari buku.',
             latencyMs: 12,
         })),
+        coachFromOwnerPhone: vi.fn(async () => ({
+            status: 'hit' as const,
+            text: 'Coach gabungan.',
+        })),
     };
     const config = {
         get: vi.fn((key: string) => {
@@ -116,5 +120,42 @@ describe('InternalKasirConsultController', () => {
         await expect(ctrl.kasirConsult({}, 'secret-test')).rejects.toMatchObject({
             status: 400,
         });
+    });
+
+    it('mode=coach without phone → 400', async () => {
+        await expect(
+            ctrl.kasirConsult({ question: 'pendamping', mode: 'coach' }, 'secret-test'),
+        ).rejects.toMatchObject({ status: 400 });
+        expect(pendamping.coachFromOwnerPhone).not.toHaveBeenCalled();
+        expect(pendamping.consultFromNotebook).not.toHaveBeenCalled();
+    });
+
+    it('mode=coach → coachFromOwnerPhone', async () => {
+        const res = await ctrl.kasirConsult(
+            { question: 'pendamping', mode: 'coach', phone: '6281111111111' },
+            'secret-test',
+        );
+        expect(pendamping.coachFromOwnerPhone).toHaveBeenCalledWith({
+            phone: '6281111111111',
+            aliasText: 'pendamping',
+        });
+        expect(pendamping.consultFromNotebook).not.toHaveBeenCalled();
+        expect(res).toEqual({ status: 'hit', text: 'Coach gabungan.' });
+    });
+
+    it('KASIR_CONSULT=0 still blocks coach mode', async () => {
+        config.get.mockImplementation((key: string) => {
+            if (key === 'KASIR_CONSULT_KEY') return 'secret-test';
+            if (key === 'KASIR_CONSULT') return '0';
+            return undefined;
+        });
+        ctrl = new InternalKasirConsultController(pendamping as any, config as any);
+        vi.spyOn(ctrl['logger'], 'log').mockImplementation(() => undefined);
+        const res = await ctrl.kasirConsult(
+            { question: 'pendamping', mode: 'coach', phone: '6281' },
+            'secret-test',
+        );
+        expect(res).toEqual({ status: 'off', text: CONSULT_OFF_COPY });
+        expect(pendamping.coachFromOwnerPhone).not.toHaveBeenCalled();
     });
 });

@@ -105,6 +105,10 @@ export const CONSULT_BUSY_COPY =
 export const CONSULT_OFF_COPY =
     'Konsultasi kurikulum belum aktif. Untuk data toko ketik cek stok / laporan.';
 
+/** Coach mode (pendamping alias) when owner phone does not resolve to a tenant. */
+export const PENDAMPING_TENANT_UNRESOLVED_COPY =
+    'Nomor belum terhubung ke toko. Ketik *DAFTAR* atau *STATUS*, atau hubungi admin.';
+
 /**
  * L8 defense: question is clearly live store facts — do not RAG buku / ledger tables.
  * Owner should use kasir tools (cek stok / jual / laporan).
