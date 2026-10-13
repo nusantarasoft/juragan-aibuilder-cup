@@ -55,4 +55,6 @@ scripts/master-production/deploy.local.env
 
 # Hermes Agent runtime on server (state.db*, config, WA sessions, logs) — templates in scripts/master-production/hermes-home + hermes-plugins
 volumes/hermes/
-.gstack/
+.gstack/*
+!.gstack/qa-reports/
+!.gstack/qa-reports/**

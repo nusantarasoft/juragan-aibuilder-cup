@@ -66,7 +66,7 @@ Script melakukan:
    - apply migrasi app
    - `docker compose ... up -d`
    - restart `nsoft3-nginx` (supaya upstream IP tidak stale → hindari 502)
-   - **Hermes kasir posture** (`hermes-kasir-posture.py`) — restore `plugins.enabled` + display silence + allowlist + platform locks after hermes recreate; multimodal OFF smoke
+   - **Hermes kasir posture** (`hermes-kasir-posture.py`) — restore `plugins.enabled` + display silence + allowlist + platform locks after hermes recreate; **volume ownership** (`chown`/`chmod` to container uid/gid so `kanban.db` and s6 logs are writable — no `state.db` / WA session content changes); multimodal OFF smoke
    - **prune image nsoft3** (opt-in) — default **off** di `redeploy.sh` step 9. Set `NSOFT3_PRUNE_IMAGES=1` on server untuk menjalankan `prune-nsoft3-images.sh` (hanya image `nsoft3-prod` / `nsoft3/*` / hermes unused + build cache unused >7d; tidak `docker system prune -a` global).
    - **UMKM smoke** (`smoke-umkm.sh`) — step 10: GraphQL `:8090`, `/internal/kasir-consult` auth + harmless `tanya` probe, Hermes WA connected, `hermes-kasir-posture.py check`. Tanpa tulis ledger / tanpa kirim WA. Coach probe hanya jika `KASIR_COACH_SMOKE_PHONE` di-set (tenant demo ops).
 
@@ -85,6 +85,7 @@ Script melakukan:
 - **Tidak** di-git: isi live (DB, config, channel map, gateway, cron, logs, skills cache) hanya di server.
 - **Source of truth** plugin + seed: `scripts/master-production/hermes-plugins/` dan `scripts/master-production/hermes-home/`; `redeploy.sh` memanggil `hermes-kasir-posture.py apply --sync-plugins`.
 - Fresh install: `mkdir -p volumes/hermes` (lihat `up-hermes.sh` / compose mount), lalu posture apply setelah container hermes up.
+- **Ownership:** Host deploy runs as root often leaves `kanban.db` (and other files) as `root:root` `644` while Hermes runs as uid **1000** → ~minute-level “not writable” + s6-log EPERM. `hermes-kasir-posture.py apply` (redeploy) and `up-hermes.sh` step 4 run idempotent `chown`/`chmod` on the volume; `check` verifies `kanban.db` owner/mode. Optional env: `HERMES_VOLUME_UID` / `HERMES_VOLUME_GID`.
 
 ## Verifikasi setelah deploy
 

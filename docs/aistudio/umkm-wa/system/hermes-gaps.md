@@ -43,6 +43,7 @@ Tracked after comparing L5 (current as-built) with [Hermes docs](https://hermes-
 | **G20** | Vision → Gemma 4 31B | High (UX foto) | **FIXED** | `auxiliary.vision` → `google/gemma-4-31b-it`; main was `z-ai/glm-5.3` then G21 Flash. |
 | **G21** | Main → GLM 5.3 Flash (cost) | High (cost) | **FIXED** | `model.default` → `z-ai/glm-5.3-flash` (~10× murah vs full 5.3); vision was Gemma then G22 Qwen3-VL. |
 | **G22** | Vision → Qwen3-VL 30B A3B | High (UX foto) | **FIXED** | `auxiliary.vision` → `qwen/qwen3-vl-30b-a3b-instruct` (MoE OCR; bukan main); main tetap Flash; health **fail-closed**. |
+| **G23** | `kanban.db` / volume root-owned (`root:644`) → not writable + s6-log spam | Med (ops/noise) | **FIXED** | `hermes-kasir-posture.py apply` + `check` volume ownership; `up-hermes.sh` `--ownership-only` after `up`. Metadata-only `chown`/`chmod` — no WA re-pair. |
 
 ---
 
