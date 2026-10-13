@@ -567,3 +567,20 @@ export interface OsDeckStats {
     week: OsWeekStats;
     weeks: OsWeekActivity[];
 }
+
+/** Read-only live metrics for AI Studio UMKM Kasir (first recruited employee). */
+export interface OsKasirLiveSnapshot {
+    available: boolean;
+    tenantId: string;
+    slug: string;
+    name: string;
+    role: string;
+    source: string;
+    unavailableReason: string | null;
+    waChatsToday: number | null;
+    transactionsToday: number | null;
+    lastActivityAt: string | null;
+    waOnline: boolean | null;
+}
+
+export type AgentRosterKind = "live" | "demo";

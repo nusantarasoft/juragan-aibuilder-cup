@@ -17,6 +17,7 @@ AI Studio
 |-------|---------|
 | **Studio** (notebook) | [studio/](./studio/) — use cases + [RAG architecture](./studio/system/rag-architecture.md) |
 | **UMKM kasir WhatsApp** | [umkm-wa/](./umkm-wa/) |
+| **Agentic OS · first live employee** | [studio/business/agentic-os-first-employee.md](./studio/business/agentic-os-first-employee.md) |
 
 Diagrams: [`diagrams/aistudio/studio/`](../../diagrams/aistudio/studio/README.md) (RAG L1–L4) · [`diagrams/aistudio/umkm-wa/`](../../diagrams/aistudio/umkm-wa/README.md) (kasir WA)
 

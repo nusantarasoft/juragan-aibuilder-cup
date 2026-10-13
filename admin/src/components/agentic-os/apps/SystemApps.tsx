@@ -4,11 +4,13 @@ import React, { useEffect, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { Activity, AlertTriangle, Bot, CalendarClock, CircleCheck, Coins, Gauge, ListTodo, Play, Power, ShieldAlert, Sparkles, Timer } from "lucide-react";
 import { MODULES, type ModuleId } from "@/app/admin/virtual-office/lib/modules";
-import { aosApi, fetchAudit } from "../lib/api";
+import { aosApi, fetchAudit, fetchKasirLiveSnapshot } from "../lib/api";
+import { formatKasirMetricLine } from "../lib/firstEmployee";
 import { startPulsePolling, usePulseStore } from "../lib/pulseStore";
 import { agentById, useAosStore } from "../lib/store";
 import type { OsAuditEntry } from "../lib/types";
 import { AgentDot, Button, Chip, Field, Section, TextInput, Toggle, cx, timeAgo } from "../ui/kit";
+import { RosterKindBadge } from "../ui/RosterKindBadge";
 import { CapBar, NextRuns } from "./Pulse";
 
 const LEVEL_COLOR: Record<string, string> = { info: "#94a3b8", success: "#22c55e", warning: "#f59e0b", error: "#ef4444" };
@@ -66,7 +68,37 @@ export function Overview({ onOpen }: { onOpen: (app: string, params?: Record<str
     useEffect(() => startPulsePolling(10_000), []);
     const { pulse, pulseState, pulseSync } = usePulseStore(useShallow((s) => ({ pulse: s.status, pulseState: s.state, pulseSync: s.lastSync })));
     const audit = useAudit(14);
+    const [kasirLive, setKasirLive] = useState<Awaited<ReturnType<typeof fetchKasirLiveSnapshot>> | null>(null);
     const [now, setNow] = useState(() => Date.now());
+    useEffect(() => {
+        let alive = true;
+        const load = () =>
+            fetchKasirLiveSnapshot()
+                .then((s) => alive && setKasirLive(s))
+                .catch(
+                    () =>
+                        alive &&
+                        setKasirLive({
+                            available: false,
+                            tenantId: "default",
+                            slug: "umkm-kasir",
+                            name: "Kasir UMKM",
+                            role: "UMKM WhatsApp Kasir",
+                            source: "ai_studio",
+                            unavailableReason: "data tidak tersedia",
+                            waChatsToday: null,
+                            transactionsToday: null,
+                            lastActivityAt: null,
+                            waOnline: null,
+                        }),
+                );
+        void load();
+        const t = setInterval(load, 5000);
+        return () => {
+            alive = false;
+            clearInterval(t);
+        };
+    }, []);
     useEffect(() => {
         const t = setInterval(() => setNow(Date.now()), 1000);
         return () => clearInterval(t);
@@ -107,13 +139,36 @@ export function Overview({ onOpen }: { onOpen: (app: string, params?: Record<str
                 ))}
             </div>
 
+            {kasirLive && (
+                <Section title="First employee · AI Studio Kasir" icon={Sparkles}>
+                    <div className="flex flex-wrap items-start gap-3 rounded-xl border border-emerald-400/20 bg-emerald-500/[0.05] p-3">
+                        <AgentDot color="#22c55e" name={kasirLive.name} size={36} />
+                        <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                                <span className="text-[14px] font-semibold text-white">{kasirLive.name}</span>
+                                <RosterKindBadge kind="live" />
+                                <Chip color="#38bdf8">AI Studio</Chip>
+                            </div>
+                            <p className="mt-1 text-[12px] text-slate-300">{formatKasirMetricLine(kasirLive)}</p>
+                            <p className="mt-1 text-[10px] text-slate-500">Simulated agents below use Demo badges — task queue & workflows are not live yet.</p>
+                        </div>
+                        <Button size="sm" onClick={() => onOpen("studio")}>
+                            Agent roster
+                        </Button>
+                    </div>
+                </Section>
+            )}
+
             <div className="grid gap-3 lg:grid-cols-5">
                 <Section title="Agents at work" icon={Bot} className="lg:col-span-3" actions={<span className={cx("text-[10px]", stale ? "text-amber-300" : "text-slate-500")}>{stale ? "stale · " : ""}synced {lastSync ? timeAgo(new Date(lastSync).toISOString(), now) : "never"}</span>}>
                     <div className="space-y-1">
                         {busiest.map(({ a, open, running }) => (
                             <button key={a.id} type="button" onClick={() => onOpen("tasks", { agentId: a.id })} className="flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left hover:bg-white/5">
                                 <AgentDot color={a.color} name={a.name} size={24} />
-                                <span className="w-24 shrink-0 truncate text-[12px] font-semibold text-white">{a.name}</span>
+                                <span className="flex w-28 shrink-0 items-center gap-1 truncate text-[12px] font-semibold text-white">
+                                    {a.name}
+                                    <RosterKindBadge kind="demo" />
+                                </span>
                                 <span className="min-w-0 flex-1 truncate text-[11px] text-slate-400">{running ? running.title : a.status === "active" ? "Idle" : a.status}</span>
                                 {running && (
                                     <span className="w-20 shrink-0">

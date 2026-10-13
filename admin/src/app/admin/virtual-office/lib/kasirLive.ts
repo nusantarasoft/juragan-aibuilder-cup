@@ -1,0 +1,66 @@
+import { KASIR_EMPLOYEE_SLUG } from "@/components/agentic-os/lib/firstEmployee";
+import type { OsKasirLiveSnapshot } from "@/components/agentic-os/lib/types";
+import type { Agent, AgentStatus } from "./types";
+
+function kasirStatus(snap: OsKasirLiveSnapshot): AgentStatus {
+    if (!snap.available) return "offline";
+    if (!snap.waOnline) return "offline";
+    const busy = (snap.waChatsToday ?? 0) > 0 || (snap.transactionsToday ?? 0) > 0;
+    return busy ? "working" : "idle";
+}
+
+export function buildKasirAgent(snap: OsKasirLiveSnapshot): Agent {
+    const status = kasirStatus(snap);
+    const unavailable = !snap.available;
+    const activityLine = unavailable
+        ? snap.unavailableReason ?? "data tidak tersedia"
+        : `Live · ${snap.waChatsToday ?? 0} chat · ${snap.transactionsToday ?? 0} transaksi hari ini`;
+
+    return {
+        id: KASIR_EMPLOYEE_SLUG,
+        name: snap.name || "Kasir UMKM",
+        role: snap.role || "UMKM WhatsApp Kasir",
+        model: unavailable ? "AI Studio" : snap.waOnline ? "AI Studio · WA online" : "AI Studio · WA offline",
+        color: "#22c55e",
+        zone: "operations",
+        deskId: "ops-1",
+        status,
+        location: "desk",
+        modules: ["ai-studio"],
+        skills: ["Kasir WA", "Catat jual", "Stok", "Laporan"],
+        stats: {
+            tasksCompleted: snap.transactionsToday ?? 0,
+            successRate: snap.available ? 1 : 0,
+            avgLatencyMs: 800,
+            tokensToday: 0,
+        },
+        rosterKind: "live",
+        liveUnavailable: unavailable ? snap.unavailableReason ?? "data tidak tersedia" : null,
+        liveMetrics: snap.available
+            ? {
+                  waChatsToday: snap.waChatsToday ?? 0,
+                  transactionsToday: snap.transactionsToday ?? 0,
+                  waOnline: Boolean(snap.waOnline),
+                  lastActivityAt: snap.lastActivityAt,
+              }
+            : undefined,
+        task:
+            !unavailable && status === "working"
+                ? {
+                      id: `live-${KASIR_EMPLOYEE_SLUG}`,
+                      title: activityLine,
+                      progress: 0.35,
+                      startedAt: snap.lastActivityAt ? new Date(snap.lastActivityAt).getTime() : Date.now(),
+                      moduleId: "ai-studio",
+                      route: "/admin/ai-studio/umkm",
+                      steps: ["Terima chat WA", "Catat transaksi", "Update stok"],
+                  }
+                : undefined,
+    };
+}
+
+/** Prepend live Kasir and drop any stale Kasir row from the demo roster. */
+export function mergeKasirIntoRoster(agents: Agent[], snap: OsKasirLiveSnapshot): Agent[] {
+    const rest = agents.filter((a) => a.id !== KASIR_EMPLOYEE_SLUG);
+    return [buildKasirAgent(snap), ...rest.map((a) => ({ ...a, rosterKind: "demo" as const }))];
+}

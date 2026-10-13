@@ -36,6 +36,7 @@ import type {
     OsWorkflow,
     OsWorkflowInput,
     OsWorkflowRun,
+    OsKasirLiveSnapshot,
     WfGraph,
 } from "./types";
 
@@ -102,6 +103,19 @@ export interface AosSnapshot {
 }
 
 /** Everything the OS + Virtual Office need, in one round-trip. */
+export async function fetchKasirLiveSnapshot(tenantId?: string): Promise<OsKasirLiveSnapshot> {
+    const d = await aosGql<{ aosKasirLiveSnapshot: OsKasirLiveSnapshot }>(
+        `query AosKasirLive($tenantId: String) {
+            aosKasirLiveSnapshot(tenantId: $tenantId) {
+                available tenantId slug name role source unavailableReason
+                waChatsToday transactionsToday lastActivityAt waOnline
+            }
+        }`,
+        tenantId ? { tenantId } : {},
+    );
+    return d.aosKasirLiveSnapshot;
+}
+
 export async function fetchSnapshot(includeArchived = false): Promise<AosSnapshot> {
     const d = await aosGql<{
         aosAgents: OsAgent[];

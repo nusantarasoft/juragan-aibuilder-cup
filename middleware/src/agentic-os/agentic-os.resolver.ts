@@ -37,7 +37,9 @@ import {
     AosWorkflow,
     AosWorkflowInput,
     AosWorkflowRun,
+    AosKasirLiveSnapshot,
 } from './agentic-os.types';
+import { AosKasirLiveService } from './aos-kasir-live.service';
 
 type AosContext = { req?: { user?: { id?: string } | null } };
 
@@ -54,6 +56,7 @@ export class AgenticOsResolver {
         private readonly pulse: AgenticOsPulse,
         private readonly workflows: AgenticOsWorkflows,
         private readonly goals: AgenticOsGoals,
+        private readonly kasirLive: AosKasirLiveService,
     ) {}
 
     // ════════════════════════════════════════════════════════════════════════
@@ -66,6 +69,12 @@ export class AgenticOsResolver {
         @Args('includeArchived', archivedArg) includeArchived?: boolean,
     ) {
         return this.svc.listAgents(tenantId, includeArchived);
+    }
+
+    /** Read-only UMKM Kasir employee metrics (AI Studio → Agentic OS / Virtual Office). */
+    @Query(() => AosKasirLiveSnapshot)
+    aosKasirLiveSnapshot(@Args('tenantId', optStr) tenantId?: string) {
+        return this.kasirLive.getSnapshot(tenantId);
     }
 
     @Query(() => AosAgent, { nullable: true })

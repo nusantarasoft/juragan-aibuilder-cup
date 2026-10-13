@@ -32,6 +32,8 @@ import { MODULES, sessionUrl } from "../lib/modules";
 import { useOfficeStore } from "../lib/store";
 import type { Agent, AgentCommand } from "../lib/types";
 import { ActivityList } from "./AgentRoster";
+import { RosterKindBadge } from "@/components/agentic-os/ui/RosterKindBadge";
+import { timeAgo } from "@/components/agentic-os/ui/kit";
 import { AgentBadge, GLASS, ModuleChip, ProgressBar, StatusPill, StepList, cx, elapsed, formatTokens, useNow } from "./shared";
 
 function actionsFor(agent: Agent): { cmd: AgentCommand; label: string; icon: LucideIcon; tone?: "danger" | "primary" }[] {
@@ -196,6 +198,7 @@ export function AgentInspector() {
                         <div className="truncate text-base font-semibold text-white">{agent.name}</div>
                         <div className="truncate text-xs text-slate-400">{agent.role}</div>
                         <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                            {agent.rosterKind && <RosterKindBadge kind={agent.rosterKind} />}
                             <StatusPill status={agent.status} />
                             <span className="inline-flex items-center gap-1 rounded-full border border-white/10 px-2 py-0.5 text-[10px] text-slate-300">
                                 <Cpu className="h-3 w-3" />
@@ -263,16 +266,48 @@ export function AgentInspector() {
                     </div>
                 </div>
 
+                {agent.rosterKind === "live" && (
+                    <div className="rounded-xl border border-emerald-400/25 bg-emerald-500/[0.07] p-3 text-[11px] text-slate-200">
+                        {agent.liveUnavailable ? (
+                            <p className="font-medium text-amber-200">{agent.liveUnavailable}</p>
+                        ) : agent.liveMetrics ? (
+                            <ul className="space-y-1">
+                                <li>
+                                    <span className="text-slate-400">Chat WA hari ini:</span>{" "}
+                                    <span className="font-semibold text-white">{agent.liveMetrics.waChatsToday}</span>
+                                </li>
+                                <li>
+                                    <span className="text-slate-400">Transaksi tercatat:</span>{" "}
+                                    <span className="font-semibold text-white">{agent.liveMetrics.transactionsToday}</span>
+                                </li>
+                                <li>
+                                    <span className="text-slate-400">Hermes WA:</span>{" "}
+                                    <span className="font-semibold text-white">{agent.liveMetrics.waOnline ? "terhubung" : "offline"}</span>
+                                </li>
+                                {agent.liveMetrics.lastActivityAt && (
+                                    <li className="text-slate-400">
+                                        Aktivitas terakhir {timeAgo(agent.liveMetrics.lastActivityAt, now)}
+                                    </li>
+                                )}
+                            </ul>
+                        ) : (
+                            <p className="text-amber-200">data tidak tersedia</p>
+                        )}
+                    </div>
+                )}
+
                 {/* Agentic OS */}
                 <div className="flex items-center gap-1.5 rounded-xl border border-indigo-400/20 bg-indigo-500/[0.07] p-2">
                     <div className="min-w-0 flex-1 text-[11px] leading-tight text-slate-300">
-                        {dataMode === "live" ? (
+                        {agent.rosterKind === "live" ? (
+                            <span className="text-emerald-200/90">Recruited from AI Studio — real UMKM Kasir metrics (read-only)</span>
+                        ) : dataMode === "live" ? (
                             <>
                                 <span className="font-semibold text-white">{agent.queued ?? 0}</span> queued ·{" "}
                                 <span className={cx("font-semibold", agent.review ? "text-purple-300" : "text-white")}>{agent.review ?? 0}</span> to review
                             </>
                         ) : (
-                            <span className="text-slate-400">Demo agent — customize live agents in the OS</span>
+                            <span className="text-slate-400">Demo agent — simulated task progress</span>
                         )}
                     </div>
                     <button

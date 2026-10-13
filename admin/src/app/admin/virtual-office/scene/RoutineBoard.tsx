@@ -209,7 +209,7 @@ function draw(
 
 export function RoutineBoard({ position, lighting, width = 5.6, height = (5.6 * H) / W }: { position: [number, number, number]; lighting: Lighting; width?: number; height?: number }) {
     const { routines, status, pulseReady } = usePulseStore(useShallow((s) => ({ routines: s.routines, status: s.status, pulseReady: s.state === "ready" })));
-    const wfRuns = usePhase3Store((s) => s.workflowRuns);
+    const wfRuns = usePhase3Store((s) => s.workflowRuns) ?? [];
     const wfActive = wfRuns.some((r) => r.status === "running" || r.status === "waiting_approval");
     const agents = useAosStore((s) => s.agents);
     const launch = useOsUi((s) => s.launch);
