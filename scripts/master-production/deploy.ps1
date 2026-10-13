@@ -18,16 +18,22 @@
        while preserving .env.master-production + DB/storage volumes).
     3. Runs scripts/master-production/redeploy.sh (serial build + up + migrations).
 
+  Local git: preflight aborts if the working tree is dirty (lists paths). No reset/clean.
+  Sync with origin uses fast-forward only when clean.
+
   Optional switches:
       -SkipMerge   skip the local git merge (still pulls whatever is on origin)
       -SkipPush    merge locally but do not push (server pull will not see new commits)
+      -AllowDirty  skip all local git sync; server still deploys origin/master-production
+                   (never discards local changes)
 
   Requires: Python 3 with paramiko  (pip install paramiko)
             Server git auth via deploy key (DEPLOY_GIT_URL=git@...) or GITHUB_TOKEN
 #>
 param(
   [switch]$SkipMerge,
-  [switch]$SkipPush
+  [switch]$SkipPush,
+  [switch]$AllowDirty
 )
 
 $ErrorActionPreference = "Continue"
@@ -50,11 +56,17 @@ $pullSh     = Join-Path $PSScriptRoot "pull-on-server.sh"
 $remoteDir  = "/opt/nusantarasoft-3"
 $branch     = "master-production"
 
+. (Join-Path $PSScriptRoot "_deploy-local-git.ps1")
+
 Set-Location $repo
 
 if (-not (Test-Path $pullSh)) {
   throw "Missing $pullSh"
 }
+
+$preflight = Test-DeployLocalPreflight -AllowDirty:$AllowDirty
+if ($null -eq $preflight) { exit 1 }
+$localTreeClean = [bool]$preflight
 
 function Get-DeployGitUrl {
   if ($env:DEPLOY_GIT_URL) { return $env:DEPLOY_GIT_URL.Trim() }
@@ -75,21 +87,14 @@ function Mask-GitUrl([string]$url) {
   return [regex]::Replace($url, '(://[^:]+:)[^@]+@', '${1}***@')
 }
 
-if (-not $SkipMerge) {
-  Write-Host "==> [1/3] merge master -> $branch" -ForegroundColor Cyan
+$skipLocalGit = (-not $localTreeClean) -or $AllowDirty
 
-  $dirty = git status --porcelain
-  if ($dirty) {
-    throw "Working tree is dirty. Commit or stash changes before deploy, or pass -SkipMerge."
-  }
+if (-not $SkipMerge -and -not $skipLocalGit) {
+  Write-Host "==> [1/3] merge master -> $branch" -ForegroundColor Cyan
 
   Invoke-Git fetch origin master $branch
 
-  $current = (git rev-parse --abbrev-ref HEAD).Trim()
-  if ($current -ne $branch) {
-    Write-Host "    checking out $branch (was on $current)"
-    Invoke-Git checkout $branch
-  }
+  Sync-DeployLocalBranchFastForward -Branch $branch -InvokeGit ${function:Invoke-Git}
 
   $mergeSource = "master"
   git rev-parse --verify origin/master 2>$null | Out-Null
@@ -110,7 +115,7 @@ if (-not $SkipMerge) {
   } else {
     Write-Warning "-SkipPush: server pull will not include unpushed local commits."
   }
-} else {
+} elseif ($SkipMerge -and -not $skipLocalGit) {
   Write-Host "==> [1/3] skip merge (-SkipMerge)" -ForegroundColor Yellow
   if (-not $SkipPush) {
     $current = (git rev-parse --abbrev-ref HEAD).Trim()
@@ -119,6 +124,12 @@ if (-not $SkipMerge) {
     }
     Write-Host "    pushing current $branch to origin"
     Invoke-Git push origin $branch
+  }
+} else {
+  if ($AllowDirty -or -not $localTreeClean) {
+    Write-Host "==> [1/3] skip local git (-AllowDirty / dirty tree)" -ForegroundColor Yellow
+  } else {
+    Write-Host "==> [1/3] skip merge (-SkipMerge)" -ForegroundColor Yellow
   }
 }
 
