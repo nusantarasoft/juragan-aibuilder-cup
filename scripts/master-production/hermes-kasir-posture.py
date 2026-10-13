@@ -13,10 +13,10 @@ Usage (on server):
 
   HERMES_CONTAINER=nsoft3-hermes python3 … apply --docker
 
-Volume ownership (kanban.db / s6-log): full apply ends with chown/chmod to
-container uid/gid; `apply --ownership-only` skips config.yaml edits.
-Override uid/gid with HERMES_VOLUME_UID / HERMES_VOLUME_GID when docker exec
-is unavailable.
+Volume ownership (kanban.db only): detects uid/gid from ``.env`` or volume dir
+stat (default **10000:10000**; override ``HERMES_VOLUME_UID`` / ``HERMES_VOLUME_GID``).
+Never uses ``docker exec id``. If owner is root/ambiguous → skip and WARN.
+Does not chmod ``.env`` (600) or WA session dirs (700); no ``chown -R``.
 """
 
 from __future__ import annotations
@@ -448,75 +448,97 @@ def _path_under_session(path: Path, session: Path) -> bool:
         return False
 
 
-def resolve_hermes_uid_gid(*, docker: bool, container: str) -> tuple[int, int]:
-    """Container runtime uid/gid for volume ownership (default 1000:1000)."""
-    uid = int(os.environ.get("HERMES_VOLUME_UID", "1000"))
-    gid = int(os.environ.get("HERMES_VOLUME_GID", "1000"))
-    if docker:
+DEFAULT_VOLUME_UID = 10000
+DEFAULT_VOLUME_GID = 10000
+
+
+def detect_volume_owner_from_stat(home: Path) -> tuple[int, int] | None:
+    """Source of truth: ``.env`` stat, else volume dir. None if all candidates are root."""
+    candidates: list[Path] = []
+    if (home / ".env").is_file():
+        candidates.append(home / ".env")
+    if home.is_dir():
+        candidates.append(home)
+    saw_root = False
+    for path in candidates:
         try:
-            uid = int(
-                subprocess.check_output(
-                    ["docker", "exec", container, "id", "-u"],
-                    stderr=subprocess.DEVNULL,
-                    timeout=15,
-                )
-                .decode()
-                .strip()
+            st = path.stat()
+        except OSError:
+            continue
+        if st.st_uid == 0 or st.st_gid == 0:
+            saw_root = True
+            continue
+        return st.st_uid, st.st_gid
+    if saw_root:
+        return None
+    return None
+
+
+def resolve_hermes_uid_gid(*, home: Path) -> tuple[int, int] | None:
+    """Target uid/gid for kanban.db. Never derives uid from ``docker exec id``."""
+    env_uid = os.environ.get("HERMES_VOLUME_UID")
+    env_gid = os.environ.get("HERMES_VOLUME_GID")
+    if env_uid is not None and env_gid is not None:
+        uid, gid = int(env_uid), int(env_gid)
+        if uid == 0 or gid == 0:
+            print(
+                "WARN  HERMES_VOLUME_UID/GID is 0 — skipping volume ownership",
+                flush=True,
             )
-            gid = int(
-                subprocess.check_output(
-                    ["docker", "exec", container, "id", "-g"],
-                    stderr=subprocess.DEVNULL,
-                    timeout=15,
-                )
-                .decode()
-                .strip()
-            )
-        except Exception:
-            pass
-    return uid, gid
+            return None
+        return uid, gid
+
+    detected = detect_volume_owner_from_stat(home)
+    if detected is not None:
+        return detected
+
+    if not home.is_dir():
+        return DEFAULT_VOLUME_UID, DEFAULT_VOLUME_GID
+
+    print(
+        "WARN  volume owner uid/gid is 0 or ambiguous — skipping ownership",
+        flush=True,
+    )
+    return None
 
 
 def harden_volume_ownership(home: Path, uid: int, gid: int) -> list[str]:
-    """Idempotent chown/chmod so Hermes (non-root) can write kanban.db and logs.
-
-    Does not read or rewrite state.db / config.yaml content — metadata only.
-    """
+    """Fix only ``kanban.db`` owner/mode when wrong (no ``chown -R``, no ``.env``)."""
     notes: list[str] = []
+    if uid == 0 or gid == 0:
+        print("WARN  refuse to chown kanban.db to root (0:0)", flush=True)
+        return notes
     if not home.is_dir():
         return notes
-    session = _session_dir(home)
-    rc = subprocess.call(["chown", "-R", f"{uid}:{gid}", str(home)])
-    if rc == 0:
-        notes.append("volume.chown")
-    else:
-        print(
-            f"WARN  chown -R {uid}:{gid} {home} exited {rc} (need root on host?)",
-            flush=True,
-        )
+    kanban = home / "kanban.db"
+    if not kanban.is_file():
+        return notes
     try:
-        home.chmod(0o750)
+        st = kanban.stat()
     except OSError as exc:
-        print("WARN  home chmod failed:", exc, flush=True)
-    for path in home.rglob("*"):
-        if not path.exists():
-            continue
-        if path == session or _path_under_session(path, session):
-            if path == session and path.is_dir():
-                try:
-                    path.chmod(0o700)
-                except OSError as exc:
-                    print("WARN  session chmod failed:", exc, flush=True)
-            continue
+        print("WARN  kanban.db stat failed:", exc, flush=True)
+        return notes
+    mode = stat.S_IMODE(st.st_mode)
+    want_mode = 0o640
+    needs_chown = st.st_uid != uid or st.st_gid != gid
+    needs_chmod = mode != want_mode
+    if not needs_chown and not needs_chmod:
+        return notes
+    if needs_chown:
+        rc = subprocess.call(["chown", f"{uid}:{gid}", str(kanban)])
+        if rc != 0:
+            print(
+                f"WARN  chown {uid}:{gid} {kanban} exited {rc} (need root on host?)",
+                flush=True,
+            )
+            return notes
+        notes.append("kanban.db.chown")
+    if needs_chmod:
         try:
-            if path.is_dir():
-                path.chmod(0o750)
-            elif path.is_file():
-                path.chmod(0o640)
+            kanban.chmod(want_mode)
+            notes.append("kanban.db.chmod")
         except OSError as exc:
-            print("WARN  chmod", path, exc, flush=True)
-    if notes or home.is_dir():
-        notes.append("volume.chmod")
+            print("WARN  kanban.db chmod failed:", exc, flush=True)
     return notes
 
 
@@ -589,12 +611,16 @@ def main() -> int:
         print(f"FAIL  missing {cfg} ({where})", file=sys.stderr)
         return 1
 
-    uid, gid = resolve_hermes_uid_gid(docker=args.docker, container=args.container)
+    uid_gid = resolve_hermes_uid_gid(home=home)
 
     if args.action == "apply":
         if args.ownership_only:
-            notes = harden_volume_ownership(home, uid, gid)
-            print("applied", ",".join(notes) or "noop", flush=True)
+            if uid_gid is None:
+                print("applied noop (ownership skipped)", flush=True)
+            else:
+                uid, gid = uid_gid
+                notes = harden_volume_ownership(home, uid, gid)
+                print("applied", ",".join(notes) or "noop", flush=True)
         else:
             if args.sync_plugins:
                 sync_plugins_from_repo(home)
@@ -607,9 +633,13 @@ def main() -> int:
                 )
                 if side != 0:
                     print("WARN  side scripts exited", side, flush=True)
-            vol_notes = harden_volume_ownership(home, uid, gid)
-            if vol_notes:
-                print("volume", ",".join(vol_notes), flush=True)
+            if uid_gid is None:
+                print("WARN  volume ownership skipped (ambiguous uid/gid)", flush=True)
+            else:
+                uid, gid = uid_gid
+                vol_notes = harden_volume_ownership(home, uid, gid)
+                if vol_notes:
+                    print("volume", ",".join(vol_notes), flush=True)
 
     failed = False
     if not args.ownership_only:
@@ -618,10 +648,14 @@ def main() -> int:
             if not ok:
                 failed = True
 
-    for ok, detail in check_volume_ownership(home, uid, gid):
-        print(f"{'PASS' if ok else 'FAIL'}  volume.{detail}")
-        if not ok:
-            failed = True
+    if uid_gid is None:
+        print("WARN  volume ownership check skipped (ambiguous uid/gid)")
+    else:
+        uid, gid = uid_gid
+        for ok, detail in check_volume_ownership(home, uid, gid):
+            print(f"{'PASS' if ok else 'FAIL'}  volume.{detail}")
+            if not ok:
+                failed = True
 
     # Health is authoritative for required checks when not --skip-side
     if (

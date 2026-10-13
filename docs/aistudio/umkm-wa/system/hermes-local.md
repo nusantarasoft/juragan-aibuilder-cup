@@ -106,7 +106,7 @@ Flip both services together; recreate + `hermes-kasir-posture.py apply`. Diagram
 - Hermes binds `127.0.0.1` only (SSH tunnel)
 - `WHATSAPP_PROVIDER=hermes`
 - Volume: `./volumes/hermes` (creds). Do not delete `creds.json` / logout without explicit ask.
-- **Volume ownership:** After host-side deploy writes, run `hermes-kasir-posture.py apply` (included in `redeploy.sh`) or `up-hermes.sh` (`apply --ownership-only`) so files match the Hermes container uid/gid (default **1000:1000**). Fixes `kanban.db` “not writable” and s6-log EPERM without editing `state.db` / `config.yaml` content or WA session payloads.
+- **Volume ownership:** After host-side deploy writes, run `hermes-kasir-posture.py apply` (included in `redeploy.sh`) or `up-hermes.sh` (`apply --ownership-only`) so **`kanban.db`** matches Hermes uid/gid (default **10000:10000** from `.env`/dir stat; only `kanban.db` touched). Fixes “not writable” / s6-log EPERM without editing `state.db` / `config.yaml` or WA session payloads.
 - Default image pin: `nousresearch/hermes-agent:v2026.8.27` (override with `HERMES_IMAGE`)
 - `WHATSAPP_HOME_CHANNEL` / `WHATSAPP_HOME_CHANNEL_NAME` — ops home JID (often same digits as paired agent)
 
