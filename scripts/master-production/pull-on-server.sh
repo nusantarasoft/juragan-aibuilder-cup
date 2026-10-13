@@ -3,8 +3,8 @@
 # pull-on-server.sh — run ON THE SERVER inside /opt/nusantarasoft-3 (or via
 # deploy.ps1 over SSH). Always updates to branch master-production.
 #
-#   export DEPLOY_GIT_URL='git@github.com:spygunpro/nusantarasoft-3.git'
-#   # or: export GITHUB_TOKEN='ghp_...'   (HTTPS)
+#   export DEPLOY_GIT_URL='git@github-nusantarasoft-3:nusantarasoft/nusantarasoft-3.git'
+#   # or: export GITHUB_TOKEN='ghp_...'   (HTTPS legacy — prefer setup-deploy-key.sh)
 #   bash scripts/master-production/pull-on-server.sh
 #
 # Env:
@@ -19,7 +19,7 @@ set -euo pipefail
 
 BRANCH="${BRANCH:-master-production}"
 REMOTE_DIR="${REMOTE_DIR:-/opt/nusantarasoft-3}"
-REPO_HTTPS_PATH="${REPO_HTTPS_PATH:-spygunpro/nusantarasoft-3}"
+REPO_HTTPS_PATH="${REPO_HTTPS_PATH:-nusantarasoft/nusantarasoft-3}"
 
 if [[ -z "${DEPLOY_GIT_URL:-}" && -n "${GITHUB_TOKEN:-}" ]]; then
   DEPLOY_GIT_URL="https://x-access-token:${GITHUB_TOKEN}@github.com/${REPO_HTTPS_PATH}.git"

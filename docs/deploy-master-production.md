@@ -39,9 +39,10 @@ App lain di server yang **tidak** disentuh: Portainer, pustaka, andromedia, ipus
    - `SSH_HOST=31.97.66.39`
    - `SSH_USER=root`
    - `SSH_PASS=...` (jangan commit / jangan paste ke chat)
-4. Akses GitHub di server (salah satu):
-   - `DEPLOY_GIT_URL=git@github.com:spygunpro/nusantarasoft-3.git` (deploy key read-only, disarankan), **atau**
-   - `GITHUB_TOKEN=ghp_...` / fine-grained dengan Contents Read (jangan commit / jangan paste ke chat)
+4. Akses GitHub di server (disarankan deploy key read-only):
+   - Jalankan sekali `scripts/master-production/setup-deploy-key.sh` dari laptop (SSH ke server) — lihat [Migrasi token → deploy key](#migrasi-token--deploy-key-ssh) di bawah.
+   - Setelah key terpasang di GitHub: `DEPLOY_GIT_URL=git@github-nusantarasoft-3:nusantarasoft/nusantarasoft-3.git` (alias host + `core.sshCommand` di server), **atau**
+   - Legacy: `GITHUB_TOKEN=ghp_...` / fine-grained Contents Read (jangan commit / jangan paste ke chat)
 
 ## Alur standar
 
@@ -104,11 +105,27 @@ Di server (atau dari laptop ke IP publik):
 | SSH / port 22, 9000, 8090 timeout | Server/network down; jangan ulang merge; tunggu lalu `-SkipMerge -SkipPush` |
 | Preflight `Local deploy aborted — working tree is not clean` | Commit/revert, pakai worktree bersih, atau `-AllowDirty` jika hanya redeploy server (tanpa sync lokal) |
 | nginx `502` setelah recreate app | `docker restart nsoft3-nginx` (sudah otomatis di `redeploy.sh` terbaru) |
-| Git pull gagal di server | Set `DEPLOY_GIT_URL` / `GITHUB_TOKEN`; pastikan token tidak bocor di chat |
+| Git pull gagal di server | Deploy key: ulang `setup-deploy-key.sh`, cek public key di GitHub Deploy keys; atau set `DEPLOY_GIT_URL` / `GITHUB_TOKEN` (legacy) |
 | Unicode error di console Windows saat SSH | Set `$env:PYTHONIOENCODING="utf-8"`; `_ssh.py` sudah fallback replace |
+
+## Migrasi token → deploy key (SSH)
+
+**PO gate:** jangan jalankan di production sebelum PO lock; PR terpisah, no merge otomatis.
+
+1. Dari root repo di Mac Akbar (env `SSH_HOST`, `SSH_USER`, `SSH_PASS` seperti deploy):
+
+   ```powershell
+   python scripts/master-production/_ssh.py script scripts/master-production/setup-deploy-key.sh
+   ```
+
+2. Salin **public key** dari output (private key tidak pernah dicetak) → GitHub repo `nusantarasoft/nusantarasoft-3` → **Settings → Deploy keys** → Add (read-only, no write).
+3. Jalankan script lagi jika fetch pertama gagal karena key belum ada di GitHub.
+4. Script di server: generate ed25519 di `/opt/nusantarasoft-3/.deploy-keys/`, alias SSH `github-nusantarasoft-3`, `git config core.sshCommand`, origin `git@github-nusantarasoft-3:nusantarasoft/nusantarasoft-3.git` — **hanya setelah** `git fetch`/`ls-remote` SSH sukses; rollback otomatis jika gagal.
+5. Setelah sukses, deploy rutin cukup `DEPLOY_GIT_URL` ke URL SSH di atas (tanpa `GITHUB_TOKEN` di env).
 
 ## File terkait
 
+- `scripts/master-production/setup-deploy-key.sh` — one-time migrasi HTTPS+token → deploy key SSH di server
 - `scripts/master-production/deploy.ps1` — orkestrasi dari Windows/Mac (preflight + merge/push lokal **ff-only**, tanpa reset/clean lokal)
 - `scripts/master-production/_deploy-local-git.ps1` — helper preflight + fast-forward lokal
 - `scripts/master-production/pull-on-server.sh` — git pull/bootstrap di server
