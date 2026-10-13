@@ -12,6 +12,11 @@ Usage (on server):
     python3 scripts/master-production/hermes-kasir-posture.py check
 
   HERMES_CONTAINER=nsoft3-hermes python3 … apply --docker
+
+Volume ownership (kanban.db / s6-log): full apply ends with chown/chmod to
+container uid/gid; `apply --ownership-only` skips config.yaml edits.
+Override uid/gid with HERMES_VOLUME_UID / HERMES_VOLUME_GID when docker exec
+is unavailable.
 """
 
 from __future__ import annotations
@@ -19,6 +24,7 @@ from __future__ import annotations
 import argparse
 import os
 import re
+import stat
 import subprocess
 import sys
 from pathlib import Path
@@ -430,6 +436,126 @@ def harden_session_chmod(home: Path) -> None:
         print("WARN  session chmod failed:", exc, flush=True)
 
 
+def _session_dir(home: Path) -> Path:
+    return home / "platforms" / "whatsapp" / "session"
+
+
+def _path_under_session(path: Path, session: Path) -> bool:
+    try:
+        path.resolve().relative_to(session.resolve())
+        return True
+    except ValueError:
+        return False
+
+
+def resolve_hermes_uid_gid(*, docker: bool, container: str) -> tuple[int, int]:
+    """Container runtime uid/gid for volume ownership (default 1000:1000)."""
+    uid = int(os.environ.get("HERMES_VOLUME_UID", "1000"))
+    gid = int(os.environ.get("HERMES_VOLUME_GID", "1000"))
+    if docker:
+        try:
+            uid = int(
+                subprocess.check_output(
+                    ["docker", "exec", container, "id", "-u"],
+                    stderr=subprocess.DEVNULL,
+                    timeout=15,
+                )
+                .decode()
+                .strip()
+            )
+            gid = int(
+                subprocess.check_output(
+                    ["docker", "exec", container, "id", "-g"],
+                    stderr=subprocess.DEVNULL,
+                    timeout=15,
+                )
+                .decode()
+                .strip()
+            )
+        except Exception:
+            pass
+    return uid, gid
+
+
+def harden_volume_ownership(home: Path, uid: int, gid: int) -> list[str]:
+    """Idempotent chown/chmod so Hermes (non-root) can write kanban.db and logs.
+
+    Does not read or rewrite state.db / config.yaml content — metadata only.
+    """
+    notes: list[str] = []
+    if not home.is_dir():
+        return notes
+    session = _session_dir(home)
+    rc = subprocess.call(["chown", "-R", f"{uid}:{gid}", str(home)])
+    if rc == 0:
+        notes.append("volume.chown")
+    else:
+        print(
+            f"WARN  chown -R {uid}:{gid} {home} exited {rc} (need root on host?)",
+            flush=True,
+        )
+    try:
+        home.chmod(0o750)
+    except OSError as exc:
+        print("WARN  home chmod failed:", exc, flush=True)
+    for path in home.rglob("*"):
+        if not path.exists():
+            continue
+        if path == session or _path_under_session(path, session):
+            if path == session and path.is_dir():
+                try:
+                    path.chmod(0o700)
+                except OSError as exc:
+                    print("WARN  session chmod failed:", exc, flush=True)
+            continue
+        try:
+            if path.is_dir():
+                path.chmod(0o750)
+            elif path.is_file():
+                path.chmod(0o640)
+        except OSError as exc:
+            print("WARN  chmod", path, exc, flush=True)
+    if notes or home.is_dir():
+        notes.append("volume.chmod")
+    return notes
+
+
+def _kanban_writable(st: os.stat_result, uid: int, gid: int) -> bool:
+    if st.st_uid != uid:
+        return False
+    mode = stat.S_IMODE(st.st_mode)
+    if st.st_uid == os.geteuid():
+        return bool(mode & stat.S_IWUSR)
+    return bool(mode & stat.S_IWUSR)
+
+
+def check_volume_ownership(home: Path, uid: int, gid: int) -> list[tuple[bool, str]]:
+    """Verify kanban.db (if present) is owned by Hermes uid with owner write."""
+    out: list[tuple[bool, str]] = []
+    if not home.is_dir():
+        out.append((False, f"HERMES_HOME missing {home}"))
+        return out
+    kanban = home / "kanban.db"
+    if not kanban.is_file():
+        out.append((True, "kanban.db absent (ok until first use)"))
+        return out
+    try:
+        st = kanban.stat()
+    except OSError as exc:
+        out.append((False, f"kanban.db stat failed: {exc}"))
+        return out
+    mode = stat.S_IMODE(st.st_mode)
+    ok = _kanban_writable(st, uid, gid)
+    out.append(
+        (
+            ok,
+            f"kanban.db uid={st.st_uid} gid={st.st_gid} mode={oct(mode)} "
+            f"(want {uid}:{gid} owner-writable)",
+        )
+    )
+    return out
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("action", choices=("apply", "check"))
@@ -449,42 +575,59 @@ def main() -> int:
         action="store_true",
         help="Skip allowlist + platform-locks scripts",
     )
+    ap.add_argument(
+        "--ownership-only",
+        action="store_true",
+        help="Only fix volume uid/gid/modes; do not edit config.yaml or side scripts",
+    )
     args = ap.parse_args()
     home = Path(args.home)
 
-    if args.docker:
-        # Config lives on host volume bind in prod; still prefer host path.
-        cfg = home / "config.yaml"
-        if not cfg.is_file():
-            print(f"FAIL  missing {cfg} (host volume)", file=sys.stderr)
-            return 1
-    else:
-        cfg = home / "config.yaml"
-        if not cfg.is_file():
-            print(f"FAIL  missing {cfg}", file=sys.stderr)
-            return 1
+    cfg = home / "config.yaml"
+    if not args.ownership_only and not cfg.is_file():
+        where = "host volume" if args.docker else "HERMES_HOME"
+        print(f"FAIL  missing {cfg} ({where})", file=sys.stderr)
+        return 1
+
+    uid, gid = resolve_hermes_uid_gid(docker=args.docker, container=args.container)
 
     if args.action == "apply":
-        if args.sync_plugins:
-            sync_plugins_from_repo(home)
-        harden_session_chmod(home)
-        notes = apply_config(cfg)
-        print("applied", ",".join(notes) or "noop", flush=True)
-        if not args.skip_side:
-            side = apply_side_scripts(
-                docker=args.docker, container=args.container, home=home
-            )
-            if side != 0:
-                print("WARN  side scripts exited", side, flush=True)
+        if args.ownership_only:
+            notes = harden_volume_ownership(home, uid, gid)
+            print("applied", ",".join(notes) or "noop", flush=True)
+        else:
+            if args.sync_plugins:
+                sync_plugins_from_repo(home)
+            harden_session_chmod(home)
+            notes = apply_config(cfg)
+            print("applied", ",".join(notes) or "noop", flush=True)
+            if not args.skip_side:
+                side = apply_side_scripts(
+                    docker=args.docker, container=args.container, home=home
+                )
+                if side != 0:
+                    print("WARN  side scripts exited", side, flush=True)
+            vol_notes = harden_volume_ownership(home, uid, gid)
+            if vol_notes:
+                print("volume", ",".join(vol_notes), flush=True)
 
     failed = False
-    for ok, detail in check_config(cfg):
-        print(f"{'PASS' if ok else 'FAIL'}  {detail}")
+    if not args.ownership_only:
+        for ok, detail in check_config(cfg):
+            print(f"{'PASS' if ok else 'FAIL'}  {detail}")
+            if not ok:
+                failed = True
+
+    for ok, detail in check_volume_ownership(home, uid, gid):
+        print(f"{'PASS' if ok else 'FAIL'}  volume.{detail}")
         if not ok:
             failed = True
 
     # Health is authoritative for required checks when not --skip-side
-    if args.action == "check" or not args.skip_side:
+    if (
+        not args.ownership_only
+        and (args.action == "check" or not args.skip_side)
+    ):
         env = os.environ.copy()
         env["HERMES_HOME"] = str(home)
         health = Path(__file__).resolve().parent / "hermes-kasir-health.py"

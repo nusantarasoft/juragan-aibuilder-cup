@@ -44,11 +44,17 @@ fi
 echo "==> [2/4] mkdir volumes/hermes"
 mkdir -p volumes/hermes
 
-echo "==> [3/4] pull image + up hermes"
+echo "==> [3/5] pull image + up hermes"
 docker compose -f "$CF" --env-file "$EF" pull hermes
 docker compose -f "$CF" --env-file "$EF" up -d hermes
 
-echo "==> [4/4] status"
+echo "==> [4/5] Hermes volume ownership (kanban.db / s6-log EPERM guard)"
+HERMES_HOME="$DIR/volumes/hermes" HERMES_CONTAINER=nsoft3-hermes \
+  python3 scripts/master-production/hermes-kasir-posture.py apply \
+  --docker --container nsoft3-hermes --ownership-only --skip-side \
+  || echo "WARN: volume ownership apply failed (run as root on host?)" >&2
+
+echo "==> [5/5] status"
 docker compose -f "$CF" --env-file "$EF" ps hermes
 echo
 echo "OK — nsoft3-hermes should be Up."
