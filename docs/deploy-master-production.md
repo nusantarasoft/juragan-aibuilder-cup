@@ -86,7 +86,8 @@ Script melakukan:
 - **Tidak** di-git: isi live (DB, config, channel map, gateway, cron, logs, skills cache) hanya di server.
 - **Source of truth** plugin + seed: `scripts/master-production/hermes-plugins/` dan `scripts/master-production/hermes-home/`; `redeploy.sh` memanggil `hermes-kasir-posture.py apply --sync-plugins`.
 - Fresh install: `mkdir -p volumes/hermes` (lihat `up-hermes.sh` / compose mount), lalu posture apply setelah container hermes up.
-- **Ownership:** Host deploy runs as root often leaves `kanban.db` (and other files) as `root:root` `644` while Hermes runs as uid **1000** → ~minute-level “not writable” + s6-log EPERM. `hermes-kasir-posture.py apply` (redeploy) and `up-hermes.sh` step 4 run idempotent `chown`/`chmod` on the volume; `check` verifies `kanban.db` owner/mode. Optional env: `HERMES_VOLUME_UID` / `HERMES_VOLUME_GID`.
+- **Ownership:** Host deploy as root can leave `kanban.db` as `root:root` `644` while Hermes runs as uid **10000** → “not writable” + s6-log EPERM. `hermes-kasir-posture.py apply` fixes **only** `kanban.db` (uid/gid from `.env` or volume dir stat; default **10000:10000**; never `docker exec id` or `chown -R`). Does not change `.env` (600) or session dir modes. Optional env: `HERMES_VOLUME_UID` / `HERMES_VOLUME_GID`.
+- **Deploy key (parked):** `setup-deploy-key.sh` exists for a future SSH deploy-key migration; production pull stays **HTTPS + `GITHUB_TOKEN`** until that migration is explicitly scheduled.
 
 ## Verifikasi setelah deploy
 
