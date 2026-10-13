@@ -31,9 +31,9 @@ App lain di server yang **tidak** disentuh: Portainer, pustaka, andromedia, ipus
 
 `docker compose` selalu memakai file `docker-compose.master-production.yml` + project name `nsoft3-prod`. Redeploy **hanya** recreate/restart container `nsoft3-*`. Tidak `docker stop` / `docker rm` container di luar filter itu.
 
-## Prasyarat (mesin Windows)
+## Prasyarat (mesin Windows / Mac)
 
-1. Repo lokal bersih (atau commit dulu) sebelum merge/deploy.
+1. Repo lokal **bersih** sebelum merge/deploy: tidak ada perubahan tracked/untracked yang non-ignored. `deploy.ps1` **abort** di awal dengan daftar file jika tree kotor — **tanpa** auto-stash, auto-reset, atau `git clean`. Untuk eksperimen lokal, pakai **git worktree** terpisah (disarankan) atau commit dulu.
 2. Python 3 + `paramiko` (`pip install paramiko`).
 3. Env SSH:
    - `SSH_HOST=31.97.66.39`
@@ -74,9 +74,10 @@ Script melakukan:
 
 | Switch | Kapan |
 |--------|--------|
-| `-SkipMerge` | Merge/push sudah dilakukan; hanya pull + redeploy |
+| `-SkipMerge` | Merge/push sudah dilakukan; hanya pull + redeploy (tree harus tetap bersih) |
 | `-SkipPush` | Merge lokal saja, jangan push (jarang; server tidak dapat commit baru) |
 | `-SkipMerge -SkipPush` | Hanya pull server + redeploy (paling aman setelah merge sudah selesai) |
+| `-AllowDirty` | Lewati **semua** sync git lokal; server tetap pull `origin/master-production`. **Tidak pernah** menghapus/meng-overwrite perubahan lokal |
 | `NSOFT3_PRUNE_IMAGES=1` (di server, sebelum `redeploy.sh`) | Jalankan step 9 prune disk; default tanpa env = skip |
 
 ## Hermes runtime (`volumes/hermes`)
@@ -100,14 +101,15 @@ Di server (atau dari laptop ke IP publik):
 | Gejala | Tindakan |
 |--------|----------|
 | SSH / port 22, 9000, 8090 timeout | Server/network down; jangan ulang merge; tunggu lalu `-SkipMerge -SkipPush` |
-| `Working tree is dirty` | Commit/stash dulu, atau `-SkipMerge` jika hanya mau redeploy |
+| Preflight `Local deploy aborted — working tree is not clean` | Commit/revert, pakai worktree bersih, atau `-AllowDirty` jika hanya redeploy server (tanpa sync lokal) |
 | nginx `502` setelah recreate app | `docker restart nsoft3-nginx` (sudah otomatis di `redeploy.sh` terbaru) |
 | Git pull gagal di server | Set `DEPLOY_GIT_URL` / `GITHUB_TOKEN`; pastikan token tidak bocor di chat |
 | Unicode error di console Windows saat SSH | Set `$env:PYTHONIOENCODING="utf-8"`; `_ssh.py` sudah fallback replace |
 
 ## File terkait
 
-- `scripts/master-production/deploy.ps1` — orkestrasi dari Windows
+- `scripts/master-production/deploy.ps1` — orkestrasi dari Windows/Mac (preflight + merge/push lokal **ff-only**, tanpa reset/clean lokal)
+- `scripts/master-production/_deploy-local-git.ps1` — helper preflight + fast-forward lokal
 - `scripts/master-production/pull-on-server.sh` — git pull/bootstrap di server
 - `scripts/master-production/redeploy.sh` — build + up + migrasi + hermes posture + prune image nsoft3 + smoke UMKM
 - `scripts/master-production/smoke-umkm.sh` — post-deploy health + consult smoke (standalone atau dari redeploy)

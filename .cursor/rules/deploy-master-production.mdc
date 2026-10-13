@@ -11,6 +11,7 @@ Full runbook: [docs/deploy-master-production.md](docs/deploy-master-production.m
 ## Hard rules
 
 - Go-live branch is **`master-production`** only (merge from `master` first via `deploy.ps1`).
+- **Never discard local work** on the dev machine: no local `git reset --hard`, `checkout -f`, or `git clean`. Preflight aborts with a file list if the tree is dirty; `-AllowDirty` only skips local sync (server still deploys). Prefer a **separate clean git worktree** for deploys.
 - Touch **only** compose project `nsoft3-prod` / containers `nsoft3-*`. Never stop/restart Portainer, pustaka, andromedia, ipustah, beapi, or other host apps unless the user explicitly asks.
 - Published ports only: `8090`, `3013`, `3011`, `9010`.
 - Secrets (`SSH_PASS`, `GITHUB_TOKEN`, `.env.master-production`) stay in env / gitignored files — never commit, never echo full secrets in chat.
@@ -26,7 +27,8 @@ $env:PYTHONIOENCODING="utf-8"
 powershell -ExecutionPolicy Bypass -File scripts/master-production/deploy.ps1
 ```
 
-- After merge/push already done: add `-SkipMerge -SkipPush`.
+- After merge/push already done: add `-SkipMerge -SkipPush` (working tree must still be clean unless `-AllowDirty`).
+- `-AllowDirty`: skip all local git steps; never modifies local files.
 - Server path: `/opt/nusantarasoft-3`.
 - Redeploy ends with Hermes kasir posture restore (`hermes-kasir-posture.py`), `docker restart nsoft3-nginx` to avoid stale upstream 502, optional `prune-nsoft3-images.sh` when `NSOFT3_PRUNE_IMAGES=1` (default off), then **`smoke-umkm.sh`** (GraphQL, kasir-consult auth/probe, Hermes WA, posture check — no ledger/WA sends). `pull-on-server.sh` backs up and stash/restores `volumes/hermes` across hard reset.
 
