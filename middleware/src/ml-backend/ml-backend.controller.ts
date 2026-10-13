@@ -1,4 +1,6 @@
 import { Controller, Post, Get, Body, Logger, HttpCode } from '@nestjs/common';
+import { AlternativeAuth } from '../auth/alternative-auth.decorator';
+import { Public } from '../auth/public.decorator';
 import { AiRouterService } from '../ai/ai-router.service';
 import { AiSettingsService } from '../ai/ai-settings.service';
 
@@ -52,12 +54,14 @@ export class MLBackendController {
         return this.aiSettings.resolveGenerativeModel();
     }
 
+    @Public()
     @Get('health')
     async health() {
         const model = await this.activeModel();
         return { status: 'UP', model_class: 'AiRouterModel', model };
     }
 
+    @AlternativeAuth()
     @Post('setup')
     @HttpCode(200)
     async setup(@Body() body: SetupRequest) {
@@ -65,6 +69,7 @@ export class MLBackendController {
         return { model_version: await this.activeModel() };
     }
 
+    @AlternativeAuth()
     @Post('predict')
     @HttpCode(200)
     async predict(@Body() body: PredictRequest): Promise<PredictResponse> {

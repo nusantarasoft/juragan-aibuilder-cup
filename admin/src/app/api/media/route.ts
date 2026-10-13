@@ -32,8 +32,24 @@ function generateFileKey(filename: string, folder = "uploads"): string {
     return `${folder}/${timestamp}-${randomId}-${baseName}.${extension}`;
 }
 
+function requireBearer(request: NextRequest): string | NextResponse {
+    const auth = request.headers.get("authorization");
+    if (!auth?.startsWith("Bearer ")) {
+        return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    }
+    const token = auth.slice("Bearer ".length).trim();
+    if (!token) {
+        return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    }
+    return token;
+}
+
 // POST - Upload file to S3
 export async function POST(request: NextRequest) {
+    const authResult = requireBearer(request);
+    if (authResult instanceof NextResponse) return authResult;
+    const accessToken = authResult;
+
     console.log("S3 Upload API called");
     console.log("S3 Config:", { endpoint: S3_ENDPOINT, bucket: S3_BUCKET, region: S3_REGION });
 
@@ -99,7 +115,10 @@ export async function POST(request: NextRequest) {
         try {
             const graphqlResponse = await fetch(GRAPHQL_URL, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${accessToken}`,
+                },
                 body: JSON.stringify({
                     query: mutation,
                     variables: {
@@ -174,6 +193,9 @@ export async function POST(request: NextRequest) {
 
 // DELETE - Delete file from S3
 export async function DELETE(request: NextRequest) {
+    const authResult = requireBearer(request);
+    if (authResult instanceof NextResponse) return authResult;
+
     try {
         const { searchParams } = new URL(request.url);
         const key = searchParams.get("key");
