@@ -90,7 +90,9 @@ export function TopBar() {
                             </span>
                         )}
                     </div>
-                    <div className="text-[11px] text-slate-400">AI Agent HQ · {dataMode === "live" ? "Agentic OS agents" : "simulated agents"}</div>
+                    <div className="text-[11px] text-slate-400">
+                        AI Agent HQ · Live Kasir (AI Studio) + Demo sim agents
+                    </div>
                 </div>
             </div>
 

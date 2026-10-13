@@ -59,7 +59,17 @@ export const useAosStore = create<AosState>((set, get) => ({
         if (get().status === "idle") set({ status: "loading" });
         inflight = fetchSnapshot(get().includeArchived)
             .then((snap) => {
-                set({ ...snap, status: "ready", error: null, lastSync: Date.now() });
+                set({
+                    agents: snap.agents ?? [],
+                    playbooks: snap.playbooks ?? [],
+                    tasks: snap.tasks ?? [],
+                    approvals: snap.approvals ?? [],
+                    settings: snap.settings ?? get().settings,
+                    stats: snap.stats ?? get().stats,
+                    status: "ready",
+                    error: null,
+                    lastSync: Date.now(),
+                });
                 return snap;
             })
             .catch((e: unknown) => {

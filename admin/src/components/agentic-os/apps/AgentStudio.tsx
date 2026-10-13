@@ -1,15 +1,18 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { Bot, Plus, Search, Users } from "lucide-react";
 import { MODULES, type ModuleId } from "@/app/admin/virtual-office/lib/modules";
 import { ZONE_BY_ID } from "@/app/admin/virtual-office/lib/floorplan";
 import type { ZoneId } from "@/app/admin/virtual-office/lib/types";
 import { AGENT_TEMPLATES, TIER_META, slugify, type AgentTemplate } from "../lib/catalog";
+import { fetchKasirLiveSnapshot } from "../lib/api";
+import { formatKasirMetricLine, KASIR_EMPLOYEE_SLUG, rosterKindForAgent } from "../lib/firstEmployee";
 import { useAosStore } from "../lib/store";
-import type { OsAgent } from "../lib/types";
+import type { OsAgent, OsKasirLiveSnapshot } from "../lib/types";
 import { AgentDot, Button, Chip, EmptyState, Toggle, cx } from "../ui/kit";
+import { RosterKindBadge } from "../ui/RosterKindBadge";
 import { AgentEditor, type AgentDraft } from "./AgentEditor";
 
 function draftFromTemplate(t: AgentTemplate): AgentDraft {
@@ -59,6 +62,34 @@ export function AgentStudio({ initialAgentId, onOpenTasks }: { initialAgentId?: 
     const [showTemplates, setShowTemplates] = useState(false);
     const [query, setQuery] = useState("");
     const [zone, setZone] = useState<string>("all");
+    const [kasirLive, setKasirLive] = useState<OsKasirLiveSnapshot | null>(null);
+
+    useEffect(() => {
+        let alive = true;
+        const unavailable: OsKasirLiveSnapshot = {
+            available: false,
+            tenantId: "default",
+            slug: KASIR_EMPLOYEE_SLUG,
+            name: "Kasir UMKM",
+            role: "UMKM WhatsApp Kasir",
+            source: "ai_studio",
+            unavailableReason: "data tidak tersedia",
+            waChatsToday: null,
+            transactionsToday: null,
+            lastActivityAt: null,
+            waOnline: null,
+        };
+        const load = () =>
+            fetchKasirLiveSnapshot()
+                .then((s) => alive && setKasirLive(s))
+                .catch(() => alive && setKasirLive(unavailable));
+        void load();
+        const t = setInterval(load, 5000);
+        return () => {
+            alive = false;
+            clearInterval(t);
+        };
+    }, []);
 
     // Resolve the deep link once agents are loaded.
     const [linked, setLinked] = useState(false);
@@ -139,8 +170,26 @@ export function AgentStudio({ initialAgentId, onOpenTasks }: { initialAgentId?: 
                 )}
 
                 <div className="min-h-0 flex-1 space-y-0.5 overflow-y-auto p-2">
+                    {kasirLive && (
+                        <div className="mb-2 space-y-1 rounded-xl border border-emerald-400/25 bg-emerald-500/[0.06] p-2.5">
+                            <div className="flex items-center gap-2">
+                                <AgentDot color="#22c55e" name={kasirLive.name} size={28} />
+                                <div className="min-w-0 flex-1">
+                                    <div className="flex flex-wrap items-center gap-1.5">
+                                        <span className="truncate text-[13px] font-semibold text-white">{kasirLive.name}</span>
+                                        <RosterKindBadge kind="live" />
+                                        <Chip color="#38bdf8">AI Studio</Chip>
+                                    </div>
+                                    <div className="truncate text-[11px] text-slate-400">{kasirLive.role}</div>
+                                    <div className="mt-1 text-[10px] leading-snug text-slate-300">{formatKasirMetricLine(kasirLive)}</div>
+                                </div>
+                            </div>
+                            <div className="text-[10px] text-slate-500">First recruited employee · read-only tenant metrics</div>
+                        </div>
+                    )}
                     {visible.map((a) => {
                         const open = openCount(a.id);
+                        const kind = rosterKindForAgent(a.id, a.slug);
                         return (
                             <button
                                 key={a.id}
@@ -159,6 +208,7 @@ export function AgentStudio({ initialAgentId, onOpenTasks }: { initialAgentId?: 
                                 <span className="min-w-0 flex-1">
                                     <span className="flex items-center gap-1.5">
                                         <span className="truncate text-[13px] font-semibold text-white">{a.name}</span>
+                                        <RosterKindBadge kind={kind} />
                                         <span
                                             className="h-1.5 w-1.5 shrink-0 rounded-full"
                                             style={{ background: a.archivedAt ? "#64748b" : a.status === "active" ? "#22c55e" : a.status === "paused" ? "#f59e0b" : "#64748b" }}

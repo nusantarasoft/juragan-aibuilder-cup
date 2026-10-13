@@ -73,6 +73,15 @@ export interface AgentStats {
     tokensToday: number;
 }
 
+export type AgentRosterKind = "live" | "demo";
+
+export interface AgentLiveMetrics {
+    waChatsToday: number;
+    transactionsToday: number;
+    waOnline: boolean;
+    lastActivityAt: string | null;
+}
+
 export interface Agent {
     id: string;
     name: string;
@@ -94,6 +103,10 @@ export interface Agent {
     queued?: number;
     /** Finished tasks waiting for a human to confirm (live mode). */
     review?: number;
+    /** Live Kasir (AI Studio) vs simulated demo agents. */
+    rosterKind?: AgentRosterKind;
+    liveUnavailable?: string | null;
+    liveMetrics?: AgentLiveMetrics;
 }
 
 export type ActivityLevel = "info" | "success" | "warning" | "error";
