@@ -68,6 +68,7 @@ Script melakukan:
    - restart `nsoft3-nginx` (supaya upstream IP tidak stale → hindari 502)
    - **Hermes kasir posture** (`hermes-kasir-posture.py`) — restore `plugins.enabled` + display silence + allowlist + platform locks after hermes recreate; multimodal OFF smoke
    - **prune image nsoft3** (opt-in) — default **off** di `redeploy.sh` step 9. Set `NSOFT3_PRUNE_IMAGES=1` on server untuk menjalankan `prune-nsoft3-images.sh` (hanya image `nsoft3-prod` / `nsoft3/*` / hermes unused + build cache unused >7d; tidak `docker system prune -a` global).
+   - **UMKM smoke** (`smoke-umkm.sh`) — step 10: GraphQL `:8090`, `/internal/kasir-consult` auth + harmless `tanya` probe, Hermes WA connected, `hermes-kasir-posture.py check`. Tanpa tulis ledger / tanpa kirim WA. Coach probe hanya jika `KASIR_COACH_SMOKE_PHONE` di-set (tenant demo ops).
 
 ### Switch berguna
 
@@ -91,6 +92,7 @@ Di server (atau dari laptop ke IP publik):
 - Admin: `http://31.97.66.39:3013` (sering `307` redirect = OK)
 - Landing/nginx: `http://31.97.66.39:8090` → diharapkan `200`
 - GraphQL: `POST http://31.97.66.39:8090/graphql` dengan `{"query":"{ __typename }"}` → `200`
+- Di server: `bash scripts/master-production/smoke-umkm.sh` (sama dengan step akhir `redeploy.sh`) → exit 0
 - Pastikan app lain masih `Up`: `docker ps` (portainer, pustaka, andromedia, …)
 
 ## Troubleshooting
@@ -107,7 +109,8 @@ Di server (atau dari laptop ke IP publik):
 
 - `scripts/master-production/deploy.ps1` — orkestrasi dari Windows
 - `scripts/master-production/pull-on-server.sh` — git pull/bootstrap di server
-- `scripts/master-production/redeploy.sh` — build + up + migrasi + hermes posture + prune image nsoft3
+- `scripts/master-production/redeploy.sh` — build + up + migrasi + hermes posture + prune image nsoft3 + smoke UMKM
+- `scripts/master-production/smoke-umkm.sh` — post-deploy health + consult smoke (standalone atau dari redeploy)
 - `scripts/master-production/hermes-kasir-posture.py` — idempotent plugins/display/allowlist/locks after hermes recreate
 - `scripts/master-production/hermes-multimodal-smoke.py` — OFF refuse / ON pass-through smoke
 - `scripts/master-production/prune-nsoft3-images.sh` — disk hygiene: unused `nsoft3/*` / compose-project images + old build cache
