@@ -1,4 +1,4 @@
-import { UseGuards } from '@nestjs/common';
+import { UnauthorizedException, UseGuards } from '@nestjs/common';
 import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import GraphQLJSON from 'graphql-type-json';
 import { AgenticOsService, AosActor } from './agentic-os.service';
@@ -40,8 +40,11 @@ import {
     AosKasirLiveSnapshot,
 } from './agentic-os.types';
 import { AosKasirLiveService } from './aos-kasir-live.service';
+import { resolveAosKasirTenant } from './aos-tenant-access';
 
-type AosContext = { req?: { user?: { id?: string } | null } };
+type AosContext = { req?: { user?: { id?: string; email?: string; role?: string } | null } };
+
+const AOS_SIGN_IN = 'Sign in to change the Agentic OS';
 
 const actorOf = (ctx: AosContext): AosActor => ({ id: ctx?.req?.user?.id ?? null });
 
@@ -73,8 +76,20 @@ export class AgenticOsResolver {
 
     /** Read-only UMKM Kasir employee metrics (AI Studio → Agentic OS / Virtual Office). */
     @Query(() => AosKasirLiveSnapshot)
-    aosKasirLiveSnapshot(@Args('tenantId', optStr) tenantId?: string) {
-        return this.kasirLive.getSnapshot(tenantId);
+    @UseGuards(AosAuthGuard)
+    aosKasirLiveSnapshot(
+        @Context() ctx: AosContext,
+        @Args('tenantId', optStr) tenantId?: string,
+    ) {
+        const user = ctx?.req?.user;
+        if (!user?.id) {
+            throw new UnauthorizedException(AOS_SIGN_IN);
+        }
+        const effectiveTenant = resolveAosKasirTenant(
+            { id: user.id, email: user.email, role: user.role },
+            tenantId,
+        );
+        return this.kasirLive.getSnapshot(effectiveTenant);
     }
 
     @Query(() => AosAgent, { nullable: true })
