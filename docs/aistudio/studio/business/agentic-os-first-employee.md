@@ -4,7 +4,7 @@ Thin slice: one **live** employee recruited from **AI Studio** (UMKM WhatsApp Ka
 
 ## Data (read-only)
 
-Middleware GraphQL query `aosKasirLiveSnapshot(tenantId)` aggregates tenant-scoped rows:
+Middleware GraphQL query `aosKasirLiveSnapshot(tenantId)` requires **Bearer auth** (`AosAuthGuard` + tenant scoping: admins → platform default tenant; `super_admin` may pass another `tenantId`). It aggregates tenant-scoped rows:
 
 | Metric | Source |
 |--------|--------|

@@ -1,6 +1,7 @@
 /**
  * Agentic OS — GraphQL client for the middleware `agentic-os` module.
- * Reads are open; mutations need a signed-in session (Bearer token).
+ * Kasir live snapshot and mutations require a signed-in session (Bearer token).
+ * Other AOS reads are open unless guarded server-side.
  */
 
 import { getStoredToken } from "@/lib/graphqlClient";

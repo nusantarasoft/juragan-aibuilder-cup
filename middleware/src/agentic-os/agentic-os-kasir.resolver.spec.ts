@@ -1,27 +1,25 @@
+import { UnauthorizedException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 import { AgenticOsResolver } from './agentic-os.resolver';
 import { KASIR_EMPLOYEE_SLUG } from './aos-kasir-live.service';
+import { AOS_DEFAULT_TENANT } from './agentic-os.types';
 
 describe('AgenticOsResolver.aosKasirLiveSnapshot', () => {
-    it('delegates to AosKasirLiveService (read-only, no auth guard on query)', async () => {
+    it('requires authenticated user and scopes tenant for admin', async () => {
         const kasirLive = {
             getSnapshot: vi.fn().mockResolvedValue({
                 available: true,
-                tenantId: 'default',
+                tenantId: AOS_DEFAULT_TENANT,
                 slug: KASIR_EMPLOYEE_SLUG,
-                name: 'Kasir',
-                role: 'UMKM WhatsApp Kasir',
-                source: 'ai_studio',
-                unavailableReason: null,
-                waChatsToday: 1,
-                transactionsToday: 2,
-                lastActivityAt: null,
-                waOnline: true,
             }),
         };
         const resolver = new AgenticOsResolver({} as any, {} as any, {} as any, {} as any, kasirLive as any);
-        const out = await resolver.aosKasirLiveSnapshot('tenant-a');
-        expect(kasirLive.getSnapshot).toHaveBeenCalledWith('tenant-a');
-        expect(out.slug).toBe(KASIR_EMPLOYEE_SLUG);
+
+        expect(() => resolver.aosKasirLiveSnapshot({ req: { user: null } }, undefined)).toThrow(
+            UnauthorizedException,
+        );
+
+        await resolver.aosKasirLiveSnapshot({ req: { user: { id: 'u1', role: 'admin' } } }, 'default');
+        expect(kasirLive.getSnapshot).toHaveBeenCalledWith(AOS_DEFAULT_TENANT);
     });
 });

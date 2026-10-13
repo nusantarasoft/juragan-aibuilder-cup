@@ -101,14 +101,15 @@ test.describe('First employee — Live Kasir vs Demo sim', () => {
     });
 });
 
-test.describe('GraphQL auth smoke (read-only query)', () => {
-    test('aosKasirLiveSnapshot accepts unauthenticated POST when middleware is up', async ({ request }) => {
+test.describe('GraphQL auth smoke (Kasir snapshot)', () => {
+    test('aosKasirLiveSnapshot rejects unauthenticated POST when middleware is up', async ({ request }) => {
         test.skip(!process.env.RUN_AOS_KASIR_INTEGRATION, 'Set RUN_AOS_KASIR_INTEGRATION=1 with live middleware');
         const res = await request.post(GRAPHQL_URL, {
             data: { query: '{ aosKasirLiveSnapshot { slug source available } }' },
         });
         expect(res.ok()).toBeTruthy();
         const json = await res.json();
-        expect(json.data.aosKasirLiveSnapshot.slug).toBe('umkm-kasir');
+        expect(json.errors?.[0]?.message).toMatch(/sign in/i);
+        expect(json.data?.aosKasirLiveSnapshot).toBeUndefined();
     });
 });
