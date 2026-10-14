@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Hermes runtime tar backup helpers (sourced by pull-on-server.sh).
+# Hermes runtime tar backup helpers (QA / shellcheck only).
+# Canonical copy is inlined in pull-on-server.sh (deploy.ps1 pipes that file to bash -s).
 # Does not stop Hermes, chown, or mutate live volumes/hermes except read + sqlite3 .backup.
 
 HERMES_BACKUP_RETRIES="${HERMES_BACKUP_RETRIES:-3}"
