@@ -1,4 +1,6 @@
 import { Controller, Post, Get, Body, Headers, Logger, HttpCode, HttpException, HttpStatus } from '@nestjs/common';
+import { AlternativeAuth } from '../auth/alternative-auth.decorator';
+import { Public } from '../auth/public.decorator';
 import { WebhooksService } from './webhooks.service';
 
 /**
@@ -41,11 +43,13 @@ export class WebhooksController {
 
     constructor(private readonly webhooksService: WebhooksService) { }
 
+    @Public()
     @Get('health')
     health() {
         return { status: 'UP', service: 'webhooks' };
     }
 
+    @AlternativeAuth()
     @Post('labelstudio')
     @HttpCode(200)
     async handleLabelStudioWebhook(

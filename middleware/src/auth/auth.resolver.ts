@@ -1,5 +1,6 @@
 import { Resolver, Mutation, Args, Query, Context, ObjectType, Field, InputType } from '@nestjs/graphql';
 import { AuthService } from './auth.service';
+import { Public } from './public.decorator';
 
 // ============ Object Types ============
 
@@ -65,6 +66,7 @@ class SignUpInput {
 export class AuthResolver {
     constructor(private authService: AuthService) { }
 
+    @Public()
     @Mutation(() => AuthResponse)
     async signIn(@Args('input') input: SignInInput): Promise<AuthResponse> {
         const result = await this.authService.signIn(input.email, input.password);
@@ -79,6 +81,7 @@ export class AuthResolver {
         };
     }
 
+    @Public()
     @Mutation(() => AuthResponse)
     async signUp(@Args('input') input: SignUpInput): Promise<AuthResponse> {
         const result = await this.authService.signUp(input.email, input.password, {
@@ -103,6 +106,7 @@ export class AuthResolver {
         return this.authService.signOut(token);
     }
 
+    @Public()
     @Query(() => AuthUser, { nullable: true })
     async me(@Context() context: any): Promise<AuthUser | null> {
         const authHeader = context.req?.headers?.authorization;
@@ -118,6 +122,7 @@ export class AuthResolver {
         } : null;
     }
 
+    @Public()
     @Mutation(() => TokenResponse)
     async refreshToken(@Args('refreshToken') refreshToken: string): Promise<TokenResponse> {
         const result = await this.authService.refreshSession(refreshToken);

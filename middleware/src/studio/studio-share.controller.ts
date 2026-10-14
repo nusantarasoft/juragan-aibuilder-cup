@@ -1,4 +1,5 @@
 import { Controller, Get, Param } from '@nestjs/common';
+import { Public } from '../auth/public.decorator';
 import { StudioService } from './studio.service';
 
 /**
@@ -9,6 +10,7 @@ import { StudioService } from './studio.service';
  * there is no way to mutate a notebook through this route. The GraphQL API
  * remains fully guarded — sharing is intentionally the only public surface.
  */
+@Public()
 @Controller('studio/shared')
 export class StudioShareController {
     constructor(private readonly studioService: StudioService) {}

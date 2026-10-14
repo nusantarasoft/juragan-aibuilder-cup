@@ -13,6 +13,7 @@ import {
     Post,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { AlternativeAuth } from '../auth/alternative-auth.decorator';
 import {
     CONSULT_OFF_COPY,
 } from './studio-umkm-pendamping.prompts';
@@ -33,6 +34,7 @@ function isTruthyFlag(raw: string | undefined): boolean {
     return v === '1' || v === 'true' || v === 'yes' || v === 'on';
 }
 
+@AlternativeAuth()
 @Controller('internal')
 export class InternalKasirConsultController {
     private readonly logger = new Logger(InternalKasirConsultController.name);

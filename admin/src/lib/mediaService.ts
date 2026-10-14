@@ -3,6 +3,7 @@
  * No direct S3 access from frontend - all S3 ops go through middleware
  */
 
+import { getStoredToken } from '@/lib/graphqlClient';
 
 export interface UploadResult {
     success: boolean;
@@ -50,9 +51,14 @@ export interface StorageStats {
 const GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_URL || 'http://127.0.0.1:4001/graphql';
 
 async function graphqlRequest<T>(query: string, variables?: Record<string, unknown>): Promise<T> {
+    const token = getStoredToken();
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) {
+        headers.Authorization = `Bearer ${token}`;
+    }
     const response = await fetch(GRAPHQL_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ query, variables }),
         cache: 'no-store',
     });
@@ -197,11 +203,16 @@ export const mediaService = {
             formData.append('map', map);
             formData.append('0', file);
 
+            const token = getStoredToken();
+            const headers: Record<string, string> = {
+                'apollo-require-preflight': 'true',
+            };
+            if (token) {
+                headers.Authorization = `Bearer ${token}`;
+            }
             const response = await fetch(GRAPHQL_URL, {
                 method: 'POST',
-                headers: {
-                    'apollo-require-preflight': 'true',
-                },
+                headers,
                 body: formData,
             });
 

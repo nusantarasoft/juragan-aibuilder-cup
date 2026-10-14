@@ -1,0 +1,32 @@
+# QA on agent VM: publish Postgres so peer containers can reach DB via host gateway
+# (bridge container→container :5432 was timing out on this environment).
+services:
+  postgres:
+    ports:
+      - "5432:5432"
+  auth:
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "9999:9999"
+    environment:
+      GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:${POSTGRES_PASSWORD}@172.18.0.1:${POSTGRES_PORT}/${POSTGRES_DB}
+      GOTRUE_MAILER_AUTOCONFIRM: "true"
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"
+  rest:
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "3002:3000"
+    environment:
+      PGRST_DB_URI: postgres://authenticator:${POSTGRES_PASSWORD}@172.18.0.1:${POSTGRES_PORT}/${POSTGRES_DB}
+  kong:
+    depends_on:
+      auth:
+        condition: service_started
+      rest:
+        condition: service_started
+    volumes:
+      - ./volumes/api/kong.qa.yml:/home/kong/temp.yml:ro,z
