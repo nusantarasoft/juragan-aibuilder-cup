@@ -30,8 +30,8 @@ export interface AppDef {
 
 export const APPS: AppDef[] = [
     {
-        id: "overview", name: "Overview", icon: LayoutDashboard, color: "#38bdf8", layer: "S",
-        description: "KPIs, agents at work, Pulse and live activity",
+        id: "overview", name: "Overview", icon: LayoutDashboard, color: "#fb923c", layer: "S",
+        description: "AI OS home: live graph, gates, agenda, routines and skills deck",
         render: (_p, open) => <CommandDeck onOpen={(a, p) => open(a as AppId, p)} />,
     },
     {

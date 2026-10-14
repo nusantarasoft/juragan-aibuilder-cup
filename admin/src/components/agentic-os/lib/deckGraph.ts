@@ -38,12 +38,12 @@ export const TYPE_KEYS = Object.keys(TYPE_META) as TypeKey[];
 export const typeOf = (k: NodeKind): TypeKey | null => TYPE_KEYS.find((t) => TYPE_META[t].kinds.includes(k)) ?? null;
 
 export type RingId = "skills" | "memory" | "agents" | "routines" | "apps";
-export const RINGS: { id: RingId; label: string; r: number; types: TypeKey[] }[] = [
-    { id: "skills", label: "SKILLS", r: 0.2, types: ["skill"] },
-    { id: "memory", label: "MEMORY", r: 0.51, types: ["file", "goal"] },
-    { id: "agents", label: "AGENTS", r: 0.6, types: ["agent"] },
-    { id: "routines", label: "ROUTINES", r: 0.72, types: ["routine", "workflow", "run"] },
-    { id: "apps", label: "APPLICATIONS", r: 0.9, types: ["app"] },
+export const RINGS: { id: RingId; label: string; r: number; types: TypeKey[]; color: string }[] = [
+    { id: "skills", label: "SKILLS", r: 0.2, types: ["skill"], color: "#fb923c" },
+    { id: "memory", label: "MEMORY", r: 0.51, types: ["file", "goal"], color: "#a5b4fc" },
+    { id: "agents", label: "AGENTS", r: 0.6, types: ["agent"], color: "#e2e8f0" },
+    { id: "routines", label: "ROUTINES", r: 0.72, types: ["routine", "workflow", "run"], color: "#fb923c" },
+    { id: "apps", label: "APPLICATIONS", r: 0.9, types: ["app"], color: "#93c5fd" },
 ];
 
 export const RUN_COLOR: Record<string, string> = { running: "#38bdf8", success: "#22c55e", failed: "#ef4444", blocked: "#f59e0b", timeout: "#f97316" };
@@ -503,7 +503,7 @@ export function layoutRings(m: DeckModel): Layout {
         pos.set(r.id, polar(base + (hash01(r.id, 4) - 0.5) * 0.14, (0.775 + 0.06 * age) * R));
     }
 
-    const labels: LayoutLabel[] = RINGS.map((ring) => ({ key: `ring:${ring.id}`, x: 0, y: -(ring.r * R) - 12, text: ring.label, color: "#94a3b8", kind: "ring" as const, ref: ring.id }));
+    const labels: LayoutLabel[] = RINGS.map((ring) => ({ key: `ring:${ring.id}`, x: 0, y: -(ring.r * R) - 12, text: ring.label, color: ring.color, kind: "ring" as const, ref: ring.id }));
     return {
         pos,
         labels,
@@ -553,56 +553,68 @@ export function layoutCircle(m: DeckModel): Layout {
 
 export function layoutAreas(m: DeckModel): Layout {
     const pos = new Map<string, Pt>();
-    const clusters: { key: string; name: string; color: string; ref: string; center?: string; ids: string[] }[] = [];
-    for (const a of m.areas) {
-        clusters.push({ key: a.id, name: a.name, color: a.color, ref: a.id, center: `ar:${a.id}`, ids: m.nodes.filter((n) => n.areaId === a.id && n.kind !== "area").map((n) => n.id) });
-    }
-    const loose = (name: string, color: string, ref: string, kinds: NodeKind[]) =>
-        clusters.push({ key: `k:${name}`, name, color, ref, ids: m.nodes.filter((n) => kinds.includes(n.kind) && (!n.areaId || n.kind === "app")).map((n) => n.id) });
-    loose("Agents", TYPE_META.agent.color, "agent", ["agent"]);
-    loose("Applications", TYPE_META.app.color, "app", ["app"]);
-    loose("Pulse", TYPE_META.routine.color, "routine", ["routine", "workflow", "run"]);
-    loose("Skills", TYPE_META.skill.color, "skill", ["skill", "playbook"]);
-    loose("Goals", TYPE_META.goal.color, "goal", ["goal"]);
-
-    const SP = 15;
-    const sized = clusters.filter((c) => c.ids.length || c.center).map((c) => ({ ...c, rad: SP * Math.sqrt(Math.max(1, c.ids.length)) * 0.95 + 26 }));
-    sized.sort((a, b) => b.rad - a.rad);
-
-    // Shelf packing into a square-ish area.
-    const totalArea = sized.reduce((s, c) => s + (2 * c.rad + 30) ** 2, 0);
-    const W = Math.max(600, Math.sqrt(totalArea) * 1.15);
-    let x = 0;
-    let y = 0;
-    let rowH = 0;
-    const centers = new Map<string, Pt>();
-    for (const c of sized) {
-        const d = 2 * c.rad + 30;
-        if (x + d > W && x > 0) {
-            x = 0;
-            y += rowH;
-            rowH = 0;
-        }
-        centers.set(c.key, { x: x + d / 2, y: y + d / 2 });
-        x += d;
-        rowH = Math.max(rowH, d);
-    }
-    const H = y + rowH;
-    const scale = Math.min(1, 1040 / Math.max(W, H));
+    pos.set("core", { x: 0, y: 0 });
+    const of = (k: NodeKind) => m.nodes.filter((n) => n.kind === k);
     const labels: LayoutLabel[] = [];
-    for (const c of sized) {
-        const ctr = centers.get(c.key)!;
-        const cx0 = (ctr.x - W / 2) * scale;
-        const cy0 = (ctr.y - H / 2) * scale;
-        if (c.center) pos.set(c.center, { x: cx0, y: cy0 });
+
+    // Skills + playbooks: inside the core cloud.
+    for (const n of [...of("skill"), ...of("playbook")]) pos.set(n.id, polar(hash01(n.id, 1) * TAU, (0.03 + 0.11 * Math.sqrt(hash01(n.id, 2))) * R));
+
+    // Applications: a tight ring around the core.
+    const apps = of("app");
+    apps.forEach((n, i) => pos.set(n.id, polar(-Math.PI / 2 + ((i + 0.5) / Math.max(1, apps.length)) * TAU, 0.2 * R)));
+
+    // Area clusters on an outer ring, angular share proportional to cluster size.
+    const SP = 13;
+    const clusters = m.areas.map((a) => {
+        const ids = m.nodes.filter((n) => n.areaId === a.id && (n.kind === "memory" || n.kind === "goal")).map((n) => n.id);
+        return { a, ids, rad: SP * Math.sqrt(Math.max(1, ids.length + 1.6)) * 0.95 + 8 };
+    });
+    const maxRad = clusters.reduce((s, c) => Math.max(s, c.rad), 0);
+    const sumDiam = clusters.reduce((s, c) => s + 2 * c.rad + 24, 0);
+    const ringR = Math.max(0.42 * R + maxRad, sumDiam / TAU);
+    const areaAngle = new Map<string, number>();
+    let acc = -Math.PI / 2 - (clusters.length ? ((2 * clusters[0].rad + 24) / sumDiam) * Math.PI : 0);
+    for (const c of clusters) {
+        const share = ((2 * c.rad + 24) / Math.max(1, sumDiam)) * TAU;
+        const mid = acc + share / 2;
+        acc += share;
+        areaAngle.set(c.a.id, mid);
+        const ctr = polar(mid, ringR);
+        pos.set(`ar:${c.a.id}`, ctr);
         c.ids.forEach((id, i) => {
-            const r = SP * Math.sqrt(i + (c.center ? 1.6 : 0.5)) * 0.95 * scale;
+            const r = SP * Math.sqrt(i + 1.6) * 0.95;
             const ang = i * 2.399963;
-            pos.set(id, { x: cx0 + Math.cos(ang) * r, y: cy0 + Math.sin(ang) * r });
+            pos.set(id, { x: ctr.x + Math.cos(ang) * r, y: ctr.y + Math.sin(ang) * r });
         });
-        labels.push({ key: `grp:${c.key}`, x: cx0, y: cy0 - c.rad * scale - 6, text: c.name.toUpperCase(), color: c.color, kind: "group", ref: c.ref, count: c.ids.length });
     }
-    pos.set("core", { x: 0, y: (-H / 2) * scale - 40 });
+
+    // Agents: inner ring, ordered towards the areas they read.
+    const agents = of("agent").map((n) => {
+        const near = [...(m.adj.get(n.id) ?? [])]
+            .map((id) => (id.startsWith("ar:") ? areaAngle.get(id.slice(3)) : id.startsWith("i:") ? areaAngle.get(m.byId.get(id)?.areaId ?? "") : undefined))
+            .filter((x): x is number => x !== undefined);
+        return { id: n.id, a: circMean(near) ?? hash01(n.id) * TAU };
+    });
+    const agentAngle = spreadAngles(agents, TAU / Math.max(agents.length, 1) * 0.9);
+    for (const [id, a] of agentAngle) pos.set(id, polar(a, 0.3 * R));
+
+    // Routines + workflows just outside their agents; runs just outside those.
+    const pulse = [...of("routine"), ...of("workflow")].map((n) => {
+        const ag = [...(m.adj.get(n.id) ?? [])].map((id) => agentAngle.get(id)).filter((x): x is number => x !== undefined);
+        return { id: n.id, a: circMean(ag) ?? hash01(n.id) * TAU };
+    });
+    for (const [id, a] of spreadAngles(pulse, 0.16)) pos.set(id, polar(a, 0.37 * R));
+    for (const r of of("run")) {
+        const target = [...(m.adj.get(r.id) ?? [])][0];
+        const tp = target ? pos.get(target) : undefined;
+        const base = tp ? Math.atan2(tp.y, tp.x) : hash01(r.id) * TAU;
+        pos.set(r.id, polar(base + (hash01(r.id, 4) - 0.5) * 0.22, (0.41 + 0.03 * hash01(r.id, 5)) * R));
+    }
+
+    // Anything left (unplaced goals without an area, …) floats in the routine band.
+    for (const n of m.nodes) if (!pos.has(n.id)) pos.set(n.id, polar(hash01(n.id) * TAU, 0.34 * R));
+
     return { pos, labels, guides: [] };
 }
 

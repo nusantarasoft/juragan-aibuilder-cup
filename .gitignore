@@ -34,6 +34,9 @@ Thumbs.db
 # Database data directories (created at runtime)
 volumes/db/data/
 
+# Local scratch SQL dumps (never commit — may contain tenant/auth data)
+database_dump*.sql
+
 # Runtime logs and temp files
 *.log
 
