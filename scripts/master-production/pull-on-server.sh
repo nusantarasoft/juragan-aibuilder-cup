@@ -14,8 +14,13 @@
 #   BRANCH           default master-production (do not change for go-live)
 #   HERMES_BACKUP_DIR   tar backups before pull (default $REMOTE_DIR/backups/hermes-runtime)
 #   HERMES_BACKUP_KEEP  keep newest N tar backups (default 5)
+#   HERMES_BACKUP_RETRIES / HERMES_BACKUP_RETRY_DELAY  see hermes-runtime-backup.sh
 # ============================================================================
 set -euo pipefail
+
+_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=hermes-runtime-backup.sh
+source "$_SCRIPT_DIR/hermes-runtime-backup.sh"
 
 BRANCH="${BRANCH:-master-production}"
 REMOTE_DIR="${REMOTE_DIR:-/opt/nusantarasoft-3}"
@@ -62,7 +67,7 @@ backup_hermes_runtime() {
   ts="$(date +%Y%m%dT%H%M%SZ)"
   archive="$HERMES_BACKUP_DIR/hermes-runtime-${ts}.tar.gz"
   echo "==> Hermes runtime backup → $archive"
-  tar -czf "$archive" -C "$REMOTE_DIR/volumes" hermes
+  hermes_backup_runtime_with_retries "$hermes_dir" "$archive"
   local count
   count="$(find "$HERMES_BACKUP_DIR" -maxdepth 1 -type f -name 'hermes-runtime-*.tar.gz' | wc -l | tr -d ' ')"
   if [[ "${count:-0}" -gt "$HERMES_BACKUP_KEEP" ]]; then
