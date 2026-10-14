@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Request } from 'express';
+import { AlternativeAuth } from '../auth/alternative-auth.decorator';
 import { normalizeWhatsAppWebhook } from '../whatsapp/hermes-webhook.normalizer';
 import { StudioWhatsAppService } from './studio-whatsapp.service';
 
@@ -27,6 +28,7 @@ export class StudioWhatsAppController {
      * Default: 410 Gone unless WHATSAPP_WEBHOOK_ENABLED=true|1 (gap G4).
      * Admin Simulasi uses StudioWhatsAppService.simulateInboundMessage — not this route.
      */
+    @AlternativeAuth()
     @Post('webhook')
     @HttpCode(200)
     async webhook(

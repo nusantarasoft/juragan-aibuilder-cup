@@ -70,8 +70,14 @@ import { AgenticOsModule } from './agentic-os/agentic-os.module';
             driver: ApolloDriver,
             autoSchemaFile: true,
             sortSchema: true,
-            playground: true,
-            introspection: true,
+            playground:
+                process.env.GRAPHQL_PLAYGROUND === 'true' ||
+                (process.env.NODE_ENV !== 'production' &&
+                    process.env.GRAPHQL_PLAYGROUND !== 'false'),
+            introspection:
+                process.env.GRAPHQL_INTROSPECTION === 'true' ||
+                (process.env.NODE_ENV !== 'production' &&
+                    process.env.GRAPHQL_INTROSPECTION !== 'false'),
             context: ({ req, res }) => ({ req, res }),
         }),
 

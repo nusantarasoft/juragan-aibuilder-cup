@@ -47,20 +47,31 @@ export class RagService implements OnModuleInit {
         return this.aiSettings.getRawSettings();
     }
 
-    async onModuleInit() {
-        const { VertexAI } = await (new Function('return import("@google-cloud/vertexai")')());
-        const googleConfig = await this.aiSettings.getGoogleConfig();
-        const projectId = googleConfig.projectId;
-        const location = googleConfig.location;
+    onModuleInit() {
+        // Non-blocking: Supabase/Kong may be slow on cold start; do not delay HTTP listen.
+        void this.bootstrapVertexAndMinio();
+    }
 
-        if (projectId) {
-            this.vertexAI = new VertexAI({ project: projectId, location });
-            this.geminiModel = this.vertexAI.getGenerativeModel({ model: googleConfig.model });
-            this.embeddingModel = this.vertexAI.getGenerativeModel({
-                model: googleConfig.embeddingModel || 'multimodalembedding@001',
-            });
-        } else {
-            this.logger.warn('Google Vertex project not configured in AI Studio Settings.');
+    private async bootstrapVertexAndMinio() {
+        try {
+            const { VertexAI } = await (new Function('return import("@google-cloud/vertexai")')());
+            const googleConfig = await this.aiSettings.getGoogleConfig();
+            const projectId = googleConfig.projectId;
+            const location = googleConfig.location;
+
+            if (projectId) {
+                this.vertexAI = new VertexAI({ project: projectId, location });
+                this.geminiModel = this.vertexAI.getGenerativeModel({ model: googleConfig.model });
+                this.embeddingModel = this.vertexAI.getGenerativeModel({
+                    model: googleConfig.embeddingModel || 'multimodalembedding@001',
+                });
+            } else {
+                this.logger.warn('Google Vertex project not configured in AI Studio Settings.');
+            }
+        } catch (err) {
+            this.logger.warn(
+                `RAG Vertex bootstrap deferred: ${err instanceof Error ? err.message : String(err)}`,
+            );
         }
 
         this.initializeMinio();
