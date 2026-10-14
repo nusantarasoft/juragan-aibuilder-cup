@@ -1,6 +1,6 @@
 # QA — pull-on-server stdin hotfix (2026-10-14)
 
-**Verdict: PASS** (re-verified on `cursor/hermes-backup-inline-stdin-77f8` @ `87ab113`)
+**Verdict: PASS** (re-verified on `cursor/hermes-backup-inline-stdin-77f8` @ `e260c0b`)
 
 ## Scope
 
