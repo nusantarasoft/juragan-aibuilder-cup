@@ -664,7 +664,7 @@ Isolated stack (`nsoft3-*` only — does not disturb Portainer / pustaka / andro
 ```powershell
 # From repo root on Windows (set secrets in env — do not commit them)
 $env:SSH_HOST="31.97.66.39"; $env:SSH_USER="root"; $env:SSH_PASS="********"
-$env:GITHUB_TOKEN="ghp_********"   # or DEPLOY_GIT_URL=git@github.com:spygunpro/nusantarasoft-3.git
+$env:GITHUB_TOKEN="ghp_********"   # or DEPLOY_GIT_URL=git@github.com:nusantarasoft/nusantarasoft-3.git
 powershell -ExecutionPolicy Bypass -File scripts/master-production/deploy.ps1
 ```
 

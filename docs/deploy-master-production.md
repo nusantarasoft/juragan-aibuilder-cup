@@ -39,7 +39,7 @@ App lain di server yang **tidak** disentuh: Portainer, pustaka, andromedia, ipus
    - `SSH_USER=root`
    - `SSH_PASS=...` (jangan commit / jangan paste ke chat)
 4. Akses GitHub di server (salah satu):
-   - `DEPLOY_GIT_URL=git@github.com:spygunpro/nusantarasoft-3.git` (deploy key read-only, disarankan), **atau**
+   - `DEPLOY_GIT_URL=git@github.com:nusantarasoft/nusantarasoft-3.git` (deploy key read-only, disarankan), **atau**
    - `GITHUB_TOKEN=ghp_...` / fine-grained dengan Contents Read (jangan commit / jangan paste ke chat)
 
 ## Alur standar

@@ -6,7 +6,7 @@
 
       $env:SSH_HOST="31.97.66.39"; $env:SSH_USER="root"; $env:SSH_PASS="********"
       # one of these so the server can read the private repo:
-      $env:DEPLOY_GIT_URL="git@github.com:spygunpro/nusantarasoft-3.git"
+      $env:DEPLOY_GIT_URL="git@github.com:nusantarasoft/nusantarasoft-3.git"
       # or: $env:GITHUB_TOKEN="ghp_..."
       powershell -ExecutionPolicy Bypass -File scripts/master-production/deploy.ps1
 
