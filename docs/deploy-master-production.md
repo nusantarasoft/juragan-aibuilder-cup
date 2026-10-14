@@ -79,7 +79,21 @@ Script melakukan:
 | `-SkipPush` | Merge lokal saja, jangan push (jarang; server tidak dapat commit baru) |
 | `-SkipMerge -SkipPush` | Hanya pull server + redeploy (paling aman setelah merge sudah selesai) |
 | `-AllowDirty` | Lewati **semua** sync git lokal; server tetap pull `origin/master-production`. **Tidak pernah** menghapus/meng-overwrite perubahan lokal |
+| `-Attach` | Lewati merge/pull lokal; sambung ke redeploy server yang masih jalan (tail log sampai selesai) |
+| `-Status` | Lewati merge/pull lokal; cetak status redeploy server + exit code jika sudah selesai |
 | `NSOFT3_PRUNE_IMAGES=1` (di server, sebelum `redeploy.sh`) | Jalankan step 9 prune disk; default tanpa env = skip |
+
+### Redeploy detached (Mac sleep / SSH drop)
+
+Step `[3/3]` memanggil `redeploy-detached.sh start` di server (bukan SSH session panjang ke `redeploy.sh`). Build docker tetap jalan di server jika laptop tidur atau SSH putus.
+
+| Item | Path |
+|------|------|
+| Log deploy | `/opt/nusantarasoft-3/logs/deploy-YYYYMMDD-HHMMSS.log` |
+| Lock | `/opt/nusantarasoft-3/logs/.deploy.lock` |
+| State | `/opt/nusantarasoft-3/logs/.deploy.state` |
+
+Setelah putus: `deploy.ps1 -Attach` (tail sampai selesai) atau `-Status` (snapshot). Lock menolak deploy concurrent; jangan start deploy baru saat yang lama masih jalan.
 
 ## Hermes runtime (`volumes/hermes`)
 
@@ -104,6 +118,7 @@ Di server (atau dari laptop ke IP publik):
 | Gejala | Tindakan |
 |--------|----------|
 | SSH / port 22, 9000, 8090 timeout | Server/network down; jangan ulang merge; tunggu lalu `-SkipMerge -SkipPush` |
+| Mac sleep / SSH putus saat build | Redeploy tetap jalan di server; `-Attach` atau `-Status` (bukan deploy penuh kecuali pull sudah selesai) |
 | Preflight `Local deploy aborted — working tree is not clean` | Commit/revert, pakai worktree bersih, atau `-AllowDirty` jika hanya redeploy server (tanpa sync lokal) |
 | nginx `502` setelah recreate app | `docker restart nsoft3-nginx` (sudah otomatis di `redeploy.sh` terbaru) |
 | Git pull gagal di server | Deploy key: ulang `setup-deploy-key.sh`, cek public key di GitHub Deploy keys; atau set `DEPLOY_GIT_URL` / `GITHUB_TOKEN` (legacy) |
@@ -131,6 +146,7 @@ Di server (atau dari laptop ke IP publik):
 - `scripts/master-production/_deploy-local-git.ps1` — helper preflight + fast-forward lokal
 - `scripts/master-production/pull-on-server.sh` — git pull/bootstrap di server
 - `scripts/master-production/redeploy.sh` — build + up + migrasi + hermes posture + prune image nsoft3 + smoke UMKM
+- `scripts/master-production/redeploy-detached.sh` — lock + setsid/nohup wrapper untuk redeploy (dipanggil deploy.ps1)
 - `scripts/master-production/smoke-umkm.sh` — post-deploy health + consult smoke (standalone atau dari redeploy)
 - `scripts/master-production/hermes-kasir-posture.py` — idempotent plugins/display/allowlist/locks after hermes recreate
 - `scripts/master-production/hermes-multimodal-smoke.py` — OFF refuse / ON pass-through smoke

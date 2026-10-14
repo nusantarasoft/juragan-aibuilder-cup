@@ -3,9 +3,10 @@
 
 Env: SSH_HOST, SSH_USER, SSH_PASS, [SSH_PORT=22]
 Usage:
-  python _ssh.py run   "<remote shell command>"
-  python _ssh.py script <local_script.sh>        # piped to `bash -s`
-  python _ssh.py put   <local_path> <remote_path>
+  python _ssh.py run     "<remote shell command>"
+  python _ssh.py capture "<remote shell command>"  # stdout only (for deploy status parsing)
+  python _ssh.py script  <local_script.sh>         # piped to `bash -s`
+  python _ssh.py put     <local_path> <remote_path>
 
 Requires: paramiko  (pip install paramiko)
 """
@@ -39,16 +40,27 @@ def connect():
     return c
 
 
-def run(cmd, script=False):
+def run(cmd, script=False, capture_only=False):
     c = connect()
+    timeout = int(os.environ.get("SSH_TIMEOUT", "3600"))
     if script:
         with open(cmd, "r", encoding="utf-8", newline="") as f:
             body = f.read().replace("\r\n", "\n").replace("\r", "\n")
-        stdin, stdout, stderr = c.exec_command("bash -s", timeout=int(os.environ.get("SSH_TIMEOUT", "3600")))
+        stdin, stdout, stderr = c.exec_command("bash -s", timeout=timeout)
         stdin.write(body)
         stdin.channel.shutdown_write()
     else:
-        stdin, stdout, stderr = c.exec_command(cmd, timeout=int(os.environ.get("SSH_TIMEOUT", "3600")))
+        stdin, stdout, stderr = c.exec_command(cmd, timeout=timeout)
+    if capture_only:
+        out = stdout.read().decode(errors="replace")
+        err = stderr.read().decode(errors="replace")
+        code = stdout.channel.recv_exit_status()
+        if out:
+            _safe_write(sys.stdout, out)
+        if err.strip():
+            _safe_write(sys.stderr, err)
+        c.close()
+        sys.exit(code)
     for line in iter(stdout.readline, ""):
         _safe_write(sys.stdout, line)
     err = stderr.read().decode(errors="replace")
@@ -82,6 +94,8 @@ if __name__ == "__main__":
     mode = sys.argv[1] if len(sys.argv) > 1 else ""
     if mode == "run":
         run(sys.argv[2])
+    elif mode == "capture":
+        run(sys.argv[2], capture_only=True)
     elif mode == "script":
         run(sys.argv[2], script=True)
     elif mode == "put":
