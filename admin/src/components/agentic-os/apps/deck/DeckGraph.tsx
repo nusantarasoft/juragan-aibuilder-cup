@@ -7,11 +7,73 @@
  */
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { LINK_COLOR, type DeckLink, type DeckModel, type DeckNode, type Layout, type Pt } from "../../lib/deckGraph";
+import {
+    BarChart3, BookOpen, Boxes, Building2, Calculator, Factory, GitBranch, Handshake, KanbanSquare, Newspaper, Radar, Server, Shield, Sparkles, Ticket, Users, Warehouse, Wrench, type LucideIcon,
+} from "lucide-react";
+import { LINK_COLOR, hash01, type DeckLink, type DeckModel, type DeckNode, type Layout, type Pt } from "../../lib/deckGraph";
 
 type Xf = { k: number; x: number; y: number };
 
 const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+
+/** Lucide glyph per Nusantarasoft module (application ring). */
+export const MODULE_ICON: Record<string, LucideIcon> = {
+    itsm: Ticket,
+    knowledge: BookOpen,
+    "command-center": Radar,
+    ops: Wrench,
+    devops: GitBranch,
+    infrastructure: Server,
+    security: Shield,
+    dcim: Boxes,
+    bms: Building2,
+    scada: Factory,
+    pm: KanbanSquare,
+    hr: Users,
+    reports: BarChart3,
+    accounting: Calculator,
+    crm: Handshake,
+    news: Newspaper,
+    "ai-studio": Sparkles,
+    inventory: Warehouse,
+};
+
+const CLOUD_COLORS = ["#fb923c", "#f97316", "#fdba74", "#ea580c", "#fed7aa"];
+
+/** Deterministic orange particle cloud drawn around the core (the "skills" nebula). */
+const CoreCloud = React.memo(function CoreCloud({ motion, radius = 78 }: { motion: boolean; radius?: number }) {
+    const layers = useMemo(
+        () =>
+            [0, 1, 2].map((layer) =>
+                Array.from({ length: 170 }, (_, i) => {
+                    const key = `c${layer}:${i}`;
+                    const a = hash01(key, 1) * Math.PI * 2;
+                    const r = radius * Math.pow(hash01(key, 2), 0.75) * (0.35 + 0.65 * (layer + 1) / 3);
+                    return {
+                        x: Math.cos(a) * r,
+                        y: Math.sin(a) * r,
+                        s: 0.5 + hash01(key, 3) * 1.25,
+                        o: 0.35 + hash01(key, 4) * 0.6,
+                        c: CLOUD_COLORS[Math.floor(hash01(key, 5) * CLOUD_COLORS.length)],
+                    };
+                }),
+            ),
+        [radius],
+    );
+    return (
+        <g pointerEvents="none">
+            <circle r={radius * 1.35} fill="url(#deck-core-glow)" />
+            {layers.map((pts, li) => (
+                <g key={li}>
+                    {motion && <animateTransform attributeName="transform" type="rotate" from="0" to={li % 2 ? "-360" : "360"} dur={`${50 + li * 35}s`} repeatCount="indefinite" />}
+                    {pts.map((p, i) => (
+                        <circle key={i} cx={p.x} cy={p.y} r={p.s} fill={p.c} fillOpacity={p.o} />
+                    ))}
+                </g>
+            ))}
+        </g>
+    );
+});
 
 /** Tween node positions whenever the target layout changes. */
 function useTween(target: Map<string, Pt>, enabled: boolean) {
@@ -51,15 +113,7 @@ const hexPath = (r: number) => {
     });
     return `M${pts.join("L")}Z`;
 };
-const HEX13 = hexPath(13);
 const HEX8 = hexPath(8);
-const abbr = (s: string) =>
-    s
-        .split(/[\s-]+/)
-        .map((w) => w[0])
-        .join("")
-        .slice(0, 2)
-        .toUpperCase();
 
 /** Labels shown with "names" on, by kind. Memory / skills only when zoomed in. */
 const NAMED = new Set(["agent", "app", "routine", "workflow", "goal"]);
@@ -181,12 +235,13 @@ export function DeckGraphSvg({ model, layout, visible, names, motion, search, se
         >
             <defs>
                 <radialGradient id="deck-core-glow">
-                    <stop offset="0%" stopColor="#818cf8" stopOpacity="0.55" />
-                    <stop offset="60%" stopColor="#6366f1" stopOpacity="0.12" />
-                    <stop offset="100%" stopColor="#6366f1" stopOpacity="0" />
+                    <stop offset="0%" stopColor="#f97316" stopOpacity="0.35" />
+                    <stop offset="55%" stopColor="#c2410c" stopOpacity="0.1" />
+                    <stop offset="100%" stopColor="#7c2d12" stopOpacity="0" />
                 </radialGradient>
                 <radialGradient id="deck-bg" cx="50%" cy="50%" r="60%">
-                    <stop offset="0%" stopColor="#1e1b4b" stopOpacity="0.35" />
+                    <stop offset="0%" stopColor="#1e293b" stopOpacity="0.45" />
+                    <stop offset="70%" stopColor="#0b0e13" stopOpacity="0.2" />
                     <stop offset="100%" stopColor="#020617" stopOpacity="0" />
                 </radialGradient>
             </defs>
@@ -195,20 +250,33 @@ export function DeckGraphSvg({ model, layout, visible, names, motion, search, se
                 {/* Guides */}
                 {layout.guides.map((g, i) => (
                     <g key={i}>
-                        <circle r={g.r} fill="none" stroke={g.strong ? "rgba(148,163,184,0.18)" : "rgba(148,163,184,0.08)"} strokeWidth={g.strong ? 1.2 : 1} strokeDasharray={g.dash ? "2 6" : undefined} pointerEvents="none">
+                        <circle r={g.r} fill="none" stroke={g.strong ? "rgba(148,163,184,0.22)" : "rgba(148,163,184,0.09)"} strokeWidth={g.strong ? 1.2 : 1} strokeDasharray={g.dash ? "2 6" : undefined} pointerEvents="none">
                             {motion && g.dash && <animateTransform attributeName="transform" type="rotate" from="0" to={i % 2 ? "-360" : "360"} dur={`${160 + i * 40}s`} repeatCount="indefinite" />}
                         </circle>
                         {ringView && g.strong && (
-                            <g pointerEvents="none" opacity={0.35}>
-                                {Array.from({ length: 72 }, (_, t) => {
-                                    const a = (t / 72) * Math.PI * 2;
-                                    const r2 = g.r + (t % 6 === 0 ? 7 : 3);
+                            <g pointerEvents="none" opacity={0.4}>
+                                {motion && <animateTransform attributeName="transform" type="rotate" from="0" to={i % 2 ? "360" : "-360"} dur={`${240 + i * 30}s`} repeatCount="indefinite" />}
+                                {Array.from({ length: 120 }, (_, t) => {
+                                    const a = (t / 120) * Math.PI * 2;
+                                    const r2 = g.r + (t % 10 === 0 ? 8 : 3);
                                     return <line key={t} x1={Math.cos(a) * g.r} y1={Math.sin(a) * g.r} x2={Math.cos(a) * r2} y2={Math.sin(a) * r2} stroke="#64748b" strokeWidth={0.8} />;
                                 })}
                             </g>
                         )}
                     </g>
                 ))}
+                {ringView && layout.guides.length > 0 && (
+                    <circle r={Math.max(...layout.guides.map((g) => g.r)) + 16} fill="none" stroke="rgba(148,163,184,0.12)" strokeWidth={4} strokeDasharray="60 14 4 14" pointerEvents="none">
+                        {motion && <animateTransform attributeName="transform" type="rotate" from="0" to="360" dur="320s" repeatCount="indefinite" />}
+                    </circle>
+                )}
+
+                {/* Core particle cloud */}
+                {visible.has("core") && pos.get("core") && (
+                    <g transform={`translate(${pos.get("core")!.x} ${pos.get("core")!.y})`}>
+                        <CoreCloud motion={motion} radius={ringView ? 92 : 80} />
+                    </g>
+                )}
 
                 {/* Links */}
                 <g fill="none">
@@ -217,7 +285,7 @@ export function DeckGraphSvg({ model, layout, visible, names, motion, search, se
                         if (!d) return null;
                         const on = focus ? l.s === focus || l.t === focus : false;
                         const off = focus ? !on : false;
-                        const base = l.kind === "core" ? 0.06 : l.kind === "member" ? 0.1 : 0.16;
+                        const base = l.kind === "core" ? 0.07 : l.kind === "member" ? 0.05 : 0.14;
                         return <path key={i} d={d} stroke={LINK_COLOR[l.kind]} strokeOpacity={on ? 0.85 : off ? 0.03 : l.live ? 0.5 : base} strokeWidth={(on ? 1.6 : 0.8) / Math.sqrt(k)} pointerEvents="none" />;
                     })}
                 </g>
@@ -280,8 +348,8 @@ export function DeckGraphSvg({ model, layout, visible, names, motion, search, se
                             onIsolate(l.kind === "ring" ? "ring" : "group", l.ref);
                         }}
                     >
-                        <rect x={-(l.text.length * 3.6 + (l.count !== undefined ? 16 : 0)) - 8} y={-8} width={(l.text.length * 3.6 + (l.count !== undefined ? 16 : 0)) * 2 + 16} height={16} rx={4} fill="#050816" fillOpacity={0.85} stroke={l.color} strokeOpacity={0.25} />
-                        <text textAnchor="middle" dy={3.5} fontSize={9.5} letterSpacing={1.6} fill={l.color} fontWeight={700} fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace">
+                        <rect x={-(l.text.length * 3.9 + (l.count !== undefined ? 16 : 0)) - 6} y={-8} width={(l.text.length * 3.9 + (l.count !== undefined ? 16 : 0)) * 2 + 12} height={16} rx={2} fill="#0b0e13" fillOpacity={0.8} />
+                        <text textAnchor="middle" dy={3.5} fontSize={9.5} letterSpacing={2} fill={l.color} fontWeight={600} fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace">
                             {l.text}
                             {l.count !== undefined ? ` ${l.count}` : ""}
                         </text>
@@ -315,21 +383,24 @@ function NodeGlyph({ n, motion, selected }: { n: DeckNode; motion: boolean; sele
         case "core":
             return (
                 <g>
-                    <circle r={58} fill="url(#deck-core-glow)" className={motion ? "animate-pulse" : undefined} />
-                    <rect x={-40} y={-11} width={80} height={22} rx={5} fill="#0b1020" stroke="#818cf8" strokeOpacity={0.8} />
-                    <text textAnchor="middle" dy={3.6} fontSize={10} fontWeight={800} letterSpacing={1.2} fill="#c7d2fe" fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace">
+                    <rect x={-42} y={-10} width={84} height={20} rx={2} fill="#0b0e13" fillOpacity={0.92} stroke="#fdba74" strokeOpacity={0.45} />
+                    <text textAnchor="middle" dy={3.4} fontSize={9.5} fontWeight={700} letterSpacing={1.4} fill="#f8fafc" fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace">
                         {n.label}
                     </text>
                 </g>
             );
         case "area": {
             const text = `${n.label.toUpperCase()} ${n.sub.split(" ")[0]}`;
-            const w = text.length * 6.2 + 26;
+            const w = text.length * 6 + 8;
             return (
                 <g>
-                    <rect x={-w / 2} y={-9} width={w} height={18} rx={9} fill="#050816" fillOpacity={0.9} stroke={n.color} strokeOpacity={0.7} />
-                    <circle cx={-w / 2 + 10} r={4} fill={n.color} />
-                    <text x={-w / 2 + 19} dy={3.6} fontSize={9.5} fontWeight={700} letterSpacing={0.8} fill="#e2e8f0" fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace">
+                    <rect x={10} y={-8} width={w} height={16} rx={2} fill="#0b0e13" fillOpacity={0.82} />
+                    <circle r={8.5} fill="#0b0e13" stroke={n.color} strokeWidth={1.2} />
+                    <circle r={6.5} fill={n.color} />
+                    <text textAnchor="middle" dy={3.2} fontSize={8.5} fontWeight={800} fill="#0b0e13" fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace">
+                        {n.label.slice(0, 1).toUpperCase()}
+                    </text>
+                    <text x={14} dy={3.4} fontSize={9.5} fontWeight={600} letterSpacing={0.8} fill="#e2e8f0" fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace">
                         {text}
                     </text>
                 </g>
@@ -339,7 +410,7 @@ function NodeGlyph({ n, motion, selected }: { n: DeckNode; motion: boolean; sele
             return (
                 <g>
                     {ring}
-                    <circle r={3.4} fill={n.color} stroke={n.health === "broken" ? "#ef4444" : n.health === "stale" ? "#f59e0b" : "none"} strokeWidth={1.4} />
+                    <circle r={3} fill={n.color} fillOpacity={n.health === "stale" ? 0.55 : 0.95} stroke={n.health === "broken" ? "#ef4444" : "none"} strokeWidth={1.4} />
                 </g>
             );
         case "skill":
@@ -391,17 +462,17 @@ function NodeGlyph({ n, motion, selected }: { n: DeckNode; motion: boolean; sele
                     <path d={HEX8} fill={`${n.color}33`} stroke={n.color} strokeWidth={1.6} />
                 </g>
             );
-        case "app":
+        case "app": {
+            const Icon = MODULE_ICON[n.moduleId ?? n.refId] ?? Sparkles;
             return (
                 <g>
-                    {n.live && ping(16, n.color)}
+                    {n.live && ping(15, n.color)}
                     {ring}
-                    <path d={HEX13} fill="#0b1020" stroke={n.color} strokeWidth={1.6} />
-                    <text textAnchor="middle" dy={3} fontSize={8} fontWeight={800} fill={n.color} fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace">
-                        {abbr(n.label)}
-                    </text>
+                    <circle r={11} fill="#0b0e13" stroke={n.live ? n.color : "#94a3b8"} strokeOpacity={n.live ? 1 : 0.75} strokeWidth={1.3} />
+                    <Icon x={-6} y={-6} width={12} height={12} color={n.live ? n.color : "#e2e8f0"} strokeWidth={1.8} />
                 </g>
             );
+        }
         case "run":
             return n.live ? (
                 <g>
