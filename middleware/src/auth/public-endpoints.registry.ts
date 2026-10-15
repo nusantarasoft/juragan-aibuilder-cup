@@ -9,6 +9,9 @@ export const PUBLIC_GRAPHQL_OPERATIONS = [
     'me',
     'health',
     'version',
+    'registerTenant',
+    'onboardingCaptchaConfig',
+    'onboardingCaptchaDevToken',
 ] as const;
 
 export const ALTERNATIVE_AUTH_GRAPHQL_OPERATIONS = [] as const;

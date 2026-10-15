@@ -4,6 +4,7 @@ import { Cron } from '@nestjs/schedule';
 import { SupabaseService } from '../supabase/supabase.service';
 import { StudioUmkmService } from './studio-umkm.service';
 import { StudioWhatsAppService } from './studio-whatsapp.service';
+import { StudioUmkmRegistrationService } from './studio-umkm-registration.service';
 
 /**
  * Daily UMKM sales report push + pending-sale cleanup.
@@ -19,10 +20,37 @@ export class StudioUmkmCronService {
         private readonly supabaseService: SupabaseService,
         private readonly umkmService: StudioUmkmService,
         private readonly whatsappService: StudioWhatsAppService,
+        private readonly registrationService: StudioUmkmRegistrationService,
     ) {}
 
     private admin() {
         return this.supabaseService.getAdminClient();
+    }
+
+    /** F2-1: auto-provision WA DAFTAR rows (instant trial, no admin click). */
+    @Cron('*/1 * * * *', { name: 'studio-umkm-auto-provision-pending' })
+    async autoProvisionPendingRegistrations(): Promise<void> {
+        try {
+            const { data, error } = await this.admin()
+                .from('studio_umkm_registrations')
+                .select('id')
+                .eq('status', 'pending')
+                .is('tenant_id', null)
+                .limit(20);
+            if (error) {
+                this.logger.warn(`autoProvision pending list: ${error.message}`);
+                return;
+            }
+            for (const row of data ?? []) {
+                try {
+                    await this.registrationService.provisionPendingRegistration(row.id as string);
+                } catch (e: any) {
+                    this.logger.warn(`autoProvision ${row.id}: ${e?.message || e}`);
+                }
+            }
+        } catch (e: any) {
+            this.logger.warn(`autoProvisionPendingRegistrations: ${e?.message}`);
+        }
     }
 
     /** Expire stale pending sales, purchases, and wizards hourly. */

@@ -5,6 +5,7 @@ import { resolveAosKasirTenant } from './aos-tenant-access';
 
 const admin = { id: 'u1', role: 'admin' };
 const superAdmin = { id: 'u2', role: 'super_admin' };
+const owner = { id: 'u3', role: 'tenant_owner', tenantId: '00000000-0000-0000-0000-000000000201' };
 const OTHER_TENANT = '00000000-0000-0000-0000-000000000099';
 
 describe('resolveAosKasirTenant', () => {
@@ -23,5 +24,10 @@ describe('resolveAosKasirTenant', () => {
 
     it('allows super_admin cross-tenant reads', () => {
         expect(resolveAosKasirTenant(superAdmin, OTHER_TENANT)).toBe(OTHER_TENANT);
+    });
+
+    it('scopes tenant_owner to membership tenant', () => {
+        expect(resolveAosKasirTenant(owner)).toBe(owner.tenantId!);
+        expect(() => resolveAosKasirTenant(owner, OTHER_TENANT)).toThrow(ForbiddenException);
     });
 });

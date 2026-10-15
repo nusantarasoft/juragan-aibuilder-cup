@@ -32,7 +32,14 @@ describe('AuthResolver', () => {
         expect(result).toEqual({
             accessToken: 'a',
             refreshToken: 'r',
-            user: { id: 'u1', email: 'a@b.com', role: 'admin' },
+            user: {
+                id: 'u1',
+                email: 'a@b.com',
+                role: 'admin',
+                tenantId: undefined,
+                studioSlug: undefined,
+                emailVerified: false,
+            },
         });
     });
 
@@ -86,7 +93,14 @@ describe('AuthResolver', () => {
         const result = await resolver.me({
             req: { headers: { authorization: 'Bearer tok' } },
         });
-        expect(result).toEqual({ id: 'u1', email: 'a@b.com', role: 'super_admin' });
+        expect(result).toEqual({
+            id: 'u1',
+            email: 'a@b.com',
+            role: 'super_admin',
+            tenantId: undefined,
+            studioSlug: undefined,
+            emailVerified: false,
+        });
     });
 
     it('me returns null when getUser yields falsy', async () => {

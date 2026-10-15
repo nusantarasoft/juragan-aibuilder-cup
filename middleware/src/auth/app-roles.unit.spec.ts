@@ -9,8 +9,8 @@ import {
 } from './app-roles';
 
 describe('app-roles', () => {
-    it('exposes only super_admin and admin', () => {
-        expect(APP_ROLES).toEqual(['super_admin', 'admin']);
+    it('exposes CMS roles including tenant_owner', () => {
+        expect(APP_ROLES).toEqual(['super_admin', 'admin', 'tenant_owner']);
         expect(DEFAULT_APP_ROLE).toBe('admin');
     });
 

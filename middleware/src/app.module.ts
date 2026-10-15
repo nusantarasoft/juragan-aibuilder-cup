@@ -54,6 +54,7 @@ import { WhatsAppProviderModule } from './whatsapp/whatsapp-provider.module';
 import { FacilityModule } from './facility/facility.module';
 import { PentestModule } from './pentest/pentest.module';
 import { AgenticOsModule } from './agentic-os/agentic-os.module';
+import { OnboardingModule } from './onboarding/onboarding.module';
 @Module({
     imports: [
         // Environment configuration
@@ -147,6 +148,7 @@ import { AgenticOsModule } from './agentic-os/agentic-os.module';
         PentestModule,
         // Agentic OS (agents, playbooks, task queue, memory, pulse, governance)
         AgenticOsModule,
+        OnboardingModule,
     ],
 })
 export class AppModule { }

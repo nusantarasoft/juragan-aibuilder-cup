@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { StudioService } from './studio.service';
 import { GuideFlowService } from './guide-flow.service';
@@ -28,6 +28,7 @@ import { StudioOutputService } from './studio-output.service';
 import { InternalKasirConsultController } from './internal-kasir-consult.controller';
 import { KasirConsultAosTaskService } from './kasir-consult-aos-task.service';
 import { AgenticOsModule } from '../agentic-os/agentic-os.module';
+import { OnboardingModule } from '../onboarding/onboarding.module';
 
 @Module({
     imports: [
@@ -40,6 +41,7 @@ import { AgenticOsModule } from '../agentic-os/agentic-os.module';
         WhatsAppProviderModule,
         InventoryModule,
         AgenticOsModule,
+        forwardRef(() => OnboardingModule),
     ],
     controllers: [
         StudioUploadController,

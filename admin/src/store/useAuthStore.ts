@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 
 // ─── Role Hierarchy (CMS login roles) ───────────────────────────────────
-export type AppRole = 'super_admin' | 'admin';
+export type AppRole = 'super_admin' | 'admin' | 'tenant_owner';
 
 /** Legacy requirement aliases still used by RbacGuard call sites map to admin. */
 export type RoleRequirement = AppRole | 'manager' | 'viewer' | 'guest';
@@ -10,6 +10,7 @@ export type RoleRequirement = AppRole | 'manager' | 'viewer' | 'guest';
 const ROLE_LEVELS: Record<AppRole, number> = {
     super_admin: 100,
     admin: 80,
+    tenant_owner: 70,
 };
 
 const REQUIREMENT_LEVELS: Record<RoleRequirement, number> = {
@@ -23,6 +24,7 @@ const REQUIREMENT_LEVELS: Record<RoleRequirement, number> = {
 export const ROLE_LABELS: Record<AppRole, string> = {
     super_admin: 'Super Admin',
     admin: 'Administrator',
+    tenant_owner: 'Pemilik toko',
 };
 
 /** Map any role string from the backend to a valid AppRole */
@@ -31,6 +33,7 @@ export function normalizeRole(raw?: string | null): AppRole {
     const lower = raw.toLowerCase().replace(/[\s-]/g, '_');
     if (lower === 'super_admin') return 'super_admin';
     if (lower === 'admin') return 'admin';
+    if (lower === 'tenant_owner') return 'tenant_owner';
     if (lower === 'service_role' || lower === 'supabase_admin') return 'super_admin';
     // Legacy roles and Supabase JWT role collapse to admin (pengguna)
     return 'admin';
@@ -57,7 +60,13 @@ interface AuthState {
     clearUser: () => void;
 
     /** Sync from AuthContext user data (convenience method) */
-    syncFromAuth: (userData: { id: string; email: string; fullName?: string; role?: string }) => void;
+    syncFromAuth: (userData: {
+        id: string;
+        email: string;
+        fullName?: string;
+        role?: string;
+        tenantId?: string | null;
+    }) => void;
 
     /** Check if the current user meets the minimum role level */
     hasRole: (requiredRole: RoleRequirement) => boolean;
@@ -112,7 +121,7 @@ export const useAuthStore = create<AuthState>()(
                         email: userData.email,
                         fullName: userData.fullName || userData.email.split('@')[0],
                         role,
-                        tenantId: 'default',
+                        tenantId: userData.tenantId || '00000000-0000-0000-0000-000000000010',
                     },
                     isAuthenticated: true,
                 });

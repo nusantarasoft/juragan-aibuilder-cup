@@ -8,6 +8,7 @@ describe('StudioUmkmRegistrationService', () => {
     let studioService: any;
     let umkmService: any;
     let whatsAppService: any;
+    let tenantProvisioning: any;
     let waTransport: any;
 
     const pendingRow = {
@@ -37,8 +38,21 @@ describe('StudioUmkmRegistrationService', () => {
             setupUmkmNotebook: vi.fn().mockResolvedValue({ setup: true }),
         };
         whatsAppService = {
-            getConfig: vi.fn().mockResolvedValue(null),
+            getConfig: vi.fn().mockResolvedValue({ notebook_id: 'nb-new', tenant_id: 'umkm-warung-bu-ani' }),
             updateConfig: vi.fn().mockResolvedValue({ tenant_id: 'umkm-warung-bu-ani' }),
+        };
+        tenantProvisioning = {
+            provisionStore: vi.fn().mockResolvedValue({
+                tenantId: '00000000-0000-0000-0000-000000000201',
+                studioSlug: 'umkm-warung-bu-ani',
+                storeId: 'store-1',
+            }),
+        };
+        const configService = {
+            get: vi.fn((key: string) => {
+                if (key === 'ONBOARDING_WA_PROVISION_MAX_PER_PHONE_DAY') return 10;
+                return undefined;
+            }),
         };
         waTransport = {
             sendText: vi.fn().mockResolvedValue({ success: true }),
@@ -48,6 +62,8 @@ describe('StudioUmkmRegistrationService', () => {
             studioService,
             umkmService,
             whatsAppService,
+            tenantProvisioning,
+            configService,
             waTransport,
         );
     });
@@ -75,18 +91,16 @@ describe('StudioUmkmRegistrationService', () => {
             }),
         }));
 
+        whatsAppService.getConfig.mockResolvedValueOnce(null).mockResolvedValueOnce({ notebook_id: 'nb-new' });
+
         const out = await svc.approve('reg-1', 'admin-1');
         expect(out.status).toBe('approved');
-        expect(studioService.createNotebook).toHaveBeenCalled();
-        expect(umkmService.setupUmkmNotebook).toHaveBeenCalledWith('nb-new', 'umkm-warung-bu-ani');
-        expect(whatsAppService.updateConfig).toHaveBeenCalledWith(
+        expect(tenantProvisioning.provisionStore).toHaveBeenCalledWith(
             expect.objectContaining({
-                enabled: true,
-                businessPhone: '6281234567890',
-                allowlistPhones: ['6281234567890'],
-                sessionName: 'default',
+                source: 'wa_daftar',
+                storeDisplayName: 'Warung Bu Ani',
+                ownerPhone: '6281234567890',
             }),
-            'umkm-warung-bu-ani',
         );
         expect(waTransport.sendText).toHaveBeenCalled();
     });
@@ -113,7 +127,7 @@ describe('StudioUmkmRegistrationService', () => {
             }),
         });
         await expect(svc.approve('reg-1', 'admin-1')).rejects.toBeInstanceOf(BadRequestException);
-        expect(studioService.createNotebook).not.toHaveBeenCalled();
+        expect(tenantProvisioning.provisionStore).not.toHaveBeenCalled();
     });
 
     it('approve rejects invalid phone', async () => {
@@ -151,11 +165,18 @@ describe('StudioUmkmRegistrationService', () => {
                 };
             }),
         }));
+        tenantProvisioning.provisionStore.mockResolvedValueOnce({
+            tenantId: '00000000-0000-0000-0000-000000000201',
+            studioSlug: 'umkm-warung-bu-ani-7890',
+            storeId: 'store-1',
+        });
         const out = await svc.approve('reg-1', 'admin-1');
         expect(out.status).toBe('approved');
-        expect(umkmService.setupUmkmNotebook).toHaveBeenCalledWith(
-            'nb-new',
-            'umkm-warung-bu-ani-7890',
+        expect(tenantProvisioning.provisionStore).toHaveBeenCalledWith(
+            expect.objectContaining({
+                source: 'wa_daftar',
+                preferredSlug: 'umkm-warung-bu-ani-7890',
+            }),
         );
     });
 
@@ -349,15 +370,16 @@ describe('StudioUmkmRegistrationService', () => {
         }));
         const out = await svc.approve('reg-1', 'admin-1');
         expect(out.status).toBe('approved');
-        expect(studioService.createNotebook).toHaveBeenCalledWith(
-            'Toko UMKM',
-            expect.any(String),
-            'admin-1',
-            'customer',
+        expect(tenantProvisioning.provisionStore).toHaveBeenCalledWith(
+            expect.objectContaining({
+                storeDisplayName: 'Toko UMKM',
+                source: 'wa_daftar',
+            }),
         );
     });
 
     it('approve slugifies punctuation-only store to umkm-toko', async () => {
+        whatsAppService.getConfig.mockResolvedValue(null);
         let phase = 0;
         fromMock.mockImplementation(() => ({
             select: vi.fn().mockReturnThis(),
@@ -382,7 +404,9 @@ describe('StudioUmkmRegistrationService', () => {
             }),
         }));
         await svc.approve('reg-1', 'admin-1');
-        expect(umkmService.setupUmkmNotebook).toHaveBeenCalledWith('nb-new', 'umkm-toko');
+        expect(tenantProvisioning.provisionStore).toHaveBeenCalledWith(
+            expect.objectContaining({ preferredSlug: 'umkm-toko' }),
+        );
     });
 
     it('reject skips WA for short phone', async () => {

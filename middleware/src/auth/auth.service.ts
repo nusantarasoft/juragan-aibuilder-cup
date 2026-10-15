@@ -33,6 +33,34 @@ export class AuthService {
         };
     }
 
+    private async loadTenantContext(userId: string): Promise<{
+        tenantId: string | null;
+        studioSlug: string | null;
+    }> {
+        const admin = this.supabaseService.getAdminClient();
+        const { data: membership } = await admin
+            .from('tenant_users')
+            .select('tenant_id')
+            .eq('user_id', userId)
+            .eq('is_active', true)
+            .limit(1)
+            .maybeSingle();
+        const tenantId = (membership?.tenant_id as string | undefined) ?? null;
+        if (!tenantId) return { tenantId: null, studioSlug: null };
+        const { data: store } = await admin
+            .from('tenant_stores')
+            .select('studio_slug')
+            .eq('tenant_id', tenantId)
+            .maybeSingle();
+        return { tenantId, studioSlug: (store?.studio_slug as string | undefined) ?? null };
+    }
+
+    private assertEmailVerified(user: { email_confirmed_at?: string | null; role?: string }, profileRole: string) {
+        if (profileRole === 'tenant_owner' && !user.email_confirmed_at) {
+            throw new UnauthorizedException('Email verification required before sign in');
+        }
+    }
+
     private assertActive(profile: AuthProfile): void {
         if (profile.status === 'inactive') {
             throw new UnauthorizedException('Account is deactivated');
@@ -55,11 +83,19 @@ export class AuthService {
 
         const profile = await this.resolveProfile(user.id, user.role);
         this.assertActive(profile);
+        this.assertEmailVerified(user, profile.role);
+        const tenantCtx = await this.loadTenantContext(user.id);
 
         return {
             accessToken: data.session?.access_token,
             refreshToken: data.session?.refresh_token,
-            user: { ...user, role: profile.role },
+            user: {
+                ...user,
+                role: profile.role,
+                tenantId: tenantCtx.tenantId,
+                studioSlug: tenantCtx.studioSlug,
+                emailVerified: Boolean(user.email_confirmed_at),
+            },
         };
     }
 
@@ -103,7 +139,14 @@ export class AuthService {
 
         const profile = await this.resolveProfile(data.user.id, data.user.role);
         this.assertActive(profile);
-        return { ...data.user, role: profile.role };
+        const tenantCtx = await this.loadTenantContext(data.user.id);
+        return {
+            ...data.user,
+            role: profile.role,
+            tenantId: tenantCtx.tenantId,
+            studioSlug: tenantCtx.studioSlug,
+            emailVerified: Boolean(data.user.email_confirmed_at),
+        };
     }
 
     async refreshSession(refreshToken: string) {
