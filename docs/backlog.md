@@ -20,7 +20,7 @@ Rule: one DOING task at Cursor at a time (plus deploy). Gate: scope → PR → Q
 - [DONE] F2-2 Agent catalog + "rekrut" flow — merged [#46](https://github.com/nusantarasoft/nusantarasoft-3/pull/46) @ `144a8ad`; `/admin/recruit`, one-click Kasir, trial cap 3; design [docs/design/f2-2-agent-catalog-recruit.md](design/f2-2-agent-catalog-recruit.md); ops [docs/ops/f2-2-recruit-flow.md](ops/f2-2-recruit-flow.md); QA PASS 2026-10-15 (`.gstack/qa-reports/qa-f2-2-agent-recruit-2026-10-15.md`)
 - [DONE] F2-3 Connect channel (WA) per store (Kasir) — merged [#48](https://github.com/nusantarasoft/nusantarasoft-3/pull/48) @ `d0ec587`; design [docs/design/f2-3-tenant-wa-connection.md](design/f2-3-tenant-wa-connection.md); ops [docs/ops/f2-3-connect-wa-flow.md](ops/f2-3-connect-wa-flow.md)
 - **Release (F2 wedge):** code on `master` @ `d0ec587`; **not deployed** until Akbar — combined prod gate [docs/ops/release-f2-prod-readiness.md](ops/release-f2-prod-readiness.md)
-- [TODO] F2-4 Per-tenant agent settings in AOS (on/off, schedule, limits)
+- [DOING] F2-4 Per-tenant agent settings in AOS (on/off, schedule, limits) — impl [#51](https://github.com/nusantarasoft/nusantarasoft-3/pull/51); design [#50](https://github.com/nusantarasoft/nusantarasoft-3/pull/50); QA **PASS** 2026-10-15 (`.gstack/qa-reports/qa-f2-4-tenant-settings-2026-10-15.md`); await Akbar merge
 
 ## Fase 3 — Agen kedua & ready to use
 - [TODO] F3-1 Second agent (candidates: pembukuan/CS/stok, Akbar decides)

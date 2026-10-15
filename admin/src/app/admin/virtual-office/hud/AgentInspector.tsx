@@ -35,6 +35,9 @@ import { ActivityList } from "./AgentRoster";
 import { RosterKindBadge } from "@/components/agentic-os/ui/RosterKindBadge";
 import { timeAgo } from "@/components/agentic-os/ui/kit";
 import { AgentBadge, GLASS, ModuleChip, ProgressBar, StatusPill, StepList, cx, elapsed, formatTokens, useNow } from "./shared";
+import { AgentSettingsPanel } from "@/components/tenant-agents/AgentSettingsPanel";
+import { useAuthStore } from "@/store/useAuthStore";
+import Link from "next/link";
 
 function actionsFor(agent: Agent): { cmd: AgentCommand; label: string; icon: LucideIcon; tone?: "danger" | "primary" }[] {
     const list: { cmd: AgentCommand; label: string; icon: LucideIcon; tone?: "danger" | "primary" }[] = [];
@@ -168,6 +171,8 @@ export function AgentInspector() {
         })),
     );
     const launchOs = useOsUi((s) => s.launch);
+    const userRole = useAuthStore((s) => s.user?.role);
+    const isTenantOwner = userRole === "tenant_owner";
     const [tab, setTab] = useState<"chat" | "activity">("chat");
     const now = useNow(1000);
     const agentActivity = useMemo(() => (agent ? activity.filter((e) => e.agentId === agent.id).slice(0, 30) : []), [activity, agent]);
@@ -266,6 +271,30 @@ export function AgentInspector() {
                     </div>
                 </div>
 
+                {agent.dbId && (
+                    <div>
+                        <div className="mb-1.5 flex items-center justify-between">
+                            <span className="text-[10px] uppercase tracking-wider text-slate-400">Pengaturan toko</span>
+                            <Link href="/admin/my-agents" className="text-[10px] font-semibold text-indigo-300 hover:text-indigo-200">
+                                Semua karyawan
+                            </Link>
+                        </div>
+                        <AgentSettingsPanel
+                            agentId={agent.dbId}
+                            compact
+                            onUpdated={(s) => {
+                                if (s.status === "paused" || s.status === "active") {
+                                    useOfficeStore.getState().applyEvent({
+                                        type: "agent.patch",
+                                        agentId: agent.id,
+                                        patch: { status: s.status === "paused" ? "paused" : "idle" },
+                                    });
+                                }
+                            }}
+                        />
+                    </div>
+                )}
+
                 {agent.rosterKind === "live" && (
                     <div className="rounded-xl border border-emerald-400/25 bg-emerald-500/[0.07] p-3 text-[11px] text-slate-200">
                         {agent.liveUnavailable ? (
@@ -310,13 +339,15 @@ export function AgentInspector() {
                             <span className="text-slate-400">Demo agent — simulated task progress</span>
                         )}
                     </div>
-                    <button
-                        type="button"
-                        onClick={() => launchOs("studio", agent.dbId ? { agentId: agent.dbId } : {})}
-                        className="inline-flex items-center gap-1 rounded-lg bg-indigo-500/80 px-2 py-1 text-[11px] font-semibold text-white hover:bg-indigo-500"
-                    >
-                        <SlidersHorizontal className="h-3 w-3" /> Customize
-                    </button>
+                    {!isTenantOwner && (
+                        <button
+                            type="button"
+                            onClick={() => launchOs("studio", agent.dbId ? { agentId: agent.dbId } : {})}
+                            className="inline-flex items-center gap-1 rounded-lg bg-indigo-500/80 px-2 py-1 text-[11px] font-semibold text-white hover:bg-indigo-500"
+                        >
+                            <SlidersHorizontal className="h-3 w-3" /> Customize
+                        </button>
+                    )}
                     <button
                         type="button"
                         onClick={() => launchOs("tasks", agent.dbId ? { agentId: agent.dbId } : {})}

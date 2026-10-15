@@ -13,6 +13,7 @@ import { AgenticOsGoals } from './agentic-os.goals';
 import { AosAuthGuard } from './aos-auth.guard';
 import { AosKasirLiveService } from './aos-kasir-live.service';
 import { AosRecruitService } from './aos-recruit.service';
+import { AosTenantAgentSettingsService } from './aos-tenant-agent-settings.service';
 import { AosTaskQueueEvents } from './aos-task-queue.events';
 
 @Module({
@@ -28,7 +29,8 @@ import { AosTaskQueueEvents } from './aos-task-queue.events';
         AosAuthGuard,
         AosKasirLiveService,
         AosRecruitService,
+        AosTenantAgentSettingsService,
     ],
-    exports: [AgenticOsService],
+    exports: [AgenticOsService, AosTenantAgentSettingsService],
 })
 export class AgenticOsModule { }

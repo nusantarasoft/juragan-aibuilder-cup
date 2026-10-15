@@ -6,9 +6,9 @@
 
 **Code gate:** `master` at or after **`d0ec587`** (F2-3 [#48](https://github.com/nusantarasoft/nusantarasoft-3/pull/48)), which includes F2-2 @ `144a8ad` ([#46](https://github.com/nusantarasoft/nusantarasoft-3/pull/46)) and F2-1 @ `e6424f2` ([#42](https://github.com/nusantarasoft/nusantarasoft-3/pull/42)).
 
-Component runbooks (detail, not duplicate here): [f2-1-prod-readiness.md](f2-1-prod-readiness.md), [f2-2-recruit-flow.md](f2-2-recruit-flow.md), [f2-3-connect-wa-flow.md](f2-3-connect-wa-flow.md).
+Component runbooks (detail, not duplicate here): [f2-1-prod-readiness.md](f2-1-prod-readiness.md), [f2-2-recruit-flow.md](f2-2-recruit-flow.md), [f2-3-connect-wa-flow.md](f2-3-connect-wa-flow.md), [f2-4-tenant-agent-settings.md](f2-4-tenant-agent-settings.md) (after F2-4 ships).
 
-Design locks: [f2-1-tenant-onboarding.md](../design/f2-1-tenant-onboarding.md), [f2-2-agent-catalog-recruit.md](../design/f2-2-agent-catalog-recruit.md), [f2-3-tenant-wa-connection.md](../design/f2-3-tenant-wa-connection.md).
+Design locks: [f2-1-tenant-onboarding.md](../design/f2-1-tenant-onboarding.md), [f2-2-agent-catalog-recruit.md](../design/f2-2-agent-catalog-recruit.md), [f2-3-tenant-wa-connection.md](../design/f2-3-tenant-wa-connection.md), [f2-4-tenant-settings.md](../design/f2-4-tenant-settings.md) ([#50](https://github.com/nusantarasoft/nusantarasoft-3/pull/50)).
 
 Deploy gate (separate approval): [docs/deploy-master-production.md](../deploy-master-production.md).
 

@@ -20,6 +20,7 @@ import {
 import { StudioUmkmPendampingService } from './studio-umkm-pendamping.service';
 import { KasirConsultAosTaskService } from './kasir-consult-aos-task.service';
 import { StudioUmkmService } from './studio-umkm.service';
+import { AosTenantAgentSettingsService } from '../agentic-os/aos-tenant-agent-settings.service';
 
 type ConsultBody = {
     question?: string;
@@ -46,6 +47,7 @@ export class InternalKasirConsultController {
         private readonly config: ConfigService,
         private readonly kasirTasks: KasirConsultAosTaskService,
         private readonly umkm: StudioUmkmService,
+        private readonly tenantAgentSettings: AosTenantAgentSettingsService,
     ) {}
 
     @Post('kasir-consult')
@@ -70,12 +72,14 @@ export class InternalKasirConsultController {
         const phone =
             typeof body?.phone === 'string' ? body.phone.trim().slice(0, 32) : undefined;
 
+        let tenantIdForGate: string | undefined;
         if (phone?.trim()) {
             const ctx = await this.umkm.resolveUmkmContextByOwnerPhone(phone);
             if (!ctx) {
                 this.logger.warn('kasir-consult sender not on store whitelist or WA inactive');
                 throw new HttpException('Sender not allowed', HttpStatus.FORBIDDEN);
             }
+            tenantIdForGate = ctx.tenantId;
         }
 
         const mode = String(body?.mode || '')
@@ -106,6 +110,18 @@ export class InternalKasirConsultController {
             this.logger.log('path=kasir_consult status=consult_off');
             finishMirror(startMirror('off'), 'off');
             return { status: 'off' as const, text: CONSULT_OFF_COPY };
+        }
+
+        if (tenantIdForGate) {
+            const kasirId = await this.tenantAgentSettings.findRecruitedAgentForAutoGate(tenantIdForGate, null);
+            if (kasirId) {
+                const gate = await this.tenantAgentSettings.assertAutoWorkAllowed(tenantIdForGate, kasirId);
+                if (gate.allowed === false) {
+                    this.logger.log(`path=kasir_consult status=${gate.status}`);
+                    finishMirror(startMirror('off'), gate.status);
+                    return { status: gate.status as 'paused' | 'quiet_hours', text: gate.text };
+                }
+            }
         }
 
         const mirrorKind = mode === 'coach' ? 'coach' : 'consult';

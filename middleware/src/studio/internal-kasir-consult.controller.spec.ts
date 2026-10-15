@@ -23,6 +23,13 @@ describe('InternalKasirConsultController', () => {
             complete: vi.fn(),
         })),
     };
+    const umkm = {
+        resolveUmkmContextByOwnerPhone: vi.fn(async () => null),
+    };
+    const tenantAgentSettings = {
+        findRecruitedAgentForAutoGate: vi.fn(async () => null),
+        assertAutoWorkAllowed: vi.fn(async () => ({ allowed: true as const })),
+    };
     const config = {
         get: vi.fn((key: string) => {
             if (key === 'KASIR_CONSULT_KEY') return 'secret-test';
@@ -32,6 +39,15 @@ describe('InternalKasirConsultController', () => {
     };
     let ctrl: InternalKasirConsultController;
 
+    const makeCtrl = () =>
+        new InternalKasirConsultController(
+            pendamping as any,
+            config as any,
+            kasirTasks as any,
+            umkm as any,
+            tenantAgentSettings as any,
+        );
+
     beforeEach(() => {
         vi.clearAllMocks();
         config.get.mockImplementation((key: string) => {
@@ -39,11 +55,10 @@ describe('InternalKasirConsultController', () => {
             if (key === 'KASIR_CONSULT') return '1';
             return undefined;
         });
-        ctrl = new InternalKasirConsultController(
-            pendamping as any,
-            config as any,
-            kasirTasks as any,
-        );
+        umkm.resolveUmkmContextByOwnerPhone.mockResolvedValue(null);
+        tenantAgentSettings.findRecruitedAgentForAutoGate.mockResolvedValue(null);
+        tenantAgentSettings.assertAutoWorkAllowed.mockResolvedValue({ allowed: true });
+        ctrl = makeCtrl();
         vi.spyOn(ctrl['logger'], 'log').mockImplementation(() => undefined);
         vi.spyOn(ctrl['logger'], 'warn').mockImplementation(() => undefined);
     });
@@ -70,7 +85,7 @@ describe('InternalKasirConsultController', () => {
             if (key === 'KASIR_CONSULT') return '1';
             return undefined;
         });
-        ctrl = new InternalKasirConsultController(pendamping as any, config as any, kasirTasks as any);
+        ctrl = makeCtrl();
         vi.spyOn(ctrl['logger'], 'warn').mockImplementation(() => undefined);
         await expect(
             ctrl.kasirConsult({ question: 'tanya' }, 'secret-test'),
@@ -83,7 +98,7 @@ describe('InternalKasirConsultController', () => {
             if (key === 'KASIR_CONSULT') return '0';
             return undefined;
         });
-        ctrl = new InternalKasirConsultController(pendamping as any, config as any, kasirTasks as any);
+        ctrl = makeCtrl();
         vi.spyOn(ctrl['logger'], 'log').mockImplementation(() => undefined);
         const res = await ctrl.kasirConsult({ question: 'tanya modal' }, 'secret-test');
         expect(res).toEqual({ status: 'off', text: CONSULT_OFF_COPY });
@@ -104,6 +119,7 @@ describe('InternalKasirConsultController', () => {
     });
 
     it('forwards optional phone for metrics inject', async () => {
+        umkm.resolveUmkmContextByOwnerPhone.mockResolvedValue({ tenantId: 'tenant-1' });
         await ctrl.kasirConsult(
             { question: 'tanya modal', phone: '6281111111111' },
             'secret-test',
@@ -137,6 +153,7 @@ describe('InternalKasirConsultController', () => {
     });
 
     it('mode=coach → coachFromOwnerPhone', async () => {
+        umkm.resolveUmkmContextByOwnerPhone.mockResolvedValue({ tenantId: 'tenant-1' });
         const res = await ctrl.kasirConsult(
             { question: 'pendamping', mode: 'coach', phone: '6281111111111' },
             'secret-test',
@@ -181,7 +198,8 @@ describe('InternalKasirConsultController', () => {
             if (key === 'KASIR_CONSULT') return '0';
             return undefined;
         });
-        ctrl = new InternalKasirConsultController(pendamping as any, config as any, kasirTasks as any);
+        ctrl = makeCtrl();
+        umkm.resolveUmkmContextByOwnerPhone.mockResolvedValue({ tenantId: 'tenant-1' });
         vi.spyOn(ctrl['logger'], 'log').mockImplementation(() => undefined);
         const res = await ctrl.kasirConsult(
             { question: 'pendamping', mode: 'coach', phone: '6281' },

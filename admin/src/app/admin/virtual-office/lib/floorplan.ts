@@ -9,7 +9,7 @@ export const STATUS_META: Record<AgentStatus, { label: string; color: string; de
     thinking: { label: "Thinking", color: "#a855f7", description: "Planning / reasoning" },
     idle: { label: "Idle", color: "#38bdf8", description: "Available for new work" },
     meeting: { label: "In meeting", color: "#f59e0b", description: "Collaborating with other agents" },
-    paused: { label: "Paused", color: "#94a3b8", description: "Paused by an operator" },
+    paused: { label: "Libur", color: "#94a3b8", description: "Karyawan AI sedang libur — tidak ada balasan otomatis" },
     error: { label: "Needs attention", color: "#ef4444", description: "Blocked — operator action required" },
     offline: { label: "Offline", color: "#475569", description: "Not running" },
 };

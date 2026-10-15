@@ -42,9 +42,12 @@ import {
     AosRecruitCatalogEntry,
     AosRecruitResult,
     AosRecruitStatus,
+    AosTenantOwnerAgentSettings,
+    AosTenantOwnerAgentSettingsInput,
 } from './agentic-os.types';
 import { AosKasirLiveService } from './aos-kasir-live.service';
 import { AosRecruitService } from './aos-recruit.service';
+import { AosTenantAgentSettingsService } from './aos-tenant-agent-settings.service';
 import { resolveAosTenant, type AosSessionUser } from './aos-tenant-access';
 import { AosTaskQueueEvents } from './aos-task-queue.events';
 
@@ -78,6 +81,7 @@ export class AgenticOsResolver {
         private readonly goals: AgenticOsGoals,
         private readonly kasirLive: AosKasirLiveService,
         private readonly recruit: AosRecruitService,
+        private readonly tenantAgentSettings: AosTenantAgentSettingsService,
         private readonly taskQueueEvents: AosTaskQueueEvents,
     ) {}
 
@@ -108,6 +112,22 @@ export class AgenticOsResolver {
     aosRecruitStatus(@Context() ctx: AosContext, @Args('tenantId', optStr) tenantId?: string) {
         const effective = tenantForRead(ctx, tenantId);
         return this.recruit.getRecruitStatus(effective);
+    }
+
+    @Query(() => [AosTenantOwnerAgentSettings])
+    aosTenantOwnerAgentSettingsList(@Context() ctx: AosContext, @Args('tenantId', optStr) tenantId?: string) {
+        const effective = tenantForRead(ctx, tenantId);
+        return this.tenantAgentSettings.listOwnerSettings(effective);
+    }
+
+    @Query(() => AosTenantOwnerAgentSettings)
+    aosTenantOwnerAgentSettings(
+        @Context() ctx: AosContext,
+        @Args('agentId') agentId: string,
+        @Args('tenantId', optStr) tenantId?: string,
+    ) {
+        const effective = tenantForRead(ctx, tenantId);
+        return this.tenantAgentSettings.getOwnerSettings(effective, agentId);
     }
 
     @Query(() => AosKasirLiveSnapshot)
@@ -329,6 +349,26 @@ export class AgenticOsResolver {
         const user = ctx?.req?.user;
         const effective = tenantForRead(ctx, tenantId);
         return this.svc.createAgent(effective, input, actorOf(ctx));
+    }
+
+    @Mutation(() => AosTenantOwnerAgentSettings)
+    @UseGuards(AosAuthGuard)
+    aosTenantOwnerUpdateAgentSettings(
+        @Context() ctx: AosContext,
+        @Args('agentId') agentId: string,
+        @Args('input', { type: () => AosTenantOwnerAgentSettingsInput }) input: AosTenantOwnerAgentSettingsInput,
+        @Args('tenantId', optStr) tenantId?: string,
+    ) {
+        const user = ctx?.req?.user;
+        if (!user?.id) throw new UnauthorizedException(AOS_SIGN_IN);
+        const effective = tenantForRead(ctx, tenantId);
+        return this.tenantAgentSettings.updateOwnerSettings(
+            effective,
+            agentId,
+            input,
+            { id: user.id, email: user.email, role: user.role, tenantId: user.tenantId ?? null },
+            actorOf(ctx),
+        );
     }
 
     @Mutation(() => AosRecruitResult)

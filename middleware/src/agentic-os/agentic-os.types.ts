@@ -421,6 +421,35 @@ export class AosRecruitResult {
     @Field() message: string;
 }
 
+@ObjectType()
+export class AosTenantOwnerAgentSettings {
+    @Field() agentId: string;
+    @Field() slug: string;
+    @Field() name: string;
+    @Field() role: string;
+    @Field() status: string;
+    @Field(() => Int) dailyRunBudget: number;
+    @Field() quietHoursEnabled: boolean;
+    @Field() quietHoursTimezone: string;
+    @Field() quietHoursStart: string;
+    @Field() quietHoursEnd: string;
+}
+
+@InputType()
+export class AosTenantOwnerQuietHoursInput {
+    @Field(() => Boolean, { nullable: true }) enabled?: boolean;
+    @Field(() => String, { nullable: true }) timezone?: string;
+    @Field(() => String, { nullable: true }) start?: string;
+    @Field(() => String, { nullable: true }) end?: string;
+}
+
+@InputType()
+export class AosTenantOwnerAgentSettingsInput {
+    @Field(() => String, { nullable: true }) status?: string;
+    @Field(() => Int, { nullable: true }) dailyRunBudget?: number;
+    @Field(() => AosTenantOwnerQuietHoursInput, { nullable: true }) quietHours?: AosTenantOwnerQuietHoursInput | null;
+}
+
 // ── Phase 4 (Command Deck · Goals & gate reviews) ───────────────────────────
 
 @ObjectType()
