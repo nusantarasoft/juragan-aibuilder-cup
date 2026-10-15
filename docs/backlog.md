@@ -16,7 +16,7 @@ Rule: one DOING task at Cursor at a time (plus deploy). Gate: scope → PR → Q
 - [DONE] F1-4 Honest Live/Demo badges; remove remaining dummy data (per audit P0)
 
 ## Fase 2 — Rekrut agen (tenant self-serve)
-- [DOING] F2-1 Self-serve tenant registration + onboarding — impl [PR #42](https://github.com/nusantarasoft/nusantarasoft-3/pull/42); design [docs/design/f2-1-tenant-onboarding.md](design/f2-1-tenant-onboarding.md)
+- [DONE] F2-1 Self-serve tenant registration + onboarding — merged [#42](https://github.com/nusantarasoft/nusantarasoft-3/pull/42) @ `e6424f2`; design [docs/design/f2-1-tenant-onboarding.md](design/f2-1-tenant-onboarding.md); prod checklist [docs/ops/f2-1-prod-readiness.md](ops/f2-1-prod-readiness.md)
 - [TODO] F2-2 Agent catalog + "rekrut" flow (pick agent, role, data access)
 - [TODO] F2-3 Connect channel (WA) per agent/tenant, without manual setup
 - [TODO] F2-4 Per-tenant agent settings in AOS (on/off, schedule, limits)
@@ -43,5 +43,5 @@ Rule: one DOING task at Cursor at a time (plus deploy). Gate: scope → PR → Q
 - [DONE] D-6 (deploy hotfix) Ensure `/opt/nusantarasoft-3/logs` exists before SFTP pull-script upload (`deploy.ps1` mkdir guard; PR #29 detached deploy prod failure)
 - [DONE] D-7 (deploy state) Write `logs/.deploy.state` at detached job start; `-Status`/`-Attach` trust live lock/PID when state stale; `deploy.ps1` syncs helper on attach/status (PO small fix PR)
 - [DONE] D-8 (deploy status hotfix) Write `logs/.deploy.lock` with state before wrapper spawn; `-Status` treats in-flight state without PID; `deploy.ps1` brief idle retry on first poll — merged `39232b8` (#43)
-- [DOING] D-10 F2-1 security hardening (captcha, rate limit, email verify, WA provision limits) — PR #42 before merge
+- [DONE] D-10 F2-1 security hardening (captcha, rate limit, email verify, WA provision limits) — shipped in #42 @ `e6424f2`; ops [docs/ops/f2-1-prod-readiness.md](ops/f2-1-prod-readiness.md)
 - [TODO] D-9 Integrate Adityo `development-adityo` @ `c1fdc757a489d513395a9df394e1012a75c9d4ed` (2026-10-14 19:02 WIB): deck components not on master; after F2-1 merge, preserve F1-4 Live/Demo, full QA, no secrets/dumps

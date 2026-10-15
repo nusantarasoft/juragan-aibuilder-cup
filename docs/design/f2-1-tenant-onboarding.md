@@ -219,6 +219,7 @@ Web signup and WA DAFTAR both call the same server-side provisioner:
 | Doc | Relevance |
 |-----|-----------|
 | [docs/backlog.md](../backlog.md) | F2-1…F2-4 |
+| [docs/ops/f2-1-prod-readiness.md](../ops/f2-1-prod-readiness.md) | Production captcha, SMTP, migration checklist |
 | [docs/aistudio/umkm-wa/business/ops/register-admin-approve.md](../aistudio/umkm-wa/business/ops/register-admin-approve.md) | Current WA onboarding |
 | [docs/security/access-control-audit-2026-10-14.md](../security/access-control-audit-2026-10-14.md) | GlobalAuthGuard, tenant binding debt |
 | [docs/design-permissions.md](../design-permissions.md) | RBAC + tenant foundation |
