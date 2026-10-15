@@ -21,8 +21,6 @@ import { addDays, ageLabel, cronOccurrences, daysBetween, ddmm, dowDdmm, DOW_SHO
 import type { AppId, AppParams } from "../../lib/osUi";
 import type { OsGoal, OsRoutine } from "../../lib/types";
 import { DeckGraphSvg } from "./DeckGraph";
-import { DeckTimeline } from "./DeckTimeline";
-import DeckOrbit from "./DeckOrbit";
 import { GoalEditor, GoalReviewDialog } from "./DeckGoals";
 
 /* ------------------------------------------------------------------ */
@@ -246,10 +244,11 @@ export function CommandDeck({ onOpen, exit, toolbar, bottomInset = 0 }: DeckShel
             }),
         [core.agents, core.playbooks, core.tasks, p3.areas, p3.items, pulse.routines, p3.workflows, p3.workflowRuns, pulse.runs, deck.goals],
     );
-    const graphView = ui.view === "timeline" || ui.view === "orbit" ? null : ui.view;
-    // Layouts only recompute when the graph's structure changes (not on every poll).
+    // Layouts only recompute when the graph's structure changes (not on every poll);
+    // the timeline also once a minute so its time axis keeps up.
+    const minute = ui.view === "timeline" ? Math.floor(nowMs / 60_000) : 0;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    const layout = useMemo(() => (graphView ? layoutFor(graphView, model) : null), [graphView, model.key]);
+    const layout = useMemo(() => layoutFor(ui.view, model), [ui.view, model.key, minute]);
     const visible = useMemo(() => visibleIds(model, types, areaSel.size ? areaSel : null), [model, types, areaSel]);
     const selected: DeckNode | undefined = selectedId ? model.byId.get(selectedId) : undefined;
 
@@ -909,27 +908,20 @@ export function CommandDeck({ onOpen, exit, toolbar, bottomInset = 0 }: DeckShel
 
                     {/* Graph: takes every remaining pixel; its content stays above the floating dock */}
                     <div ref={graphRef} className="relative min-h-[220px] flex-1 overflow-hidden bg-[#0b0e13]" style={bottomInset ? { paddingBottom: bottomInset } : undefined}>
-                        {ui.view === "timeline" ? (
-                            <DeckTimeline onOpen={onOpen} motion={ui.motion} />
-                        ) : ui.view === "orbit" ? (
-                            <DeckOrbit model={model} visible={visible} names={ui.names} motion={ui.motion} selected={selectedId} onSelect={setSelectedId} />
-                        ) : layout ? (
-                            <DeckGraphSvg
-                                model={model}
-                                layout={layout}
-                                visible={visible}
-                                names={ui.names}
-                                motion={ui.motion}
-                                search={search}
-                                selected={selectedId}
-                                onSelect={setSelectedId}
-                                onIsolate={onIsolate}
-                                fitNonce={fitNonce}
-                                ringView={ui.view === "rings"}
-                            />
-                        ) : null}
+                        <DeckGraphSvg
+                            model={model}
+                            layout={layout}
+                            visible={visible}
+                            names={ui.names}
+                            motion={ui.motion}
+                            search={search}
+                            selected={selectedId}
+                            onSelect={setSelectedId}
+                            onIsolate={onIsolate}
+                            fitNonce={fitNonce}
+                        />
 
-                        {selected && ui.view !== "timeline" && (
+                        {selected && (
                             <div className={cn("absolute right-3 top-3 z-[3] max-h-[calc(100%-96px)] w-64 border border-white/15 bg-[#0b0e13]/95 p-3 text-[11px] shadow-2xl", SCROLL_Y)}>
                                 <div className="flex items-start gap-2">
                                     <span className="mt-1 h-2 w-2 shrink-0 rounded-full" style={{ background: selected.color }} />
@@ -965,11 +957,13 @@ export function CommandDeck({ onOpen, exit, toolbar, bottomInset = 0 }: DeckShel
                             </div>
                         )}
 
-                        {ui.view !== "timeline" && (
-                            <div className="pointer-events-none absolute inset-x-0 text-center text-[8.5px] tracking-[0.2em] text-slate-600" style={{ bottom: bottomInset + 6 }}>
-                                DOT → ITEM · CLICK → CARD · AREA OR RING NAME ISOLATES · WHEEL ZOOMS · DRAG PANS
-                            </div>
-                        )}
+                        <div className="pointer-events-none absolute inset-x-0 text-center text-[8.5px] tracking-[0.2em] text-slate-600" style={{ bottom: bottomInset + 6 }}>
+                            {ui.view === "orbit"
+                                ? "DOT → ITEM · CLICK → CARD · DRAG ROTATES · SHIFT-DRAG PANS · WHEEL ZOOMS"
+                                : ui.view === "timeline"
+                                  ? "LANES → RUNS OVER 14 DAYS · FILES → BY LAST CHANGE · CLICK → CARD · WHEEL ZOOMS"
+                                  : "DOT → ITEM · CLICK → CARD · AREA OR RING NAME ISOLATES · WHEEL ZOOMS · DRAG PANS"}
+                        </div>
                     </div>
                 </main>
 

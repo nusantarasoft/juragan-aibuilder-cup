@@ -48,6 +48,8 @@ export const RINGS: { id: RingId; label: string; r: number; types: TypeKey[]; co
 
 export const RUN_COLOR: Record<string, string> = { running: "#38bdf8", success: "#22c55e", failed: "#ef4444", blocked: "#f59e0b", timeout: "#f97316" };
 export const UNFILED = "__none";
+/** Runs older than this are not part of the graph. */
+export const RUN_WINDOW_MS = 14 * 86_400_000;
 
 export interface DeckNode {
     id: string;
@@ -210,7 +212,8 @@ export function buildModel(inp: ModelInput): DeckModel {
     for (const i of items) {
         const aid = areaOf(i.areaId);
         const ar = deckAreas.find((x) => x.id === aid);
-        add({ id: `i:${i.id}`, kind: "memory", label: i.title, sub: `${i.section} · ${i.kind}${i.path ? ` · ${i.path}` : ""}`, color: ar?.color ?? "#64748b", areaId: aid, refId: i.id, health: i.health, open: ["memory", aid === UNFILED ? {} : { areaId: aid }] });
+        const changed = i.updatedAt ?? i.createdAt;
+        add({ id: `i:${i.id}`, kind: "memory", label: i.title, sub: `${i.section} · ${i.kind}${i.path ? ` · ${i.path}` : ""}`, color: ar?.color ?? "#64748b", areaId: aid, refId: i.id, health: i.health, ts: changed ? new Date(changed).getTime() : undefined, open: ["memory", aid === UNFILED ? {} : { areaId: aid }] });
         link(`i:${i.id}`, `ar:${aid}`, "member");
         for (const ag of i.agentIds) {
             const a = findAgent(ag);
@@ -263,11 +266,11 @@ export function buildModel(inp: ModelInput): DeckModel {
         if (r.playbookId) link(`r:${r.id}`, `p:${r.playbookId}`, "playbook");
     }
 
-    // Recent runs (48 h, newest 80)
+    // Recent runs (14 days, newest 120) — the timeline lanes show their history.
     const recent = inp.runs
-        .filter((r) => inp.now - new Date(r.startedAt).getTime() < 48 * 3600_000)
+        .filter((r) => inp.now - new Date(r.startedAt).getTime() < RUN_WINDOW_MS)
         .sort((a, b) => b.startedAt.localeCompare(a.startedAt))
-        .slice(0, 80);
+        .slice(0, 120);
     for (const r of recent) {
         add({
             id: `x:${r.id}`,
@@ -322,11 +325,55 @@ export interface LayoutLabel {
     count?: number;
 }
 
+export interface Pt3 {
+    x: number;
+    y: number;
+    z: number;
+}
+
+export type GraphView = "rings" | "circle" | "areas" | "links" | "timeline" | "orbit";
+
+export interface Box {
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+}
+
+/** Decoration of the TIMELINE view (lanes, day grid, files grid, no-date pile). */
+export interface TimelineDecor {
+    x0: number;
+    x1: number;
+    laneHead: number;
+    lanes: { y: number; label?: string }[];
+    laneTop: number;
+    laneBottom: number;
+    days: { x: number; label: string; major: boolean }[];
+    nowX: number;
+    filesY: number;
+    gridX: number;
+    gridTop: number;
+    gridBottom: number;
+    gridW: number;
+    pileX: number;
+    pileY: number;
+    pileCount: number;
+}
+
 export interface Layout {
     pos: Map<string, Pt>;
     labels: LayoutLabel[];
     guides: { r: number; strong?: boolean; dash?: boolean }[];
     curved?: boolean;
+    /** Which view produced it (decoration + label placement). */
+    kind?: GraphView;
+    /** Nodes that fade out in this view (they still move to `pos`). */
+    hidden?: Set<string>;
+    /** Fixed view box; otherwise derived from `pos`. */
+    box?: Box;
+    /** 3D positions (orbit). `pos` holds the projection at yaw 0. */
+    pos3?: Map<string, Pt3>;
+    timeline?: TimelineDecor;
 }
 
 /** FNV-1a → [0, 1). */
@@ -499,7 +546,7 @@ export function layoutRings(m: DeckModel): Layout {
         const target = [...(m.adj.get(r.id) ?? [])][0];
         const tp = target ? pos.get(target) : undefined;
         const base = tp ? Math.atan2(tp.y, tp.x) : hash01(r.id) * TAU;
-        const age = Math.min(1, (now - (r.ts ?? now)) / (48 * 3600_000));
+        const age = Math.min(1, (now - (r.ts ?? now)) / RUN_WINDOW_MS);
         pos.set(r.id, polar(base + (hash01(r.id, 4) - 0.5) * 0.14, (0.775 + 0.06 * age) * R));
     }
 
@@ -698,11 +745,234 @@ export function layoutLinks(m: DeckModel): Layout {
     return { pos, labels: [], guides: [] };
 }
 
-export function layoutFor(view: "rings" | "circle" | "areas" | "links", m: DeckModel): Layout {
-    if (view === "circle") return layoutCircle(m);
-    if (view === "areas") return layoutAreas(m);
-    if (view === "links") return layoutLinks(m);
-    return layoutRings(m);
+/* ------------------------------------------------------------------ */
+/* TIMELINE (lanes + files by last change)                             */
+/* ------------------------------------------------------------------ */
+
+const TL_X0 = -330;
+const TL_X1 = 600;
+const LANE_H = 18;
+const DOT = 13;
+
+export function layoutTimeline(m: DeckModel, now: number): Layout {
+    const pos = new Map<string, Pt>();
+    const hidden = new Set<string>();
+    const of = (k: NodeKind) => m.nodes.filter((n) => n.kind === k);
+    const t1 = now + 12 * 3600_000;
+    const t0 = now - RUN_WINDOW_MS;
+    const tx = (t: number) => TL_X0 + ((Math.max(t0, Math.min(t1, t)) - t0) / (t1 - t0)) * (TL_X1 - TL_X0);
+    const laneHead = TL_X0 - 26;
+
+    // Lanes: routines, then workflows, then agents — each with its runs on the time axis.
+    const laneNodes = [...of("routine"), ...of("workflow"), ...of("agent")];
+    const laneY = new Map<string, number>();
+    laneNodes.forEach((n, i) => {
+        const y = i * LANE_H;
+        laneY.set(n.id, y);
+        pos.set(n.id, { x: laneHead, y });
+    });
+    const lanes: TimelineDecor["lanes"] = laneNodes.map((n) => ({ y: laneY.get(n.id)! }));
+    const orphanRuns = of("run").filter((r) => ![...(m.adj.get(r.id) ?? [])].some((id) => laneY.has(id)));
+    if (orphanRuns.length) lanes.push({ y: laneNodes.length * LANE_H, label: "other runs" });
+    for (const r of of("run")) {
+        const lane = [...(m.adj.get(r.id) ?? [])].find((id) => laneY.has(id));
+        const y = lane ? laneY.get(lane)! : laneNodes.length * LANE_H;
+        pos.set(r.id, { x: tx(r.ts ?? now), y: y + (hash01(r.id, 9) - 0.5) * 6 });
+    }
+    const laneBottom = Math.max(0, lanes.length - 1) * LANE_H;
+
+    // Day grid.
+    const days: TimelineDecor["days"] = [];
+    const d = new Date(t0);
+    d.setHours(0, 0, 0, 0);
+    for (d.setDate(d.getDate() + 1); d.getTime() <= t1; d.setDate(d.getDate() + 1)) {
+        days.push({ x: tx(d.getTime()), label: `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}`, major: d.getDay() === 1 });
+    }
+
+    // Files by last change: a block of columns, oldest left → newest right.
+    const filesY = laneBottom + 30;
+    const gridTop = filesY + 20;
+    const dated = of("memory")
+        .filter((n) => n.ts !== undefined)
+        .sort((a, b) => a.ts! - b.ts! || hash01(a.id) - hash01(b.id));
+    const rows = Math.max(6, Math.min(20, Math.round(Math.sqrt(dated.length * 0.75))));
+    let col = 0;
+    let row = 0;
+    let cap = rows;
+    const areaPts = new Map<string, Pt[]>();
+    for (const n of dated) {
+        const p = { x: TL_X0 + col * DOT, y: gridTop + row * DOT };
+        pos.set(n.id, p);
+        areaPts.set(n.areaId ?? "", [...(areaPts.get(n.areaId ?? "") ?? []), p]);
+        if (++row >= cap) {
+            row = 0;
+            col++;
+            cap = rows - Math.floor(hash01(`col${col}`) * 4);
+        }
+    }
+    const gridW = (col + (row ? 1 : 0)) * DOT;
+    const gridBottom = gridTop + rows * DOT;
+
+    // No-date pile: everything that has no time of its own.
+    const pileX = TL_X0 - 210;
+    const pile = [...of("app"), ...of("skill"), ...of("playbook"), ...of("goal"), ...of("memory").filter((n) => n.ts === undefined)];
+    pile.forEach((n, i) => pos.set(n.id, { x: pileX + (i % 9) * 19 + (Math.floor(i / 9) % 2) * 9, y: gridTop + Math.floor(i / 9) * 17 }));
+
+    // Core + area badges fade out where their content went.
+    pos.set("core", { x: pileX + 80, y: gridTop + 40 });
+    hidden.add("core");
+    for (const a of m.areas) {
+        const pts = areaPts.get(a.id) ?? [];
+        const c = pts.length ? { x: pts.reduce((s, p) => s + p.x, 0) / pts.length, y: pts.reduce((s, p) => s + p.y, 0) / pts.length } : { x: TL_X0, y: gridTop };
+        pos.set(`ar:${a.id}`, c);
+        hidden.add(`ar:${a.id}`);
+    }
+    for (const n of m.nodes) if (!pos.has(n.id)) pos.set(n.id, { x: pileX, y: gridTop });
+
+    const top = -40;
+    const bottom = Math.max(gridBottom, gridTop + Math.ceil(pile.length / 9) * 17) + 30;
+    return {
+        kind: "timeline",
+        pos,
+        labels: [],
+        guides: [],
+        hidden,
+        box: { x: pileX - 40, y: top, w: TL_X1 + 30 - (pileX - 40), h: bottom - top },
+        timeline: {
+            x0: TL_X0,
+            x1: TL_X1,
+            laneHead,
+            lanes,
+            laneTop: 0,
+            laneBottom,
+            days,
+            nowX: tx(now),
+            filesY,
+            gridX: TL_X0,
+            gridTop,
+            gridBottom,
+            gridW,
+            pileX,
+            pileY: gridTop,
+            pileCount: pile.length,
+        },
+    };
+}
+
+/* ------------------------------------------------------------------ */
+/* 3D ORBIT (globe, projected into the same SVG)                       */
+/* ------------------------------------------------------------------ */
+
+export const ORBIT = { globe: 270, appRing: 430, pulseY: -350, pulseR: 120, dist: 1500, tilt: 0.32 };
+
+/** Perspective projection: yaw around the vertical axis, then tilt towards the viewer. */
+export function project(p: Pt3, yaw: number, tilt = ORBIT.tilt): { x: number; y: number; k: number; z: number } {
+    const c = Math.cos(yaw);
+    const s = Math.sin(yaw);
+    const x1 = p.x * c + p.z * s;
+    const z1 = -p.x * s + p.z * c;
+    const ct = Math.cos(tilt);
+    const st = Math.sin(tilt);
+    const y2 = p.y * ct - z1 * st;
+    const z2 = p.y * st + z1 * ct;
+    const k = ORBIT.dist / (ORBIT.dist - z2);
+    return { x: x1 * k, y: -y2 * k, k, z: z2 };
+}
+
+/** n points evenly spread on the unit sphere. */
+function fibonacci(n: number): Pt3[] {
+    const out: Pt3[] = [];
+    const g = Math.PI * (3 - Math.sqrt(5));
+    for (let i = 0; i < n; i++) {
+        const y = 1 - ((i + 0.5) / Math.max(1, n)) * 2;
+        const r = Math.sqrt(1 - y * y);
+        out.push({ x: Math.cos(i * g) * r, y, z: Math.sin(i * g) * r });
+    }
+    return out;
+}
+
+const scale3 = (p: Pt3, k: number): Pt3 => ({ x: p.x * k, y: p.y * k, z: p.z * k });
+const unit3 = (p: Pt3): Pt3 => {
+    const l = Math.hypot(p.x, p.y, p.z) || 1;
+    return { x: p.x / l, y: p.y / l, z: p.z / l };
+};
+
+export function layoutOrbit(m: DeckModel): Layout {
+    const G = ORBIT.globe;
+    const p3 = new Map<string, Pt3>();
+    const of = (k: NodeKind) => m.nodes.filter((n) => n.kind === k);
+    p3.set("core", { x: 0, y: 0, z: 0 });
+
+    // Skills + playbooks: inside the nebula.
+    for (const n of [...of("skill"), ...of("playbook")]) {
+        const d = unit3({ x: hash01(n.id, 1) * 2 - 1, y: hash01(n.id, 2) * 2 - 1, z: hash01(n.id, 3) * 2 - 1 });
+        p3.set(n.id, scale3(d, G * (0.08 + 0.22 * Math.cbrt(hash01(n.id, 4)))));
+    }
+
+    // Memory + goals: one patch per area on the globe (greedy nearest assignment).
+    const surface = m.nodes.filter((n) => n.kind === "memory" || n.kind === "goal");
+    const pts = fibonacci(surface.length);
+    const free = new Set(pts.map((_, i) => i));
+    const areaDirs = fibonacci(Math.max(1, m.areas.length));
+    const dot = (a: Pt3, b: Pt3) => a.x * b.x + a.y * b.y + a.z * b.z;
+    const groups = m.areas
+        .map((a, i) => ({ a, dir: areaDirs[i], ids: surface.filter((n) => n.areaId === a.id).map((n) => n.id) }))
+        .sort((x, y) => y.ids.length - x.ids.length);
+    for (const grp of groups) {
+        const ranked = [...free].sort((i, j) => dot(pts[j], grp.dir) - dot(pts[i], grp.dir));
+        const mean = { x: 0, y: 0, z: 0 };
+        grp.ids.forEach((id, k) => {
+            const idx = ranked[k];
+            if (idx === undefined) return;
+            free.delete(idx);
+            p3.set(id, scale3(pts[idx], G));
+            mean.x += pts[idx].x;
+            mean.y += pts[idx].y;
+            mean.z += pts[idx].z;
+        });
+        p3.set(`ar:${grp.a.id}`, scale3(grp.ids.length ? unit3(mean) : grp.dir, G + 18));
+    }
+    const rest = [...free];
+    for (const n of surface) if (!p3.has(n.id)) p3.set(n.id, scale3(pts[rest.shift() ?? 0], G));
+
+    // Agents: an inner shell.
+    const agents = of("agent");
+    fibonacci(agents.length).forEach((d, i) => p3.set(agents[i].id, scale3(d, G * 0.58)));
+
+    // Applications: the equatorial ring.
+    const apps = of("app");
+    apps.forEach((n, i) => {
+        const a = (i / Math.max(1, apps.length)) * TAU;
+        p3.set(n.id, { x: Math.cos(a) * ORBIT.appRing, y: 0, z: Math.sin(a) * ORBIT.appRing });
+    });
+
+    // Pulse: a ring hanging under the globe; runs just below their routine.
+    const pulse = [...of("routine"), ...of("workflow")];
+    pulse.forEach((n, i) => {
+        const a = (i / Math.max(1, pulse.length)) * TAU + 0.5;
+        p3.set(n.id, { x: Math.cos(a) * ORBIT.pulseR, y: ORBIT.pulseY, z: Math.sin(a) * ORBIT.pulseR });
+    });
+    for (const r of of("run")) {
+        const t = [...(m.adj.get(r.id) ?? [])].map((id) => p3.get(id)).find((p) => p && p.y <= ORBIT.pulseY + 1);
+        const base = t ?? { x: 0, y: ORBIT.pulseY, z: 0 };
+        p3.set(r.id, { x: base.x + (hash01(r.id, 1) - 0.5) * 50, y: base.y - 22 - hash01(r.id, 2) * 30, z: base.z + (hash01(r.id, 3) - 0.5) * 50 });
+    }
+    for (const n of m.nodes) if (!p3.has(n.id)) p3.set(n.id, { x: (hash01(n.id, 1) - 0.5) * G, y: (hash01(n.id, 2) - 0.5) * G, z: (hash01(n.id, 3) - 0.5) * G });
+
+    const pos = new Map<string, Pt>();
+    for (const [id, p] of p3) {
+        const q = project(p, 0);
+        pos.set(id, { x: q.x, y: q.y });
+    }
+    const W = ORBIT.appRing * 1.2;
+    return { kind: "orbit", pos, pos3: p3, labels: [], guides: [], box: { x: -W, y: -G - 70, w: 2 * W, h: G + 70 + 450 } };
+}
+
+export function layoutFor(view: GraphView, m: DeckModel, now = Date.now()): Layout {
+    if (view === "timeline") return layoutTimeline(m, now);
+    if (view === "orbit") return layoutOrbit(m);
+    const l = view === "circle" ? layoutCircle(m) : view === "areas" ? layoutAreas(m) : view === "links" ? layoutLinks(m) : layoutRings(m);
+    return { ...l, kind: view };
 }
 
 /* ------------------------------------------------------------------ */
