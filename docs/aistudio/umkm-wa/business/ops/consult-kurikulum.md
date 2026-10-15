@@ -36,6 +36,10 @@ Compose/example default tetap `0` — prod di-set ON lewat `.env.master-producti
 
 Setelah recreate Hermes: `hermes-kasir-posture.py apply --docker`.
 
+## Observability (Agentic OS)
+
+Setiap hop `POST /internal/kasir-consult` (consult / coach / off) menulis task **`kasir_wa`** per tenant ke **`aos_tasks`** (queued → running → done/failed). Kolom `source` memakai nilai **`kasir_wa`** (migration `20261015133000_aos_tasks_kasir_wa_source.sql`). Ringkasan **tanpa** nomor WA atau isi pesan. Gagal persist queue **hanya log** — balasan WA tetap sukses. VO Live menampilkan task Kasir bila ada di roster AOS.
+
 Smoke:
 
 ```bash

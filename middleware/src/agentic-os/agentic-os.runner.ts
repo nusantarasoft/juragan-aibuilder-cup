@@ -112,12 +112,12 @@ export class AgenticOsRunner {
         for (const agent of workers) {
             try {
                 const mine = (tasks ?? []).filter((t) => t.agent_id === agent.id);
-                const runningTask = mine.find((t) => t.status === 'running');
+                const runningTask = mine.find((t) => t.status === 'running' && t.source !== 'kasir_wa');
                 if (runningTask) {
                     await this.advance(agent, runningTask, settings);
                     continue;
                 }
-                const queuedTask = mine.find((t) => t.status === 'queued');
+                const queuedTask = mine.find((t) => t.status === 'queued' && t.source !== 'kasir_wa');
                 if (queuedTask) {
                     await this.claim(agent, queuedTask);
                     continue;

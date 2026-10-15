@@ -121,7 +121,8 @@ Sebagian besar **AI Studio UMKM + Kasir + upload/RAG** memang terhubung ke middl
 | Mode **Live** VO | **FIXED (F1-2 / D-1)** | Default live after snapshot; `mockAgentSource` only when `aos_settings.ui_demo_mode` / `AOS_UI_DEMO_MODE` |
 | Badge header Demo / Live | **FIXED** | `TopBar.tsx` — **Live** when `dataMode === 'live'`; **Demo** only explicit UI demo mode |
 | Empty tenant | **REAL** (jujur) | `EmptyOfficeBanner.tsx` when no DB-backed agents (`isEmptyLiveOffice`) |
-| Kasir di roster VO | **MIXED** | `kasirLivePoll.ts` — **Live** metrics; in live mode DB agents keep **Live** roster badges |
+| Kasir di roster VO | **MIXED → REAL (F1-3)** | `kasirLivePoll.ts` — **Live** metrics; `mergeKasirIntoRoster` keeps real `kasir_wa` tasks from AOS when present |
+| Kasir WA → AOS task queue | **REAL (F1-3)** | `POST /internal/kasir-consult` → `KasirConsultAosTaskService` (`source: kasir_wa`, redacted summary); fire-and-forget; GraphQL `aosTasks` per tenant |
 | Inspector Kasir | **REAL** (read-only) | `AgentInspector.tsx` metrik WA/transaksi |
 | Stats tokens/tasks di top bar | **REAL** (live) | Aggregated from live roster agent stats / queue |
 

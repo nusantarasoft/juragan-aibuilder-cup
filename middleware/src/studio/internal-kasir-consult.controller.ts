@@ -18,6 +18,7 @@ import {
     CONSULT_OFF_COPY,
 } from './studio-umkm-pendamping.prompts';
 import { StudioUmkmPendampingService } from './studio-umkm-pendamping.service';
+import { KasirConsultAosTaskService } from './kasir-consult-aos-task.service';
 
 type ConsultBody = {
     question?: string;
@@ -42,6 +43,7 @@ export class InternalKasirConsultController {
     constructor(
         private readonly pendamping: StudioUmkmPendampingService,
         private readonly config: ConfigService,
+        private readonly kasirTasks: KasirConsultAosTaskService,
     ) {}
 
     @Post('kasir-consult')
@@ -58,11 +60,6 @@ export class InternalKasirConsultController {
             throw new HttpException('Unauthorized', HttpStatus.UNAUTHORIZED);
         }
 
-        if (!isTruthyFlag(this.config.get('KASIR_CONSULT') ?? process.env.KASIR_CONSULT)) {
-            this.logger.log('path=kasir_consult status=consult_off');
-            return { status: 'off' as const, text: CONSULT_OFF_COPY };
-        }
-
         const question = typeof body?.question === 'string' ? body.question : '';
         if (!question.trim()) {
             throw new HttpException('question required', HttpStatus.BAD_REQUEST);
@@ -74,6 +71,36 @@ export class InternalKasirConsultController {
         const mode = String(body?.mode || '')
             .trim()
             .toLowerCase();
+
+        const startMirror = (kind: 'consult' | 'coach' | 'off') => {
+            try {
+                return this.kasirTasks.begin({
+                    kind,
+                    phone,
+                    questionChars: question.trim().length,
+                });
+            } catch (err) {
+                this.logger.warn(`kasir AOS task mirror start failed: ${(err as Error).message}`);
+                return { complete: () => undefined };
+            }
+        };
+        const finishMirror = (handle: { complete: (s: string) => void }, status: string) => {
+            try {
+                handle.complete(status);
+            } catch (err) {
+                this.logger.warn(`kasir AOS task mirror finish failed: ${(err as Error).message}`);
+            }
+        };
+
+        if (!isTruthyFlag(this.config.get('KASIR_CONSULT') ?? process.env.KASIR_CONSULT)) {
+            this.logger.log('path=kasir_consult status=consult_off');
+            finishMirror(startMirror('off'), 'off');
+            return { status: 'off' as const, text: CONSULT_OFF_COPY };
+        }
+
+        const mirrorKind = mode === 'coach' ? 'coach' : 'consult';
+        const mirror = startMirror(mirrorKind);
+
         if (mode === 'coach') {
             if (!phone?.trim()) {
                 throw new HttpException('phone required for coach mode', HttpStatus.BAD_REQUEST);
@@ -83,12 +110,14 @@ export class InternalKasirConsultController {
                 phone,
                 aliasText: question.trim(),
             });
+            finishMirror(mirror, coach.status);
             return { status: coach.status, text: coach.text };
         }
 
         const result = await this.pendamping.consultFromNotebook(question, undefined, {
             phone,
         });
+        finishMirror(mirror, result.status);
         return { status: result.status, text: result.text };
     }
 }

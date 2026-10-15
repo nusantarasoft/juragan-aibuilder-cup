@@ -26,6 +26,8 @@ import { StudioUmkmAgenticAskService } from './studio-umkm-agentic-ask.service';
 import { StudioUmkmPendampingService } from './studio-umkm-pendamping.service';
 import { StudioOutputService } from './studio-output.service';
 import { InternalKasirConsultController } from './internal-kasir-consult.controller';
+import { KasirConsultAosTaskService } from './kasir-consult-aos-task.service';
+import { AgenticOsModule } from '../agentic-os/agentic-os.module';
 
 @Module({
     imports: [
@@ -37,6 +39,7 @@ import { InternalKasirConsultController } from './internal-kasir-consult.control
         DremioModule,
         WhatsAppProviderModule,
         InventoryModule,
+        AgenticOsModule,
     ],
     controllers: [
         StudioUploadController,
@@ -60,6 +63,7 @@ import { InternalKasirConsultController } from './internal-kasir-consult.control
         StudioUmkmAgenticAskService,
         StudioUmkmPendampingService,
         StudioUmkmCronService,
+        KasirConsultAosTaskService,
     ],
     exports: [
         StudioService,

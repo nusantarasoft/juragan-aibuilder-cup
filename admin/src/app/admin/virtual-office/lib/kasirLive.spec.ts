@@ -73,6 +73,36 @@ describe('mergeKasirIntoRoster', () => {
         expect(merged[1].rosterKind).toBe('demo');
     });
 
+    it('preserves AOS task from existing Kasir row when merging live metrics', () => {
+        const aosKasir: Agent = {
+            id: KASIR_EMPLOYEE_SLUG,
+            name: 'Kasir UMKM',
+            role: 'UMKM WhatsApp Kasir',
+            model: 'AI Studio',
+            color: '#22c55e',
+            zone: 'operations',
+            deskId: 'ops-1',
+            status: 'working',
+            location: 'desk',
+            modules: ['ai-studio'],
+            skills: [],
+            stats: { tasksCompleted: 0, successRate: 1, avgLatencyMs: 1, tokensToday: 0 },
+            task: {
+                id: 'task-wa-1',
+                title: 'WA Kasir · konsultasi',
+                progress: 0.5,
+                startedAt: Date.now(),
+                moduleId: 'ai-studio',
+                route: '/admin/ai-studio/umkm',
+                steps: ['Proses'],
+            },
+        };
+        const merged = mergeKasirIntoRoster([aosKasir], liveSnap, { tagNonKasirAsDemo: false });
+        expect(merged[0].task?.id).toBe('task-wa-1');
+        expect(merged[0].status).toBe('working');
+        expect(merged[0].liveMetrics?.waChatsToday).toBe(3);
+    });
+
     it('preserves live rosterKind when not tagging demo agents', () => {
         const liveAgents: Agent[] = [
             {

@@ -12,7 +12,7 @@ Rule: one DOING task at Cursor at a time (plus deploy). Gate: scope → PR → Q
 ## Fase 1 — Make Agentic OS & Virtual Office real
 - [DONE] F1-1 Real Agentic OS task queue (DB table, worker, real status), replacing the simulation
 - [DONE] F1-2 Virtual Office reads agent status/progress from the real task queue, per tenant
-- [TODO] F1-3 Kasir WA agent writes its tasks/activity into the queue (visible in VO/AOS)
+- [DONE] F1-3 Kasir WA agent writes its tasks/activity into the queue (visible in VO/AOS)
 - [TODO] F1-4 Honest Live/Demo badges; remove remaining dummy data (per audit P0)
 
 ## Fase 2 — Rekrut agen (tenant self-serve)

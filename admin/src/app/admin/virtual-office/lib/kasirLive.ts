@@ -65,10 +65,20 @@ export function mergeKasirIntoRoster(
     snap: OsKasirLiveSnapshot,
     opts?: { tagNonKasirAsDemo?: boolean },
 ): Agent[] {
+    const fromAos = agents.find((a) => a.id === KASIR_EMPLOYEE_SLUG);
     const rest = agents.filter((a) => a.id !== KASIR_EMPLOYEE_SLUG);
     const tagDemo = opts?.tagNonKasirAsDemo ?? true;
     const tagged = tagDemo
         ? rest.map((a) => ({ ...a, rosterKind: "demo" as const }))
         : rest.map((a) => ({ ...a, rosterKind: a.rosterKind ?? ("live" as const) }));
-    return [buildKasirAgent(snap), ...tagged];
+    const kasir = buildKasirAgent(snap);
+    if (fromAos?.task) {
+        kasir.task = fromAos.task;
+        if (fromAos.status === "working" || fromAos.status === "thinking") {
+            kasir.status = fromAos.status;
+        } else if (fromAos.task) {
+            kasir.status = "working";
+        }
+    }
+    return [kasir, ...tagged];
 }

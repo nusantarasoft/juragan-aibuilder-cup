@@ -18,6 +18,11 @@ describe('InternalKasirConsultController', () => {
             text: 'Coach gabungan.',
         })),
     };
+    const kasirTasks = {
+        begin: vi.fn(() => ({
+            complete: vi.fn(),
+        })),
+    };
     const config = {
         get: vi.fn((key: string) => {
             if (key === 'KASIR_CONSULT_KEY') return 'secret-test';
@@ -37,6 +42,7 @@ describe('InternalKasirConsultController', () => {
         ctrl = new InternalKasirConsultController(
             pendamping as any,
             config as any,
+            kasirTasks as any,
         );
         vi.spyOn(ctrl['logger'], 'log').mockImplementation(() => undefined);
         vi.spyOn(ctrl['logger'], 'warn').mockImplementation(() => undefined);
@@ -64,7 +70,7 @@ describe('InternalKasirConsultController', () => {
             if (key === 'KASIR_CONSULT') return '1';
             return undefined;
         });
-        ctrl = new InternalKasirConsultController(pendamping as any, config as any);
+        ctrl = new InternalKasirConsultController(pendamping as any, config as any, kasirTasks as any);
         vi.spyOn(ctrl['logger'], 'warn').mockImplementation(() => undefined);
         await expect(
             ctrl.kasirConsult({ question: 'tanya' }, 'secret-test'),
@@ -77,7 +83,7 @@ describe('InternalKasirConsultController', () => {
             if (key === 'KASIR_CONSULT') return '0';
             return undefined;
         });
-        ctrl = new InternalKasirConsultController(pendamping as any, config as any);
+        ctrl = new InternalKasirConsultController(pendamping as any, config as any, kasirTasks as any);
         vi.spyOn(ctrl['logger'], 'log').mockImplementation(() => undefined);
         const res = await ctrl.kasirConsult({ question: 'tanya modal' }, 'secret-test');
         expect(res).toEqual({ status: 'off', text: CONSULT_OFF_COPY });
@@ -143,13 +149,39 @@ describe('InternalKasirConsultController', () => {
         expect(res).toEqual({ status: 'hit', text: 'Coach gabungan.' });
     });
 
+    it('kasir queue mirror failure does not break consult response', async () => {
+        kasirTasks.begin.mockImplementation(() => {
+            throw new Error('queue unavailable');
+        });
+        const resOffQueue = await ctrl.kasirConsult({ question: 'tanya modal' }, 'secret-test');
+        expect(resOffQueue).toEqual({ status: 'hit', text: 'Jawaban dari buku.' });
+
+        kasirTasks.begin.mockImplementation(() => ({
+            complete: vi.fn(() => {
+                throw new Error('persist failed');
+            }),
+        }));
+        const res = await ctrl.kasirConsult({ question: 'tanya modal' }, 'secret-test');
+        expect(res).toEqual({ status: 'hit', text: 'Jawaban dari buku.' });
+    });
+
+    it('records AOS mirror on successful consult', async () => {
+        const complete = vi.fn();
+        kasirTasks.begin.mockReturnValue({ complete });
+        await ctrl.kasirConsult({ question: 'tanya modal' }, 'secret-test');
+        expect(kasirTasks.begin).toHaveBeenCalledWith(
+            expect.objectContaining({ kind: 'consult', questionChars: 11 }),
+        );
+        expect(complete).toHaveBeenCalledWith('hit');
+    });
+
     it('KASIR_CONSULT=0 still blocks coach mode', async () => {
         config.get.mockImplementation((key: string) => {
             if (key === 'KASIR_CONSULT_KEY') return 'secret-test';
             if (key === 'KASIR_CONSULT') return '0';
             return undefined;
         });
-        ctrl = new InternalKasirConsultController(pendamping as any, config as any);
+        ctrl = new InternalKasirConsultController(pendamping as any, config as any, kasirTasks as any);
         vi.spyOn(ctrl['logger'], 'log').mockImplementation(() => undefined);
         const res = await ctrl.kasirConsult(
             { question: 'pendamping', mode: 'coach', phone: '6281' },

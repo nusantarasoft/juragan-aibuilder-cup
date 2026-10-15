@@ -101,6 +101,7 @@ export type AosMockOptions = {
     uiDemoMode?: boolean;
     emptyAgents?: boolean;
     tasks?: Record<string, unknown>[];
+    agents?: Record<string, unknown>[];
     agentStatus?: string;
 };
 
@@ -109,15 +110,21 @@ function buildAosSnapshot(opts?: AosMockOptions) {
         ...demoAgent,
         status: opts?.agentStatus ?? demoAgent.status,
     };
+    const agents = opts?.emptyAgents ? [] : opts?.agents ?? [agent];
     return {
-        aosAgents: opts?.emptyAgents ? [] : [agent],
+        aosAgents: agents,
         aosPlaybooks: [],
         aosTasks: opts?.tasks ?? [],
         aosApprovals: [],
         aosSettings: { ...aosSettings, uiDemoMode: opts?.uiDemoMode ?? false },
         aosStats: opts?.emptyAgents
             ? { ...aosStats, totalAgents: 0, activeAgents: 0 }
-            : { ...aosStats, totalAgents: 1, activeAgents: agent.status === 'active' ? 1 : 0 },
+            : {
+                  ...aosStats,
+                  totalAgents: agents.length,
+                  activeAgents: agents.filter((a) => (a as { status?: string }).status === 'active').length,
+                  runningTasks: (opts?.tasks ?? []).filter((t) => (t as { status?: string }).status === 'running').length,
+              },
     };
 }
 
@@ -149,6 +156,7 @@ function graphqlDataForQuery(
     if (query.includes('signIn')) return { signIn: { accessToken: 'qa-access-token', refreshToken: 'qa-refresh-token', user: mockUser } };
     if (query.includes('aosKasirLiveSnapshot')) return { aosKasirLiveSnapshot: kasirSnapshot };
     if (query.includes('AosSnapshot') || query.includes('aosAgents')) return buildAosSnapshot(aosOpts);
+    if (query.includes('aosTasks')) return { aosTasks: buildAosSnapshot(aosOpts).aosTasks };
     if (query.includes('AosPulse') || query.includes('aosRoutines')) {
         return {
             aosRoutines: [],
