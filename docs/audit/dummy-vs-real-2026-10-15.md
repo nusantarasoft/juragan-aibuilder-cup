@@ -8,7 +8,7 @@
 
 ## Ringkasan (Bahasa Indonesia)
 
-**Phase 1 (F1-1…F1-4):** **AI Studio** notebook/UMKM/Kasir/upload/RAG = **REAL** bila stack lengkap; **Web Crawler**, **Knowledge Graph**, **Agent Builder**, **Label Studio dashboard**, dan **simulasi chat WA** = **DEMO** dengan banner/tag **Demo** jelas (D-3). **Agentic OS** task queue + worker + GraphQL = **REAL**; badge **Live** di Command Deck toolbar dan roster kecuali `aos_settings.ui_demo_mode` / `AOS_UI_DEMO_MODE` (D-2, F1-4). **Virtual Office** default **Live** via `osAgentSource` (F1-2); `mockAgentSource` hanya saat UI demo mode (D-1). **Kasir** mirror ke AOS queue + metrik live (F1-3). Tenant produksi **`umkm-warung-klontong-bahagia`** tetap **uncertain** di seed local (D-4).
+**Phase 1 (F1-1…F1-4):** **AI Studio** notebook/UMKM/Kasir/upload/RAG = **REAL** bila stack lengkap; **Web Crawler** job queue = **REAL** (**Live** tag, P2-1); **Knowledge Graph**, **Agent Builder**, **Label Studio dashboard**, dan **simulasi chat WA** = **DEMO** dengan banner/tag **Demo** jelas (D-3). **Agentic OS** task queue + worker + GraphQL = **REAL**; badge **Live** di Command Deck toolbar dan roster kecuali `aos_settings.ui_demo_mode` / `AOS_UI_DEMO_MODE` (D-2, F1-4). **Virtual Office** default **Live** via `osAgentSource` (F1-2); `mockAgentSource` hanya saat UI demo mode (D-1). **Kasir** mirror ke AOS queue + metrik live (F1-3). Tenant produksi **`umkm-warung-klontong-bahagia`** tetap **uncertain** di seed local (D-4).
 
 **QA browser (2026-10-15):** Admin dev webpack `:3003`, login via token + GraphQL mock. Screenshot: `/cursor/stores/self/media/dummy-audit-*.png`. Console: `ERR_CONNECTION_REFUSED` ke `:4001` (socket.io), `:8000` (Supabase realtime); beberapa chunk/layout warning saat navigasi cepat.
 
@@ -58,7 +58,7 @@
 
 | Fitur | Status | Bukti |
 |--------|--------|--------|
-| Web Crawler jobs | **DEMO** (labeled) | `webCrawlerService.ts` in-memory + `StudioDemoBanner`; header **Demo** tag (F1-4) |
+| Web Crawler jobs | **REAL** (labeled **Live**) | `studio_web_crawl_jobs` + middleware worker + GraphQL; admin `webCrawlerService` → API; **Live** banner/tag (P2-1) |
 | Knowledge Graph | **DEMO** (labeled) | Mock tree + `StudioDemoBanner` / **Demo** tag (F1-4) |
 | Agent Builder | **DEMO** (labeled) | Mock canvas + `StudioDemoBanner` / **Demo** tag (F1-4) |
 | Label Studio dashboard | **DEMO** (labeled) | Static `PROJECTS` + **Demo** banner (F1-4); open Label Studio = service nyata bila `:8080` up |

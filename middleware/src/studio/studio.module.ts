@@ -29,6 +29,9 @@ import { InternalKasirConsultController } from './internal-kasir-consult.control
 import { KasirConsultAosTaskService } from './kasir-consult-aos-task.service';
 import { AgenticOsModule } from '../agentic-os/agentic-os.module';
 import { OnboardingModule } from '../onboarding/onboarding.module';
+import { StudioWebCrawlerService } from './studio-web-crawler.service';
+import { StudioWebCrawlerWorker } from './studio-web-crawler.worker';
+import { StudioWebCrawlerResolver } from './studio-web-crawler.resolver';
 
 @Module({
     imports: [
@@ -66,6 +69,9 @@ import { OnboardingModule } from '../onboarding/onboarding.module';
         StudioUmkmPendampingService,
         StudioUmkmCronService,
         KasirConsultAosTaskService,
+        StudioWebCrawlerService,
+        StudioWebCrawlerWorker,
+        StudioWebCrawlerResolver,
     ],
     exports: [
         StudioService,

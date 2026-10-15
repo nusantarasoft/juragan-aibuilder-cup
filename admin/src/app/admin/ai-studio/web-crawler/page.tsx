@@ -13,8 +13,8 @@ import {
     ClockCircleOutlined, CheckCircleOutlined, SyncOutlined, DatabaseOutlined,
     FileTextOutlined, StopOutlined, DeleteOutlined
 } from "@ant-design/icons";
-import { webCrawlerService, CrawlJob, CrawlJobConfig } from "@/lib/webCrawlerService";
-import { StudioDemoBanner, StudioDemoModeTag } from "@/components/ai-studio/StudioDemoBanner";
+import { webCrawlerService, CrawlJob, CrawlJobConfig, WEB_CRAWLER_DATA_MODE } from "@/lib/webCrawlerService";
+import { StudioLiveBanner, StudioLiveModeTag } from "@/components/ai-studio/StudioDemoBanner";
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -59,14 +59,8 @@ export default function WebCrawlerPage() {
                 scheduleCron: values.scheduleCron,
             };
             
-            const newJob = await webCrawlerService.createJob(values.jobName || 'Untitled Crawl', config);
-            message.success('Crawl job created and queued!');
-            
-            // Start simulation
-            webCrawlerService.startJobSimulation(newJob.id, (updatedJob) => {
-                setJobs(prev => prev.map(j => j.id === updatedJob.id ? updatedJob : j));
-            });
-            
+            await webCrawlerService.createJob(values.jobName || 'Untitled Crawl', config);
+            message.success('Crawl job created and queued on the server worker.');
             fetchJobs();
             form.resetFields();
         } catch (error) {
@@ -147,11 +141,11 @@ export default function WebCrawlerPage() {
         <CMSLayout
             title="Web Crawler Studio"
             subTitle="Ingest website data into your Vector Database"
-            extra={[<StudioDemoModeTag key="demo" />]}
+            extra={[<StudioLiveModeTag key="live" />]}
         >
-            <StudioDemoBanner
+            <StudioLiveBanner
                 title="Web Crawler Studio"
-                detail="Jobs run in the browser with in-memory simulation — no crawl worker or persistence yet (P2 backlog)."
+                detail={`Jobs are stored in Postgres and processed by the middleware worker (${WEB_CRAWLER_DATA_MODE} queue — seed URLs fetched over HTTP; vector ingest is separate).`}
             />
             <Row gutter={[24, 24]}>
                 
