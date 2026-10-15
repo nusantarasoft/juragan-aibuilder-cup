@@ -117,6 +117,36 @@ export function pickSingleTenantFallback(
     return configs.find((c) => c.tenant_id === 'default' && c.notebook_id) ?? null;
 }
 
+/**
+ * P2-5: dedicated inbox routes by Hermes session + business phone; shared inbox by sender whitelist.
+ */
+export function resolveInboundWaConfig(
+    configs: StudioWhatsAppConfigLookup[],
+    sessionName: string,
+    senderPhone: string,
+    businessPhone?: string | null,
+): StudioWhatsAppConfigLookup | null {
+    const sessionKey = sessionName.trim().toLowerCase();
+    const defaultSession = 'hermes';
+    const isDedicatedSession =
+        sessionKey.length > 0 && sessionKey !== 'default' && sessionKey !== defaultSession;
+
+    if (isDedicatedSession) {
+        const bySession = pickWhatsAppConfigForWebhook(configs, sessionName, businessPhone);
+        if (bySession) return bySession;
+        return null;
+    }
+
+    const bySender = pickTenantConfigBySenderPhone(configs, senderPhone);
+    if (bySender) return bySender;
+
+    const activeCount = configs.filter((c) => c.enabled !== false && c.notebook_id).length;
+    if (activeCount <= 1) {
+        return pickSingleTenantFallback(configs);
+    }
+    return null;
+}
+
 /** @deprecated Use pickTenantConfigBySenderPhone for shared inbox. */
 export function pickWhatsAppConfigForWebhook(
     configs: StudioWhatsAppConfigLookup[],

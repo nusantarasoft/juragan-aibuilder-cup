@@ -6,13 +6,19 @@ import { MessageCircle, ShieldCheck, Users, Zap } from "lucide-react";
 import {
     activateWaKasirChannel,
     addWaStaff,
+    disconnectDedicatedWaInbox,
+    fetchDedicatedWaAuthQr,
     fetchMyTenantStore,
     fetchWaConnectionStatus,
     fetchWaWhitelist,
+    optInDedicatedWaInbox,
     requestOwnerWaOtp,
+    startDedicatedWaPair,
+    syncDedicatedWaPair,
     verifyOwnerWaOtp,
     type WaConnectionStatus,
 } from "@/lib/connectWaApi";
+import { StudioDemoBanner, StudioLiveBanner } from "@/components/ai-studio/StudioDemoBanner";
 
 export default function ConnectWaPage() {
     const [storeId, setStoreId] = useState<string | null>(null);
@@ -26,6 +32,7 @@ export default function ConnectWaPage() {
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [message, setMessage] = useState<string | null>(null);
+    const [dedicatedQr, setDedicatedQr] = useState<string | null>(null);
 
     const reload = useCallback(async (sid: string) => {
         const [st, wl] = await Promise.all([fetchWaConnectionStatus(sid), fetchWaWhitelist(sid)]);
@@ -97,6 +104,60 @@ export default function ConnectWaPage() {
             await reload(storeId);
         } catch (e) {
             setError(e instanceof Error ? e.message : "Aktifkan gagal");
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    const onOptInDedicated = async () => {
+        if (!storeId) return;
+        setBusy(true);
+        setError(null);
+        try {
+            await optInDedicatedWaInbox(storeId);
+            setMessage("Mode nomor bisnis dedicated diaktifkan — lanjut pair QR.");
+            await reload(storeId);
+        } catch (e) {
+            setError(e instanceof Error ? e.message : "Gagal opt-in dedicated");
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    const onStartDedicatedPair = async () => {
+        if (!storeId) return;
+        setBusy(true);
+        setError(null);
+        setDedicatedQr(null);
+        try {
+            await startDedicatedWaPair(storeId);
+            if (status?.dedicatedPairMock) {
+                setMessage("Pairing simulasi (Demo) — nomor bisnis mock tersimpan.");
+            } else {
+                const qr = await fetchDedicatedWaAuthQr(storeId);
+                if (qr.qr) setDedicatedQr(qr.qr);
+                setMessage(qr.error || "Scan QR WhatsApp bisnis Anda.");
+            }
+            await syncDedicatedWaPair(storeId);
+            await reload(storeId);
+        } catch (e) {
+            setError(e instanceof Error ? e.message : "Pair dedicated gagal");
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    const onDisconnectDedicated = async () => {
+        if (!storeId) return;
+        setBusy(true);
+        setError(null);
+        try {
+            await disconnectDedicatedWaInbox(storeId);
+            setDedicatedQr(null);
+            setMessage("Kembali ke inbox bersama NS.");
+            await reload(storeId);
+        } catch (e) {
+            setError(e instanceof Error ? e.message : "Putus dedicated gagal");
         } finally {
             setBusy(false);
         }
@@ -208,6 +269,70 @@ export default function ConnectWaPage() {
                     >
                         Aktifkan
                     </button>
+                </section>
+            )}
+
+            {status?.ownerPhoneVerified && (
+                <section className="mb-8 rounded-2xl border border-indigo-500/20 bg-indigo-500/5 p-4">
+                    <h2 className="text-sm font-semibold text-white">Opsional · Nomor bisnis sendiri (P2-5)</h2>
+                    <p className="mt-1 text-xs text-slate-500">
+                        Default tetap inbox bersama NS. Dedicated = session Hermes terpisah untuk nomor toko Anda.
+                    </p>
+                    {status.dedicatedPairMock ? (
+                        <StudioDemoBanner
+                            title="Pairing dedicated — Demo"
+                            detail="WA_DEDICATED_PAIR_MOCK; tidak ada QR live ke Hermes."
+                        />
+                    ) : (
+                        <StudioLiveBanner
+                            title="Pairing dedicated — Live"
+                            detail="Membutuhkan WA_TENANT_DEDICATED_PAIR=1 dan Hermes bridge."
+                        />
+                    )}
+                    {status.inboxMode === "shared" ? (
+                        <button
+                            type="button"
+                            disabled={busy}
+                            onClick={() => void onOptInDedicated()}
+                            className="mt-3 rounded-lg border border-indigo-400/40 px-4 py-2 text-sm text-indigo-200 disabled:opacity-60"
+                        >
+                            Upgrade ke nomor bisnis dedicated
+                        </button>
+                    ) : (
+                        <div className="mt-3 space-y-2 text-xs text-slate-400">
+                            <p>
+                                Session: <code className="text-slate-300">{status.dedicatedSessionName}</code>
+                                {status.dedicatedBusinessPhone
+                                    ? ` · ${status.dedicatedBusinessPhone}`
+                                    : " · belum pair"}
+                            </p>
+                            <div className="flex flex-wrap gap-2">
+                                {!status.dedicatedPaired && (
+                                    <button
+                                        type="button"
+                                        disabled={busy}
+                                        onClick={() => void onStartDedicatedPair()}
+                                        className="rounded-lg bg-indigo-600 px-3 py-2 text-sm text-white disabled:opacity-60"
+                                    >
+                                        Mulai pair
+                                    </button>
+                                )}
+                                <button
+                                    type="button"
+                                    disabled={busy}
+                                    onClick={() => void onDisconnectDedicated()}
+                                    className="rounded-lg border border-white/20 px-3 py-2 text-sm text-white disabled:opacity-60"
+                                >
+                                    Kembali ke inbox bersama
+                                </button>
+                            </div>
+                            {dedicatedQr && (
+                                <pre className="mt-2 max-h-24 overflow-auto rounded bg-black/40 p-2 text-[10px] text-emerald-300">
+                                    {dedicatedQr}
+                                </pre>
+                            )}
+                        </div>
+                    )}
                 </section>
             )}
 

@@ -33,7 +33,7 @@ Rule: one DOING task at Cursor at a time (plus deploy). Gate: scope → PR → Q
 - [DONE] P2-2 Knowledge Graph explorer wired to real embeddings / graph RPC (replace mock tree) — QA PASS 2026-10-15 (#56)
 - [DONE] P2-3 Visual Agent Builder persisted workflows — PR [#57](https://github.com/nusantarasoft/nusantarasoft-3/pull/57); QA PASS `.gstack/qa-reports/qa-p2-3-agent-builder-2026-10-15.md`; screenshots `/cursor/stores/self/media/p2-3-builder-*.png`; ops [docs/ops/p2-3-agent-builder-persistence.md](ops/p2-3-agent-builder-persistence.md)
 - [DONE] P2-4 Label Studio admin dashboard reads real project stats from Label Studio API — QA PASS `.gstack/qa-reports/qa-p2-4-label-studio-2026-10-15.md`; screenshots `/cursor/stores/self/media/p2-4-label-studio-*.png`
-- [TODO] P2-5 Per-tenant dedicated WhatsApp business number (optional Hermes session per store) — after F2-3 shared-inbox v1
+- [DONE] P2-5 Per-tenant dedicated WhatsApp business number (optional Hermes session per store) — PR [#59](https://github.com/nusantarasoft/nusantarasoft-3/pull/59) `cursor/p2-5-dedicated-wa-c20f`; design [docs/design/p2-5-dedicated-wa.md](design/p2-5-dedicated-wa.md); ops [docs/ops/p2-5-dedicated-wa.md](ops/p2-5-dedicated-wa.md); QA **PASS** (full gate) `.gstack/qa-reports/qa-p2-5-dedicated-wa-2026-10-15.md`; screenshots `/cursor/stores/self/media/p2-5-dedicated-wa-*.png`
 
 ## Discovered
 (append here)

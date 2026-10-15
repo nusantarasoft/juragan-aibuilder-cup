@@ -39,6 +39,9 @@
 
 ### UMKM + Kasir + WA
 
+| Dedicated business number (P2-5) | **MIXED** | Default **shared** inbox (F2-3) = REAL whitelist routing; optional dedicated = DB + GraphQL **Live** when `WA_TENANT_DEDICATED_PAIR=1`, **Demo** pair when `WA_DEDICATED_PAIR_MOCK=1` — [docs/design/p2-5-dedicated-wa.md](../design/p2-5-dedicated-wa.md) |
+
+
 | Fitur | Status | Bukti |
 |--------|--------|--------|
 | Daftar tenant WA, perintah, approve registrasi | **REAL** | `umkm/page.tsx:184-210` → `studioService.listWhatsAppConfigs`, `listUmkmRegistrations` |

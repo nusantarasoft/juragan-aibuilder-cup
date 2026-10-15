@@ -5,6 +5,8 @@ import { WaWhitelistService } from './wa-whitelist.service';
 import { WaOtpService } from './wa-otp.service';
 import { normalizePhoneDigits } from '../studio/studio-whatsapp.util';
 import { WA_WHITELIST_MAX_STAFF } from './wa-connection.constants';
+import { WaDedicatedService } from './wa-dedicated.service';
+import { WA_INBOX_DEDICATED, WA_INBOX_SHARED, type WaInboxMode } from './wa-dedicated.constants';
 
 export type WaConnectionStatus = {
     storeId: string;
@@ -16,6 +18,11 @@ export type WaConnectionStatus = {
     staffCount: number;
     maxStaff: number;
     sharedInbox: boolean;
+    inboxMode: WaInboxMode;
+    dedicatedSessionName: string | null;
+    dedicatedBusinessPhone: string | null;
+    dedicatedPaired: boolean;
+    dedicatedPairMock: boolean;
 };
 
 @Injectable()
@@ -24,6 +31,7 @@ export class WaConnectionService {
         private readonly supabase: SupabaseService,
         private readonly waWhitelist: WaWhitelistService,
         private readonly waOtp: WaOtpService,
+        private readonly waDedicated: WaDedicatedService,
     ) {}
 
     private admin() {
@@ -51,7 +59,9 @@ export class WaConnectionService {
     private async getStoreRow(storeId: string) {
         const { data, error } = await this.admin()
             .from('tenant_stores')
-            .select('id, tenant_id, studio_slug, owner_phone_verified_at, wa_kasir_activated_at')
+            .select(
+                'id, tenant_id, studio_slug, owner_phone_verified_at, wa_kasir_activated_at, wa_inbox_mode, wa_dedicated_session_name, wa_dedicated_business_phone, wa_dedicated_paired_at',
+            )
             .eq('id', storeId)
             .maybeSingle();
         if (error) throw new Error(error.message);
@@ -62,6 +72,10 @@ export class WaConnectionService {
             studio_slug: string;
             owner_phone_verified_at: string | null;
             wa_kasir_activated_at: string | null;
+            wa_inbox_mode: string;
+            wa_dedicated_session_name: string | null;
+            wa_dedicated_business_phone: string | null;
+            wa_dedicated_paired_at: string | null;
         };
     }
 
@@ -73,6 +87,12 @@ export class WaConnectionService {
         const ownerVerified = Boolean(store.owner_phone_verified_at);
         const activated = Boolean(store.wa_kasir_activated_at);
         const waConnected = await isTenantWaChannelConnected(this.admin(), store.tenant_id);
+        const inboxMode =
+            store.wa_inbox_mode === WA_INBOX_DEDICATED ? WA_INBOX_DEDICATED : WA_INBOX_SHARED;
+        const dedicatedPaired = Boolean(
+            store.wa_dedicated_paired_at && store.wa_dedicated_business_phone,
+        );
+        const pairMeta = await this.waDedicated.pairStatusForStore(storeId);
 
         return {
             storeId: store.id,
@@ -83,7 +103,12 @@ export class WaConnectionService {
             waConnected,
             staffCount,
             maxStaff: WA_WHITELIST_MAX_STAFF,
-            sharedInbox: true,
+            sharedInbox: inboxMode === WA_INBOX_SHARED,
+            inboxMode,
+            dedicatedSessionName: store.wa_dedicated_session_name,
+            dedicatedBusinessPhone: store.wa_dedicated_business_phone,
+            dedicatedPaired,
+            dedicatedPairMock: pairMeta.pairMock,
         };
     }
 
@@ -120,6 +145,7 @@ export class WaConnectionService {
 
     async activateKasirWa(storeId: string) {
         const store = await this.getStoreRow(storeId);
+        await this.waDedicated.assertDedicatedReadyIfNeeded(storeId);
         if (!store.owner_phone_verified_at) {
             throw new BadRequestException('Verifikasi nomor pemilik dulu sebelum Aktifkan');
         }

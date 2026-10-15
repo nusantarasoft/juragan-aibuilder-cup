@@ -10,6 +10,11 @@ export type WaConnectionStatus = {
     staffCount: number;
     maxStaff: number;
     sharedInbox: boolean;
+    inboxMode: string;
+    dedicatedSessionName?: string | null;
+    dedicatedBusinessPhone?: string | null;
+    dedicatedPaired: boolean;
+    dedicatedPairMock: boolean;
 };
 
 export async function fetchMyTenantStore(): Promise<{
@@ -28,6 +33,7 @@ export async function fetchWaConnectionStatus(storeId: string): Promise<WaConnec
     const data = await graphql<{ waConnectionStatus: WaConnectionStatus }>(
         `query($storeId: String!) { waConnectionStatus(storeId: $storeId) {
       storeId studioSlug ownerPhone ownerPhoneVerified kasirWaActivated waConnected staffCount maxStaff sharedInbox
+      inboxMode dedicatedSessionName dedicatedBusinessPhone dedicatedPaired dedicatedPairMock
     } }`,
         { variables: { storeId } },
     );
@@ -71,6 +77,58 @@ export async function addWaStaff(storeId: string, phone: string, label?: string)
         `mutation($input: AddWaStaffInput!) { addWaWhitelistStaff(input: $input) { id phone } }`,
         { variables: { input: { storeId, phone, label } } },
     );
+}
+
+export async function optInDedicatedWaInbox(storeId: string) {
+    const data = await graphql<{ optInDedicatedWaInbox: WaConnectionStatus }>(
+        `mutation($input: StoreIdInput!) { optInDedicatedWaInbox(input: $input) {
+      inboxMode dedicatedPaired dedicatedBusinessPhone dedicatedPairMock waConnected
+    } }`,
+        { variables: { input: { storeId } } },
+    );
+    return data.optInDedicatedWaInbox;
+}
+
+export async function disconnectDedicatedWaInbox(storeId: string) {
+    const data = await graphql<{ disconnectDedicatedWaInbox: WaConnectionStatus }>(
+        `mutation($input: StoreIdInput!) { disconnectDedicatedWaInbox(input: $input) {
+      inboxMode sharedInbox dedicatedPaired waConnected
+    } }`,
+        { variables: { input: { storeId } } },
+    );
+    return data.disconnectDedicatedWaInbox;
+}
+
+export async function startDedicatedWaPair(storeId: string) {
+    const data = await graphql<{ startDedicatedWaPair: WaConnectionStatus }>(
+        `mutation($input: StoreIdInput!) { startDedicatedWaPair(input: $input) {
+      dedicatedPaired dedicatedBusinessPhone inboxMode
+    } }`,
+        { variables: { input: { storeId } } },
+    );
+    return data.startDedicatedWaPair;
+}
+
+export async function syncDedicatedWaPair(storeId: string) {
+    const data = await graphql<{ syncDedicatedWaPair: WaConnectionStatus }>(
+        `mutation($input: StoreIdInput!) { syncDedicatedWaPair(input: $input) {
+      dedicatedPaired dedicatedBusinessPhone waConnected
+    } }`,
+        { variables: { input: { storeId } } },
+    );
+    return data.syncDedicatedWaPair;
+}
+
+export async function fetchDedicatedWaAuthQr(storeId: string) {
+    const data = await graphql<{
+        dedicatedWaAuthQr: { available: boolean; qr?: string; error?: string; pairMock: boolean };
+    }>(
+        `query($storeId: String!) { dedicatedWaAuthQr(storeId: $storeId) {
+      available qr error pairMock
+    } }`,
+        { variables: { storeId } },
+    );
+    return data.dedicatedWaAuthQr;
 }
 
 export async function fetchWaWhitelist(storeId: string) {

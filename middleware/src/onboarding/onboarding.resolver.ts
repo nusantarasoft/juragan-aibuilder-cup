@@ -16,6 +16,7 @@ import { getTrustedClientIp } from './request-client-ip';
 import { TenantMembershipService, type SessionTenantUser } from './tenant-membership.service';
 import { WaWhitelistService } from './wa-whitelist.service';
 import { WaConnectionService } from './wa-connection.service';
+import { WaDedicatedService } from './wa-dedicated.service';
 
 @ObjectType()
 class RegisterTenantResult {
@@ -132,6 +133,36 @@ class WaConnectionStatus {
 
     @Field()
     sharedInbox: boolean;
+
+    @Field()
+    inboxMode: string;
+
+    @Field({ nullable: true })
+    dedicatedSessionName?: string;
+
+    @Field({ nullable: true })
+    dedicatedBusinessPhone?: string;
+
+    @Field()
+    dedicatedPaired: boolean;
+
+    @Field()
+    dedicatedPairMock: boolean;
+}
+
+@ObjectType()
+class DedicatedWaAuthQr {
+    @Field()
+    available: boolean;
+
+    @Field({ nullable: true })
+    qr?: string;
+
+    @Field({ nullable: true })
+    error?: string;
+
+    @Field()
+    pairMock: boolean;
 }
 
 @ObjectType()
@@ -177,6 +208,12 @@ class ActivateWaKasirInput {
 }
 
 @InputType()
+class StoreIdInput {
+    @Field()
+    storeId: string;
+}
+
+@InputType()
 class AddWaStaffInput {
     @Field()
     storeId: string;
@@ -206,6 +243,7 @@ export class OnboardingResolver {
         private readonly membership: TenantMembershipService,
         private readonly waWhitelistService: WaWhitelistService,
         private readonly waConnection: WaConnectionService,
+        private readonly waDedicated: WaDedicatedService,
         private readonly captcha: CaptchaService,
     ) {}
 
@@ -255,6 +293,65 @@ export class OnboardingResolver {
         if (!user?.id) throw new Error('Authentication required');
         await this.assertStoreAccess(user, input.storeId);
         return this.waConnection.activateKasirWa(input.storeId);
+    }
+
+    @Mutation(() => WaConnectionStatus)
+    async optInDedicatedWaInbox(
+        @Args('input') input: StoreIdInput,
+        @Context() ctx: GqlCtx,
+    ): Promise<WaConnectionStatus> {
+        const user = ctx.req?.user;
+        if (!user?.id) throw new Error('Authentication required');
+        await this.assertStoreAccess(user, input.storeId);
+        await this.waDedicated.optInDedicatedInbox(input.storeId);
+        return this.waConnection.statusForStore(input.storeId);
+    }
+
+    @Mutation(() => WaConnectionStatus)
+    async disconnectDedicatedWaInbox(
+        @Args('input') input: StoreIdInput,
+        @Context() ctx: GqlCtx,
+    ): Promise<WaConnectionStatus> {
+        const user = ctx.req?.user;
+        if (!user?.id) throw new Error('Authentication required');
+        await this.assertStoreAccess(user, input.storeId);
+        await this.waDedicated.disconnectDedicatedInbox(input.storeId);
+        return this.waConnection.statusForStore(input.storeId);
+    }
+
+    @Mutation(() => WaConnectionStatus)
+    async startDedicatedWaPair(
+        @Args('input') input: StoreIdInput,
+        @Context() ctx: GqlCtx,
+    ): Promise<WaConnectionStatus> {
+        const user = ctx.req?.user;
+        if (!user?.id) throw new Error('Authentication required');
+        await this.assertStoreAccess(user, input.storeId);
+        await this.waDedicated.startDedicatedPair(input.storeId);
+        return this.waConnection.statusForStore(input.storeId);
+    }
+
+    @Mutation(() => WaConnectionStatus)
+    async syncDedicatedWaPair(
+        @Args('input') input: StoreIdInput,
+        @Context() ctx: GqlCtx,
+    ): Promise<WaConnectionStatus> {
+        const user = ctx.req?.user;
+        if (!user?.id) throw new Error('Authentication required');
+        await this.assertStoreAccess(user, input.storeId);
+        await this.waDedicated.syncDedicatedPair(input.storeId);
+        return this.waConnection.statusForStore(input.storeId);
+    }
+
+    @Query(() => DedicatedWaAuthQr)
+    async dedicatedWaAuthQr(
+        @Args('storeId') storeId: string,
+        @Context() ctx: GqlCtx,
+    ): Promise<DedicatedWaAuthQr> {
+        const user = ctx.req?.user;
+        if (!user?.id) throw new Error('Authentication required');
+        await this.assertStoreAccess(user, storeId);
+        return this.waDedicated.authQrForStore(storeId);
     }
 
     @Mutation(() => Boolean)

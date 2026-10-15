@@ -11,6 +11,7 @@ import { TenantProvisioningService } from './tenant-provisioning.service';
 import { WaWhitelistService } from './wa-whitelist.service';
 import { WaOtpService } from './wa-otp.service';
 import { WaConnectionService } from './wa-connection.service';
+import { WaDedicatedService } from './wa-dedicated.service';
 import { WaOtpOutboundService } from './wa-otp-outbound.service';
 
 @Module({
@@ -25,12 +26,14 @@ import { WaOtpOutboundService } from './wa-otp-outbound.service';
         WaOtpService,
         WaOtpOutboundService,
         WaConnectionService,
+        WaDedicatedService,
     ],
     exports: [
         TenantMembershipService,
         TenantProvisioningService,
         WaWhitelistService,
         WaConnectionService,
+        WaDedicatedService,
         OnboardingService,
     ],
 })

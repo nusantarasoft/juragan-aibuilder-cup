@@ -35,8 +35,7 @@ import {
     extractBusinessPhoneFromPayload,
     normalizePhoneDigits,
     phonesMatch,
-    pickSingleTenantFallback,
-    pickTenantConfigBySenderPhone,
+    resolveInboundWaConfig,
     StudioWhatsAppRateLimiter,
     stripWhatsAppMediaAnnotations,
     whatsappPayloadHasMedia,
@@ -184,25 +183,10 @@ export class StudioWhatsAppService {
         const { data, error } = await this.admin().from('studio_whatsapp_config').select('*');
         assertNoSupabaseError(error, 'Failed to resolve WhatsApp config for webhook');
         const configs = (data || []) as StudioWhatsAppConfigRow[];
-
-        const bySender = pickTenantConfigBySenderPhone(configs, senderPhone);
-        if (bySender) {
-            return configs.find((c) => c.tenant_id === bySender.tenant_id) ?? null;
-        }
-
-        const activeCount = configs.filter((c) => c.enabled && c.notebook_id).length;
-        if (activeCount <= 1) {
-            const fallback = pickSingleTenantFallback(configs);
-            if (fallback) {
-                return configs.find((c) => c.tenant_id === fallback.tenant_id) ?? null;
-            }
-        }
-
-        if (payload) {
-            extractBusinessPhoneFromPayload(payload);
-        }
-        void sessionName;
-        return null;
+        const businessPhone = payload ? extractBusinessPhoneFromPayload(payload) : null;
+        const match = resolveInboundWaConfig(configs, sessionName, senderPhone, businessPhone);
+        if (!match) return null;
+        return configs.find((c) => c.tenant_id === match.tenant_id) ?? null;
     }
 
     private async assertOwnerPhonesUnique(
