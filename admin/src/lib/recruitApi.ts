@@ -15,6 +15,7 @@ export type RecruitStatus = {
     recruitedCount: number;
     maxAgents: number;
     kasirRecruited: boolean;
+    serviceDeskRecruited: boolean;
 };
 
 export async function fetchRecruitCatalog(): Promise<RecruitCatalogEntry[]> {
@@ -26,14 +27,26 @@ export async function fetchRecruitCatalog(): Promise<RecruitCatalogEntry[]> {
 
 export async function fetchRecruitStatus(): Promise<RecruitStatus> {
     const d = await aosGql<{ aosRecruitStatus: RecruitStatus }>(
-        `query { aosRecruitStatus { recruitedCount maxAgents kasirRecruited } }`,
+        `query { aosRecruitStatus { recruitedCount maxAgents kasirRecruited serviceDeskRecruited } }`,
     );
     return d.aosRecruitStatus;
 }
 
-export async function recruitKasirAgent(): Promise<{ message: string; agent: { id: string; slug: string } }> {
+export async function recruitAgent(templateId: string): Promise<{
+    message: string;
+    waConnectRequired: boolean;
+    agent: { id: string; slug: string; name: string };
+}> {
     const d = await aosGql<{
         aosRecruitAgent: { message: string; waConnectRequired: boolean; agent: { id: string; slug: string; name: string } };
-    }>(`mutation { aosRecruitAgent(templateId: "umkm-kasir") { message waConnectRequired agent { id slug name } } }`);
+    }>(
+        `mutation Recruit($templateId: String!) { aosRecruitAgent(templateId: $templateId) { message waConnectRequired agent { id slug name } } }`,
+        { templateId },
+    );
     return d.aosRecruitAgent;
+}
+
+export async function recruitKasirAgent(): Promise<{ message: string; agent: { id: string; slug: string } }> {
+    const res = await recruitAgent("umkm-kasir");
+    return { message: res.message, agent: res.agent };
 }

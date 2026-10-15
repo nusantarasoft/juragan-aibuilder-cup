@@ -2,18 +2,39 @@
 
 import React, { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { UserPlus, Sparkles, Lock } from "lucide-react";
-import { fetchRecruitCatalog, fetchRecruitStatus, recruitKasirAgent, type RecruitCatalogEntry } from "@/lib/recruitApi";
+import {
+    fetchRecruitCatalog,
+    fetchRecruitStatus,
+    recruitAgent,
+    type RecruitCatalogEntry,
+} from "@/lib/recruitApi";
 import { useAuthStore } from "@/store/useAuthStore";
 import { AosError } from "@/components/agentic-os/lib/api";
+
+const KASIR_ID = "umkm-kasir";
+const SERVICE_DESK_ID = "service-desk";
+
+function isRecruitedForTemplate(itemId: string, status: { kasirRecruited: boolean; serviceDeskRecruited: boolean } | null) {
+    if (!status) return false;
+    if (itemId === KASIR_ID) return status.kasirRecruited;
+    if (itemId === SERVICE_DESK_ID) return status.serviceDeskRecruited;
+    return false;
+}
 
 export default function RecruitPage() {
     const router = useRouter();
     const role = useAuthStore((s) => s.user?.role);
     const [catalog, setCatalog] = useState<RecruitCatalogEntry[]>([]);
-    const [status, setStatus] = useState<{ recruitedCount: number; maxAgents: number; kasirRecruited: boolean } | null>(null);
+    const [status, setStatus] = useState<{
+        recruitedCount: number;
+        maxAgents: number;
+        kasirRecruited: boolean;
+        serviceDeskRecruited: boolean;
+    } | null>(null);
     const [loading, setLoading] = useState(true);
-    const [recruiting, setRecruiting] = useState(false);
+    const [recruitingId, setRecruitingId] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [message, setMessage] = useState<string | null>(null);
 
@@ -35,29 +56,34 @@ export default function RecruitPage() {
         void reload();
     }, [reload]);
 
-    const onRecruitKasir = async () => {
-        setRecruiting(true);
+    const onRecruit = async (templateId: string) => {
+        setRecruitingId(templateId);
         setError(null);
         setMessage(null);
         try {
-            const res = await recruitKasirAgent();
+            const res = await recruitAgent(templateId);
             setMessage(res.message);
             await reload();
-            router.push("/admin/connect-wa");
+            if (res.waConnectRequired) {
+                router.push("/admin/connect-wa");
+            } else {
+                router.push("/admin/virtual-office");
+            }
         } catch (e) {
             setError(e instanceof AosError ? e.message : "Rekrut gagal");
         } finally {
-            setRecruiting(false);
+            setRecruitingId(null);
         }
     };
 
     return (
         <div className="mx-auto max-w-3xl px-4 py-8">
             <header className="mb-8">
-                <p className="text-sm font-medium text-indigo-400">Fase 2 · Rekrut agen</p>
+                <p className="text-sm font-medium text-indigo-400">Fase 3 · Rekrut agen</p>
                 <h1 className="mt-1 text-2xl font-bold text-white">Rekrut karyawan</h1>
                 <p className="mt-2 text-sm text-slate-400">
-                    Pilih karyawan AI untuk toko Anda. Hubungkan WhatsApp setelah rekrut pertama (langkah berikutnya).
+                    Kasir UMKM untuk WhatsApp (hubungkan WA setelah rekrut pertama). Service Desk untuk tiket ITSM — data
+                    live tenant, bukan demo.
                 </p>
                 {status && (
                     <p className="mt-2 text-xs text-slate-500">
@@ -78,9 +104,9 @@ export default function RecruitPage() {
             ) : (
                 <ul className="space-y-3">
                     {catalog.map((item) => {
-                        const isKasir = item.id === "umkm-kasir";
-                        const recruited = isKasir && status?.kasirRecruited;
+                        const recruited = isRecruitedForTemplate(item.id, status);
                         const comingSoon = item.kind === "coming_soon";
+                        const busy = recruitingId === item.id;
                         return (
                             <li
                                 key={item.id}
@@ -113,12 +139,12 @@ export default function RecruitPage() {
                                     {item.recruitable && !recruited ? (
                                         <button
                                             type="button"
-                                            disabled={recruiting}
-                                            onClick={() => void onRecruitKasir()}
+                                            disabled={recruitingId !== null}
+                                            onClick={() => void onRecruit(item.id)}
                                             className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 px-4 py-2 text-sm font-semibold text-white shadow-lg disabled:opacity-60"
                                         >
                                             <UserPlus className="h-4 w-4" />
-                                            {recruiting ? "Merekrut…" : "Rekrut sekarang"}
+                                            {busy ? "Merekrut…" : "Rekrut sekarang"}
                                         </button>
                                     ) : comingSoon ? (
                                         <span className="inline-flex items-center gap-1 text-xs text-slate-500">
@@ -131,13 +157,19 @@ export default function RecruitPage() {
                                                 <Sparkles className="h-3.5 w-3.5" />
                                                 Aktif di kantor virtual
                                             </span>
-                                            <button
-                                                type="button"
-                                                onClick={() => router.push("/admin/connect-wa")}
-                                                className="text-xs font-semibold text-indigo-300 underline"
-                                            >
-                                                Hubungkan WhatsApp →
-                                            </button>
+                                            {item.id === KASIR_ID ? (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => router.push("/admin/connect-wa")}
+                                                    className="text-xs font-semibold text-indigo-300 underline"
+                                                >
+                                                    Hubungkan WhatsApp →
+                                                </button>
+                                            ) : item.id === SERVICE_DESK_ID ? (
+                                                <Link href="/admin/itsm/tickets" className="text-xs font-semibold text-indigo-300 underline">
+                                                    Buka antrian tiket →
+                                                </Link>
+                                            ) : null}
                                         </div>
                                     ) : null}
                                 </div>
@@ -149,7 +181,8 @@ export default function RecruitPage() {
 
             {role === "tenant_owner" && (
                 <p className="mt-8 text-xs text-slate-600">
-                    Template enterprise (DevOps, Security, dll.) disembunyikan untuk pemilik toko — gunakan halaman ini untuk wedge UMKM.
+                    Template enterprise (DevOps, Security, dll.) disembunyikan untuk pemilik toko — gunakan halaman ini untuk wedge
+                    UMKM + Service Desk.
                 </p>
             )}
         </div>

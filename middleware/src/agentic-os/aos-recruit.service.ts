@@ -2,10 +2,12 @@ import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/com
 import { hasMinRole, normalizeAppRole } from '../auth/app-roles';
 import { AgenticOsService, type AosActor } from './agentic-os.service';
 import {
-    KASIR_RECRUIT_AGENT_DEFAULTS,
     KASIR_RECRUIT_TEMPLATE_ID,
     RECRUIT_CATALOG,
+    SERVICE_DESK_RECRUIT_TEMPLATE_ID,
     TRIAL_MAX_RECRUITED_AGENTS,
+    isRecruitedSlug,
+    recruitDefaultsForTemplate,
     type RecruitCatalogEntryDef,
 } from './aos-recruit.catalog';
 import { KASIR_EMPLOYEE_SLUG } from './aos-kasir-live.service';
@@ -17,6 +19,8 @@ export type RecruitSessionUser = {
     role?: string;
     tenantId?: string | null;
 };
+
+const SERVICE_DESK_EMPLOYEE_SLUG = SERVICE_DESK_RECRUIT_TEMPLATE_ID;
 
 @Injectable()
 export class AosRecruitService {
@@ -43,14 +47,20 @@ export class AosRecruitService {
         };
     }
 
-    async getRecruitStatus(tenantId: string): Promise<{ recruitedCount: number; maxAgents: number; kasirRecruited: boolean }> {
+    async getRecruitStatus(tenantId: string): Promise<{
+        recruitedCount: number;
+        maxAgents: number;
+        kasirRecruited: boolean;
+        serviceDeskRecruited: boolean;
+    }> {
         const agents = await this.aos.listAgents(tenantId, false);
         const active = agents.filter((a) => !a.archivedAt);
         const kasirRecruited = active.some(
-            (a) => a.slug === KASIR_EMPLOYEE_SLUG || a.slug.startsWith(`${KASIR_EMPLOYEE_SLUG}-`),
+            (a) => isRecruitedSlug(KASIR_EMPLOYEE_SLUG, a.slug) || isRecruitedSlug(KASIR_RECRUIT_TEMPLATE_ID, a.slug),
         );
+        const serviceDeskRecruited = active.some((a) => isRecruitedSlug(SERVICE_DESK_EMPLOYEE_SLUG, a.slug));
         const max = await this.maxAgentsForTenant(tenantId);
-        return { recruitedCount: active.length, maxAgents: max, kasirRecruited };
+        return { recruitedCount: active.length, maxAgents: max, kasirRecruited, serviceDeskRecruited };
     }
 
     private async maxAgentsForTenant(tenantId: string): Promise<number> {
@@ -78,19 +88,27 @@ export class AosRecruitService {
             throw new BadRequestException('Agent type is not available for recruitment yet');
         }
 
-        if (templateId !== KASIR_RECRUIT_TEMPLATE_ID) {
-            throw new BadRequestException('Only Kasir UMKM is recruitable in this release');
+        const defaults = recruitDefaultsForTemplate(templateId);
+        if (!defaults) {
+            throw new BadRequestException('Agent type is not available for recruitment yet');
         }
 
         const status = await this.getRecruitStatus(tenantId);
-        if (status.kasirRecruited) {
-            throw new BadRequestException('Kasir UMKM sudah direkrut untuk toko ini');
-        }
         if (status.recruitedCount >= status.maxAgents) {
             throw new BadRequestException(`Batas trial: maksimal ${status.maxAgents} karyawan AI`);
         }
 
-        const d = KASIR_RECRUIT_AGENT_DEFAULTS;
+        if (templateId === KASIR_RECRUIT_TEMPLATE_ID) {
+            if (status.kasirRecruited) {
+                throw new BadRequestException('Kasir UMKM sudah direkrut untuk toko ini');
+            }
+        } else if (templateId === SERVICE_DESK_RECRUIT_TEMPLATE_ID) {
+            if (status.serviceDeskRecruited) {
+                throw new BadRequestException('Service Desk sudah direkrut untuk toko ini');
+            }
+        }
+
+        const d = defaults;
         const slug = await this.aos.uniqueSlug('aos_agents', tenantId, d.baseSlug);
         const agent = await this.aos.createAgent(
             tenantId,
@@ -113,10 +131,18 @@ export class AosRecruitService {
             actor,
         );
 
+        if (templateId === KASIR_RECRUIT_TEMPLATE_ID) {
+            return {
+                agent,
+                waConnectRequired: true,
+                message: 'Kasir direkrut. Hubungkan WhatsApp (F2-3) agar bisa balas pelanggan.',
+            };
+        }
+
         return {
             agent,
-            waConnectRequired: true,
-            message: 'Kasir direkrut. Hubungkan WhatsApp (F2-3) agar bisa balas pelanggan.',
+            waConnectRequired: false,
+            message: 'Service Desk direkrut. Buka ITSM untuk antrian tiket — hanya draft/komentar, tutup tiket butuh persetujuan manusia.',
         };
     }
 }

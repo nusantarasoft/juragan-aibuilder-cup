@@ -1,8 +1,9 @@
-/** Server-side recruit catalog (F2-2). Enterprise templates stay in Agent Studio for platform admins only. */
+/** Server-side recruit catalog (F2-2 + F3-1). Enterprise templates stay in Agent Studio for platform admins only. */
 
 export const TRIAL_MAX_RECRUITED_AGENTS = 3;
 
 export const KASIR_RECRUIT_TEMPLATE_ID = 'umkm-kasir';
+export const SERVICE_DESK_RECRUIT_TEMPLATE_ID = 'service-desk';
 
 export type RecruitCatalogKind = 'recruitable' | 'coming_soon' | 'enterprise_hidden';
 
@@ -27,12 +28,12 @@ export const RECRUIT_CATALOG: RecruitCatalogEntryDef[] = [
         sortOrder: 1,
     },
     {
-        id: 'pembukuan-soon',
-        name: 'Pembukuan',
-        role: 'Asisten pembukuan',
-        description: 'Rekap transaksi dan laporan keuangan sederhana.',
-        kind: 'coming_soon',
-        color: '#38bdf8',
+        id: SERVICE_DESK_RECRUIT_TEMPLATE_ID,
+        name: 'Service Desk',
+        role: 'Service Desk / ITSM',
+        description: 'Triage tiket, usulkan solusi dari knowledge base, komentar draft — tanpa tutup tiket otomatis.',
+        kind: 'recruitable',
+        color: '#60a5fa',
         sortOrder: 2,
     },
     {
@@ -69,7 +70,7 @@ export const KASIR_RECRUIT_AGENT_DEFAULTS = {
     tools: ['module.read', 'activity.log'],
     permissions: { 'ai-studio': 'write' } as Record<string, string>,
     /** F1-3 seed + kasir-consult path use browser runner (documented in design §D5). */
-    runner: 'browser',
+    runner: 'browser' as const,
     guardrails: {
         denySend: true,
         denyShare: true,
@@ -80,3 +81,43 @@ export const KASIR_RECRUIT_AGENT_DEFAULTS = {
     },
     status: 'active',
 };
+
+/** Aligned with Agent Studio `service-desk` preset + Semar seed modules; draft/comment only on tickets. */
+export const SERVICE_DESK_RECRUIT_AGENT_DEFAULTS = {
+    name: 'Service Desk',
+    baseSlug: SERVICE_DESK_RECRUIT_TEMPLATE_ID,
+    role: 'Service Desk Agent',
+    persona:
+        'You triage incoming tickets, propose resolutions from the knowledge base and keep requesters informed. You never close a ticket without a human.',
+    color: '#60a5fa',
+    zone: 'operations',
+    deskId: 'ops-1',
+    modules: ['itsm', 'knowledge'],
+    skills: ['Triage', 'SLA', 'Customer empathy'],
+    tools: ['module.read', 'module.draft', 'kb.search', 'ticket.comment', 'email.draft', 'activity.log'],
+    permissions: { itsm: 'write', knowledge: 'draft' } as Record<string, string>,
+    runner: 'cloud' as const,
+    guardrails: {
+        denySend: true,
+        denyShare: true,
+        denyDelete: true,
+        requireApproval: ['ticket.close', 'send'],
+        /** Human must confirm resolution before close. */
+        noAutoCloseTickets: true,
+    },
+    status: 'active',
+};
+
+export const RECRUIT_TEMPLATE_IDS = [KASIR_RECRUIT_TEMPLATE_ID, SERVICE_DESK_RECRUIT_TEMPLATE_ID] as const;
+
+export type RecruitTemplateId = (typeof RECRUIT_TEMPLATE_IDS)[number];
+
+export function recruitDefaultsForTemplate(templateId: string) {
+    if (templateId === KASIR_RECRUIT_TEMPLATE_ID) return KASIR_RECRUIT_AGENT_DEFAULTS;
+    if (templateId === SERVICE_DESK_RECRUIT_TEMPLATE_ID) return SERVICE_DESK_RECRUIT_AGENT_DEFAULTS;
+    return null;
+}
+
+export function isRecruitedSlug(baseSlug: string, slug: string): boolean {
+    return slug === baseSlug || slug.startsWith(`${baseSlug}-`);
+}

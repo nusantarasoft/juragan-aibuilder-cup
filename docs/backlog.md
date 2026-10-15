@@ -23,8 +23,8 @@ Rule: one DOING task at Cursor at a time (plus deploy). Gate: scope → PR → Q
 - **F2 wedge complete** (F2-1..F2-4) on `master` @ `4800eba`; **awaiting Akbar production deploy** — [docs/ops/release-f2-prod-readiness.md](ops/release-f2-prod-readiness.md)
 
 ## Fase 3 — Agen kedua & ready to use
-- [TODO] F3-1 Second agent (candidates: pembukuan/CS/stok, Akbar decides)
-- [DONE] F3-2 Usage metrics per tenant/agent — draft PR; design [docs/design/f3-2-usage-metrics.md](design/f3-2-usage-metrics.md); QA `.gstack/qa-reports/qa-f3-2-usage-2026-10-15.md`; screenshots `/cursor/stores/self/media/f3-2-usage-*.png`
+- [DONE] F3-1 Second agent — **Service Desk / ITSM** (PO lock); `/admin/recruit` SKU #2; design [docs/design/f3-1-service-desk-recruit.md](design/f3-1-service-desk-recruit.md); ops [docs/ops/f3-1-recruit-flow.md](ops/f3-1-recruit-flow.md); QA PASS 2026-10-15 (`.gstack/qa-reports/qa-f3-1-service-desk-recruit-2026-10-15.md`); screenshots `/cursor/stores/self/media/f3-1-service-desk-*.png`
+- [DONE] F3-2 Usage metrics per tenant/agent — merged [#60](https://github.com/nusantarasoft/nusantarasoft-3/pull/60) @ `9635883`; design [docs/design/f3-2-usage-metrics.md](design/f3-2-usage-metrics.md); QA `.gstack/qa-reports/qa-f3-2-usage-2026-10-15.md`; screenshots `/cursor/stores/self/media/f3-2-usage-*.png`
 - [TODO] F3-3 Pilot with 3–5 real stores, then fix findings
 - [TODO] F3-4 Pricing/subscription (Akbar decides)
 
