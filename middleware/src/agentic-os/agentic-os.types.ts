@@ -303,6 +303,8 @@ export class AosSettings {
     @Field() llmMode: string;
     @Field() pulseEnabled: boolean;
     @Field(() => Float) runCostCeilingUsd: number;
+    /** Explicit demo badges in Agentic OS UI (task queue still persisted). */
+    @Field() uiDemoMode: boolean;
 }
 
 @ObjectType()
@@ -366,6 +368,15 @@ export class AosStats {
     @Field(() => Float) tokensToday: number;
     @Field(() => Float) costToday: number;
     @Field(() => Int) pendingApprovals: number;
+}
+
+@ObjectType()
+export class AosTaskQueueEvent {
+    @Field() tenantId: string;
+    /** queued | running | done | failed | updated | stats */
+    @Field() reason: string;
+    @Field(() => AosTask, { nullable: true }) task: AosTask | null;
+    @Field(() => AosStats, { nullable: true }) stats: AosStats | null;
 }
 
 /** Read-only live metrics for the AI Studio UMKM Kasir “first employee” slice. */
@@ -628,6 +639,7 @@ export class AosSettingsInput {
     @Field(() => String, { nullable: true }) llmMode?: string;
     @Field(() => Boolean, { nullable: true }) pulseEnabled?: boolean;
     @Field(() => Float, { nullable: true }) runCostCeilingUsd?: number;
+    @Field(() => Boolean, { nullable: true }) uiDemoMode?: boolean;
 }
 
 // ── Phase 4 (Goals & gate reviews) ───────────────────────────────────────────

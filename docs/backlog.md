@@ -10,7 +10,7 @@ Rule: one DOING task at Cursor at a time (plus deploy). Gate: scope → PR → Q
 - [TODO] F0-5 Clean up server deploy-key leftovers
 
 ## Fase 1 — Make Agentic OS & Virtual Office real
-- [TODO] F1-1 Real Agentic OS task queue (DB table, worker, real status), replacing the simulation
+- [DONE] F1-1 Real Agentic OS task queue (DB table, worker, real status), replacing the simulation
 - [TODO] F1-2 Virtual Office reads agent status/progress from the real task queue, per tenant
 - [TODO] F1-3 Kasir WA agent writes its tasks/activity into the queue (visible in VO/AOS)
 - [TODO] F1-4 Honest Live/Demo badges; remove remaining dummy data (per audit P0)
@@ -30,7 +30,7 @@ Rule: one DOING task at Cursor at a time (plus deploy). Gate: scope → PR → Q
 ## Discovered
 (append here)
 - [TODO] D-1 (audit #31) Wire VO Live mode to osAgentSource; mockAgentSource only in explicit demo mode  → part of F1-2
-- [TODO] D-2 (audit #31) Fix misleading "Demo" badge on real DB agents in Agentic OS → F1-4
+- [DONE] D-2 (audit #31) Fix misleading "Demo" badge on real DB agents in Agentic OS → F1-4
 - [TODO] D-3 (audit #31) AI Studio Web Crawler / Knowledge Graph / Agent Builder are client-side DEMO: label honestly now, make real later (P2)
 - [TODO] D-4 (audit #31) Verify tenant umkm-warung-klontong-bahagia exists in prod (not in seed)
 - [TODO] D-5 (audit #31) Rerun audit browser check on the full stack (middleware was off) after deploy

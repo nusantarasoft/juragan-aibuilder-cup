@@ -150,7 +150,9 @@ export function Overview({ onOpen }: { onOpen: (app: string, params?: Record<str
                                 <Chip color="#38bdf8">AI Studio</Chip>
                             </div>
                             <p className="mt-1 text-[12px] text-slate-300">{formatKasirMetricLine(kasirLive)}</p>
-                            <p className="mt-1 text-[10px] text-slate-500">Simulated agents below use Demo badges — task queue & workflows are not live yet.</p>
+                            <p className="mt-1 text-[10px] text-slate-500">
+                                Task queue is persisted in Postgres and advances via the middleware worker. Roster agents show Live unless explicit UI demo mode is on.
+                            </p>
                         </div>
                         <Button size="sm" onClick={() => onOpen("studio")}>
                             Agent roster
@@ -287,7 +289,7 @@ export function OsSettingsApp() {
                 </div>
             </Section>
             <div className="grid gap-3 md:grid-cols-2">
-                <Section title="Autopilot (task simulation)" icon={Sparkles}>
+                <Section title="Autopilot (task queue)" icon={Sparkles}>
                     <Toggle checked={d.autopilot} onChange={(v) => set("autopilot", v)} label="Autopilot" hint="Idle agents pick playbooks from their modules" />
                     <Field label="Review cap per agent" hint="Stop autopilot when this many tasks wait for review">
                         <TextInput type="number" min={0} max={50} value={d.autopilotReviewCap} onChange={(e) => set("autopilotReviewCap", Number(e.target.value))} />

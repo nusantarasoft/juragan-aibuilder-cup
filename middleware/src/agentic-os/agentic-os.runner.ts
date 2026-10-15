@@ -42,11 +42,11 @@ const stepIndex = (progress: number, steps: number) => Math.min(steps - 1, Math.
 const runTrigger = (source: string) => (source === 'autopilot' ? 'autopilot' : source === 'routine' ? 'schedule' : 'dispatch');
 
 /**
- * AgenticOsRunner — Phase 1 deterministic simulation of agents working.
- * Every 5 s each active cloud agent advances its running task, claims its next
- * queued task, or (with autopilot on) queues work from a matching playbook.
- * Finished work lands in 'review'; a human marks it done. Real LLM execution
- * replaces the simulation in Phase 2.
+ * AgenticOsRunner — persisted task-queue worker.
+ * Every 5 s each active cloud agent advances its running task in Postgres, claims
+ * the next queued task, or (with autopilot on) enqueues work from a playbook.
+ * Finished work lands in 'review'; a human marks it done. Step execution is
+ * deterministic until real LLM runners replace it (Pulse / per-agent providers).
  */
 @Injectable()
 export class AgenticOsRunner {
@@ -55,6 +55,10 @@ export class AgenticOsRunner {
     private readonly lastAutopilotAt = new Map<string, number>();
 
     constructor(private readonly svc: AgenticOsService) {}
+
+    private emit(tenantId: string, reason: string, taskId: string, stats = false): void {
+        void this.svc.notifyTaskQueue(tenantId, reason, taskId, stats ? { includeStats: true } : undefined);
+    }
 
     @Interval(TICK_MS)
     async tick(): Promise<void> {
@@ -173,6 +177,7 @@ export class AgenticOsRunner {
                 action: 'step',
                 summary: `${agent.name} · ${steps[newIndex]}`,
             });
+            this.emit(task.tenant_id, 'running', task.id);
         }
     }
 
@@ -205,6 +210,7 @@ export class AgenticOsRunner {
                 .maybeSingle(),
         );
         if (!moved) return;
+        this.emit(task.tenant_id, 'awaiting_approval', task.id, true);
 
         const summary = `${agent.name} wants to finalise "${task.title}"`;
         if (!approvals.some((a) => a.status === 'pending')) {
@@ -243,6 +249,7 @@ export class AgenticOsRunner {
                 .maybeSingle(),
         );
         if (!moved) return;
+        this.emit(task.tenant_id, 'review', task.id, true);
 
         const startedAt = task.started_at ? new Date(task.started_at) : now;
         must(
@@ -289,6 +296,7 @@ export class AgenticOsRunner {
                 .maybeSingle(),
         );
         if (!claimed) return;
+        this.emit(task.tenant_id, 'running', task.id, true);
         await this.agentAudit(agent, task, { action: 'pick_up', summary: `${agent.name} picked up "${task.title}"` });
     }
 
@@ -352,6 +360,7 @@ export class AgenticOsRunner {
             action: 'autopilot',
             summary: `${agent.name} queued "${created.title}" on autopilot`,
         });
+        this.emit(agent.tenant_id, 'queued', created.id, true);
     }
 
     // ── Approvals sweep ──────────────────────────────────────────────────────

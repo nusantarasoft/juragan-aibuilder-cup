@@ -12,6 +12,7 @@ import { AgenticOsService } from './agentic-os.service';
 import { AgenticOsPulse } from './agentic-os.pulse';
 import { AgenticOsWorkflows } from './agentic-os.workflows';
 import { AgenticOsGoals } from './agentic-os.goals';
+import { AosTaskQueueEvents } from './aos-task-queue.events';
 import { KASIR_EMPLOYEE_SLUG } from './aos-kasir-live.service';
 import { AOS_DEFAULT_TENANT } from './agentic-os.types';
 
@@ -81,6 +82,7 @@ describe('aosKasirLiveSnapshot GraphQL auth (in-process HTTP)', () => {
                 { provide: AgenticOsPulse, useValue: {} },
                 { provide: AgenticOsWorkflows, useValue: {} },
                 { provide: AgenticOsGoals, useValue: {} },
+                AosTaskQueueEvents,
             ],
         }).compile();
 
