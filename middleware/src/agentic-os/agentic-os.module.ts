@@ -15,6 +15,7 @@ import { AosKasirLiveService } from './aos-kasir-live.service';
 import { AosRecruitService } from './aos-recruit.service';
 import { AosTenantAgentSettingsService } from './aos-tenant-agent-settings.service';
 import { AosTaskQueueEvents } from './aos-task-queue.events';
+import { AosUsageMetricsService } from './aos-usage-metrics.service';
 
 @Module({
     imports: [SupabaseModule, AuthModule, AiModule, NotificationsModule, WhatsAppProviderModule],
@@ -30,6 +31,7 @@ import { AosTaskQueueEvents } from './aos-task-queue.events';
         AosKasirLiveService,
         AosRecruitService,
         AosTenantAgentSettingsService,
+        AosUsageMetricsService,
     ],
     exports: [AgenticOsService, AosTenantAgentSettingsService],
 })

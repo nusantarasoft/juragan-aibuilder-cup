@@ -44,10 +44,12 @@ import {
     AosRecruitStatus,
     AosTenantOwnerAgentSettings,
     AosTenantOwnerAgentSettingsInput,
+    AosTenantUsageMetrics,
 } from './agentic-os.types';
 import { AosKasirLiveService } from './aos-kasir-live.service';
 import { AosRecruitService } from './aos-recruit.service';
 import { AosTenantAgentSettingsService } from './aos-tenant-agent-settings.service';
+import { AosUsageMetricsService } from './aos-usage-metrics.service';
 import { resolveAosTenant, type AosSessionUser } from './aos-tenant-access';
 import { AosTaskQueueEvents } from './aos-task-queue.events';
 
@@ -83,6 +85,7 @@ export class AgenticOsResolver {
         private readonly recruit: AosRecruitService,
         private readonly tenantAgentSettings: AosTenantAgentSettingsService,
         private readonly taskQueueEvents: AosTaskQueueEvents,
+        private readonly usageMetrics: AosUsageMetricsService,
     ) {}
 
     // ════════════════════════════════════════════════════════════════════════
@@ -128,6 +131,16 @@ export class AgenticOsResolver {
     ) {
         const effective = tenantForRead(ctx, tenantId);
         return this.tenantAgentSettings.getOwnerSettings(effective, agentId);
+    }
+
+    @Query(() => AosTenantUsageMetrics)
+    aosTenantUsageMetrics(
+        @Context() ctx: AosContext,
+        @Args('tenantId', optStr) tenantId?: string,
+        @Args('days', { type: () => Int, nullable: true, defaultValue: 30 }) days?: number,
+    ) {
+        const effective = tenantForRead(ctx, tenantId);
+        return this.usageMetrics.getMetrics(effective, days ?? 30);
     }
 
     @Query(() => AosKasirLiveSnapshot)

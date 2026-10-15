@@ -421,6 +421,41 @@ export class AosRecruitResult {
     @Field() message: string;
 }
 
+/** F3-2 — aggregated usage from AOS tasks + Studio WA / crawl / builder / KG (no parallel counters). */
+@ObjectType()
+export class AosAgentUsageMetrics {
+    @Field() agentId: string;
+    @Field() slug: string;
+    @Field() name: string;
+    @Field() role: string;
+    @Field() status: string;
+    @Field(() => Int) tasksCreated: number;
+    @Field(() => Int) tasksCompleted: number;
+    @Field(() => Int) tasksFailed: number;
+    @Field(() => Int) kasirWaTasks: number;
+}
+
+@ObjectType()
+export class AosTenantUsageMetrics {
+    @Field() available: boolean;
+    @Field() tenantId: string;
+    @Field(() => Int) periodDays: number;
+    @Field() periodStart: string;
+    @Field() periodEnd: string;
+    @Field(() => String, { nullable: true }) unavailableReason: string | null;
+    @Field(() => Int) recruitedAgents: number;
+    @Field(() => Int, { nullable: true }) waChatsToday: number | null;
+    @Field(() => Int, { nullable: true }) tasksCreated: number | null;
+    @Field(() => Int, { nullable: true }) tasksCompleted: number | null;
+    @Field(() => Int, { nullable: true }) tasksFailed: number | null;
+    @Field(() => Int, { nullable: true }) waInboundMessages: number | null;
+    @Field(() => Int, { nullable: true }) waOutboundReplies: number | null;
+    @Field(() => Int, { nullable: true }) crawlJobs: number | null;
+    @Field(() => Int, { nullable: true }) builderWorkflows: number | null;
+    @Field(() => Int, { nullable: true }) kgEmbeddedChunks: number | null;
+    @Field(() => [AosAgentUsageMetrics]) agents: AosAgentUsageMetrics[];
+}
+
 @ObjectType()
 export class AosTenantOwnerAgentSettings {
     @Field() agentId: string;

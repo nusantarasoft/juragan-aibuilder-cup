@@ -41,9 +41,14 @@ export default function MyAgentsPage() {
                 <p className="mt-2 text-sm text-slate-400">
                     Atur libur, batas balasan harian, dan jam operasional tanpa Command Deck.
                 </p>
-                <Link href="/admin/virtual-office" className="mt-2 inline-block text-xs text-indigo-300 hover:text-indigo-200">
-                    ← Kembali ke Virtual Office
-                </Link>
+                <div className="mt-2 flex flex-wrap gap-3 text-xs">
+                    <Link href="/admin/virtual-office" className="text-indigo-300 hover:text-indigo-200">
+                        ← Virtual Office
+                    </Link>
+                    <Link href="/admin/usage" className="text-indigo-300 hover:text-indigo-200">
+                        Ringkasan pemakaian →
+                    </Link>
+                </div>
             </header>
 
             {error && (

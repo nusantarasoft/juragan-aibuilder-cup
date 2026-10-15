@@ -24,7 +24,7 @@ Rule: one DOING task at Cursor at a time (plus deploy). Gate: scope → PR → Q
 
 ## Fase 3 — Agen kedua & ready to use
 - [TODO] F3-1 Second agent (candidates: pembukuan/CS/stok, Akbar decides)
-- [TODO] F3-2 Usage metrics per tenant/agent
+- [DONE] F3-2 Usage metrics per tenant/agent — draft PR; design [docs/design/f3-2-usage-metrics.md](design/f3-2-usage-metrics.md); QA `.gstack/qa-reports/qa-f3-2-usage-2026-10-15.md`; screenshots `/cursor/stores/self/media/f3-2-usage-*.png`
 - [TODO] F3-3 Pilot with 3–5 real stores, then fix findings
 - [TODO] F3-4 Pricing/subscription (Akbar decides)
 

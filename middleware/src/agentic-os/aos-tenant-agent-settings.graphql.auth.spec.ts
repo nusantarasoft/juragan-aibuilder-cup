@@ -16,6 +16,7 @@ import { AgenticOsWorkflows } from './agentic-os.workflows';
 import { AgenticOsGoals } from './agentic-os.goals';
 import { AosRecruitService } from './aos-recruit.service';
 import { AosTenantAgentSettingsService } from './aos-tenant-agent-settings.service';
+import { AosUsageMetricsService } from './aos-usage-metrics.service';
 
 const OWNER_TENANT = '00000000-0000-0000-0000-000000000201';
 const OTHER_TENANT = '00000000-0000-0000-0000-000000000099';
@@ -86,6 +87,7 @@ describe('F2-4 tenant owner agent settings GraphQL auth', () => {
                     provide: AosTenantAgentSettingsService,
                     useValue: { listOwnerSettings, updateOwnerSettings, getOwnerSettings: vi.fn() },
                 },
+                { provide: AosUsageMetricsService, useValue: { getMetrics: vi.fn() } },
             ],
         }).compile();
 
