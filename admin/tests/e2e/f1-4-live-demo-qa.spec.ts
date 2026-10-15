@@ -93,7 +93,7 @@ test.describe.skip('F1-4 Live vs Demo — browser QA (mock GraphQL, non-gate)', 
         for (const [route, file] of [
             ['/admin/ai-studio/web-crawler', 'f1-4-aistudio-crawler-demo.png'],
             ['/admin/ai-studio/knowledge-graph', 'f1-4-aistudio-knowledge-graph-live.png'],
-            ['/admin/ai-studio/agent-builder', 'f1-4-aistudio-agent-builder-demo.png'],
+            ['/admin/ai-studio/agent-builder', 'f1-4-aistudio-agent-builder-live.png'],
             ['/admin/ai-studio/label-studio', 'f1-4-aistudio-label-studio-demo.png'],
             ['/admin/ai-studio/umkm', 'f1-4-aistudio-umkm-live.png'],
             ['/admin/ai-studio/ai-gateway', 'f1-4-aistudio-ai-gateway-live.png'],

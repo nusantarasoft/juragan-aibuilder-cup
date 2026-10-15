@@ -31,7 +31,7 @@ Rule: one DOING task at Cursor at a time (plus deploy). Gate: scope → PR → Q
 ## Fase 2+ — AI Studio depth (from D-3 / F1-4)
 - [DONE] P2-1 Web Crawler backend (job queue, worker, persist jobs) — PR [#55](https://github.com/nusantarasoft/nusantarasoft-3/pull/55); QA PASS `.gstack/qa-reports/qa-p2-1-web-crawler-2026-10-15.md`; screenshots `/cursor/stores/self/media/p2-1-crawler-*.png`
 - [DONE] P2-2 Knowledge Graph explorer wired to real embeddings / graph RPC (replace mock tree) — QA PASS 2026-10-15 (#56)
-- [TODO] P2-3 Visual Agent Builder persisted workflows (or fold into Agentic OS playbooks)
+- [DONE] P2-3 Visual Agent Builder persisted workflows — PR [#57](https://github.com/nusantarasoft/nusantarasoft-3/pull/57); QA PASS `.gstack/qa-reports/qa-p2-3-agent-builder-2026-10-15.md`; screenshots `/cursor/stores/self/media/p2-3-builder-*.png`; ops [docs/ops/p2-3-agent-builder-persistence.md](ops/p2-3-agent-builder-persistence.md)
 - [TODO] P2-4 Label Studio admin dashboard reads real project stats from Label Studio API
 - [TODO] P2-5 Per-tenant dedicated WhatsApp business number (optional Hermes session per store) — after F2-3 shared-inbox v1
 
@@ -39,7 +39,7 @@ Rule: one DOING task at Cursor at a time (plus deploy). Gate: scope → PR → Q
 (append here)
 - [DONE] D-1 (audit #31) Wire VO Live mode to osAgentSource; mockAgentSource only in explicit demo mode  → F1-2
 - [DONE] D-2 (audit #31) Fix misleading "Demo" badge on real DB agents in Agentic OS → F1-4
-- [DONE] D-3 (audit #31) AI Studio Web Crawler / Knowledge Graph / Agent Builder are client-side DEMO: label honestly now, make real later (P2)
+- [DONE] D-3 (audit #31) AI Studio Web Crawler / Knowledge Graph / Agent Builder: honest Live/Demo labels; P2-1…P2-3 backends shipped for crawler, KG, Agent Builder workflows
 - [TODO] D-4 (audit #31) Verify tenant umkm-warung-klontong-bahagia exists in prod (not in seed)
 - [TODO] D-5 (audit #31) Rerun audit browser check on the full stack (middleware was off) after deploy
 - [DONE] D-6 (deploy hotfix) Ensure `/opt/nusantarasoft-3/logs` exists before SFTP pull-script upload (`deploy.ps1` mkdir guard; PR #29 detached deploy prod failure)

@@ -68,7 +68,7 @@ test.describe('F1-4 Live vs Demo — full stack (live GraphQL)', () => {
         const routes: { path: string; file: string; expectDemo?: boolean; expectLive?: boolean }[] = [
             { path: '/admin/ai-studio/web-crawler', file: 'f1-4-aistudio-crawler-live.png', expectLive: true },
             { path: '/admin/ai-studio/knowledge-graph', file: 'f1-4-aistudio-knowledge-graph-live.png', expectLive: true },
-            { path: '/admin/ai-studio/agent-builder', file: 'f1-4-aistudio-agent-builder-demo.png', expectDemo: true },
+            { path: '/admin/ai-studio/agent-builder', file: 'f1-4-aistudio-agent-builder-live.png', expectLive: true },
             { path: '/admin/ai-studio/label-studio', file: 'f1-4-aistudio-label-studio-demo.png', expectDemo: true },
             { path: '/admin/ai-studio/umkm', file: 'f1-4-aistudio-umkm-live.png' },
             { path: '/admin/ai-studio/ai-gateway', file: 'f1-4-aistudio-ai-gateway-live.png' },

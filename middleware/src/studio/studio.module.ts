@@ -34,6 +34,8 @@ import { StudioWebCrawlerWorker } from './studio-web-crawler.worker';
 import { StudioWebCrawlerResolver } from './studio-web-crawler.resolver';
 import { StudioKnowledgeGraphService } from './studio-knowledge-graph.service';
 import { StudioKnowledgeGraphResolver } from './studio-knowledge-graph.resolver';
+import { StudioAgentBuilderService } from './studio-agent-builder.service';
+import { StudioAgentBuilderResolver } from './studio-agent-builder.resolver';
 
 @Module({
     imports: [
@@ -76,6 +78,8 @@ import { StudioKnowledgeGraphResolver } from './studio-knowledge-graph.resolver'
         StudioWebCrawlerResolver,
         StudioKnowledgeGraphService,
         StudioKnowledgeGraphResolver,
+        StudioAgentBuilderService,
+        StudioAgentBuilderResolver,
     ],
     exports: [
         StudioService,

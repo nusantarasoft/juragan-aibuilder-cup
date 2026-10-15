@@ -8,7 +8,7 @@
 
 ## Ringkasan (Bahasa Indonesia)
 
-**Phase 1 (F1-1…F1-4):** **AI Studio** notebook/UMKM/Kasir/upload/RAG = **REAL** bila stack lengkap; **Web Crawler** (P2-1) dan **Knowledge Graph** (P2-2) = **REAL** dengan tag **Live**; **Agent Builder**, **Label Studio dashboard**, dan **simulasi chat WA** = **DEMO** dengan banner/tag **Demo** jelas (D-3). **Agentic OS** task queue + worker + GraphQL = **REAL**; badge **Live** di Command Deck toolbar dan roster kecuali `aos_settings.ui_demo_mode` / `AOS_UI_DEMO_MODE` (D-2, F1-4). **Virtual Office** default **Live** via `osAgentSource` (F1-2); `mockAgentSource` hanya saat UI demo mode (D-1). **Kasir** mirror ke AOS queue + metrik live (F1-3). Tenant produksi **`umkm-warung-klontong-bahagia`** tetap **uncertain** di seed local (D-4).
+**Phase 1 (F1-1…F1-4):** **AI Studio** notebook/UMKM/Kasir/upload/RAG = **REAL** bila stack lengkap; **Web Crawler** (P2-1), **Knowledge Graph** (P2-2), dan **Agent Builder** workflows (P2-3) = **REAL** / **MIXED** dengan tag **Live**; **Label Studio dashboard** dan **simulasi chat WA** = **DEMO** dengan banner/tag **Demo** jelas (D-3). **Agentic OS** task queue + worker + GraphQL = **REAL**; badge **Live** di Command Deck toolbar dan roster kecuali `aos_settings.ui_demo_mode` / `AOS_UI_DEMO_MODE` (D-2, F1-4). **Virtual Office** default **Live** via `osAgentSource` (F1-2); `mockAgentSource` hanya saat UI demo mode (D-1). **Kasir** mirror ke AOS queue + metrik live (F1-3). Tenant produksi **`umkm-warung-klontong-bahagia`** tetap **uncertain** di seed local (D-4).
 
 **QA browser (2026-10-15):** Admin dev webpack `:3003`, login via token + GraphQL mock. Screenshot: `/cursor/stores/self/media/dummy-audit-*.png`. Console: `ERR_CONNECTION_REFUSED` ke `:4001` (socket.io), `:8000` (Supabase realtime); beberapa chunk/layout warning saat navigasi cepat.
 
@@ -60,7 +60,7 @@
 |--------|--------|--------|
 | Web Crawler jobs | **REAL** (labeled **Live**) | `studio_web_crawl_jobs` + middleware worker + GraphQL; admin `webCrawlerService` → API; **Live** banner/tag (P2-1) |
 | Knowledge Graph | **REAL** (labeled **Live**) | `studio_knowledge_graph_*` RPC + GraphQL; pgvector search via `match_studio_chunks_for_tenant`; **Demo** only when `aos_settings.ui_demo_mode` (P2-2, F1-4) |
-| Agent Builder | **DEMO** (labeled) | Mock canvas + `StudioDemoBanner` / **Demo** tag (F1-4) |
+| Agent Builder | **MIXED** (labeled **Live**) | Persisted `studio_agent_workflows` + GraphQL canvas; static node **palette** = demo-path note only (P2-3, F1-4) |
 | Label Studio dashboard | **DEMO** (labeled) | Static `PROJECTS` + **Demo** banner (F1-4); open Label Studio = service nyata bila `:8080` up |
 | Settings / provider keys | **REAL** (simpan config) | `settings/` → GraphQL studio settings |
 | AI Gateway | **REAL** (bergantung stack) | `ai-gateway/page.tsx` → `studioService` WA config |
@@ -141,7 +141,7 @@
 | AOS “Agents at work” roster badges | **FIXED (F1-4)** | `SystemApps.tsx` uses `rosterKindForAgent` (was hardcoded Demo) |
 | AOS Command Deck toolbar | **FIXED (F1-4)** | `RosterKindBadge` Live/Demo from `uiDemoMode` |
 | Agent Studio badge pada DB agents | **FIXED (D-2)** | `rosterKindForAgent` → **Live** unless UI demo mode |
-| Web Crawler / KG / Agent Builder UI | **FIXED (D-3 / F1-4)** | **Demo** banner + header tag |
+| Web Crawler / KG / Agent Builder UI | **FIXED (P2-1…P2-3 / F1-4)** | **Live** banner + tag; Agent Builder palette = explicit demo-path note |
 
 ---
 
@@ -172,9 +172,9 @@ Stack partial — lihat commit audit. Screenshots `dummy-audit-*.png` di Project
 | File | Expected label |
 |------|----------------|
 | `f1-4-aistudio-home-live.png` | Live path (no Demo banner on notebook home) |
-| `f1-4-aistudio-crawler-demo.png` | **Demo** |
-| `f1-4-aistudio-knowledge-graph-demo.png` | **Demo** |
-| `f1-4-aistudio-agent-builder-demo.png` | **Demo** |
+| `f1-4-aistudio-crawler-live.png` | **Live** |
+| `f1-4-aistudio-knowledge-graph-live.png` | **Live** |
+| `f1-4-aistudio-agent-builder-live.png` | **Live** (MIXED palette note) |
 | `f1-4-aistudio-label-studio-demo.png` | **Demo** |
 | `f1-4-aistudio-umkm-live.png` | Live data / empty honest |
 | `f1-4-aistudio-ai-gateway-live.png` | Live settings |
