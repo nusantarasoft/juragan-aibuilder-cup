@@ -13,7 +13,7 @@ Rule: one DOING task at Cursor at a time (plus deploy). Gate: scope → PR → Q
 - [DONE] F1-1 Real Agentic OS task queue (DB table, worker, real status), replacing the simulation
 - [DONE] F1-2 Virtual Office reads agent status/progress from the real task queue, per tenant
 - [DONE] F1-3 Kasir WA agent writes its tasks/activity into the queue (visible in VO/AOS)
-- [TODO] F1-4 Honest Live/Demo badges; remove remaining dummy data (per audit P0)
+- [DONE] F1-4 Honest Live/Demo badges; remove remaining dummy data (per audit P0)
 
 ## Fase 2 — Rekrut agen (tenant self-serve)
 - [TODO] F2-1 Self-serve tenant registration + onboarding
@@ -27,11 +27,17 @@ Rule: one DOING task at Cursor at a time (plus deploy). Gate: scope → PR → Q
 - [TODO] F3-3 Pilot with 3–5 real stores, then fix findings
 - [TODO] F3-4 Pricing/subscription (Akbar decides)
 
+## Fase 2+ — AI Studio depth (from D-3 / F1-4)
+- [TODO] P2-1 Web Crawler backend (job queue, worker, persist jobs) — replace `webCrawlerService` in-memory simulation
+- [TODO] P2-2 Knowledge Graph explorer wired to real embeddings / graph RPC (replace mock tree)
+- [TODO] P2-3 Visual Agent Builder persisted workflows (or fold into Agentic OS playbooks)
+- [TODO] P2-4 Label Studio admin dashboard reads real project stats from Label Studio API
+
 ## Discovered
 (append here)
 - [DONE] D-1 (audit #31) Wire VO Live mode to osAgentSource; mockAgentSource only in explicit demo mode  → F1-2
 - [DONE] D-2 (audit #31) Fix misleading "Demo" badge on real DB agents in Agentic OS → F1-4
-- [TODO] D-3 (audit #31) AI Studio Web Crawler / Knowledge Graph / Agent Builder are client-side DEMO: label honestly now, make real later (P2)
+- [DONE] D-3 (audit #31) AI Studio Web Crawler / Knowledge Graph / Agent Builder are client-side DEMO: label honestly now, make real later (P2)
 - [TODO] D-4 (audit #31) Verify tenant umkm-warung-klontong-bahagia exists in prod (not in seed)
 - [TODO] D-5 (audit #31) Rerun audit browser check on the full stack (middleware was off) after deploy
 - [DONE] D-6 (deploy hotfix) Ensure `/opt/nusantarasoft-3/logs` exists before SFTP pull-script upload (`deploy.ps1` mkdir guard; PR #29 detached deploy prod failure)

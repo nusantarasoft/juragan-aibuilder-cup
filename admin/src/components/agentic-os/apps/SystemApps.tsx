@@ -5,7 +5,7 @@ import { useShallow } from "zustand/react/shallow";
 import { Activity, AlertTriangle, Bot, CalendarClock, CircleCheck, Coins, Gauge, ListTodo, Play, Power, ShieldAlert, Sparkles, Timer } from "lucide-react";
 import { MODULES, type ModuleId } from "@/app/admin/virtual-office/lib/modules";
 import { aosApi, fetchAudit, fetchKasirLiveSnapshot } from "../lib/api";
-import { formatKasirMetricLine } from "../lib/firstEmployee";
+import { formatKasirMetricLine, rosterKindForAgent } from "../lib/firstEmployee";
 import { startPulsePolling, usePulseStore } from "../lib/pulseStore";
 import { agentById, useAosStore } from "../lib/store";
 import type { OsAuditEntry } from "../lib/types";
@@ -169,7 +169,7 @@ export function Overview({ onOpen }: { onOpen: (app: string, params?: Record<str
                                 <AgentDot color={a.color} name={a.name} size={24} />
                                 <span className="flex w-28 shrink-0 items-center gap-1 truncate text-[12px] font-semibold text-white">
                                     {a.name}
-                                    <RosterKindBadge kind="demo" />
+                                    <RosterKindBadge kind={rosterKindForAgent(a.id, a.slug, { uiDemoMode: settings?.uiDemoMode, agent: a })} />
                                 </span>
                                 <span className="min-w-0 flex-1 truncate text-[11px] text-slate-400">{running ? running.title : a.status === "active" ? "Idle" : a.status}</span>
                                 {running && (
@@ -294,7 +294,7 @@ export function OsSettingsApp() {
                     <Field label="Review cap per agent" hint="Stop autopilot when this many tasks wait for review">
                         <TextInput type="number" min={0} max={50} value={d.autopilotReviewCap} onChange={(e) => set("autopilotReviewCap", Number(e.target.value))} />
                     </Field>
-                    <Field label="Seconds per step" hint="Simulation speed" className="mt-2">
+                    <Field label="Seconds per step" hint="Middleware worker interval between task steps" className="mt-2">
                         <TextInput type="number" min={3} max={600} value={d.stepSeconds} onChange={(e) => set("stepSeconds", Number(e.target.value))} />
                     </Field>
                 </Section>

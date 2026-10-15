@@ -1,13 +1,14 @@
 # Audit dummy vs real — 2026-10-15
 
-**Branch audit:** `cursor/dummy-vs-real-audit-2026-10-15` (read-only code review + QA browser terbatas)  
-**Metode:** grep mock/demo/seed + baca alur runtime; browser admin `:3003` dengan GraphQL di-mock (middleware/Supabase/docker **tidak** jalan di VM audit).
+**Branch audit awal:** `cursor/dummy-vs-real-audit-2026-10-15` (read-only code review + QA browser terbatas)  
+**Phase 1 closure (F1-4 + D-3):** `cursor/honest-live-demo-f1-4-999e` — Live/Demo labels across AI Studio / AOS / VO; full-stack QA screenshots.  
+**Metode:** grep mock/demo/seed + baca alur runtime; browser admin `:3003` dengan middleware `:4001` + Docker stack (Phase 1 QA).
 
 ---
 
 ## Ringkasan (Bahasa Indonesia)
 
-Sebagian besar **AI Studio UMKM + Kasir + upload/RAG** memang terhubung ke middleware/Postgres/Hermes bila stack produksi/lokal lengkap — itu jalur **REAL**. **Virtual Office** hampir selalu menampilkan agent wayang **DEMO** (`mockAgentSource` + `setInterval`), meski backend Agentic OS hidup; badge **Demo** di header VO jujur, tetapi mode **Live** VO (`osAgentSource.ts`) **tidak pernah di-wire**. **Agentic OS** (task, agent DB, audit, Command Deck graph) **REAL** di database + GraphQL, tetapi **runner** hanya simulasi deterministik tiap 5 detik (**MIXED**), dan UI Overview menulis “task queue & workflows are not live yet” padahal task **ada** di DB — **menyesatkan**. **Kasir UMKM** di AOS/VO: metrik **REAL** dari `aosKasirLiveSnapshot` (sesi WA + order) dengan badge **Live** — jujur bila middleware+data ada. Halaman **Web Crawler**, **Knowledge Graph**, **Agent Builder** di AI Studio = **DEMO** client-side. Tenant produksi **`umkm-warung-klontong-bahagia`** **tidak** ada di seed repo (hanya referensi QA/deploy); perilaku = config WA + notebook di DB production (**uncertain** di local).
+**Phase 1 (F1-1…F1-4):** **AI Studio** notebook/UMKM/Kasir/upload/RAG = **REAL** bila stack lengkap; **Web Crawler**, **Knowledge Graph**, **Agent Builder**, **Label Studio dashboard**, dan **simulasi chat WA** = **DEMO** dengan banner/tag **Demo** jelas (D-3). **Agentic OS** task queue + worker + GraphQL = **REAL**; badge **Live** di Command Deck toolbar dan roster kecuali `aos_settings.ui_demo_mode` / `AOS_UI_DEMO_MODE` (D-2, F1-4). **Virtual Office** default **Live** via `osAgentSource` (F1-2); `mockAgentSource` hanya saat UI demo mode (D-1). **Kasir** mirror ke AOS queue + metrik live (F1-3). Tenant produksi **`umkm-warung-klontong-bahagia`** tetap **uncertain** di seed local (D-4).
 
 **QA browser (2026-10-15):** Admin dev webpack `:3003`, login via token + GraphQL mock. Screenshot: `/cursor/stores/self/media/dummy-audit-*.png`. Console: `ERR_CONNECTION_REFUSED` ke `:4001` (socket.io), `:8000` (Supabase realtime); beberapa chunk/layout warning saat navigasi cepat.
 
@@ -42,7 +43,7 @@ Sebagian besar **AI Studio UMKM + Kasir + upload/RAG** memang terhubung ke middl
 |--------|--------|--------|
 | Daftar tenant WA, perintah, approve registrasi | **REAL** | `umkm/page.tsx:184-210` → `studioService.listWhatsAppConfigs`, `listUmkmRegistrations` |
 | Pendamping bisnis (toggle + WA coach) | **REAL** (flag notebook) | `umkm/page.tsx:149-152`, `umkm_pendamping_enabled`; backend `studio-umkm-pendamping.service.ts` |
-| **Simulasi chat WA** (bukan kirim WA live) | **MIXED** (jujur dilabel) | `WhatsAppSimChatDrawer.tsx:4-5`, `umkm/page.tsx:624` — pipeline webhook, tanpa outbound WA |
+| **Simulasi chat WA** (bukan kirim WA live) | **MIXED** (jujur dilabel) | `WhatsAppSimChatDrawer` — tag **Demo** + copy simulasi; pipeline webhook, tanpa outbound WA |
 | Kasir (transaksi/stok via WA) | **REAL** (production path) | `middleware/src/studio/studio-umkm.service.ts`, Hermes plugins |
 | Owner phones hardcoded demo | **DEMO** (hanya placeholder UI) | `WhatsAppSimChatDrawer.tsx:34` default `6280000000001` |
 
@@ -57,11 +58,12 @@ Sebagian besar **AI Studio UMKM + Kasir + upload/RAG** memang terhubung ke middl
 
 | Fitur | Status | Bukti |
 |--------|--------|--------|
-| Web Crawler jobs | **DEMO** | `admin/src/lib/webCrawlerService.ts:35-36` “In-memory mock store”; `startJobSimulation` + `setInterval` + `Math.random` `:112-140` |
-| Knowledge Graph | **DEMO** | `knowledge-graph/page.tsx:17` “Mock tree data” |
-| Agent Builder | **DEMO** | `agent-builder/page.tsx:59` “Mocked Node Chain” |
+| Web Crawler jobs | **DEMO** (labeled) | `webCrawlerService.ts` in-memory + `StudioDemoBanner`; header **Demo** tag (F1-4) |
+| Knowledge Graph | **DEMO** (labeled) | Mock tree + `StudioDemoBanner` / **Demo** tag (F1-4) |
+| Agent Builder | **DEMO** (labeled) | Mock canvas + `StudioDemoBanner` / **Demo** tag (F1-4) |
+| Label Studio dashboard | **DEMO** (labeled) | Static `PROJECTS` + **Demo** banner (F1-4); open Label Studio = service nyata bila `:8080` up |
 | Settings / provider keys | **REAL** (simpan config) | `settings/` → GraphQL studio settings |
-| Label Studio / AI Gateway | **MIXED** | Integrasi nyata bergantung env; tidak mock di client |
+| AI Gateway | **REAL** (bergantung stack) | `ai-gateway/page.tsx` → `studioService` WA config |
 
 ---
 
@@ -136,9 +138,10 @@ Sebagian besar **AI Studio UMKM + Kasir + upload/RAG** memang terhubung ke middl
 | VO TopBar “Demo” | Ya | Saat `dataMode === 'demo'` (explicit `ui_demo_mode` only) |
 | VO subtitle live vs demo | Ya | Live copy when wired to Agentic OS queue |
 | AOS Overview task queue copy | **FIXED (F1-1)** | Describes persisted queue + worker; badges honest per `uiDemoMode` |
-| AOS “task queue & workflows are not live yet” | **Tidak** | Queue/runner/task DB hidup (simulated runner) |
-| Agent Studio badge pada Arjuna/Semar dll. | **Tidak** | Data REAL, badge Demo |
-| Web Crawler UI | **Tidak** | Terlihat production; backend in-memory mock |
+| AOS “Agents at work” roster badges | **FIXED (F1-4)** | `SystemApps.tsx` uses `rosterKindForAgent` (was hardcoded Demo) |
+| AOS Command Deck toolbar | **FIXED (F1-4)** | `RosterKindBadge` Live/Demo from `uiDemoMode` |
+| Agent Studio badge pada DB agents | **FIXED (D-2)** | `rosterKindForAgent` → **Live** unless UI demo mode |
+| Web Crawler / KG / Agent Builder UI | **FIXED (D-3 / F1-4)** | **Demo** banner + header tag |
 
 ---
 
@@ -154,25 +157,36 @@ Di **production** (bukti QA historis): etalase aktif pernah `indomie goreng`, `t
 
 ---
 
-## Browser QA — 2026-10-15
+## Browser QA
 
-**Stack:** Docker **tidak** terpasang di VM; middleware/Postgres/WA **offline**. Admin: `next dev --webpack` port **3003**. Auth: token localStorage + Playwright GraphQL route mock (`tests/e2e/helpers/graphqlMocks.ts`).
+### 2026-10-15 (audit awal, mock GraphQL)
 
-**Screenshot (Project store):**
+Stack partial — lihat commit audit. Screenshots `dummy-audit-*.png` di Project store `media/`.
 
-| File |
-|------|
-| `/cursor/stores/self/media/dummy-audit-ai-studio-umkm.png` |
-| `/cursor/stores/self/media/dummy-audit-ai-studio-home.png` |
-| `/cursor/stores/self/media/dummy-audit-ai-studio-web-crawler.png` |
-| `/cursor/stores/self/media/dummy-audit-agentic-os-overview.png` |
-| `/cursor/stores/self/media/dummy-audit-agentic-os-tasks.png` |
-| `/cursor/stores/self/media/dummy-audit-agentic-os-deck.png` |
-| `/cursor/stores/self/media/dummy-audit-agentic-os-agents.png` |
-| `/cursor/stores/self/media/dummy-audit-virtual-office.png` |
-| `/cursor/stores/self/media/dummy-audit-hr-recruitment.png` |
+### Phase 1 closure — F1-4 (full stack)
 
-**Console (representatif):** WebSocket `localhost:4001` / `8000` refused; GraphQL non-mock gagal untuk query studio spesifik pada UMKM (data kosong/error); antd Message/Drawer deprecation warnings.
+**Stack:** `scripts/qa-bootstrap-f1-4-stack.sh` + `apply-migrations.sh` + `scripts/init-cms-admin.mjs`; host middleware **:4001** + admin **:3003**. Playwright gate: `admin/tests/e2e/f1-4-live-demo-fullstack.spec.ts` (**live GraphQL**, no route mocks).
+
+**Screenshot inventory (Project store `media/`):**
+
+| File | Expected label |
+|------|----------------|
+| `f1-4-aistudio-home-live.png` | Live path (no Demo banner on notebook home) |
+| `f1-4-aistudio-crawler-demo.png` | **Demo** |
+| `f1-4-aistudio-knowledge-graph-demo.png` | **Demo** |
+| `f1-4-aistudio-agent-builder-demo.png` | **Demo** |
+| `f1-4-aistudio-label-studio-demo.png` | **Demo** |
+| `f1-4-aistudio-umkm-live.png` | Live data / empty honest |
+| `f1-4-aistudio-ai-gateway-live.png` | Live settings |
+| `f1-4-aistudio-settings-live.png` | Live settings |
+| `f1-4-aos-overview-live.png` | **Live** toolbar |
+| `f1-4-aos-tasks-live.png` | **Live** |
+| `f1-4-aos-agents-live.png` | **Live** |
+| `f1-4-aos-governance-live.png` | **Live** |
+| `f1-4-vo-live.png` | **Live** header |
+| `f1-4-vo-demo.png` | **Demo** header (`ui_demo_mode`) |
+
+**Console:** no blocking errors (socket.io / antd deprecation filtered in spec).
 
 ---
 
@@ -208,4 +222,4 @@ Di **production** (bukti QA historis): etalase aktif pernah `indomie goreng`, `t
 
 ## Docs / diagrams
 
-**N/A** — audit read-only; tidak mengubah perilaku produk. Dokumen ini satu-satunya artefak kode pada PR.
+**Phase 1:** `docs/backlog.md` (F1-4, D-3 DONE; P2-1…P2-4 added). **Diagrams:** N/A — no new ladder level; behavior is UI labeling only (existing L5–L9 unchanged).
