@@ -395,6 +395,32 @@ export class AosKasirLiveSnapshot {
     @Field(() => Boolean, { nullable: true }) waOnline: boolean | null;
 }
 
+@ObjectType()
+export class AosRecruitCatalogEntry {
+    @Field() id: string;
+    @Field() name: string;
+    @Field() role: string;
+    @Field() description: string;
+    @Field() kind: string;
+    @Field() color: string;
+    @Field(() => Int) sortOrder: number;
+    @Field() recruitable: boolean;
+}
+
+@ObjectType()
+export class AosRecruitStatus {
+    @Field(() => Int) recruitedCount: number;
+    @Field(() => Int) maxAgents: number;
+    @Field() kasirRecruited: boolean;
+}
+
+@ObjectType()
+export class AosRecruitResult {
+    @Field(() => AosAgent) agent: AosAgent;
+    @Field() waConnectRequired: boolean;
+    @Field() message: string;
+}
+
 // ── Phase 4 (Command Deck · Goals & gate reviews) ───────────────────────────
 
 @ObjectType()

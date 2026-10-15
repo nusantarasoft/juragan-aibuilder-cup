@@ -132,6 +132,7 @@ export class StudioUmkmCronService {
                         phone,
                         header + report,
                         cfg.session_name || undefined,
+                        cfg.tenant_id,
                     );
                     if (ok) sent += 1;
                 }

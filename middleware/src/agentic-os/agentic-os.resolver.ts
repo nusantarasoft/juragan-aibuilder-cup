@@ -39,12 +39,18 @@ import {
     AosWorkflowInput,
     AosWorkflowRun,
     AosKasirLiveSnapshot,
+    AosRecruitCatalogEntry,
+    AosRecruitResult,
+    AosRecruitStatus,
 } from './agentic-os.types';
 import { AosKasirLiveService } from './aos-kasir-live.service';
+import { AosRecruitService } from './aos-recruit.service';
 import { resolveAosTenant, type AosSessionUser } from './aos-tenant-access';
 import { AosTaskQueueEvents } from './aos-task-queue.events';
 
-type AosContext = { req?: { user?: { id?: string; email?: string; role?: string } | null } };
+type AosContext = {
+    req?: { user?: { id?: string; email?: string; role?: string; tenantId?: string | null } | null };
+};
 
 const AOS_SIGN_IN = 'Sign in to change the Agentic OS';
 const AOS_READ_SIGN_IN = 'Authentication required for this operation';
@@ -71,6 +77,7 @@ export class AgenticOsResolver {
         private readonly workflows: AgenticOsWorkflows,
         private readonly goals: AgenticOsGoals,
         private readonly kasirLive: AosKasirLiveService,
+        private readonly recruit: AosRecruitService,
         private readonly taskQueueEvents: AosTaskQueueEvents,
     ) {}
 
@@ -88,6 +95,21 @@ export class AgenticOsResolver {
     }
 
     /** Read-only UMKM Kasir employee metrics (AI Studio → Agentic OS / Virtual Office). */
+    @Query(() => [AosRecruitCatalogEntry])
+    aosRecruitCatalog(@Context() ctx: AosContext) {
+        const user = ctx?.req?.user;
+        if (!user?.id) {
+            throw new UnauthorizedException(AOS_READ_SIGN_IN);
+        }
+        return this.recruit.listCatalogForRole(user.role);
+    }
+
+    @Query(() => AosRecruitStatus)
+    aosRecruitStatus(@Context() ctx: AosContext, @Args('tenantId', optStr) tenantId?: string) {
+        const effective = tenantForRead(ctx, tenantId);
+        return this.recruit.getRecruitStatus(effective);
+    }
+
     @Query(() => AosKasirLiveSnapshot)
     @UseGuards(AosAuthGuard)
     aosKasirLiveSnapshot(
@@ -304,7 +326,27 @@ export class AgenticOsResolver {
         @Args('input', { type: () => AosAgentInput }) input: AosAgentInput,
         @Context() ctx: AosContext,
     ) {
-        return this.svc.createAgent(tenantId, input, actorOf(ctx));
+        const user = ctx?.req?.user;
+        const effective = tenantForRead(ctx, tenantId);
+        return this.svc.createAgent(effective, input, actorOf(ctx));
+    }
+
+    @Mutation(() => AosRecruitResult)
+    @UseGuards(AosAuthGuard)
+    aosRecruitAgent(
+        @Args('templateId') templateId: string,
+        @Args('tenantId', optStr) tenantId: string | undefined,
+        @Context() ctx: AosContext,
+    ) {
+        const user = ctx?.req?.user;
+        if (!user?.id) throw new UnauthorizedException(AOS_SIGN_IN);
+        const effective = tenantForRead(ctx, tenantId);
+        return this.recruit.recruitAgent(
+            effective,
+            templateId,
+            { id: user.id, email: user.email, role: user.role, tenantId: user.tenantId ?? null },
+            actorOf(ctx),
+        );
     }
 
     @Mutation(() => AosAgent)

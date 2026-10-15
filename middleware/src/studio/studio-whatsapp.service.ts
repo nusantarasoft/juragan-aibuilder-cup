@@ -89,7 +89,26 @@ export class StudioWhatsAppService {
     }
 
     /** Outbound text to phone (digits or chatId). Used by daily report cron. */
-    async sendOutboundText(phoneOrChatId: string, text: string, session?: string): Promise<boolean> {
+    async sendOutboundText(
+        phoneOrChatId: string,
+        text: string,
+        session?: string,
+        tenantId?: string,
+    ): Promise<boolean> {
+        if (tenantId) {
+            const { assertTenantOutboundCustomerSendAllowed, WaOutboundBlockedError } = await import(
+                '../agentic-os/aos-wa-outbound-gate'
+            );
+            try {
+                await assertTenantOutboundCustomerSendAllowed(this.admin(), tenantId);
+            } catch (e) {
+                if (e instanceof WaOutboundBlockedError) {
+                    this.logger.warn(`Outbound blocked for tenant ${tenantId}: ${e.message}`);
+                    return false;
+                }
+                throw e;
+            }
+        }
         const chatId = phoneOrChatId.includes('@')
             ? phoneOrChatId
             : this.waTransport.phoneToChatId(phoneOrChatId);

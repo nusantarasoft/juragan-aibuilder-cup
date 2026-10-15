@@ -5,8 +5,8 @@ import { Alert, Button, Card, Form, Input, Typography, Spin } from "antd";
 import { ShopOutlined, MailOutlined, LockOutlined, UserOutlined } from "@ant-design/icons";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { graphql } from "@/lib/graphqlClient";
-import { storeAuthTokens } from "@/lib/graphqlClient";
+import { graphql, storeAuthTokens } from "@/lib/graphqlClient";
+import { useAuth } from "@/context/AuthContext";
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -36,6 +36,7 @@ declare global {
 
 export default function RegisterPage() {
     const router = useRouter();
+    const { refreshSession } = useAuth();
     const [loading, setLoading] = useState(false);
     const [captchaToken, setCaptchaToken] = useState<string>("");
     const [captchaMode, setCaptchaMode] = useState<string>("loading");
@@ -127,6 +128,7 @@ export default function RegisterPage() {
             const r = data.registerTenant;
             if (r.accessToken && r.refreshToken && r.emailVerified) {
                 storeAuthTokens(r.accessToken, r.refreshToken);
+                await refreshSession();
                 router.replace("/admin/virtual-office");
                 return;
             }
