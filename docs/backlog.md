@@ -30,7 +30,7 @@ Rule: one DOING task at Cursor at a time (plus deploy). Gate: scope → PR → Q
 
 ## Fase 2+ — AI Studio depth (from D-3 / F1-4)
 - [DONE] P2-1 Web Crawler backend (job queue, worker, persist jobs) — PR [#55](https://github.com/nusantarasoft/nusantarasoft-3/pull/55); QA PASS `.gstack/qa-reports/qa-p2-1-web-crawler-2026-10-15.md`; screenshots `/cursor/stores/self/media/p2-1-crawler-*.png`
-- [TODO] P2-2 Knowledge Graph explorer wired to real embeddings / graph RPC (replace mock tree)
+- [DONE] P2-2 Knowledge Graph explorer wired to real embeddings / graph RPC (replace mock tree) — QA PASS 2026-10-15 (#56)
 - [TODO] P2-3 Visual Agent Builder persisted workflows (or fold into Agentic OS playbooks)
 - [TODO] P2-4 Label Studio admin dashboard reads real project stats from Label Studio API
 - [TODO] P2-5 Per-tenant dedicated WhatsApp business number (optional Hermes session per store) — after F2-3 shared-inbox v1

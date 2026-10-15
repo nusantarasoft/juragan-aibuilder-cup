@@ -32,6 +32,8 @@ import { OnboardingModule } from '../onboarding/onboarding.module';
 import { StudioWebCrawlerService } from './studio-web-crawler.service';
 import { StudioWebCrawlerWorker } from './studio-web-crawler.worker';
 import { StudioWebCrawlerResolver } from './studio-web-crawler.resolver';
+import { StudioKnowledgeGraphService } from './studio-knowledge-graph.service';
+import { StudioKnowledgeGraphResolver } from './studio-knowledge-graph.resolver';
 
 @Module({
     imports: [
@@ -72,6 +74,8 @@ import { StudioWebCrawlerResolver } from './studio-web-crawler.resolver';
         StudioWebCrawlerService,
         StudioWebCrawlerWorker,
         StudioWebCrawlerResolver,
+        StudioKnowledgeGraphService,
+        StudioKnowledgeGraphResolver,
     ],
     exports: [
         StudioService,
