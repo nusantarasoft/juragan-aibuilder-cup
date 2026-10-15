@@ -8,7 +8,7 @@
 
 ## Ringkasan (Bahasa Indonesia)
 
-**Phase 1 (F1-1…F1-4):** **AI Studio** notebook/UMKM/Kasir/upload/RAG = **REAL** bila stack lengkap; **Web Crawler** (P2-1), **Knowledge Graph** (P2-2), dan **Agent Builder** workflows (P2-3) = **REAL** / **MIXED** dengan tag **Live**; **Label Studio dashboard** dan **simulasi chat WA** = **DEMO** dengan banner/tag **Demo** jelas (D-3). **Agentic OS** task queue + worker + GraphQL = **REAL**; badge **Live** di Command Deck toolbar dan roster kecuali `aos_settings.ui_demo_mode` / `AOS_UI_DEMO_MODE` (D-2, F1-4). **Virtual Office** default **Live** via `osAgentSource` (F1-2); `mockAgentSource` hanya saat UI demo mode (D-1). **Kasir** mirror ke AOS queue + metrik live (F1-3). Tenant produksi **`umkm-warung-klontong-bahagia`** tetap **uncertain** di seed local (D-4).
+**Phase 1 (F1-1…F1-4):** **AI Studio** notebook/UMKM/Kasir/upload/RAG = **REAL** bila stack lengkap; **Web Crawler** (P2-1), **Knowledge Graph** (P2-2), **Agent Builder** workflows (P2-3), dan **Label Studio dashboard** (P2-4) = **REAL** / **MIXED** dengan tag **Live**; **simulasi chat WA** = **DEMO** dengan banner/tag **Demo** jelas (D-3). **Agentic OS** task queue + worker + GraphQL = **REAL**; badge **Live** di Command Deck toolbar dan roster kecuali `aos_settings.ui_demo_mode` / `AOS_UI_DEMO_MODE` (D-2, F1-4). **Virtual Office** default **Live** via `osAgentSource` (F1-2); `mockAgentSource` hanya saat UI demo mode (D-1). **Kasir** mirror ke AOS queue + metrik live (F1-3). Tenant produksi **`umkm-warung-klontong-bahagia`** tetap **uncertain** di seed local (D-4).
 
 **QA browser (2026-10-15):** Admin dev webpack `:3003`, login via token + GraphQL mock. Screenshot: `/cursor/stores/self/media/dummy-audit-*.png`. Console: `ERR_CONNECTION_REFUSED` ke `:4001` (socket.io), `:8000` (Supabase realtime); beberapa chunk/layout warning saat navigasi cepat.
 
@@ -61,7 +61,7 @@
 | Web Crawler jobs | **REAL** (labeled **Live**) | `studio_web_crawl_jobs` + middleware worker + GraphQL; admin `webCrawlerService` → API; **Live** banner/tag (P2-1) |
 | Knowledge Graph | **REAL** (labeled **Live**) | `studio_knowledge_graph_*` RPC + GraphQL; pgvector search via `match_studio_chunks_for_tenant`; **Demo** only when `aos_settings.ui_demo_mode` (P2-2, F1-4) |
 | Agent Builder | **MIXED** (labeled **Live**) | Persisted `studio_agent_workflows` + GraphQL canvas; static node **palette** = demo-path note only (P2-3, F1-4) |
-| Label Studio dashboard | **DEMO** (labeled) | Static `PROJECTS` + **Demo** banner (F1-4); open Label Studio = service nyata bila `:8080` up |
+| Label Studio dashboard | **REAL** (labeled **Live**) | `studioLabelStudioDashboard` GraphQL → middleware proxies Label Studio `/api/projects/` (token server-side) + `media_annotations` recent rows; **Demo** only when `aos_settings.ui_demo_mode` (P2-4, F1-4); open Label Studio = `:8080` / `LABELSTUDIO_BROWSER_URL` |
 | Settings / provider keys | **REAL** (simpan config) | `settings/` → GraphQL studio settings |
 | AI Gateway | **REAL** (bergantung stack) | `ai-gateway/page.tsx` → `studioService` WA config |
 

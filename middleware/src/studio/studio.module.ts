@@ -36,6 +36,8 @@ import { StudioKnowledgeGraphService } from './studio-knowledge-graph.service';
 import { StudioKnowledgeGraphResolver } from './studio-knowledge-graph.resolver';
 import { StudioAgentBuilderService } from './studio-agent-builder.service';
 import { StudioAgentBuilderResolver } from './studio-agent-builder.resolver';
+import { StudioLabelStudioService } from './studio-label-studio.service';
+import { StudioLabelStudioResolver } from './studio-label-studio.resolver';
 
 @Module({
     imports: [
@@ -80,6 +82,8 @@ import { StudioAgentBuilderResolver } from './studio-agent-builder.resolver';
         StudioKnowledgeGraphResolver,
         StudioAgentBuilderService,
         StudioAgentBuilderResolver,
+        StudioLabelStudioService,
+        StudioLabelStudioResolver,
     ],
     exports: [
         StudioService,
