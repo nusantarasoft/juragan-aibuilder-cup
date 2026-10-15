@@ -18,7 +18,7 @@ Rule: one DOING task at Cursor at a time (plus deploy). Gate: scope → PR → Q
 ## Fase 2 — Rekrut agen (tenant self-serve)
 - [DONE] F2-1 Self-serve tenant registration + onboarding — merged [#42](https://github.com/nusantarasoft/nusantarasoft-3/pull/42) @ `e6424f2`; design [docs/design/f2-1-tenant-onboarding.md](design/f2-1-tenant-onboarding.md); prod checklist [docs/ops/f2-1-prod-readiness.md](ops/f2-1-prod-readiness.md)
 - [DONE] F2-2 Agent catalog + "rekrut" flow — `/admin/recruit`, one-click Kasir, trial cap 3; design [docs/design/f2-2-agent-catalog-recruit.md](design/f2-2-agent-catalog-recruit.md); ops [docs/ops/f2-2-recruit-flow.md](ops/f2-2-recruit-flow.md); QA PASS 2026-10-15 (`.gstack/qa-reports/qa-f2-2-agent-recruit-2026-10-15.md`)
-- [TODO] F2-3 Connect channel (WA) per agent/tenant, without manual setup
+- [DOING] F2-3 Connect channel (WA) per store (Kasir) — [#48](https://github.com/nusantarasoft/nusantarasoft-3/pull/48); design [#47](https://github.com/nusantarasoft/nusantarasoft-3/pull/47); OTP prod-path hardening in review
 - [TODO] F2-4 Per-tenant agent settings in AOS (on/off, schedule, limits)
 
 ## Fase 3 — Agen kedua & ready to use
@@ -32,6 +32,7 @@ Rule: one DOING task at Cursor at a time (plus deploy). Gate: scope → PR → Q
 - [TODO] P2-2 Knowledge Graph explorer wired to real embeddings / graph RPC (replace mock tree)
 - [TODO] P2-3 Visual Agent Builder persisted workflows (or fold into Agentic OS playbooks)
 - [TODO] P2-4 Label Studio admin dashboard reads real project stats from Label Studio API
+- [TODO] P2-5 Per-tenant dedicated WhatsApp business number (optional Hermes session per store) — after F2-3 shared-inbox v1
 
 ## Discovered
 (append here)

@@ -6,11 +6,11 @@
 
 1. Login as `tenant_owner` → empty Virtual Office.
 2. CTA **Rekrut karyawan** → `/admin/recruit`.
-3. **Rekrut sekarang** on Kasir UMKM → `aos_agents` row (`umkm-kasir`, runner `browser`).
-4. Kasir appears on Virtual Office floor (live roster).
+3. **Rekrut sekarang** on Kasir UMKM → redirect **`/admin/connect-wa`** (F2-3).
+4. Kasir appears on Virtual Office floor after recruit (live roster).
 5. Other SKUs show **Segera hadir** (not clickable).
 6. Trial cap: **3** active agents per tenant.
-7. Outbound customer WA (cron/push) blocked until WhatsApp config enabled + notebook (F2-3).
+7. Outbound customer WA (cron/push) blocked until F2-3 owner OTP verified + **Aktifkan** — see [f2-3-connect-wa-flow.md](f2-3-connect-wa-flow.md).
 
 ## Platform admin
 

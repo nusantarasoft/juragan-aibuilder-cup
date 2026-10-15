@@ -15,6 +15,24 @@ export function isDevCaptchaAllowed(config: ConfigService): boolean {
     return (config.get('ONBOARDING_ALLOW_DEV_CAPTCHA') ?? 'false').toString() === 'true';
 }
 
+function isTruthyEnv(raw: string | undefined): boolean {
+    const v = (raw ?? '').toString().trim().toLowerCase();
+    return v === '1' || v === 'true' || v === 'yes' || v === 'on';
+}
+
+export function assertWaOtpProductionConfig(config: ConfigService): void {
+    if (!isProductionNode(config)) return;
+
+    if (isTruthyEnv((config.get('WA_OTP_MOCK') ?? process.env.WA_OTP_MOCK) as string | undefined)) {
+        throw new Error('WA_OTP_MOCK must not be set in production');
+    }
+
+    const secret = (config.get('WA_OTP_SECRET') ?? process.env.WA_OTP_SECRET ?? '').toString().trim();
+    if (!secret || secret === 'f2-3-dev-wa-otp') {
+        throw new Error('WA_OTP_SECRET must be set to a non-default value in production');
+    }
+}
+
 export function assertOnboardingProductionConfig(config: ConfigService): void {
     if (!isProductionNode(config)) return;
 

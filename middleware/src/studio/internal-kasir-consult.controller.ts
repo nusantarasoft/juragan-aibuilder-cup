@@ -19,6 +19,7 @@ import {
 } from './studio-umkm-pendamping.prompts';
 import { StudioUmkmPendampingService } from './studio-umkm-pendamping.service';
 import { KasirConsultAosTaskService } from './kasir-consult-aos-task.service';
+import { StudioUmkmService } from './studio-umkm.service';
 
 type ConsultBody = {
     question?: string;
@@ -44,6 +45,7 @@ export class InternalKasirConsultController {
         private readonly pendamping: StudioUmkmPendampingService,
         private readonly config: ConfigService,
         private readonly kasirTasks: KasirConsultAosTaskService,
+        private readonly umkm: StudioUmkmService,
     ) {}
 
     @Post('kasir-consult')
@@ -67,6 +69,14 @@ export class InternalKasirConsultController {
 
         const phone =
             typeof body?.phone === 'string' ? body.phone.trim().slice(0, 32) : undefined;
+
+        if (phone?.trim()) {
+            const ctx = await this.umkm.resolveUmkmContextByOwnerPhone(phone);
+            if (!ctx) {
+                this.logger.warn('kasir-consult sender not on store whitelist or WA inactive');
+                throw new HttpException('Sender not allowed', HttpStatus.FORBIDDEN);
+            }
+        }
 
         const mode = String(body?.mode || '')
             .trim()

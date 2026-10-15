@@ -1,7 +1,9 @@
 'use client';
 
 import React, { useCallback, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useAuthStore } from '@/store/useAuthStore';
 import { motion } from 'framer-motion';
 import CMSLayout from '@/components/layout/CMSLayout';
 import {
@@ -152,8 +154,17 @@ function pendampingEnabledFromNotebook(nb: StudioNotebook | undefined): boolean 
 }
 
 export default function UmkmStudioPage() {
+    const router = useRouter();
+    const role = useAuthStore((s) => s.user?.role);
     const { loading: authLoading } = useAuth();
     const userId = useStudioUserId();
+
+    useEffect(() => {
+        if (authLoading) return;
+        if (role === 'tenant_owner') {
+            router.replace('/admin/connect-wa');
+        }
+    }, [authLoading, role, router]);
 
     const [loading, setLoading] = useState(true);
     const [configs, setConfigs] = useState<StudioWhatsAppConfig[]>([]);

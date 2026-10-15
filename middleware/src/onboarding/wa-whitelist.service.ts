@@ -1,4 +1,5 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { WA_WHITELIST_MAX_STAFF } from './wa-connection.constants';
 import { SupabaseService } from '../supabase/supabase.service';
 import { StudioWhatsAppService } from '../studio/studio-whatsapp.service';
 import { normalizePhoneDigits } from '../studio/studio-whatsapp.util';
@@ -41,6 +42,16 @@ export class WaWhitelistService {
     async addPhone(storeId: string, phoneRaw: string, opts?: { label?: string; isOwner?: boolean }) {
         const phone = normalizePhoneDigits(phoneRaw);
         if (phone.length < 8) throw new Error('Invalid phone number');
+        if (!opts?.isOwner) {
+            const rows = await this.listForStore(storeId);
+            const staffCount = rows.filter((r) => !r.is_owner).length;
+            const exists = rows.some((r) => normalizePhoneDigits(String(r.phone)) === phone);
+            if (!exists && staffCount >= WA_WHITELIST_MAX_STAFF) {
+                throw new BadRequestException(
+                    `Maksimal ${WA_WHITELIST_MAX_STAFF} nomor staff per toko`,
+                );
+            }
+        }
         const { data, error } = await this.admin()
             .from('tenant_wa_whitelist')
             .upsert(

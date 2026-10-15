@@ -15,6 +15,7 @@ import { OnboardingService } from './onboarding.service';
 import { getTrustedClientIp } from './request-client-ip';
 import { TenantMembershipService, type SessionTenantUser } from './tenant-membership.service';
 import { WaWhitelistService } from './wa-whitelist.service';
+import { WaConnectionService } from './wa-connection.service';
 
 @ObjectType()
 class RegisterTenantResult {
@@ -103,6 +104,78 @@ class LinkOwnerWaInput {
     phone: string;
 }
 
+@ObjectType()
+class WaConnectionStatus {
+    @Field()
+    storeId: string;
+
+    @Field()
+    studioSlug: string;
+
+    @Field({ nullable: true })
+    ownerPhone?: string;
+
+    @Field()
+    ownerPhoneVerified: boolean;
+
+    @Field()
+    kasirWaActivated: boolean;
+
+    @Field()
+    waConnected: boolean;
+
+    @Field()
+    staffCount: number;
+
+    @Field()
+    maxStaff: number;
+
+    @Field()
+    sharedInbox: boolean;
+}
+
+@ObjectType()
+class RequestOwnerWaOtpResult {
+    @Field()
+    phone: string;
+
+    @Field()
+    delivery: string;
+
+    @Field({ nullable: true })
+    mockCode?: string;
+
+    @Field()
+    message: string;
+}
+
+@InputType()
+class RequestOwnerWaOtpInput {
+    @Field()
+    storeId: string;
+
+    @Field()
+    phone: string;
+}
+
+@InputType()
+class VerifyOwnerWaOtpInput {
+    @Field()
+    storeId: string;
+
+    @Field()
+    phone: string;
+
+    @Field()
+    code: string;
+}
+
+@InputType()
+class ActivateWaKasirInput {
+    @Field()
+    storeId: string;
+}
+
 @InputType()
 class AddWaStaffInput {
     @Field()
@@ -132,8 +205,57 @@ export class OnboardingResolver {
         private readonly onboarding: OnboardingService,
         private readonly membership: TenantMembershipService,
         private readonly waWhitelistService: WaWhitelistService,
+        private readonly waConnection: WaConnectionService,
         private readonly captcha: CaptchaService,
     ) {}
+
+    @Query(() => WaConnectionStatus)
+    async waConnectionStatus(
+        @Args('storeId') storeId: string,
+        @Context() ctx: GqlCtx,
+    ): Promise<WaConnectionStatus> {
+        const user = ctx.req?.user;
+        if (!user?.id) throw new Error('Authentication required');
+        await this.assertStoreAccess(user, storeId);
+        return this.waConnection.statusForStore(storeId);
+    }
+
+    @Mutation(() => RequestOwnerWaOtpResult)
+    async requestOwnerWaOtp(
+        @Args('input') input: RequestOwnerWaOtpInput,
+        @Context() ctx: GqlCtx,
+    ): Promise<RequestOwnerWaOtpResult> {
+        const user = ctx.req?.user;
+        if (!user?.id) throw new Error('Authentication required');
+        await this.assertStoreAccess(user, input.storeId);
+        return this.waConnection.requestOwnerOtp(
+            input.storeId,
+            input.phone,
+            getTrustedClientIp(ctx.req),
+        );
+    }
+
+    @Mutation(() => WaConnectionStatus)
+    async verifyOwnerWaOtp(
+        @Args('input') input: VerifyOwnerWaOtpInput,
+        @Context() ctx: GqlCtx,
+    ): Promise<WaConnectionStatus> {
+        const user = ctx.req?.user;
+        if (!user?.id) throw new Error('Authentication required');
+        await this.assertStoreAccess(user, input.storeId);
+        return this.waConnection.verifyOwnerOtp(input.storeId, input.phone, input.code);
+    }
+
+    @Mutation(() => WaConnectionStatus)
+    async activateWaKasirChannel(
+        @Args('input') input: ActivateWaKasirInput,
+        @Context() ctx: GqlCtx,
+    ): Promise<WaConnectionStatus> {
+        const user = ctx.req?.user;
+        if (!user?.id) throw new Error('Authentication required');
+        await this.assertStoreAccess(user, input.storeId);
+        return this.waConnection.activateKasirWa(input.storeId);
+    }
 
     @Mutation(() => Boolean)
     async linkOwnerWhatsApp(

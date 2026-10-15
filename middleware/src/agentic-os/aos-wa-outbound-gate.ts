@@ -1,18 +1,67 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-/** F2-3 prep: outbound customer WA/email blocked until channel is connected. */
+const UUID_RE =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+async function resolveStudioSlug(db: SupabaseClient, tenantId: string): Promise<string> {
+    const tid = tenantId.trim();
+    if (!UUID_RE.test(tid)) return tid;
+
+    const { data: store } = await db
+        .from('tenant_stores')
+        .select('studio_slug, owner_phone_verified_at, wa_kasir_activated_at')
+        .eq('tenant_id', tid)
+        .maybeSingle();
+
+    if (store?.studio_slug) {
+        return store.studio_slug as string;
+    }
+
+    const { data: alias } = await db
+        .from('tenant_slug_aliases')
+        .select('slug')
+        .eq('tenant_id', tid)
+        .limit(1)
+        .maybeSingle();
+    return (alias?.slug as string | undefined) ?? tid;
+}
+
+async function storeConnectionFlags(
+    db: SupabaseClient,
+    tenantId: string,
+): Promise<{ verified: boolean; activated: boolean }> {
+    if (!UUID_RE.test(tenantId.trim())) {
+        return { verified: true, activated: true };
+    }
+    const { data: store } = await db
+        .from('tenant_stores')
+        .select('owner_phone_verified_at, wa_kasir_activated_at')
+        .eq('tenant_id', tenantId.trim())
+        .maybeSingle();
+    return {
+        verified: Boolean(store?.owner_phone_verified_at),
+        activated: Boolean(store?.wa_kasir_activated_at),
+    };
+}
+
+/** F2-3: outbound customer WA blocked until owner verified + Kasir WA activated + notebook. */
 export async function isTenantWaChannelConnected(
     db: SupabaseClient,
     tenantId: string,
 ): Promise<boolean> {
+    const slug = await resolveStudioSlug(db, tenantId);
+    const flags = await storeConnectionFlags(db, tenantId);
+
     const { data } = await db
         .from('studio_whatsapp_config')
         .select('enabled, notebook_id')
-        .eq('tenant_id', tenantId)
+        .eq('tenant_id', slug)
         .maybeSingle();
     if (!data) return false;
     const row = data as { enabled?: boolean; notebook_id?: string | null };
-    return Boolean(row.enabled && row.notebook_id);
+    if (!row.notebook_id) return false;
+    if (!flags.verified || !flags.activated) return false;
+    return Boolean(row.enabled);
 }
 
 export class WaOutboundBlockedError extends Error {
