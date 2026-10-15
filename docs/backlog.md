@@ -16,7 +16,7 @@ Rule: one DOING task at Cursor at a time (plus deploy). Gate: scope → PR → Q
 - [DONE] F1-4 Honest Live/Demo badges; remove remaining dummy data (per audit P0)
 
 ## Fase 2 — Rekrut agen (tenant self-serve)
-- [TODO] F2-1 Self-serve tenant registration + onboarding
+- [TODO] F2-1 Self-serve tenant registration + onboarding — design draft: [docs/design/f2-1-tenant-onboarding.md](design/f2-1-tenant-onboarding.md)
 - [TODO] F2-2 Agent catalog + "rekrut" flow (pick agent, role, data access)
 - [TODO] F2-3 Connect channel (WA) per agent/tenant, without manual setup
 - [TODO] F2-4 Per-tenant agent settings in AOS (on/off, schedule, limits)
