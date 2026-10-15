@@ -11,7 +11,7 @@ pass() { echo "PASS  $*"; }
 fail() { echo "FAIL  $*"; failures=$((failures + 1)); }
 
 echo "==> bash -n deploy scripts"
-for s in scripts/master-production/up-hermes.sh scripts/master-production/redeploy.sh; do
+for s in scripts/master-production/up-hermes.sh scripts/master-production/redeploy.sh scripts/master-production/redeploy-detached.sh; do
   if bash -n "$s"; then pass "bash -n $s"; else fail "bash -n $s"; fi
 done
 
