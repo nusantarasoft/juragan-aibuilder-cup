@@ -4,6 +4,8 @@
 **Updated:** 2026-10-15  
 **Scope:** Pre-deploy / post-migrate verification for web `/register`, email verification gate, captcha, and legacy slug mapping. **Do not deploy** until Akbar approves and this checklist is green.
 
+**F2 bundle:** For F2-2 + F2-3 together with F2-1, use the combined gate [release-f2-prod-readiness.md](release-f2-prod-readiness.md) (migrations, env, smoke). This file remains the F2-1 captcha/SMTP/Klontong detail reference.
+
 Design reference: [docs/design/f2-1-tenant-onboarding.md](../design/f2-1-tenant-onboarding.md).
 
 ---

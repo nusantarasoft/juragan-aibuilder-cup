@@ -16,9 +16,10 @@ Rule: one DOING task at Cursor at a time (plus deploy). Gate: scope → PR → Q
 - [DONE] F1-4 Honest Live/Demo badges; remove remaining dummy data (per audit P0)
 
 ## Fase 2 — Rekrut agen (tenant self-serve)
-- [DONE] F2-1 Self-serve tenant registration + onboarding — merged [#42](https://github.com/nusantarasoft/nusantarasoft-3/pull/42) @ `e6424f2`; design [docs/design/f2-1-tenant-onboarding.md](design/f2-1-tenant-onboarding.md); prod checklist [docs/ops/f2-1-prod-readiness.md](ops/f2-1-prod-readiness.md)
-- [DONE] F2-2 Agent catalog + "rekrut" flow — `/admin/recruit`, one-click Kasir, trial cap 3; design [docs/design/f2-2-agent-catalog-recruit.md](design/f2-2-agent-catalog-recruit.md); ops [docs/ops/f2-2-recruit-flow.md](ops/f2-2-recruit-flow.md); QA PASS 2026-10-15 (`.gstack/qa-reports/qa-f2-2-agent-recruit-2026-10-15.md`)
-- [DOING] F2-3 Connect channel (WA) per store (Kasir) — [#48](https://github.com/nusantarasoft/nusantarasoft-3/pull/48); design [#47](https://github.com/nusantarasoft/nusantarasoft-3/pull/47); OTP prod-path hardening in review
+- [DONE] F2-1 Self-serve tenant registration + onboarding — merged [#42](https://github.com/nusantarasoft/nusantarasoft-3/pull/42) @ `e6424f2`; design [docs/design/f2-1-tenant-onboarding.md](design/f2-1-tenant-onboarding.md); prod detail [docs/ops/f2-1-prod-readiness.md](ops/f2-1-prod-readiness.md)
+- [DONE] F2-2 Agent catalog + "rekrut" flow — merged [#46](https://github.com/nusantarasoft/nusantarasoft-3/pull/46) @ `144a8ad`; `/admin/recruit`, one-click Kasir, trial cap 3; design [docs/design/f2-2-agent-catalog-recruit.md](design/f2-2-agent-catalog-recruit.md); ops [docs/ops/f2-2-recruit-flow.md](ops/f2-2-recruit-flow.md); QA PASS 2026-10-15 (`.gstack/qa-reports/qa-f2-2-agent-recruit-2026-10-15.md`)
+- [DONE] F2-3 Connect channel (WA) per store (Kasir) — merged [#48](https://github.com/nusantarasoft/nusantarasoft-3/pull/48) @ `d0ec587`; design [docs/design/f2-3-tenant-wa-connection.md](design/f2-3-tenant-wa-connection.md); ops [docs/ops/f2-3-connect-wa-flow.md](ops/f2-3-connect-wa-flow.md)
+- **Release (F2 wedge):** code on `master` @ `d0ec587`; **not deployed** until Akbar — combined prod gate [docs/ops/release-f2-prod-readiness.md](ops/release-f2-prod-readiness.md)
 - [TODO] F2-4 Per-tenant agent settings in AOS (on/off, schedule, limits)
 
 ## Fase 3 — Agen kedua & ready to use
