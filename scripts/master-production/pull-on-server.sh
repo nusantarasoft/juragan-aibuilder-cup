@@ -12,6 +12,7 @@
 #   GITHUB_TOKEN     optional; builds HTTPS URL if DEPLOY_GIT_URL unset
 #   REMOTE_DIR       default /opt/nusantarasoft-3
 #   BRANCH           default master-production (do not change for go-live)
+#   TARGET_SHA       optional full commit to fetch+reset (deploy.ps1 passes origin tip)
 #   HERMES_BACKUP_DIR   tar backups before pull (default $REMOTE_DIR/backups/hermes-runtime)
 #   HERMES_BACKUP_KEEP  keep newest N tar backups (default 5)
 #   HERMES_BACKUP_RETRIES / HERMES_BACKUP_RETRY_DELAY  (defaults below)
@@ -131,6 +132,7 @@ hermes_backup_runtime_with_retries() {
 }
 
 BRANCH="${BRANCH:-master-production}"
+TARGET_SHA="${TARGET_SHA:-}"
 REMOTE_DIR="${REMOTE_DIR:-/opt/nusantarasoft-3}"
 REPO_HTTPS_PATH="${REPO_HTTPS_PATH:-nusantarasoft/nusantarasoft-3}"
 
@@ -159,6 +161,9 @@ SAFE_URL="$(printf '%s' "$URL" | sed -E 's#(://[^:]+:)[^@]+@#\1***@#')"
 
 echo "==> target dir : $REMOTE_DIR"
 echo "==> branch     : $BRANCH"
+if [[ -n "$TARGET_SHA" ]]; then
+  echo "==> target sha : ${TARGET_SHA:0:12}"
+fi
 echo "==> remote     : $SAFE_URL"
 
 HERMES_BACKUP_DIR="${HERMES_BACKUP_DIR:-$REMOTE_DIR/backups/hermes-runtime}"
@@ -252,10 +257,18 @@ if [[ -d "$REMOTE_DIR/.git" ]]; then
   stash_hermes_runtime "$HERMES_STASH"
   git remote set-url origin "$URL"
   git fetch --prune origin "$BRANCH"
+  reset_ref="origin/$BRANCH"
+  if [[ -n "$TARGET_SHA" ]]; then
+    if ! git cat-file -e "${TARGET_SHA}^{commit}" 2>/dev/null; then
+      echo "ERROR: TARGET_SHA not found after fetch: $TARGET_SHA" >&2
+      exit 1
+    fi
+    reset_ref="$TARGET_SHA"
+  fi
   # Tar/hotfix deploys often leave dirty/untracked files that block checkout.
   # Force align to origin; never wipe .env, DB/storage, or Hermes runtime (gitignored).
-  git checkout -f -B "$BRANCH" "origin/$BRANCH"
-  git reset --hard "origin/$BRANCH"
+  git checkout -f -B "$BRANCH" "$reset_ref"
+  git reset --hard "$reset_ref"
   git clean -fd \
     --exclude=.env.master-production \
     --exclude=volumes/db/data \
