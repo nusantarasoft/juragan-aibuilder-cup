@@ -626,6 +626,8 @@ graph TB
 
 See: [Platform Services Guide](docs/platform-services-guide.md)
 
+See: [NS3 Backlog](docs/backlog.md)
+
 ---
 
 ## 📁 Directory Structure
