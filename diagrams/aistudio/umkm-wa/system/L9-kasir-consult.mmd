@@ -9,6 +9,8 @@ flowchart LR
   HTTP --> N[Nest middleware]
   N -->|flag off / bad key| Off2[off / 401]
   N -->|ok| Rag[consultFromNotebook]
+  N -.->|async fire-and-forget| AOS[(AOS aos_tasks<br/>source kasir_wa<br/>redacted summary)]
+  AOS -.->|GraphQL aosTasks| VO[Agentic OS + Virtual Office]
   Rag --> Emb[embed query]
   Emb --> Match[match_studio_chunks<br/>notebook kurikulum]
   Match -->|hits| Syn[LLM synthesize ≤800<br/>Qwen3.7 Flash via OpenRouter<br/>KASIR_CONSULT_SYNTH_*]

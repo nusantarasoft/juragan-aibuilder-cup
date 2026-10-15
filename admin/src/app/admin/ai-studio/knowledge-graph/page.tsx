@@ -7,6 +7,7 @@ import {
     ShareAltOutlined, SearchOutlined, NodeIndexOutlined, DatabaseOutlined, LinkOutlined 
 } from "@ant-design/icons";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
+import { StudioDemoBanner, StudioDemoModeTag } from "@/components/ai-studio/StudioDemoBanner";
 
 const { Title, Text } = Typography;
 const { Search } = Input;
@@ -44,7 +45,15 @@ export default function KnowledgeGraphPage() {
     ];
 
     return (
-        <CMSLayout title="Knowledge Graph Explorer" subTitle="Visualize semantic relationships in your Vector DB">
+        <CMSLayout
+            title="Knowledge Graph Explorer"
+            subTitle="Visualize semantic relationships in your Vector DB"
+            extra={[<StudioDemoModeTag key="demo" />]}
+        >
+            <StudioDemoBanner
+                title="Knowledge Graph Explorer"
+                detail="Sample tree and metrics only — not loaded from your vector database yet (P2 backlog)."
+            />
             <Row gutter={[24, 24]}>
                 
                 {/* Search & Metrics */}

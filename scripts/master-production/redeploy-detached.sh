@@ -3,8 +3,9 @@
 #
 # Used by deploy.ps1 so Mac sleep / SSH drop does not kill docker builds.
 #
-#   start [PULL]   acquire lock, spawn setsid+nohup job, print LOG=/PID=/STATUS=
-#                  optional PULL: server path to stdin-safe pull script (runs before redeploy)
+#   start [PULL] [SHA]  acquire lock, write .deploy.state immediately, spawn detached job
+#                       optional PULL: server path to stdin-safe pull script (runs before redeploy)
+#                       optional SHA: target commit (deploy.ps1 passes origin/master-production tip)
 #   status         print LOG=/PID=/STATUS=/EXIT= (machine-readable)
 #   tail-since     args: LOG OFFSET — print new log bytes; last line OFFSET=<n>
 #
@@ -61,8 +62,39 @@ _stale_lock_cleanup() {
   rm -f "$LOCKFILE"
 }
 
+_write_running_state() {
+  local log="$1" started="$2" target_sha="${3:-}" pid="${4:-}"
+  _write_state <<EOF
+LOG=$log
+PID=$pid
+STARTED=$started
+STATUS=running
+SHA=$target_sha
+EXIT=
+EOF
+}
+
+_live_lock_deploy() {
+  if [[ ! -f "$LOCKFILE" ]]; then
+    return 1
+  fi
+  local lp ll
+  lp="$(_lock_pid || true)"
+  ll="$(_lock_log || true)"
+  if [[ -z "${lp:-}" ]] || [[ -z "${ll:-}" ]]; then
+    return 1
+  fi
+  if ! kill -0 "$lp" 2>/dev/null; then
+    return 1
+  fi
+  echo "$lp"
+  echo "$ll"
+  return 0
+}
+
 cmd_start() {
   local pull_script="${1:-}"
+  local target_sha="${2:-${TARGET_SHA:-}}"
   if [[ -n "$pull_script" ]] && [[ ! -f "$pull_script" ]]; then
     echo "ERROR: pull script not found: $pull_script" >&2
     exit 1
@@ -89,6 +121,9 @@ cmd_start() {
   : >"$log"
   started="$(date -Iseconds)"
 
+  # State before spawn so -Status right after trigger sees running (not stale prior deploy).
+  _write_running_state "$log" "$started" "$target_sha" ""
+
   wrapper="$LOG_DIR/.deploy-run-${ts}.sh"
   local pull_escaped=""
   if [[ -n "$pull_script" ]]; then
@@ -104,15 +139,19 @@ STATEFILE='$STATEFILE'
 REDEPLOY='$REDEPLOY'
 PULL_SCRIPT='${pull_escaped}'
 STARTED='$started'
+TARGET_SHA='$(printf '%s' "$target_sha" | sed "s/'/'\\\\''/g")'
 ec=0
 finish() {
   echo "\$ec" >"\${LOG}.exit"
+  final_status=failed
+  if [[ "\$ec" -eq 0 ]]; then final_status=success; fi
   tmp="\$(mktemp "\${STATEFILE}.XXXXXX")"
   cat >"\$tmp" <<EOSTATE
 LOG=\$LOG
 PID=
 STARTED=\$STARTED
-STATUS=done
+STATUS=\$final_status
+SHA=\$TARGET_SHA
 EXIT=\$ec
 EOSTATE
   mv -f "\$tmp" "\$STATEFILE"
@@ -140,30 +179,41 @@ EOS
   local wp="$!"
   echo "$wp $log" >"$LOCKFILE"
 
-  # Patch PID into state (keep other fields)
-  local cur_log cur_started
-  cur_log="$log"
-  cur_started="$started"
-  _write_state <<EOF
-LOG=$cur_log
-PID=$wp
-STARTED=$cur_started
-STATUS=running
-EXIT=
-EOF
+  _write_running_state "$log" "$started" "$target_sha" "$wp"
 
   echo "LOG=$log"
   echo "PID=$wp"
+  echo "SHA=$target_sha"
   echo "STATUS=running"
 }
 
 cmd_status() {
-  local log pid status exit_code started
+  local log pid status exit_code started sha
+
+  if _live_lock_deploy >/dev/null 2>&1; then
+    pid="$(_lock_pid || true)"
+    log="$(_lock_log || true)"
+    started="$(_read_state_val STARTED || true)"
+    sha="$(_read_state_val SHA || true)"
+    if [[ "$(_read_state_val LOG || true)" != "$log" ]]; then
+      started=""
+      sha=""
+    fi
+    echo "LOG=$log"
+    echo "PID=${pid:-}"
+    echo "STARTED=${started:-}"
+    echo "SHA=${sha:-}"
+    echo "STATUS=running"
+    echo "EXIT="
+    exit 0
+  fi
+
   log="$(_read_state_val LOG || true)"
   pid="$(_read_state_val PID || true)"
   started="$(_read_state_val STARTED || true)"
   status="$(_read_state_val STATUS || true)"
   exit_code="$(_read_state_val EXIT || true)"
+  sha="$(_read_state_val SHA || true)"
 
   if [[ -z "$log" ]] && [[ -f "$LOCKFILE" ]]; then
     log="$(_lock_log || true)"
@@ -179,8 +229,13 @@ cmd_status() {
   fi
 
   if [[ -f "${log}.exit" ]]; then
-    status="done"
     exit_code="$(tr -d '\r\n' <"${log}.exit")"
+    if [[ "$status" != "success" && "$status" != "failed" ]]; then
+      if [[ "${exit_code:-1}" -eq 0 ]]; then status="success"; else status="failed"; fi
+    fi
+    if [[ "$status" == "done" ]]; then
+      if [[ "${exit_code:-1}" -eq 0 ]]; then status="success"; else status="failed"; fi
+    fi
   elif [[ -n "${pid:-}" ]] && kill -0 "$pid" 2>/dev/null; then
     status="running"
     exit_code=""
@@ -205,6 +260,7 @@ cmd_status() {
   echo "LOG=$log"
   echo "PID=${pid:-}"
   echo "STARTED=${started:-}"
+  echo "SHA=${sha:-}"
   echo "STATUS=$status"
   if [[ -n "${exit_code:-}" ]]; then
     echo "EXIT=$exit_code"
@@ -212,7 +268,7 @@ cmd_status() {
     echo "EXIT="
   fi
 
-  if [[ "$status" == "done" ]]; then
+  if [[ "$status" == "done" || "$status" == "success" ]]; then
     exit 0
   fi
   if [[ "$status" == "running" ]]; then
@@ -244,7 +300,7 @@ usage() {
 case "${1:-}" in
   start)
     shift
-    cmd_start "${1:-}"
+    cmd_start "${1:-}" "${2:-}"
     ;;
   status) cmd_status ;;
   tail-since)

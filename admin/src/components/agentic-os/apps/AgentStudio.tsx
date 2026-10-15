@@ -46,10 +46,11 @@ function draftFromTemplate(t: AgentTemplate): AgentDraft {
 }
 
 export function AgentStudio({ initialAgentId, onOpenTasks }: { initialAgentId?: string; onOpenTasks?: (agentId: string) => void }) {
-    const { agents, tasks, includeArchived, setIncludeArchived } = useAosStore(
+    const { agents, tasks, settings, includeArchived, setIncludeArchived } = useAosStore(
         useShallow((s) => ({
             agents: s.agents,
             tasks: s.tasks,
+            settings: s.settings,
             includeArchived: s.includeArchived,
             setIncludeArchived: s.setIncludeArchived,
         })),
@@ -189,7 +190,7 @@ export function AgentStudio({ initialAgentId, onOpenTasks }: { initialAgentId?: 
                     )}
                     {visible.map((a) => {
                         const open = openCount(a.id);
-                        const kind = rosterKindForAgent(a.id, a.slug);
+                        const kind = rosterKindForAgent(a.id, a.slug, { uiDemoMode: settings?.uiDemoMode });
                         return (
                             <button
                                 key={a.id}

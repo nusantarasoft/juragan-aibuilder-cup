@@ -1,5 +1,6 @@
 import { aosApi, fetchAuditFiltered } from "@/components/agentic-os/lib/api";
 import { TIER_META } from "@/components/agentic-os/lib/catalog";
+import { rosterKindForAgent } from "@/components/agentic-os/lib/firstEmployee";
 import { startAosPolling, useAosStore } from "@/components/agentic-os/lib/store";
 import type { OsAgent, OsAuditEntry, OsTask } from "@/components/agentic-os/lib/types";
 import { DESKS, DESK_BY_ID, LOUNGE_SPOTS, MEETING_SEATS, STATUS_META } from "./floorplan";
@@ -50,7 +51,16 @@ interface PulseRunInfo {
     moduleId: string | null;
 }
 
-function toOfficeAgent(a: OsAgent, deskId: string, tasks: OsTask[], frozen: boolean, location: AgentLocation, pulse?: PulseRunInfo, huddle?: boolean): Agent {
+function toOfficeAgent(
+    a: OsAgent,
+    deskId: string,
+    tasks: OsTask[],
+    frozen: boolean,
+    location: AgentLocation,
+    uiDemoMode: boolean,
+    pulse?: PulseRunInfo,
+    huddle?: boolean,
+): Agent {
     const mine = tasks.filter((t) => t.agentId === a.id);
     const active = mine.find((t) => t.status === "running") ?? mine.find((t) => t.status === "awaiting_approval");
     const modules = a.modules.filter(isModule);
@@ -79,6 +89,7 @@ function toOfficeAgent(a: OsAgent, deskId: string, tasks: OsTask[], frozen: bool
         modules: modules.length ? modules : ["reports"],
         skills: a.skills,
         stats: { tasksCompleted: s.tasksCompleted ?? 0, successRate: s.successRate ?? 1, avgLatencyMs: s.avgLatencyMs ?? 1000, tokensToday: s.tokensToday ?? 0 },
+        rosterKind: rosterKindForAgent(a.id, a.slug, { uiDemoMode, agent: a }),
         queued: mine.filter((t) => t.status === "queued").length,
         review: mine.filter((t) => t.status === "review").length,
         task: active
@@ -145,9 +156,21 @@ export function createOsAgentSource(getState: () => { agents: Agent[] }): AgentD
         const now = Date.now();
         for (const [slug, p] of pulseRuns) if (p.until < now) pulseRuns.delete(slug);
         for (const [slug, until] of huddles) if (until < now) (huddles.delete(slug), locations.set(slug, "desk"));
+        const uiDemoMode = settings?.uiDemoMode === true;
         const roster = live
             .filter((a) => desks.has(a.id))
-            .map((a) => toOfficeAgent(a, desks.get(a.id)!, tasks, !!settings?.killSwitch, locations.get(a.slug) ?? "desk", pulseRuns.get(a.slug), huddles.has(a.slug)));
+            .map((a) =>
+                toOfficeAgent(
+                    a,
+                    desks.get(a.id)!,
+                    tasks,
+                    !!settings?.killSwitch,
+                    locations.get(a.slug) ?? "desk",
+                    uiDemoMode,
+                    pulseRuns.get(a.slug),
+                    huddles.has(a.slug),
+                ),
+            );
         for (const a of roster) if (a.location === "desk") locations.set(a.id, "desk");
         emit?.({ type: "roster", agents: roster });
         if (live.length > roster.length) log("warning", `The office is full — ${live.length - roster.length} agent(s) have no desk`);

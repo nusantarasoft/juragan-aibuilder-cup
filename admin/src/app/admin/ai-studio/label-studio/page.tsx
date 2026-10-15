@@ -7,6 +7,7 @@ import { EditOutlined, FileSearchOutlined, CheckCircleOutlined, ClockCircleOutli
 import { usePreferencesStore } from '@/store/usePreferencesStore';
 import { AuroraText } from '@/components/magicui/aurora-text';
 import DecryptedText from '@/components/react-bits/DecryptedText';
+import { StudioDemoBanner, StudioDemoModeTag } from '@/components/ai-studio/StudioDemoBanner';
 
 const { Text } = Typography;
 const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
@@ -29,7 +30,8 @@ export default function LabelStudioPage() {
     const totalCompleted = PROJECTS.reduce((s, p) => s + p.completed, 0);
 
     return (
-        <CMSLayout title={<AuroraText colors={[themeColor, '#ff6b35', '#10b981']}>Label Studio</AuroraText>} subTitle={<DecryptedText text="Data annotation projects, task progress & labeling analytics" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="o" icon={<LinkOutlined />} type="primary" onClick={() => window.open('http://localhost:8080', '_blank')}>Open Label Studio</Button>, <Button key="r" icon={<ReloadOutlined />} />]}>
+        <CMSLayout title={<AuroraText colors={[themeColor, '#ff6b35', '#10b981']}>Label Studio</AuroraText>} subTitle={<DecryptedText text="Data annotation projects, task progress & labeling analytics" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<StudioDemoModeTag key="demo" />, <Button key="o" icon={<LinkOutlined />} type="primary" onClick={() => window.open('http://localhost:8080', '_blank')}>Open Label Studio</Button>, <Button key="r" icon={<ReloadOutlined />} />]}>
+            <StudioDemoBanner title="Label Studio dashboard" detail="Project stats below are sample UI data — open Label Studio for real annotation work when the service is running." />
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <Row gutter={[12, 12]}>
                     {[{ t: 'Projects', v: PROJECTS.length, c: '#3b82f6', i: <DatabaseOutlined /> }, { t: 'Total Tasks', v: totalTasks, c: '#8b5cf6', i: <FileSearchOutlined /> }, { t: 'Completed', v: totalCompleted, c: '#10b981', i: <CheckCircleOutlined /> }, { t: 'Completion Rate', v: `${Math.round((totalCompleted / totalTasks) * 100)}%`, c: '#f59e0b', i: <ClockCircleOutlined /> }].map((s, i) => (

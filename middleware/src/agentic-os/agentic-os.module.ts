@@ -12,10 +12,12 @@ import { AgenticOsWorkflows } from './agentic-os.workflows';
 import { AgenticOsGoals } from './agentic-os.goals';
 import { AosAuthGuard } from './aos-auth.guard';
 import { AosKasirLiveService } from './aos-kasir-live.service';
+import { AosTaskQueueEvents } from './aos-task-queue.events';
 
 @Module({
     imports: [SupabaseModule, AuthModule, AiModule, NotificationsModule, WhatsAppProviderModule],
     providers: [
+        AosTaskQueueEvents,
         AgenticOsService,
         AgenticOsResolver,
         AgenticOsRunner,

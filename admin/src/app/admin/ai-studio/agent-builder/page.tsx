@@ -8,6 +8,7 @@ import {
     ApiOutlined, DatabaseOutlined, GlobalOutlined, CodeOutlined
 } from "@ant-design/icons";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
+import { StudioDemoBanner, StudioDemoModeTag } from "@/components/ai-studio/StudioDemoBanner";
 
 const { Title, Text } = Typography;
 const { Panel } = Collapse;
@@ -17,7 +18,15 @@ export default function AgentBuilderPage() {
     const [currentStep, setCurrentStep] = useState(0);
 
     return (
-        <CMSLayout title="Visual Agent Builder" subTitle="Orchestrate autonomous AI agents and toolchains">
+        <CMSLayout
+            title="Visual Agent Builder"
+            subTitle="Orchestrate autonomous AI agents and toolchains"
+            extra={[<StudioDemoModeTag key="demo" />]}
+        >
+            <StudioDemoBanner
+                title="Visual Agent Builder"
+                detail="Mock workflow canvas for UX preview — use Agentic OS for real agents and task queue."
+            />
             <Row gutter={24}>
                 {/* Node Palette */}
                 <Col span={6}>

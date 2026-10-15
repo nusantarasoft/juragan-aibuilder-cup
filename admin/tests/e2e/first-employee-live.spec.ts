@@ -68,7 +68,7 @@ test.describe('First employee — Live Kasir vs Demo sim', () => {
         assertCleanConsole(errors);
     });
 
-    test('Virtual Office — Live Kasir + Demo sim + inspector', async ({ page, context }) => {
+    test('Virtual Office — Live roster + Kasir + inspector', async ({ page, context }) => {
         const errors = collectConsoleErrors(page);
         await installGraphqlMocks(context, liveSnap);
         await loginAsAdmin(page);
@@ -77,7 +77,7 @@ test.describe('First employee — Live Kasir vs Demo sim', () => {
         const kasirRow = page.getByRole('button', { name: /Warung Bu Ani/i });
         await expect(kasirRow.first()).toBeVisible({ timeout: 30_000 });
         await expect(page.getByText('Live', { exact: true }).first()).toBeVisible();
-        await expect(page.getByText('Demo', { exact: true }).first()).toBeVisible();
+        await expect(page.getByRole('button', { name: /Demo Helper/i })).toBeVisible({ timeout: 15_000 });
         await kasirRow.first().click();
         await expect(page.getByText('Chat WA hari ini')).toBeVisible({ timeout: 15_000 });
         await page.screenshot({ path: path.join(MEDIA_DIR, 'first-employee-vo-live-inspector.png'), fullPage: false });

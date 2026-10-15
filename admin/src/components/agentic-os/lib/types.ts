@@ -204,6 +204,7 @@ export interface OsPulseSettings {
     llmMode: LlmMode;
     pulseEnabled: boolean;
     runCostCeilingUsd: number;
+    uiDemoMode: boolean;
 }
 
 export interface OsRoutine {

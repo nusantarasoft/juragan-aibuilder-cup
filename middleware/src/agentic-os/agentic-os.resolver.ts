@@ -1,5 +1,5 @@
 import { UnauthorizedException, UseGuards } from '@nestjs/common';
-import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { Args, Context, Int, Mutation, Query, Resolver, Subscription } from '@nestjs/graphql';
 import GraphQLJSON from 'graphql-type-json';
 import { AgenticOsService, AosActor } from './agentic-os.service';
 import { AgenticOsPulse } from './agentic-os.pulse';
@@ -34,19 +34,30 @@ import {
     AosStats,
     AosTask,
     AosTaskInput,
+    AosTaskQueueEvent,
     AosWorkflow,
     AosWorkflowInput,
     AosWorkflowRun,
     AosKasirLiveSnapshot,
 } from './agentic-os.types';
 import { AosKasirLiveService } from './aos-kasir-live.service';
-import { resolveAosKasirTenant } from './aos-tenant-access';
+import { resolveAosTenant, type AosSessionUser } from './aos-tenant-access';
+import { AosTaskQueueEvents } from './aos-task-queue.events';
 
 type AosContext = { req?: { user?: { id?: string; email?: string; role?: string } | null } };
 
 const AOS_SIGN_IN = 'Sign in to change the Agentic OS';
+const AOS_READ_SIGN_IN = 'Authentication required for this operation';
 
 const actorOf = (ctx: AosContext): AosActor => ({ id: ctx?.req?.user?.id ?? null });
+
+const tenantForRead = (ctx: AosContext, tenantId?: string | null): string => {
+    const user = ctx?.req?.user;
+    if (!user?.id) {
+        throw new UnauthorizedException(AOS_READ_SIGN_IN);
+    }
+    return resolveAosTenant(user as AosSessionUser, tenantId);
+};
 
 // Reusable arg options
 const optStr = { type: () => String, nullable: true } as const;
@@ -60,18 +71,20 @@ export class AgenticOsResolver {
         private readonly workflows: AgenticOsWorkflows,
         private readonly goals: AgenticOsGoals,
         private readonly kasirLive: AosKasirLiveService,
+        private readonly taskQueueEvents: AosTaskQueueEvents,
     ) {}
 
     // ════════════════════════════════════════════════════════════════════════
-    // Queries (open, like the rest of the app)
+    // Queries (tenant-scoped; GlobalAuthGuard + tenantForRead)
     // ════════════════════════════════════════════════════════════════════════
 
     @Query(() => [AosAgent])
     aosAgents(
+        @Context() ctx: AosContext,
         @Args('tenantId', optStr) tenantId?: string,
         @Args('includeArchived', archivedArg) includeArchived?: boolean,
     ) {
-        return this.svc.listAgents(tenantId, includeArchived);
+        return this.svc.listAgents(tenantForRead(ctx, tenantId), includeArchived);
     }
 
     /** Read-only UMKM Kasir employee metrics (AI Studio → Agentic OS / Virtual Office). */
@@ -85,10 +98,7 @@ export class AgenticOsResolver {
         if (!user?.id) {
             throw new UnauthorizedException(AOS_SIGN_IN);
         }
-        const effectiveTenant = resolveAosKasirTenant(
-            { id: user.id, email: user.email, role: user.role },
-            tenantId,
-        );
+        const effectiveTenant = resolveAosTenant({ id: user.id, email: user.email, role: user.role }, tenantId);
         return this.kasirLive.getSnapshot(effectiveTenant);
     }
 
@@ -104,23 +114,33 @@ export class AgenticOsResolver {
 
     @Query(() => [AosPlaybook])
     aosPlaybooks(
+        @Context() ctx: AosContext,
         @Args('tenantId', optStr) tenantId?: string,
         @Args('moduleId', optStr) moduleId?: string,
         @Args('agentId', optStr) agentId?: string,
         @Args('includeArchived', archivedArg) includeArchived?: boolean,
     ) {
-        return this.svc.listPlaybooks({ tenantId, moduleId, agentId, includeArchived });
+        const t = tenantForRead(ctx, tenantId);
+        return this.svc.listPlaybooks({ tenantId: t, moduleId, agentId, includeArchived });
     }
 
     @Query(() => [AosTask])
     aosTasks(
+        @Context() ctx: AosContext,
         @Args('tenantId', optStr) tenantId?: string,
         @Args('agentId', optStr) agentId?: string,
         @Args('statuses', { type: () => [String], nullable: true }) statuses?: string[],
         @Args('includeArchived', archivedArg) includeArchived?: boolean,
         @Args('limit', { type: () => Int, nullable: true, defaultValue: 300 }) limit?: number,
     ) {
-        return this.svc.listTasks({ tenantId, agentId, statuses, includeArchived, limit });
+        const t = tenantForRead(ctx, tenantId);
+        return this.svc.listTasks({ tenantId: t, agentId, statuses, includeArchived, limit });
+    }
+
+    @Subscription(() => AosTaskQueueEvent, { name: 'aosTaskQueueUpdated' })
+    aosTaskQueueUpdated(@Context() ctx: AosContext, @Args('tenantId', optStr) tenantId?: string) {
+        const t = tenantForRead(ctx, tenantId);
+        return this.taskQueueEvents.stream(t);
     }
 
     @Query(() => [AosMemoryArea])
@@ -197,8 +217,8 @@ export class AgenticOsResolver {
     }
 
     @Query(() => [AosApproval])
-    aosApprovals(@Args('tenantId', optStr) tenantId?: string, @Args('status', optStr) status?: string) {
-        return this.svc.listApprovals(tenantId, status);
+    aosApprovals(@Context() ctx: AosContext, @Args('tenantId', optStr) tenantId?: string, @Args('status', optStr) status?: string) {
+        return this.svc.listApprovals(tenantForRead(ctx, tenantId), status);
     }
 
     @Query(() => [AosAuditEntry])
@@ -232,13 +252,13 @@ export class AgenticOsResolver {
     }
 
     @Query(() => AosSettings)
-    aosSettings(@Args('tenantId', optStr) tenantId?: string) {
-        return this.svc.getSettings(tenantId);
+    aosSettings(@Context() ctx: AosContext, @Args('tenantId', optStr) tenantId?: string) {
+        return this.svc.getSettings(tenantForRead(ctx, tenantId));
     }
 
     @Query(() => AosStats)
-    aosStats(@Args('tenantId', optStr) tenantId?: string) {
-        return this.svc.getStats(tenantId);
+    aosStats(@Context() ctx: AosContext, @Args('tenantId', optStr) tenantId?: string) {
+        return this.svc.getStats(tenantForRead(ctx, tenantId));
     }
 
     // ── Phase 4: Command Deck · Goals ────────────────────────────────────────

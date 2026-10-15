@@ -43,6 +43,13 @@ import type {
 
 const GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_URL || "http://127.0.0.1:4001/graphql";
 
+function graphqlWsUrl(): string {
+    const http = GRAPHQL_URL.replace(/\/$/, "");
+    if (http.startsWith("https://")) return http.replace(/^https:\/\//, "wss://");
+    if (http.startsWith("http://")) return http.replace(/^http:\/\//, "ws://");
+    return `ws://${http}`;
+}
+
 export class AosError extends Error {
     constructor(
         message: string,
@@ -86,7 +93,7 @@ const TASK = `id agentId playbookId routineId workflowId title description modul
 const APPROVAL = `id taskId agentId action summary payload status requestedAt decidedBy decidedAt comment`;
 const AUDIT = `id actorType actorId action entity entityId summary level moduleId route createdAt`;
 const SETTINGS = `tenantId dailyRunCeiling rollingWindowMinutes rollingWindowCeiling monthlyTokenBudget killSwitch autopilot
-  autopilotReviewCap stepSeconds defaultRunner defaultProvider defaultModel requireApprovalFor updatedAt`;
+  autopilotReviewCap stepSeconds defaultRunner defaultProvider defaultModel requireApprovalFor updatedAt llmMode pulseEnabled runCostCeilingUsd uiDemoMode`;
 const STATS = `totalAgents activeAgents queuedTasks runningTasks reviewTasks awaitingApproval doneToday failedToday runsToday
   tokensToday costToday pendingApprovals`;
 
@@ -507,3 +514,59 @@ export const goalsApi = {
             { id: taskId, input: { goalId } },
         ),
 };
+
+/* ------------------------------------------------------------------ */
+/* Subscriptions (graphql-ws)                                          */
+/* ------------------------------------------------------------------ */
+
+export type AosTaskQueueEvent = {
+    tenantId: string;
+    reason: string;
+    task: OsTask | null;
+    stats: OsStats | null;
+};
+
+/** Live task-queue updates from the middleware worker (requires signed-in session). */
+export function subscribeAosTaskQueue(onEvent: (ev: AosTaskQueueEvent) => void): () => void {
+    if (typeof window === "undefined") return () => {};
+    const token = getStoredToken();
+    if (!token) return () => {};
+
+    let client: import("graphql-ws").Client | null = null;
+    let unsub: (() => void) | null = null;
+    let disposed = false;
+
+    void import("graphql-ws").then(({ createClient }) => {
+        if (disposed) return;
+        client = createClient({
+            url: graphqlWsUrl(),
+            connectionParams: { authorization: `Bearer ${token}` },
+            retryAttempts: 5,
+        });
+        unsub = client.subscribe<{ aosTaskQueueUpdated: AosTaskQueueEvent }>(
+            {
+                query: `subscription AosTaskQueueUpdated {
+                    aosTaskQueueUpdated {
+                        tenantId reason
+                        task { ${TASK} }
+                        stats { ${STATS} }
+                    }
+                }`,
+            },
+            {
+                next: (msg) => {
+                    const ev = msg.data?.aosTaskQueueUpdated;
+                    if (ev) onEvent(ev);
+                },
+                error: () => {},
+                complete: () => {},
+            },
+        );
+    });
+
+    return () => {
+        disposed = true;
+        unsub?.();
+        client?.dispose();
+    };
+}

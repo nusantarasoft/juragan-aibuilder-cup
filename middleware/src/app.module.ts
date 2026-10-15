@@ -70,6 +70,19 @@ import { AgenticOsModule } from './agentic-os/agentic-os.module';
             driver: ApolloDriver,
             autoSchemaFile: true,
             sortSchema: true,
+            subscriptions: {
+                'graphql-ws': {
+                    onConnect: (ctx: { connectionParams?: Record<string, unknown> }) => {
+                        const raw = ctx.connectionParams?.authorization ?? ctx.connectionParams?.Authorization;
+                        const token = typeof raw === 'string' ? raw : '';
+                        return {
+                            req: {
+                                headers: token ? { authorization: token.startsWith('Bearer ') ? token : `Bearer ${token}` } : {},
+                            },
+                        };
+                    },
+                },
+            },
             playground:
                 process.env.GRAPHQL_PLAYGROUND === 'true' ||
                 (process.env.NODE_ENV !== 'production' &&

@@ -6,7 +6,7 @@
  */
 
 import { create } from "zustand";
-import { AosError, fetchSnapshot, type AosSnapshot } from "./api";
+import { AosError, fetchSnapshot, subscribeAosTaskQueue, type AosSnapshot } from "./api";
 import type { OsAgent, OsApproval, OsPlaybook, OsSettings, OsStats, OsTask } from "./types";
 
 export interface Toast {
@@ -128,7 +128,29 @@ function reschedule() {
 }
 
 /** Start polling at `ms` (the fastest requested interval wins). Returns a stop function. */
+let taskQueueSubStop: (() => void) | null = null;
+
+function ensureTaskQueueSubscription(): void {
+    if (typeof window === "undefined" || taskQueueSubStop) return;
+    taskQueueSubStop = subscribeAosTaskQueue((ev) => {
+        const state = useAosStore.getState();
+        if (ev.stats) {
+            useAosStore.setState({ stats: ev.stats, lastSync: Date.now() });
+        }
+        if (ev.task) {
+            const tasks = [...state.tasks];
+            const idx = tasks.findIndex((t) => t.id === ev.task!.id);
+            if (idx >= 0) tasks[idx] = ev.task;
+            else tasks.unshift(ev.task);
+            useAosStore.setState({ tasks, lastSync: Date.now(), status: "ready" });
+        } else {
+            void state.refresh();
+        }
+    });
+}
+
 export function startAosPolling(ms: number): () => void {
+    ensureTaskQueueSubscription();
     const id = ++pollerSeq;
     pollers.set(id, ms);
     reschedule();

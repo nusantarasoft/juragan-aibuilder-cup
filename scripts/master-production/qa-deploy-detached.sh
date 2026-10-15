@@ -62,7 +62,7 @@ sleep 4
 wait "$ssh_client_pid" 2>/dev/null || true
 
 st_out="$("$HELPER" status || true)"
-echo "$st_out" | grep -q 'STATUS=done' || fail "expected STATUS=done after remote job finished"
+echo "$st_out" | grep -qE 'STATUS=(done|success|failed)' || fail "expected terminal STATUS after remote job finished"
 echo "$st_out" | grep -q 'EXIT=7' || fail "expected EXIT=7 from fake redeploy"
 pass "remote job completed after client disconnect; exit retrievable via status"
 

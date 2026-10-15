@@ -79,7 +79,7 @@ run_ssh_drop_scenario() {
   wait "$ssh_client_pid" 2>/dev/null || true
 
   st_out="$("$helper" status || true)"
-  echo "$st_out" | grep -q 'STATUS=done' || fail "$label: expected STATUS=done"
+  echo "$st_out" | grep -qE 'STATUS=(done|success)' || fail "$label: expected STATUS=success"
   echo "$st_out" | grep -q 'EXIT=0' || fail "$label: expected EXIT=0"
   grep -q 'fake pull' "$LOG" || fail "$label: log missing pull output"
   grep -q 'fake redeploy' "$LOG" || fail "$label: log missing redeploy output"

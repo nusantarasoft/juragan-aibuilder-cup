@@ -121,7 +121,10 @@ export default function WhatsAppSimChatDrawer({
         <Drawer
             title={
                 <Space direction="vertical" size={0}>
-                    <Text strong>Simulasi chat WA</Text>
+                    <Space size={4}>
+                        <Text strong>Simulasi chat WA</Text>
+                        <Tag color="gold">Demo</Tag>
+                    </Space>
                     <Text type="secondary" style={{ fontSize: 12, fontWeight: 400 }}>
                         {label} · pipeline sama inbound WhatsApp (tanpa kirim WA live)
                     </Text>

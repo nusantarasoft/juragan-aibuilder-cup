@@ -14,6 +14,7 @@ import {
     FileTextOutlined, StopOutlined, DeleteOutlined
 } from "@ant-design/icons";
 import { webCrawlerService, CrawlJob, CrawlJobConfig } from "@/lib/webCrawlerService";
+import { StudioDemoBanner, StudioDemoModeTag } from "@/components/ai-studio/StudioDemoBanner";
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -143,7 +144,15 @@ export default function WebCrawlerPage() {
     ];
 
     return (
-        <CMSLayout title="Web Crawler Studio" subTitle="Ingest website data into your Vector Database">
+        <CMSLayout
+            title="Web Crawler Studio"
+            subTitle="Ingest website data into your Vector Database"
+            extra={[<StudioDemoModeTag key="demo" />]}
+        >
+            <StudioDemoBanner
+                title="Web Crawler Studio"
+                detail="Jobs run in the browser with in-memory simulation — no crawl worker or persistence yet (P2 backlog)."
+            />
             <Row gutter={[24, 24]}>
                 
                 {/* CONFIGURATION PANEL */}

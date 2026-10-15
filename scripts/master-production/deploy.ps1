@@ -136,18 +136,28 @@ function Ensure-RemoteDeployDirs {
   }
 }
 
+function Sync-RemoteDeployHelper {
+  Ensure-RemoteDeployDirs
+  $detachedLocal = Join-Path $PSScriptRoot "redeploy-detached.sh"
+  $remoteDetached = "$remoteDir/scripts/master-production/redeploy-detached.sh"
+  Invoke-SshPutWithRetry -LocalPath $detachedLocal -RemotePath $remoteDetached
+}
+
 function Get-RemoteDeployStatus {
   $cmd = "cd $remoteDir && bash $detachedSh status"
   $r = Invoke-SshCaptureWithRetry $cmd
   $kv = Parse-DeployKeyValues $r.Text
+  $status = $kv["STATUS"]
+  if ($status -eq "done") { $status = "success" }
   return @{
     SshExit   = $r.ExitCode
     Raw       = $r.Text
-    Status    = $kv["STATUS"]
+    Status    = $status
     Log       = $kv["LOG"]
     Pid       = $kv["PID"]
     Exit      = $kv["EXIT"]
     Started   = $kv["STARTED"]
+    Sha       = $kv["SHA"]
   }
 }
 
@@ -190,10 +200,11 @@ function Wait-RemoteDeploy {
     }
 
     switch ($st.Status) {
-      "done" {
+      { $_ -in @("success", "done") } {
         $ec = 0
         if ($st.Exit -match '^\d+$') { $ec = [int]$st.Exit }
-        Write-Host "==> remote redeploy finished (exit $ec) log: $($st.Log)" -ForegroundColor $(if ($ec -eq 0) { "Green" } else { "Red" })
+        $shaHint = if ($st.Sha) { " sha $($st.Sha.Substring(0, [Math]::Min(12, $st.Sha.Length)))" } else { "" }
+        Write-Host "==> remote redeploy finished (exit $ec)$shaHint log: $($st.Log)" -ForegroundColor $(if ($ec -eq 0) { "Green" } else { "Red" })
         if ($StatusOnly) {
           Write-Host $st.Raw.TrimEnd()
         }
@@ -226,16 +237,16 @@ function Wait-RemoteDeploy {
 }
 
 function Start-RemoteDeployDetached {
-  param([Parameter(Mandatory)][string]$RemotePullScript)
+  param(
+    [Parameter(Mandatory)][string]$RemotePullScript,
+    [Parameter(Mandatory)][string]$TargetSha
+  )
 
-  Ensure-RemoteDeployDirs
-
-  $detachedLocal = Join-Path $PSScriptRoot "redeploy-detached.sh"
-  $remoteDetached = "$remoteDir/scripts/master-production/redeploy-detached.sh"
-  Invoke-SshPutWithRetry -LocalPath $detachedLocal -RemotePath $remoteDetached
+  Sync-RemoteDeployHelper
 
   $escapedPull = $RemotePullScript.Replace("'", "'\''")
-  $cmd = "cd $remoteDir && bash $detachedSh start '$escapedPull'"
+  $escapedSha = $TargetSha.Replace("'", "'\''")
+  $cmd = "cd $remoteDir && bash $detachedSh start '$escapedPull' '$escapedSha'"
   $r = Invoke-SshCaptureWithRetry $cmd
   if ($r.ExitCode -eq 2) {
     Write-Host $r.Text.TrimEnd()
@@ -258,6 +269,7 @@ if ($Attach -and $Status) {
 
 if ($Attach) {
   Write-Host "==> attach remote redeploy (log tail until done)" -ForegroundColor Cyan
+  Sync-RemoteDeployHelper
   Wait-RemoteDeploy
   Write-Host "==> deploy finished ($branch)." -ForegroundColor Green
   exit 0
@@ -265,6 +277,7 @@ if ($Attach) {
 
 if ($Status) {
   Write-Host "==> remote redeploy status" -ForegroundColor Cyan
+  Sync-RemoteDeployHelper
   Wait-RemoteDeploy -StatusOnly
   exit $LASTEXITCODE
 }
@@ -385,6 +398,6 @@ Write-Host "    uploading pull script -> $remotePull"
 Invoke-SshPutWithRetry -LocalPath $pullFile -RemotePath $remotePull
 
 Write-Host "==> [3/3] trigger detached full deploy on server" -ForegroundColor Cyan
-Start-RemoteDeployDetached -RemotePullScript $remotePull
+Start-RemoteDeployDetached -RemotePullScript $remotePull -TargetSha $targetSha
 
 Write-Host "==> deploy finished ($branch)." -ForegroundColor Green
