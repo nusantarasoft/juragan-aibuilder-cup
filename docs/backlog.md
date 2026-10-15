@@ -42,3 +42,4 @@ Rule: one DOING task at Cursor at a time (plus deploy). Gate: scope → PR → Q
 - [TODO] D-5 (audit #31) Rerun audit browser check on the full stack (middleware was off) after deploy
 - [DONE] D-6 (deploy hotfix) Ensure `/opt/nusantarasoft-3/logs` exists before SFTP pull-script upload (`deploy.ps1` mkdir guard; PR #29 detached deploy prod failure)
 - [DONE] D-7 (deploy state) Write `logs/.deploy.state` at detached job start; `-Status`/`-Attach` trust live lock/PID when state stale; `deploy.ps1` syncs helper on attach/status (PO small fix PR)
+- [DONE] D-8 (deploy status hotfix) Write `logs/.deploy.lock` with state before wrapper spawn; `-Status` treats in-flight state without PID; `deploy.ps1` brief idle retry on first poll (prod `666aa4a` still idle despite D-7 on master)

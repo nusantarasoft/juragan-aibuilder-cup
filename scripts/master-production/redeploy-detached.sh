@@ -56,6 +56,13 @@ _stale_lock_cleanup() {
   fi
   local pid
   pid="$(_lock_pid || true)"
+  if [[ "${pid:-}" == "0" ]]; then
+    if [[ -f "$STATEFILE" ]] && [[ "$(_read_state_val STATUS || true)" == "running" ]]; then
+      return 0
+    fi
+    rm -f "$LOCKFILE"
+    return 0
+  fi
   if [[ -n "${pid:-}" ]] && kill -0 "$pid" 2>/dev/null; then
     return 0
   fi
@@ -82,6 +89,14 @@ _live_lock_deploy() {
   lp="$(_lock_pid || true)"
   ll="$(_lock_log || true)"
   if [[ -z "${lp:-}" ]] || [[ -z "${ll:-}" ]]; then
+    return 1
+  fi
+  if [[ "$lp" == "0" ]]; then
+    if [[ -f "$ll" ]] && [[ "$(_read_state_val STATUS || true)" == "running" ]]; then
+      echo "0"
+      echo "$ll"
+      return 0
+    fi
     return 1
   fi
   if ! kill -0 "$lp" 2>/dev/null; then
@@ -121,7 +136,8 @@ cmd_start() {
   : >"$log"
   started="$(date -Iseconds)"
 
-  # State before spawn so -Status right after trigger sees running (not stale prior deploy).
+  # Lock + state before spawn so Mac -Status never sees idle (D-7/D-8); pid 0 until wrapper starts.
+  echo "0 $log" >"$LOCKFILE"
   _write_running_state "$log" "$started" "$target_sha" ""
 
   wrapper="$LOG_DIR/.deploy-run-${ts}.sh"
@@ -237,6 +253,9 @@ cmd_status() {
       if [[ "${exit_code:-1}" -eq 0 ]]; then status="success"; else status="failed"; fi
     fi
   elif [[ -n "${pid:-}" ]] && kill -0 "$pid" 2>/dev/null; then
+    status="running"
+    exit_code=""
+  elif [[ "$status" == "running" ]] && [[ -n "$log" ]] && [[ -f "$log" ]] && [[ ! -f "${log}.exit" ]]; then
     status="running"
     exit_code=""
   elif [[ -f "$LOCKFILE" ]]; then

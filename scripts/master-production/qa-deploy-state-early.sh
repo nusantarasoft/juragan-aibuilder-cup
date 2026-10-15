@@ -38,6 +38,7 @@ bash -n "$DETACHED" && pass "bash -n redeploy-detached.sh" || fail "bash -n rede
 setup_workdir
 HELPER="$REMOTE_DIR/scripts/master-production/redeploy-detached.sh"
 STATE="$REMOTE_DIR/logs/.deploy.state"
+LOCK="$REMOTE_DIR/logs/.deploy.lock"
 TARGET_SHA="deadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
 
 start_out="$("$HELPER" start "" "$TARGET_SHA")"
@@ -48,6 +49,14 @@ if [[ ! -f "$STATE" ]]; then
 else
   pass "state file exists immediately after start"
 fi
+
+if [[ ! -f "$LOCK" ]]; then
+  fail "lock file missing immediately after start"
+else
+  pass "lock file exists immediately after start"
+fi
+lock_log="$(awk '{print $2}' "$LOCK")"
+[[ "$lock_log" == "$LOG" ]] || fail "lock should reference deploy log path"
 
 grep -q '^STATUS=running' "$STATE" || fail "state STATUS=running missing at start"
 grep -q "^LOG=$LOG" "$STATE" || fail "state LOG mismatch"
