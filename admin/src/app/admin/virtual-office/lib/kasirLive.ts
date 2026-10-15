@@ -59,8 +59,16 @@ export function buildKasirAgent(snap: OsKasirLiveSnapshot): Agent {
     };
 }
 
-/** Prepend live Kasir and drop any stale Kasir row from the demo roster. */
-export function mergeKasirIntoRoster(agents: Agent[], snap: OsKasirLiveSnapshot): Agent[] {
+/** Prepend live Kasir and drop any stale Kasir row from the roster. */
+export function mergeKasirIntoRoster(
+    agents: Agent[],
+    snap: OsKasirLiveSnapshot,
+    opts?: { tagNonKasirAsDemo?: boolean },
+): Agent[] {
     const rest = agents.filter((a) => a.id !== KASIR_EMPLOYEE_SLUG);
-    return [buildKasirAgent(snap), ...rest.map((a) => ({ ...a, rosterKind: "demo" as const }))];
+    const tagDemo = opts?.tagNonKasirAsDemo ?? true;
+    const tagged = tagDemo
+        ? rest.map((a) => ({ ...a, rosterKind: "demo" as const }))
+        : rest.map((a) => ({ ...a, rosterKind: a.rosterKind ?? ("live" as const) }));
+    return [buildKasirAgent(snap), ...tagged];
 }

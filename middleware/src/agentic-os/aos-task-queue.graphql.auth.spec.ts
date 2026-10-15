@@ -17,10 +17,12 @@ import { AgenticOsGoals } from './agentic-os.goals';
 import { AOS_DEFAULT_TENANT } from './agentic-os.types';
 
 const AOS_TASKS_QUERY = `query { aosTasks(limit: 2) { id status } }`;
+const AOS_TASKS_TENANT_QUERY = `query AosTasksTenant($tenantId: String) { aosTasks(tenantId: $tenantId, limit: 2) { id status } }`;
 
 async function postGraphql(
     baseUrl: string,
     query: string,
+    variables?: Record<string, unknown>,
     token?: string,
 ): Promise<{ json: { data?: unknown; errors?: { message: string }[] } }> {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -28,7 +30,7 @@ async function postGraphql(
     const res = await fetch(`${baseUrl}/graphql`, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ query }),
+        body: JSON.stringify({ query, variables: variables ?? {} }),
     });
     const json = (await res.json()) as { data?: unknown; errors?: { message: string }[] };
     return { json };
@@ -93,10 +95,24 @@ describe('aosTasks GraphQL auth (GlobalAuthGuard)', () => {
         expect(listTasks).not.toHaveBeenCalled();
     });
 
+    it('rejects cross-tenant aosTasks for admin role', async () => {
+        getUser.mockResolvedValue({ id: 'admin-1', email: 'a@x.com', role: 'admin' });
+        listTasks.mockClear();
+        const { json } = await postGraphql(
+            baseUrl,
+            AOS_TASKS_TENANT_QUERY,
+            { tenantId: '00000000-0000-0000-0000-000000000099' },
+            'valid-token',
+        );
+        expect(json.errors?.[0]?.message).toMatch(/do not have access/i);
+        expect(listTasks).not.toHaveBeenCalled();
+        getUser.mockReset();
+    });
+
     it('returns tasks for authenticated admin on home tenant', async () => {
         getUser.mockResolvedValue({ id: 'admin-1', email: 'a@x.com', role: 'admin' });
         listTasks.mockResolvedValue([{ id: 't1', status: 'queued' }]);
-        const { json } = await postGraphql(baseUrl, AOS_TASKS_QUERY, 'valid-token');
+        const { json } = await postGraphql(baseUrl, AOS_TASKS_QUERY, {}, 'valid-token');
         expect(json.errors).toBeUndefined();
         expect(listTasks).toHaveBeenCalledWith(
             expect.objectContaining({ tenantId: AOS_DEFAULT_TENANT }),

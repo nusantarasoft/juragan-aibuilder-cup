@@ -72,4 +72,26 @@ describe('mergeKasirIntoRoster', () => {
         expect(merged[0].rosterKind).toBe('live');
         expect(merged[1].rosterKind).toBe('demo');
     });
+
+    it('preserves live rosterKind when not tagging demo agents', () => {
+        const liveAgents: Agent[] = [
+            {
+                id: 'arjuna',
+                name: 'Arjuna',
+                role: 'DevOps',
+                model: 'Large',
+                color: '#38bdf8',
+                zone: 'engineering',
+                deskId: 'eng-1-a',
+                status: 'working',
+                location: 'desk',
+                modules: ['devops'],
+                skills: [],
+                stats: { tasksCompleted: 1, successRate: 1, avgLatencyMs: 1, tokensToday: 0 },
+                rosterKind: 'live',
+            },
+        ];
+        const merged = mergeKasirIntoRoster(liveAgents, unavailableSnap, { tagNonKasirAsDemo: false });
+        expect(merged[1].rosterKind).toBe('live');
+    });
 });

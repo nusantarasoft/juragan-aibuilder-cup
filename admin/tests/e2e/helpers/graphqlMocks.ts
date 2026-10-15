@@ -45,6 +45,7 @@ const demoAgent = {
 
 const aosSettings = {
     tenantId: '00000000-0000-0000-0000-000000000010',
+    uiDemoMode: false,
     dailyRunCeiling: 100,
     rollingWindowMinutes: 60,
     rollingWindowCeiling: 20,
@@ -96,14 +97,31 @@ const aosPulseStatus = {
     nextRuns: [],
 };
 
-const emptyAosSnapshot = {
-    aosAgents: [demoAgent],
-    aosPlaybooks: [],
-    aosTasks: [],
-    aosApprovals: [],
-    aosSettings,
-    aosStats,
+export type AosMockOptions = {
+    uiDemoMode?: boolean;
+    emptyAgents?: boolean;
+    tasks?: Record<string, unknown>[];
+    agentStatus?: string;
 };
+
+function buildAosSnapshot(opts?: AosMockOptions) {
+    const agent = {
+        ...demoAgent,
+        status: opts?.agentStatus ?? demoAgent.status,
+    };
+    return {
+        aosAgents: opts?.emptyAgents ? [] : [agent],
+        aosPlaybooks: [],
+        aosTasks: opts?.tasks ?? [],
+        aosApprovals: [],
+        aosSettings: { ...aosSettings, uiDemoMode: opts?.uiDemoMode ?? false },
+        aosStats: opts?.emptyAgents
+            ? { ...aosStats, totalAgents: 0, activeAgents: 0 }
+            : { ...aosStats, totalAgents: 1, activeAgents: agent.status === 'active' ? 1 : 0 },
+    };
+}
+
+const emptyAosSnapshot = buildAosSnapshot();
 
 function parseGraphqlQuery(req: import('@playwright/test').Request): string {
     try {
@@ -125,11 +143,12 @@ function graphqlDataForQuery(
     query: string,
     kasirSnapshot: Record<string, unknown>,
     kasirFail: boolean,
+    aosOpts?: AosMockOptions,
 ): Record<string, unknown> | 'kasir_fail' {
     if (kasirFail && query.includes('aosKasirLiveSnapshot')) return 'kasir_fail';
     if (query.includes('signIn')) return { signIn: { accessToken: 'qa-access-token', refreshToken: 'qa-refresh-token', user: mockUser } };
     if (query.includes('aosKasirLiveSnapshot')) return { aosKasirLiveSnapshot: kasirSnapshot };
-    if (query.includes('AosSnapshot') || query.includes('aosAgents')) return emptyAosSnapshot;
+    if (query.includes('AosSnapshot') || query.includes('aosAgents')) return buildAosSnapshot(aosOpts);
     if (query.includes('AosPulse') || query.includes('aosRoutines')) {
         return {
             aosRoutines: [],
@@ -152,6 +171,7 @@ async function installGraphqlRoute(
     context: BrowserContext,
     kasirSnapshot: Record<string, unknown>,
     kasirFail = false,
+    aosOpts?: AosMockOptions,
 ) {
     await context.route('**/*', async (route) => {
         const url = route.request().url();
@@ -164,7 +184,7 @@ async function installGraphqlRoute(
             return;
         }
         const query = parseGraphqlQuery(route.request());
-        const data = graphqlDataForQuery(query, kasirSnapshot, kasirFail);
+        const data = graphqlDataForQuery(query, kasirSnapshot, kasirFail, aosOpts);
         if (data === 'kasir_fail') {
             await route.abort('failed');
             return;
@@ -178,10 +198,15 @@ async function installGraphqlRoute(
 }
 
 /** Auth + AOS snapshot mocks; Kasir live query fails (UI must show unavailable, not mock metrics). */
-export async function installAuthAndAosMocks(context: BrowserContext) {
-    await installGraphqlRoute(context, {}, true);
+export async function installAuthAndAosMocks(context: BrowserContext, aosOpts?: AosMockOptions) {
+    await installGraphqlRoute(context, {}, true, aosOpts);
 }
 
-export async function installGraphqlMocks(context: BrowserContext, kasirSnapshot: Record<string, unknown>) {
-    await installGraphqlRoute(context, kasirSnapshot, false);
+export async function installGraphqlMocks(
+    context: BrowserContext,
+    kasirSnapshot: Record<string, unknown>,
+    kasirFail = false,
+    aosOpts?: AosMockOptions,
+) {
+    await installGraphqlRoute(context, kasirSnapshot, kasirFail, aosOpts);
 }

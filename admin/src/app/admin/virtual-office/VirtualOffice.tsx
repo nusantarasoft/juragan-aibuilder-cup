@@ -5,7 +5,9 @@ import dynamic from "next/dynamic";
 import { MousePointer2 } from "lucide-react";
 import { ensureOfficeRuntime } from "./lib/runtime";
 import { useOfficeStore } from "./lib/store";
+import { EmptyOfficeBanner } from "./hud/EmptyOfficeBanner";
 import { TopBar } from "./hud/TopBar";
+import { isEmptyLiveOffice } from "./lib/officeRuntimeMode";
 import { AgentRoster } from "./hud/AgentRoster";
 import { AgentInspector } from "./hud/AgentInspector";
 import { AgentScreenView } from "./hud/AgentScreenView";
@@ -51,6 +53,9 @@ function LoadingVeil() {
 
 export default function VirtualOffice() {
     const lighting = useOfficeStore(s => s.lighting);
+    const agents = useOfficeStore((s) => s.agents);
+    const dataMode = useOfficeStore((s) => s.dataMode);
+    const showEmptyLive = dataMode === "live" && isEmptyLiveOffice(agents);
 
     // Initial load from localstorage
     useEffect(() => {
@@ -74,7 +79,7 @@ export default function VirtualOffice() {
         }
     }, [lighting]);
 
-    // The runtime (mock today, real backend later — see lib/runtime.ts) lives for the whole tab,
+    // Runtime (live Agentic OS or explicit demo mode — see lib/runtime.ts) lives for the whole tab,
     // so agents keep working while the user follows them into module pages.
     useEffect(() => {
         ensureOfficeRuntime();
@@ -127,6 +132,7 @@ export default function VirtualOffice() {
                 <OfficeScene />
             </div>
             <div className="pointer-events-none absolute inset-0 z-20">
+                {showEmptyLive && <EmptyOfficeBanner />}
                 <TopBar />
                 <AgentRoster />
                 <AgentInspector />

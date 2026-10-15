@@ -84,14 +84,22 @@ export function TopBar() {
                         ) : (
                             <span
                                 className="rounded-md border border-amber-400/30 bg-amber-400/10 px-1.5 py-px text-[9px] font-bold uppercase tracking-wider text-amber-300"
-                                title={dataMode === "demo" ? "Agentic OS backend unreachable — showing the local demo simulation" : "Connecting to the Agentic OS…"}
+                                title={
+                                    dataMode === "demo"
+                                        ? "UI demo mode — simulated agents for training and demos"
+                                        : "Connecting to the Agentic OS…"
+                                }
                             >
                                 {dataMode === "demo" ? "Demo" : "Connecting"}
                             </span>
                         )}
                     </div>
                     <div className="text-[11px] text-slate-400">
-                        AI Agent HQ · Live Kasir (AI Studio) + Demo sim agents
+                        {dataMode === "live"
+                            ? "AI Agent HQ · Live roster & task queue (Agentic OS)"
+                            : dataMode === "demo"
+                              ? "AI Agent HQ · Demo simulation + Live Kasir (AI Studio)"
+                              : "Connecting to Agentic OS…"}
                     </div>
                 </div>
             </div>

@@ -115,14 +115,15 @@ Sebagian besar **AI Studio UMKM + Kasir + upload/RAG** memang terhubung ke middl
 
 | Fitur | Status | Bukti |
 |--------|--------|--------|
-| Desks / 3D office | **MIXED** | Floorplan REAL; agent roster dari **DEMO** `INITIAL_AGENTS` (`runtime.ts:27-30`, `mockData.ts:31`) |
-| Progress task di meja | **DEMO** | `mockAgentSource.ts:17-102` `TICK_MS`, `Math.random`, progress += random |
-| Activity feed | **DEMO** | `mockAgentSource.ts:85-90` hardcoded strings; seed `initialActivity` `mockData.ts` |
-| Mode **Live** VO | **DEMO** (mati) | `osAgentSource.ts` ada, **tidak di-import**; `runtime.ts:39` selalu `startHybrid` → `mode: demo` |
-| Badge header Demo / Live | **MIXED** | `TopBar.tsx:80-94` Demo jujur untuk sim; **Live** tidak pernah untuk office mode |
-| Kasir di roster VO | **MIXED** | `kasirLivePoll.ts`, `mergeKasirIntoRoster` — **Live** metrics + agent demo lain |
-| Inspector Kasir | **REAL** (read-only) | `AgentInspector.tsx` metrik WA/transaksi; demo copy `:310` untuk agent sim |
-| Stats tokens/tasks di top bar | **DEMO** | Agregat dari agent sim, bukan AOS store |
+| Desks / 3D office | **REAL** (live default) | Floorplan REAL; roster dari `osAgentSource` + `useAosStore` (`runtime.ts`, `officeRuntimeMode.ts`) |
+| Progress task di meja | **REAL** (live) | `osAgentSource.ts` maps `aos_tasks` progress/status; subscription + polling via `startAosPolling` / `subscribeAosTaskQueue` |
+| Activity feed | **REAL** (live) | Audit poll `fetchAuditFiltered` in `osAgentSource.ts`; demo mode still uses `mockAgentSource` |
+| Mode **Live** VO | **FIXED (F1-2 / D-1)** | Default live after snapshot; `mockAgentSource` only when `aos_settings.ui_demo_mode` / `AOS_UI_DEMO_MODE` |
+| Badge header Demo / Live | **FIXED** | `TopBar.tsx` — **Live** when `dataMode === 'live'`; **Demo** only explicit UI demo mode |
+| Empty tenant | **REAL** (jujur) | `EmptyOfficeBanner.tsx` when no DB-backed agents (`isEmptyLiveOffice`) |
+| Kasir di roster VO | **MIXED** | `kasirLivePoll.ts` — **Live** metrics; in live mode DB agents keep **Live** roster badges |
+| Inspector Kasir | **REAL** (read-only) | `AgentInspector.tsx` metrik WA/transaksi |
+| Stats tokens/tasks di top bar | **REAL** (live) | Aggregated from live roster agent stats / queue |
 
 ---
 
@@ -131,8 +132,8 @@ Sebagian besar **AI Studio UMKM + Kasir + upload/RAG** memang terhubung ke middl
 | Lokasi | Jujur? | Catatan |
 |--------|--------|---------|
 | `RosterKindBadge` | Ya | Hanya label Live/Demo |
-| VO TopBar “Demo” | Ya | Saat `dataMode === 'demo'` (default runtime) |
-| VO subtitle “Live Kasir + Demo sim” | Ya | |
+| VO TopBar “Demo” | Ya | Saat `dataMode === 'demo'` (explicit `ui_demo_mode` only) |
+| VO subtitle live vs demo | Ya | Live copy when wired to Agentic OS queue |
 | AOS Overview task queue copy | **FIXED (F1-1)** | Describes persisted queue + worker; badges honest per `uiDemoMode` |
 | AOS “task queue & workflows are not live yet” | **Tidak** | Queue/runner/task DB hidup (simulated runner) |
 | Agent Studio badge pada Arjuna/Semar dll. | **Tidak** | Data REAL, badge Demo |
