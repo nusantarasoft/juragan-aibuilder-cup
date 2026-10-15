@@ -85,7 +85,7 @@ Script melakukan:
 
 ### Deploy detached (Mac sleep / SSH drop)
 
-Step `[2/3]`–`[3/3]`: upload script pull + trigger `redeploy-detached.sh start <pull-script>` (bukan SSH session panjang). Git fetch, backup Hermes, dan build docker tetap jalan di server jika laptop tidur atau SSH putus. Polling status/tail memakai SSH capture pendek dengan retry.
+Step `[2/3]`–`[3/3]`: upload script pull + trigger `redeploy-detached.sh start <pull-script>` (bukan SSH session panjang). Git fetch, backup Hermes, dan build docker tetap jalan di server jika laptop tidur atau SSH putus. Polling status/tail memakai SSH capture pendek dengan retry. Sebelum SFTP upload, `deploy.ps1` menjalankan `mkdir -p /opt/nusantarasoft-3/logs` dan `scripts/master-production` di server (SFTP tidak membuat parent dir; install fresh tanpa folder `logs/` gagal upload).
 
 | Item | Path |
 |------|------|

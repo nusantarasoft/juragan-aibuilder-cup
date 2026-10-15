@@ -126,6 +126,16 @@ function Invoke-SshPutWithRetry {
   throw "SFTP upload failed after $MaxAttempts attempts: $LocalPath -> $RemotePath"
 }
 
+function Ensure-RemoteDeployDirs {
+  # SFTP put does not create parent dirs; fresh servers may lack logs/ (PR #29 prod failure).
+  $cmd = "mkdir -p '$remoteDir/logs' '$remoteDir/scripts/master-production'"
+  $r = Invoke-SshCaptureWithRetry $cmd
+  if ($r.ExitCode -ne 0) {
+    Write-Host $r.Text.TrimEnd()
+    throw "failed to ensure deploy directories on server ($remoteDir/logs, scripts/master-production)."
+  }
+}
+
 function Get-RemoteDeployStatus {
   $cmd = "cd $remoteDir && bash $detachedSh status"
   $r = Invoke-SshCaptureWithRetry $cmd
@@ -217,6 +227,8 @@ function Wait-RemoteDeploy {
 
 function Start-RemoteDeployDetached {
   param([Parameter(Mandatory)][string]$RemotePullScript)
+
+  Ensure-RemoteDeployDirs
 
   $detachedLocal = Join-Path $PSScriptRoot "redeploy-detached.sh"
   $remoteDetached = "$remoteDir/scripts/master-production/redeploy-detached.sh"
@@ -367,6 +379,8 @@ $pullFile = Join-Path $env:TEMP "nsoft3-pull-on-server.sh"
 
 $localTs = Get-Date -Format "yyyyMMdd-HHmmss"
 $remotePull = "$remoteDir/logs/.deploy-pull-$localTs.sh"
+Write-Host "    ensuring server deploy dirs (logs/, scripts/master-production/)"
+Ensure-RemoteDeployDirs
 Write-Host "    uploading pull script -> $remotePull"
 Invoke-SshPutWithRetry -LocalPath $pullFile -RemotePath $remotePull
 

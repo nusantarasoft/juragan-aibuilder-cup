@@ -34,3 +34,4 @@ Rule: one DOING task at Cursor at a time (plus deploy). Gate: scope → PR → Q
 - [TODO] D-3 (audit #31) AI Studio Web Crawler / Knowledge Graph / Agent Builder are client-side DEMO: label honestly now, make real later (P2)
 - [TODO] D-4 (audit #31) Verify tenant umkm-warung-klontong-bahagia exists in prod (not in seed)
 - [TODO] D-5 (audit #31) Rerun audit browser check on the full stack (middleware was off) after deploy
+- [TODO] D-6 (deploy hotfix) Ensure `/opt/nusantarasoft-3/logs` exists before SFTP pull-script upload (`deploy.ps1` mkdir guard; PR #29 detached deploy prod failure)
