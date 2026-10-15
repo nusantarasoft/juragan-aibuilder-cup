@@ -13,10 +13,9 @@
   What it does:
     1. Checks out master-production and merges latest master into it, then
        pushes origin/master-production.
-    2. On the server: git fetch/checkout/reset to master-production
-       (bootstraps a clone if /opt/nusantarasoft-3 is not a git repo yet,
-       while preserving .env.master-production + DB/storage volumes).
-    3. Runs scripts/master-production/redeploy.sh (serial build + up + migrations).
+    2. Uploads stdin-safe pull-on-server logic + triggers one detached server job:
+       Hermes backup, git fetch/reset to target SHA, then redeploy.sh (build + smoke).
+       SSH is only used to upload, start the job, and poll status/tail.
 
   Local git: preflight aborts if the working tree is dirty (lists paths). No reset/clean.
   Sync with origin uses fast-forward only when clean.
@@ -29,9 +28,10 @@
       -Attach      skip local git + pull; tail the in-flight server redeploy log until done
       -Status      skip local git + pull; print remote redeploy status + exit code if finished
 
-  Redeploy on the server runs detached (setsid/nohup) with logs under
+  Server pull + redeploy run as one detached job (setsid/nohup) with logs under
   /opt/nusantarasoft-3/logs/deploy-YYYYMMDD-HHMMSS.log so Mac sleep / SSH drop
-  does not kill docker builds. Re-run with -Attach or -Status to reconnect.
+  does not kill git fetch or docker builds. Re-run with -Attach or -Status to reconnect.
+  Polling uses short SSH capture calls with retries.
 
   Requires: Python 3 with paramiko  (pip install paramiko)
             Server git auth via deploy key (DEPLOY_GIT_URL=git@...) or GITHUB_TOKEN
@@ -88,9 +88,47 @@ function Invoke-SshCapture {
   return @{ ExitCode = $code; Text = ($out | Out-String) }
 }
 
+function Invoke-SshCaptureWithRetry {
+  param(
+    [Parameter(Mandatory)][string]$RemoteCmd,
+    [int]$MaxAttempts = 5
+  )
+  $last = $null
+  for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
+    $last = Invoke-SshCapture $RemoteCmd
+    if ($last.ExitCode -eq 0 -or $last.ExitCode -eq 2) {
+      return $last
+    }
+    if ($attempt -lt $MaxAttempts) {
+      $delay = [Math]::Min(30, 2 * $attempt)
+      Write-Warning "SSH capture failed (exit $($last.ExitCode)); retry $attempt/$MaxAttempts in ${delay}s"
+      Start-Sleep -Seconds $delay
+    }
+  }
+  return $last
+}
+
+function Invoke-SshPutWithRetry {
+  param(
+    [Parameter(Mandatory)][string]$LocalPath,
+    [Parameter(Mandatory)][string]$RemotePath,
+    [int]$MaxAttempts = 5
+  )
+  for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
+    & python $ssh put $LocalPath $RemotePath
+    if ($LASTEXITCODE -eq 0) { return }
+    if ($attempt -lt $MaxAttempts) {
+      $delay = [Math]::Min(30, 2 * $attempt)
+      Write-Warning "SFTP upload failed; retry $attempt/$MaxAttempts in ${delay}s"
+      Start-Sleep -Seconds $delay
+    }
+  }
+  throw "SFTP upload failed after $MaxAttempts attempts: $LocalPath -> $RemotePath"
+}
+
 function Get-RemoteDeployStatus {
   $cmd = "cd $remoteDir && bash $detachedSh status"
-  $r = Invoke-SshCapture $cmd
+  $r = Invoke-SshCaptureWithRetry $cmd
   $kv = Parse-DeployKeyValues $r.Text
   return @{
     SshExit   = $r.ExitCode
@@ -112,7 +150,7 @@ function Write-RemoteDeployTail {
   $off = [int]$ByteOffset.Value
   $escaped = $LogPath.Replace("'", "'\''")
   $cmd = "cd $remoteDir && bash $detachedSh tail-since '$escaped' $off"
-  $r = Invoke-SshCapture $cmd
+  $r = Invoke-SshCaptureWithRetry $cmd
   $lines = $r.Text -split "`n"
   $newOff = $off
   $bodyLines = @()
@@ -178,15 +216,22 @@ function Wait-RemoteDeploy {
 }
 
 function Start-RemoteDeployDetached {
-  $cmd = "cd $remoteDir && bash $detachedSh start"
-  $r = Invoke-SshCapture $cmd
+  param([Parameter(Mandatory)][string]$RemotePullScript)
+
+  $detachedLocal = Join-Path $PSScriptRoot "redeploy-detached.sh"
+  $remoteDetached = "$remoteDir/scripts/master-production/redeploy-detached.sh"
+  Invoke-SshPutWithRetry -LocalPath $detachedLocal -RemotePath $remoteDetached
+
+  $escapedPull = $RemotePullScript.Replace("'", "'\''")
+  $cmd = "cd $remoteDir && bash $detachedSh start '$escapedPull'"
+  $r = Invoke-SshCaptureWithRetry $cmd
   if ($r.ExitCode -eq 2) {
     Write-Host $r.Text.TrimEnd()
-    throw "concurrent deploy blocked by lock — use -Attach or -Status instead of starting another redeploy."
+    throw "concurrent deploy blocked by lock — use -Attach or -Status instead of starting another deploy."
   }
   if ($r.ExitCode -ne 0) {
     Write-Host $r.Text.TrimEnd()
-    throw "failed to start detached redeploy on server."
+    throw "failed to start detached deploy on server."
   }
   $kv = Parse-DeployKeyValues $r.Text
   Write-Host "    detached pid=$($kv['PID']) log=$($kv['LOG'])" -ForegroundColor DarkGray
@@ -286,34 +331,46 @@ if (-not $SkipMerge -and -not $skipLocalGit) {
 }
 
 $deployUrl = Get-DeployGitUrl
-Write-Host "==> [2/3] server git pull ($branch)" -ForegroundColor Cyan
+Write-Host "==> [2/3] server git pull + redeploy (detached, SSH-safe)" -ForegroundColor Cyan
 Write-Host "    remote: $(Mask-GitUrl $deployUrl)"
 
+Invoke-Git fetch origin $branch
+$targetSha = (git rev-parse "origin/$branch").Trim()
+if (-not $targetSha) {
+  throw "Could not resolve origin/$branch for deploy target SHA."
+}
+Write-Host "    target SHA: $($targetSha.Substring(0, [Math]::Min(12, $targetSha.Length)))"
+
 $urlEscaped = $deployUrl.Replace("'", "'\''")
+$shaEscaped = $targetSha.Replace("'", "'\''")
 $pullBody = [System.IO.File]::ReadAllText($pullSh) -replace "`r`n", "`n" -replace "`r", "`n"
 # Concatenate so bash `$vars` inside pull-on-server.sh are NOT expanded by PowerShell.
 $header = (
   "set -euo pipefail`n" +
   "export BRANCH='$branch'`n" +
   "export REMOTE_DIR='$remoteDir'`n" +
-  "export DEPLOY_GIT_URL='$urlEscaped'`n`n"
+  "export DEPLOY_GIT_URL='$urlEscaped'`n" +
+  "export TARGET_SHA='$shaEscaped'`n`n"
 )
 $footer = (
   "`n" +
   "CUR=`$(git -C '$remoteDir' rev-parse --abbrev-ref HEAD)`n" +
   "test `"`$CUR`" = '$branch' || { echo `"ERROR: server on `$CUR, expected $branch`" >&2; exit 1; }`n" +
+  "HEAD=`$(git -C '$remoteDir' rev-parse HEAD)`n" +
+  "test `"`$HEAD`" = '$shaEscaped' || { echo `"ERROR: server at `$HEAD, expected $shaEscaped`" >&2; exit 1; }`n" +
   "echo `"server branch OK: `$CUR at `$(git -C '$remoteDir' rev-parse --short HEAD)`"`n"
 )
 $remoteScript = $header + $pullBody + $footer
 
 $pullFile = Join-Path $env:TEMP "nsoft3-pull-on-server.sh"
 [System.IO.File]::WriteAllText($pullFile, ($remoteScript -replace "`r`n", "`n" -replace "`r", "`n"))
-python $ssh script $pullFile
-if ($LASTEXITCODE -ne 0) {
-  throw "server git pull failed (set DEPLOY_GIT_URL=git@... with deploy key, or GITHUB_TOKEN)."
-}
 
-Write-Host "==> [3/3] detached redeploy on server (build + up; SSH-safe)" -ForegroundColor Cyan
-Start-RemoteDeployDetached
+$localTs = Get-Date -Format "yyyyMMdd-HHmmss"
+$remotePull = "$remoteDir/logs/.deploy-pull-$localTs.sh"
+Write-Host "    uploading pull script -> $remotePull"
+Invoke-SshPutWithRetry -LocalPath $pullFile -RemotePath $remotePull
+
+Write-Host "==> [3/3] trigger detached full deploy on server" -ForegroundColor Cyan
+Start-RemoteDeployDetached -RemotePullScript $remotePull
 
 Write-Host "==> deploy finished ($branch)." -ForegroundColor Green

@@ -60,8 +60,8 @@ powershell -ExecutionPolicy Bypass -File scripts/master-production/deploy.ps1
 Script melakukan:
 
 1. Checkout `master-production`, **merge** `origin/master` ke dalamnya, **push** `origin/master-production`.
-2. Di server: `git fetch` + hard reset ke `origin/master-production` (bootstrap clone jika belum ada `.git`; `.env` + volume DB/storage + **`volumes/hermes` runtime** di-preserve). Sebelum reset, `pull-on-server.sh` menar `volumes/hermes` ke tar di `backups/hermes-runtime/` (rotasi 5 file) dan stash/restore agar transisi **untrack** Hermes tidak menghapus `state.db`, `config.yaml`, `channel_directory.json`, sesi WA, dll.
-3. Jalankan `scripts/master-production/redeploy.sh`:
+2. **Satu job detached di server** (upload script pull stdin-safe + `redeploy-detached.sh start PULL`): Hermes backup + `git fetch`/reset ke **SHA target** (`origin/master-production` setelah push), lalu `redeploy.sh` (bootstrap clone jika belum ada `.git`; `.env` + volume DB/storage + **`volumes/hermes` runtime** di-preserve). Sebelum reset, pull menar `volumes/hermes` ke tar di `backups/hermes-runtime/` (rotasi 5 file) dan stash/restore agar transisi **untrack** Hermes tidak menghapus runtime Hermes.
+3. Isi `redeploy.sh` (jalan di dalam job yang sama):
    - build serial: middleware → landing-page → admin
    - pastikan DB `_supabase` / auth ownership
    - apply migrasi app
@@ -83,9 +83,9 @@ Script melakukan:
 | `-Status` | Lewati merge/pull lokal; cetak status redeploy server + exit code jika sudah selesai |
 | `NSOFT3_PRUNE_IMAGES=1` (di server, sebelum `redeploy.sh`) | Jalankan step 9 prune disk; default tanpa env = skip |
 
-### Redeploy detached (Mac sleep / SSH drop)
+### Deploy detached (Mac sleep / SSH drop)
 
-Step `[3/3]` memanggil `redeploy-detached.sh start` di server (bukan SSH session panjang ke `redeploy.sh`). Build docker tetap jalan di server jika laptop tidur atau SSH putus.
+Step `[2/3]`–`[3/3]`: upload script pull + trigger `redeploy-detached.sh start <pull-script>` (bukan SSH session panjang). Git fetch, backup Hermes, dan build docker tetap jalan di server jika laptop tidur atau SSH putus. Polling status/tail memakai SSH capture pendek dengan retry.
 
 | Item | Path |
 |------|------|

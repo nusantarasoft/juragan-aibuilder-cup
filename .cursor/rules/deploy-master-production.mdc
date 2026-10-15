@@ -31,7 +31,7 @@ powershell -ExecutionPolicy Bypass -File scripts/master-production/deploy.ps1
 - `-AllowDirty`: skip all local git steps; never modifies local files.
 - Server path: `/opt/nusantarasoft-3`.
 - Step `[3/3]` runs **`redeploy-detached.sh`** (setsid/nohup, log under `logs/deploy-*.log`, lock `.deploy.lock`). If SSH drops or Mac sleeps: `-Attach` or `-Status` (no new merge/pull).
-- Redeploy ends with Hermes kasir posture restore (`hermes-kasir-posture.py`), `docker restart nsoft3-nginx` to avoid stale upstream 502, optional `prune-nsoft3-images.sh` when `NSOFT3_PRUNE_IMAGES=1` (default off), then **`smoke-umkm.sh`** (GraphQL, kasir-consult auth/probe, Hermes WA, posture check — no ledger/WA sends). `pull-on-server.sh` backs up and stash/restores `volumes/hermes` across hard reset.
+- Pull + redeploy run as one detached server job (SSH trigger only); polling uses short SSH with retries. Redeploy ends with Hermes kasir posture restore (`hermes-kasir-posture.py`), `docker restart nsoft3-nginx` to avoid stale upstream 502, optional `prune-nsoft3-images.sh` when `NSOFT3_PRUNE_IMAGES=1` (default off), then **`smoke-umkm.sh`** (GraphQL, kasir-consult auth/probe, Hermes WA, posture check — no ledger/WA sends). `pull-on-server.sh` backs up and stash/restores `volumes/hermes` across hard reset.
 
 ## Verify
 

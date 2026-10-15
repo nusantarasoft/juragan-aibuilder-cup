@@ -3,7 +3,8 @@
 #
 # Used by deploy.ps1 so Mac sleep / SSH drop does not kill docker builds.
 #
-#   start          acquire lock, spawn setsid+nohup redeploy, print LOG=/PID=/STATUS=
+#   start [PULL]   acquire lock, spawn setsid+nohup job, print LOG=/PID=/STATUS=
+#                  optional PULL: server path to stdin-safe pull script (runs before redeploy)
 #   status         print LOG=/PID=/STATUS=/EXIT= (machine-readable)
 #   tail-since     args: LOG OFFSET — print new log bytes; last line OFFSET=<n>
 #
@@ -61,6 +62,12 @@ _stale_lock_cleanup() {
 }
 
 cmd_start() {
+  local pull_script="${1:-}"
+  if [[ -n "$pull_script" ]] && [[ ! -f "$pull_script" ]]; then
+    echo "ERROR: pull script not found: $pull_script" >&2
+    exit 1
+  fi
+
   _stale_lock_cleanup
   if [[ -f "$LOCKFILE" ]]; then
     local pid log
@@ -83,6 +90,10 @@ cmd_start() {
   started="$(date -Iseconds)"
 
   wrapper="$LOG_DIR/.deploy-run-${ts}.sh"
+  local pull_escaped=""
+  if [[ -n "$pull_script" ]]; then
+    pull_escaped="$(printf '%s' "$pull_script" | sed "s/'/'\\\\''/g")"
+  fi
   cat >"$wrapper" <<EOS
 #!/usr/bin/env bash
 set -uo pipefail
@@ -91,6 +102,7 @@ LOG='$log'
 LOCKFILE='$LOCKFILE'
 STATEFILE='$STATEFILE'
 REDEPLOY='$REDEPLOY'
+PULL_SCRIPT='${pull_escaped}'
 STARTED='$started'
 ec=0
 finish() {
@@ -106,10 +118,18 @@ EOSTATE
   mv -f "\$tmp" "\$STATEFILE"
   rm -f "\$LOCKFILE"
   rm -f "\$0"
+  if [[ -n "\${PULL_SCRIPT:-}" ]] && [[ -f "\$PULL_SCRIPT" ]]; then
+    rm -f "\$PULL_SCRIPT"
+  fi
 }
 trap finish EXIT
 {
   cd "\$REMOTE_DIR"
+  if [[ -n "\${PULL_SCRIPT:-}" ]]; then
+    echo "==> [deploy] server git pull (detached)"
+    bash "\$PULL_SCRIPT"
+  fi
+  echo "==> [deploy] redeploy.sh (build + up + smoke)"
   bash "\$REDEPLOY"
 } >>"\$LOG" 2>&1 || ec=\$?
 exit "\$ec"
@@ -217,12 +237,15 @@ cmd_tail_since() {
 }
 
 usage() {
-  echo "Usage: $0 {start|status|tail-since LOG [OFFSET]}" >&2
+  echo "Usage: $0 {start [PULL_SCRIPT]|status|tail-since LOG [OFFSET]}" >&2
   exit 2
 }
 
 case "${1:-}" in
-  start) cmd_start ;;
+  start)
+    shift
+    cmd_start "${1:-}"
+    ;;
   status) cmd_status ;;
   tail-since)
     shift
