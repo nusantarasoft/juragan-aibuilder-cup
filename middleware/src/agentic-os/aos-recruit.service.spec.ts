@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 import { AosRecruitService } from './aos-recruit.service';
 import {
+    DEVOPS_RECRUIT_TEMPLATE_ID,
     FINANCE_RECRUIT_TEMPLATE_ID,
     KASIR_RECRUIT_TEMPLATE_ID,
     SALES_RECRUIT_TEMPLATE_ID,
@@ -42,6 +43,8 @@ describe('AosRecruitService', () => {
         expect(catalog.some((c) => c.id === SERVICE_DESK_RECRUIT_TEMPLATE_ID && c.recruitable)).toBe(true);
         expect(catalog.some((c) => c.id === FINANCE_RECRUIT_TEMPLATE_ID && c.recruitable)).toBe(true);
         expect(catalog.some((c) => c.id === SALES_RECRUIT_TEMPLATE_ID && c.recruitable)).toBe(true);
+        expect(catalog.some((c) => c.id === DEVOPS_RECRUIT_TEMPLATE_ID && c.recruitable)).toBe(true);
+        expect(catalog.some((c) => c.id === 'devops-soon')).toBe(false);
         expect(catalog.some((c) => c.id === 'sales-soon')).toBe(false);
         expect(catalog.some((c) => c.kind === 'coming_soon')).toBe(true);
         expect(catalog.some((c) => c.id === 'pembukuan-soon')).toBe(false);
@@ -240,5 +243,50 @@ describe('AosRecruitService', () => {
         const svc = new AosRecruitService(mockAos({ agents: [{ slug: 'sales-2' }] }) as any);
         const st = await svc.getRecruitStatus(TENANT);
         expect(st.salesRecruited).toBe(true);
+    });
+
+    it('recruits devops with cloud runner and deploy guardrails', async () => {
+        const aos = mockAos();
+        const svc = new AosRecruitService(aos as any);
+        const out = await svc.recruitAgent(
+            TENANT,
+            DEVOPS_RECRUIT_TEMPLATE_ID,
+            { id: 'u1', role: 'tenant_owner', tenantId: TENANT },
+            { id: 'u1' },
+        );
+        expect(out.agent.slug).toBe('devops');
+        expect(out.waConnectRequired).toBe(false);
+        expect(aos.createAgent).toHaveBeenCalledWith(
+            TENANT,
+            expect.objectContaining({
+                runner: 'cloud',
+                slug: 'devops',
+                modules: ['devops', 'infrastructure', 'ops'],
+                tools: expect.arrayContaining(['pipeline.trigger', 'runbook.execute']),
+                guardrails: expect.objectContaining({
+                    requireApproval: expect.arrayContaining(['pipeline.trigger', 'runbook.execute', 'deploy']),
+                    noAutoDeploy: true,
+                }),
+            }),
+            { id: 'u1' },
+        );
+    });
+
+    it('rejects duplicate devops', async () => {
+        const svc = new AosRecruitService(mockAos({ agents: [{ slug: 'devops' }] }) as any);
+        await expect(
+            svc.recruitAgent(
+                TENANT,
+                DEVOPS_RECRUIT_TEMPLATE_ID,
+                { id: 'u1', role: 'tenant_owner', tenantId: TENANT },
+                { id: 'u1' },
+            ),
+        ).rejects.toThrow(/DevOps/i);
+    });
+
+    it('reports devopsRecruited in status', async () => {
+        const svc = new AosRecruitService(mockAos({ agents: [{ slug: 'devops-2' }] }) as any);
+        const st = await svc.getRecruitStatus(TENANT);
+        expect(st.devopsRecruited).toBe(true);
     });
 });

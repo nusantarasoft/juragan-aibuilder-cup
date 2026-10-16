@@ -15,7 +15,7 @@ Trial **`tenant_owner`** sees four selectable SKUs on `/admin/recruit` (trial ca
 | 3 | Finance | Virtual Office; accounting at `/admin/accounting/*` |
 | 4 | Sales | Virtual Office; CRM at `/admin/crm/dashboard` |
 
-**Segera hadir:** CS WhatsApp, Stok & gudang, plus foreshadow cards for **DevOps (F3-7)**, **Security (F3-8)**, **Facilities (F3-9)**.
+**Segera hadir (at F3-6 ship):** CS WhatsApp, Stok & gudang, plus foreshadow cards for **DevOps (F3-7)**, **Security (F3-8)**, **Facilities (F3-9)**. DevOps went live in F3-7.
 
 ## Server template (from `sales` preset)
 

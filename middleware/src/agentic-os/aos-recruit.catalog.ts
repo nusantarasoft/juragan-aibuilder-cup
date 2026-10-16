@@ -1,4 +1,4 @@
-/** Server-side recruit catalog (F2-2 + F3-1 + F3-5 + F3-6). Enterprise templates stay in Agent Studio for platform admins only. */
+/** Server-side recruit catalog (F2-2 + F3-1 + F3-5 + F3-6 + F3-7). Enterprise templates stay in Agent Studio for platform admins only. */
 
 export const TRIAL_MAX_RECRUITED_AGENTS = 3;
 
@@ -6,6 +6,7 @@ export const KASIR_RECRUIT_TEMPLATE_ID = 'umkm-kasir';
 export const SERVICE_DESK_RECRUIT_TEMPLATE_ID = 'service-desk';
 export const FINANCE_RECRUIT_TEMPLATE_ID = 'finance';
 export const SALES_RECRUIT_TEMPLATE_ID = 'sales';
+export const DEVOPS_RECRUIT_TEMPLATE_ID = 'devops';
 
 export type RecruitCatalogKind = 'recruitable' | 'coming_soon' | 'enterprise_hidden';
 
@@ -59,13 +60,23 @@ export const RECRUIT_CATALOG: RecruitCatalogEntryDef[] = [
         sortOrder: 4,
     },
     {
+        id: DEVOPS_RECRUIT_TEMPLATE_ID,
+        name: 'DevOps',
+        role: 'DevOps Engineer',
+        description:
+            'Pipeline CI/CD, observability, dan runbook — trigger pipeline & eksekusi runbook butuh persetujuan manusia; tidak deploy otomatis. Data DevOps live tenant.',
+        kind: 'recruitable',
+        color: '#38bdf8',
+        sortOrder: 5,
+    },
+    {
         id: 'cs-soon',
         name: 'Customer Service',
         role: 'CS WhatsApp',
         description: 'Balas pertanyaan pelanggan dan FAQ toko.',
         kind: 'coming_soon',
         color: '#a78bfa',
-        sortOrder: 5,
+        sortOrder: 6,
     },
     {
         id: 'stok-soon',
@@ -74,15 +85,6 @@ export const RECRUIT_CATALOG: RecruitCatalogEntryDef[] = [
         description: 'Pantau stok, alert habis, dan restock.',
         kind: 'coming_soon',
         color: '#f59e0b',
-        sortOrder: 6,
-    },
-    {
-        id: 'devops-soon',
-        name: 'DevOps',
-        role: 'DevOps Engineer',
-        description: 'Pipeline, observability, runbook — antrian F3-7.',
-        kind: 'coming_soon',
-        color: '#38bdf8',
         sortOrder: 7,
     },
     {
@@ -207,11 +209,37 @@ export const SALES_RECRUIT_AGENT_DEFAULTS = {
     status: 'active',
 };
 
+/** Aligned with Agent Studio `devops` preset; pipeline/runbook triggers need approval — no auto-deploy. */
+export const DEVOPS_RECRUIT_AGENT_DEFAULTS = {
+    name: 'DevOps',
+    baseSlug: DEVOPS_RECRUIT_TEMPLATE_ID,
+    role: 'DevOps Engineer',
+    persona:
+        'You keep pipelines green and services healthy. Before any deployment or restart you run pre-checks and you attach logs to the related incident.',
+    color: '#38bdf8',
+    zone: 'engineering',
+    deskId: 'eng-1-a',
+    modules: ['devops', 'infrastructure', 'ops'],
+    skills: ['CI/CD', 'Docker', 'Observability'],
+    tools: ['module.read', 'module.draft', 'pipeline.trigger', 'runbook.execute', 'kb.search', 'activity.log'],
+    permissions: { devops: 'draft', infrastructure: 'read', ops: 'draft' } as Record<string, string>,
+    runner: 'cloud' as const,
+    guardrails: {
+        denySend: true,
+        denyShare: true,
+        denyDelete: true,
+        requireApproval: ['pipeline.trigger', 'runbook.execute', 'deploy', 'write'],
+        noAutoDeploy: true,
+    },
+    status: 'active',
+};
+
 export const RECRUIT_TEMPLATE_IDS = [
     KASIR_RECRUIT_TEMPLATE_ID,
     SERVICE_DESK_RECRUIT_TEMPLATE_ID,
     FINANCE_RECRUIT_TEMPLATE_ID,
     SALES_RECRUIT_TEMPLATE_ID,
+    DEVOPS_RECRUIT_TEMPLATE_ID,
 ] as const;
 
 export type RecruitTemplateId = (typeof RECRUIT_TEMPLATE_IDS)[number];
@@ -221,6 +249,7 @@ export function recruitDefaultsForTemplate(templateId: string) {
     if (templateId === SERVICE_DESK_RECRUIT_TEMPLATE_ID) return SERVICE_DESK_RECRUIT_AGENT_DEFAULTS;
     if (templateId === FINANCE_RECRUIT_TEMPLATE_ID) return FINANCE_RECRUIT_AGENT_DEFAULTS;
     if (templateId === SALES_RECRUIT_TEMPLATE_ID) return SALES_RECRUIT_AGENT_DEFAULTS;
+    if (templateId === DEVOPS_RECRUIT_TEMPLATE_ID) return DEVOPS_RECRUIT_AGENT_DEFAULTS;
     return null;
 }
 

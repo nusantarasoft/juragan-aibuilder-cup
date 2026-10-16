@@ -17,6 +17,7 @@ const KASIR_ID = "umkm-kasir";
 const SERVICE_DESK_ID = "service-desk";
 const FINANCE_ID = "finance";
 const SALES_ID = "sales";
+const DEVOPS_ID = "devops";
 
 function isRecruitedForTemplate(
     itemId: string,
@@ -25,6 +26,7 @@ function isRecruitedForTemplate(
         serviceDeskRecruited: boolean;
         financeRecruited: boolean;
         salesRecruited: boolean;
+        devopsRecruited: boolean;
     } | null,
 ) {
     if (!status) return false;
@@ -32,6 +34,7 @@ function isRecruitedForTemplate(
     if (itemId === SERVICE_DESK_ID) return status.serviceDeskRecruited;
     if (itemId === FINANCE_ID) return status.financeRecruited;
     if (itemId === SALES_ID) return status.salesRecruited;
+    if (itemId === DEVOPS_ID) return status.devopsRecruited;
     return false;
 }
 
@@ -46,6 +49,7 @@ export default function RecruitPage() {
         serviceDeskRecruited: boolean;
         financeRecruited: boolean;
         salesRecruited: boolean;
+        devopsRecruited: boolean;
     } | null>(null);
     const [loading, setLoading] = useState(true);
     const [recruitingId, setRecruitingId] = useState<string | null>(null);
@@ -97,7 +101,7 @@ export default function RecruitPage() {
                 <h1 className="mt-1 text-2xl font-bold text-white">Rekrut karyawan</h1>
                 <p className="mt-2 text-sm text-slate-400">
                     Kasir UMKM untuk WhatsApp (hubungkan WA setelah rekrut pertama). Service Desk untuk tiket ITSM. Finance
-                    untuk akuntansi, Sales untuk CRM & riset pasar — data live tenant, bukan demo.
+                    untuk akuntansi, Sales untuk CRM, DevOps untuk pipeline & runbook — data live tenant, bukan demo.
                 </p>
                 {status && (
                     <p className="mt-2 text-xs text-slate-500">
@@ -197,6 +201,13 @@ export default function RecruitPage() {
                                                 >
                                                     Buka CRM →
                                                 </Link>
+                                            ) : item.id === DEVOPS_ID ? (
+                                                <Link
+                                                    href="/admin/devops/pipelines"
+                                                    className="text-xs font-semibold text-indigo-300 underline"
+                                                >
+                                                    Buka pipeline →
+                                                </Link>
                                             ) : null}
                                         </div>
                                     ) : null}
@@ -210,7 +221,7 @@ export default function RecruitPage() {
             {role === "tenant_owner" && (
                 <p className="mt-8 text-xs text-slate-600">
                     Template enterprise di Agent Studio tetap untuk admin platform — halaman ini untuk wedge UMKM, Service Desk,
-                    Finance, Sales, plus kartu antrian F3-7…F3-9 (Segera hadir).
+                    Finance, Sales, DevOps, plus kartu antrian F3-8…F3-9 (Segera hadir).
                 </p>
             )}
         </div>

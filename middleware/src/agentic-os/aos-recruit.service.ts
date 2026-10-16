@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/com
 import { hasMinRole, normalizeAppRole } from '../auth/app-roles';
 import { AgenticOsService, type AosActor } from './agentic-os.service';
 import {
+    DEVOPS_RECRUIT_TEMPLATE_ID,
     FINANCE_RECRUIT_TEMPLATE_ID,
     KASIR_RECRUIT_TEMPLATE_ID,
     RECRUIT_CATALOG,
@@ -25,6 +26,7 @@ export type RecruitSessionUser = {
 const SERVICE_DESK_EMPLOYEE_SLUG = SERVICE_DESK_RECRUIT_TEMPLATE_ID;
 const FINANCE_EMPLOYEE_SLUG = FINANCE_RECRUIT_TEMPLATE_ID;
 const SALES_EMPLOYEE_SLUG = SALES_RECRUIT_TEMPLATE_ID;
+const DEVOPS_EMPLOYEE_SLUG = DEVOPS_RECRUIT_TEMPLATE_ID;
 
 @Injectable()
 export class AosRecruitService {
@@ -58,6 +60,7 @@ export class AosRecruitService {
         serviceDeskRecruited: boolean;
         financeRecruited: boolean;
         salesRecruited: boolean;
+        devopsRecruited: boolean;
     }> {
         const agents = await this.aos.listAgents(tenantId, false);
         const active = agents.filter((a) => !a.archivedAt);
@@ -67,6 +70,7 @@ export class AosRecruitService {
         const serviceDeskRecruited = active.some((a) => isRecruitedSlug(SERVICE_DESK_EMPLOYEE_SLUG, a.slug));
         const financeRecruited = active.some((a) => isRecruitedSlug(FINANCE_EMPLOYEE_SLUG, a.slug));
         const salesRecruited = active.some((a) => isRecruitedSlug(SALES_EMPLOYEE_SLUG, a.slug));
+        const devopsRecruited = active.some((a) => isRecruitedSlug(DEVOPS_EMPLOYEE_SLUG, a.slug));
         const max = await this.maxAgentsForTenant(tenantId);
         return {
             recruitedCount: active.length,
@@ -75,6 +79,7 @@ export class AosRecruitService {
             serviceDeskRecruited,
             financeRecruited,
             salesRecruited,
+            devopsRecruited,
         };
     }
 
@@ -129,6 +134,10 @@ export class AosRecruitService {
             if (status.salesRecruited) {
                 throw new BadRequestException('Sales sudah direkrut untuk toko ini');
             }
+        } else if (templateId === DEVOPS_RECRUIT_TEMPLATE_ID) {
+            if (status.devopsRecruited) {
+                throw new BadRequestException('DevOps sudah direkrut untuk toko ini');
+            }
         }
 
         const d = defaults;
@@ -180,11 +189,20 @@ export class AosRecruitService {
             };
         }
 
+        if (templateId === SALES_RECRUIT_TEMPLATE_ID) {
+            return {
+                agent,
+                waConnectRequired: false,
+                message:
+                    'Sales direkrut. Buka CRM untuk pipeline dan lead — draft follow-up saja, kirim email butuh persetujuan manusia.',
+            };
+        }
+
         return {
             agent,
             waConnectRequired: false,
             message:
-                'Sales direkrut. Buka CRM untuk pipeline dan lead — draft follow-up saja, kirim email butuh persetujuan manusia.',
+                'DevOps direkrut. Buka pipeline CI/CD — trigger pipeline dan runbook butuh persetujuan manusia, tidak deploy otomatis.',
         };
     }
 }

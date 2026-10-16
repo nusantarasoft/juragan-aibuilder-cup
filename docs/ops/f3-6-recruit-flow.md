@@ -9,8 +9,8 @@
 3. **Service Desk** — **Rekrut sekarang** → Virtual Office; optional **Buka antrian tiket** → `/admin/itsm/tickets`.
 4. **Finance** — **Rekrut sekarang** → Virtual Office; optional **Buka akuntansi** → `/admin/accounting/dashboard`.
 5. **Sales** — **Rekrut sekarang** → Virtual Office; optional **Buka CRM** → `/admin/crm/dashboard`.
-6. CS / Stok / DevOps / Security / Facilities cards: **Segera hadir**.
-7. Trial cap: **3** active agents total (any three of the four live SKUs).
+6. CS / Stok / Security / Facilities cards: **Segera hadir** (DevOps went live in F3-7).
+7. Trial cap: **3** active agents total (any three of the live SKUs).
 
 ## Safe defaults
 
