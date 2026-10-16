@@ -11,8 +11,8 @@
 5. **Sales** — **Rekrut sekarang** → Virtual Office; optional **Buka CRM** → `/admin/crm/dashboard`.
 6. **DevOps** — **Rekrut sekarang** → Virtual Office; optional **Buka pipeline** → `/admin/devops/pipelines`.
 7. **Security** — **Rekrut sekarang** → Virtual Office; optional **Buka assessment keamanan** → `/admin/security/pentest`.
-8. CS / Stok / Facilities cards: **Segera hadir**.
-9. Trial cap: **3** active agents total (any three of the six live SKUs).
+8. CS / Stok cards: **Segera hadir** (Facilities went live in F3-9).
+9. Trial cap: **3** active agents total (any three of the six live SKUs at F3-8 ship).
 
 ## Safe defaults
 

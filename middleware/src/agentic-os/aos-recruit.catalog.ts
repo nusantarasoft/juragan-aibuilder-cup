@@ -1,4 +1,4 @@
-/** Server-side recruit catalog (F2-2 + F3-1 + F3-5 + F3-6 + F3-7 + F3-8). Enterprise templates stay in Agent Studio for platform admins only. */
+/** Server-side recruit catalog (F2-2 + F3-1 + F3-5…F3-9). Enterprise templates stay in Agent Studio for platform admins only. */
 
 export const TRIAL_MAX_RECRUITED_AGENTS = 3;
 
@@ -8,6 +8,7 @@ export const FINANCE_RECRUIT_TEMPLATE_ID = 'finance';
 export const SALES_RECRUIT_TEMPLATE_ID = 'sales';
 export const DEVOPS_RECRUIT_TEMPLATE_ID = 'devops';
 export const SECURITY_RECRUIT_TEMPLATE_ID = 'security';
+export const FACILITIES_RECRUIT_TEMPLATE_ID = 'facilities';
 
 export type RecruitCatalogKind = 'recruitable' | 'coming_soon' | 'enterprise_hidden';
 
@@ -81,13 +82,23 @@ export const RECRUIT_CATALOG: RecruitCatalogEntryDef[] = [
         sortOrder: 6,
     },
     {
+        id: FACILITIES_RECRUIT_TEMPLATE_ID,
+        name: 'Facilities',
+        role: 'Facilities Engineer',
+        description:
+            'Pantau telemetri BMS/DCIM/SCADA, acknowledge alarm, buka work order — buat tiket butuh persetujuan manusia. Data facilities live tenant.',
+        kind: 'recruitable',
+        color: '#84cc16',
+        sortOrder: 7,
+    },
+    {
         id: 'cs-soon',
         name: 'Customer Service',
         role: 'CS WhatsApp',
         description: 'Balas pertanyaan pelanggan dan FAQ toko.',
         kind: 'coming_soon',
         color: '#a78bfa',
-        sortOrder: 7,
+        sortOrder: 8,
     },
     {
         id: 'stok-soon',
@@ -96,15 +107,6 @@ export const RECRUIT_CATALOG: RecruitCatalogEntryDef[] = [
         description: 'Pantau stok, alert habis, dan restock.',
         kind: 'coming_soon',
         color: '#f59e0b',
-        sortOrder: 8,
-    },
-    {
-        id: 'facilities-soon',
-        name: 'Facilities',
-        role: 'Facilities Engineer',
-        description: 'BMS / DCIM / SCADA telemetry dan work order — antrian F3-9.',
-        kind: 'coming_soon',
-        color: '#84cc16',
         sortOrder: 9,
     },
 ];
@@ -236,6 +238,31 @@ export const DEVOPS_RECRUIT_AGENT_DEFAULTS = {
     status: 'active',
 };
 
+/** Aligned with Agent Studio `facilities` preset; work orders need approval — no auto-close. */
+export const FACILITIES_RECRUIT_AGENT_DEFAULTS = {
+    name: 'Facilities',
+    baseSlug: FACILITIES_RECRUIT_TEMPLATE_ID,
+    role: 'Facilities Engineer',
+    persona:
+        'You watch building and data-center telemetry, acknowledge alarms and open work orders for field technicians.',
+    color: '#84cc16',
+    zone: 'engineering',
+    deskId: 'eng-2-b',
+    modules: ['bms', 'dcim', 'scada'],
+    skills: ['HVAC', 'Energy', 'Alarms'],
+    tools: ['module.read', 'module.draft', 'ticket.create', 'activity.log'],
+    permissions: { bms: 'draft', dcim: 'draft', scada: 'read' } as Record<string, string>,
+    runner: 'cloud' as const,
+    guardrails: {
+        denySend: true,
+        denyShare: true,
+        denyDelete: true,
+        requireApproval: ['ticket.create', 'write'],
+        noAutoCloseWorkOrders: true,
+    },
+    status: 'active',
+};
+
 /** Aligned with Agent Studio `security` preset; remediation tickets need approval — no auto-write. */
 export const SECURITY_RECRUIT_AGENT_DEFAULTS = {
     name: 'Security',
@@ -268,6 +295,7 @@ export const RECRUIT_TEMPLATE_IDS = [
     SALES_RECRUIT_TEMPLATE_ID,
     DEVOPS_RECRUIT_TEMPLATE_ID,
     SECURITY_RECRUIT_TEMPLATE_ID,
+    FACILITIES_RECRUIT_TEMPLATE_ID,
 ] as const;
 
 export type RecruitTemplateId = (typeof RECRUIT_TEMPLATE_IDS)[number];
@@ -279,6 +307,7 @@ export function recruitDefaultsForTemplate(templateId: string) {
     if (templateId === SALES_RECRUIT_TEMPLATE_ID) return SALES_RECRUIT_AGENT_DEFAULTS;
     if (templateId === DEVOPS_RECRUIT_TEMPLATE_ID) return DEVOPS_RECRUIT_AGENT_DEFAULTS;
     if (templateId === SECURITY_RECRUIT_TEMPLATE_ID) return SECURITY_RECRUIT_AGENT_DEFAULTS;
+    if (templateId === FACILITIES_RECRUIT_TEMPLATE_ID) return FACILITIES_RECRUIT_AGENT_DEFAULTS;
     return null;
 }
 

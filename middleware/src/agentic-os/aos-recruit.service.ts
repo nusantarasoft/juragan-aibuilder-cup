@@ -3,6 +3,7 @@ import { hasMinRole, normalizeAppRole } from '../auth/app-roles';
 import { AgenticOsService, type AosActor } from './agentic-os.service';
 import {
     DEVOPS_RECRUIT_TEMPLATE_ID,
+    FACILITIES_RECRUIT_TEMPLATE_ID,
     SECURITY_RECRUIT_TEMPLATE_ID,
     FINANCE_RECRUIT_TEMPLATE_ID,
     KASIR_RECRUIT_TEMPLATE_ID,
@@ -29,6 +30,7 @@ const FINANCE_EMPLOYEE_SLUG = FINANCE_RECRUIT_TEMPLATE_ID;
 const SALES_EMPLOYEE_SLUG = SALES_RECRUIT_TEMPLATE_ID;
 const DEVOPS_EMPLOYEE_SLUG = DEVOPS_RECRUIT_TEMPLATE_ID;
 const SECURITY_EMPLOYEE_SLUG = SECURITY_RECRUIT_TEMPLATE_ID;
+const FACILITIES_EMPLOYEE_SLUG = FACILITIES_RECRUIT_TEMPLATE_ID;
 
 @Injectable()
 export class AosRecruitService {
@@ -64,6 +66,7 @@ export class AosRecruitService {
         salesRecruited: boolean;
         devopsRecruited: boolean;
         securityRecruited: boolean;
+        facilitiesRecruited: boolean;
     }> {
         const agents = await this.aos.listAgents(tenantId, false);
         const active = agents.filter((a) => !a.archivedAt);
@@ -75,6 +78,7 @@ export class AosRecruitService {
         const salesRecruited = active.some((a) => isRecruitedSlug(SALES_EMPLOYEE_SLUG, a.slug));
         const devopsRecruited = active.some((a) => isRecruitedSlug(DEVOPS_EMPLOYEE_SLUG, a.slug));
         const securityRecruited = active.some((a) => isRecruitedSlug(SECURITY_EMPLOYEE_SLUG, a.slug));
+        const facilitiesRecruited = active.some((a) => isRecruitedSlug(FACILITIES_EMPLOYEE_SLUG, a.slug));
         const max = await this.maxAgentsForTenant(tenantId);
         return {
             recruitedCount: active.length,
@@ -85,6 +89,7 @@ export class AosRecruitService {
             salesRecruited,
             devopsRecruited,
             securityRecruited,
+            facilitiesRecruited,
         };
     }
 
@@ -146,6 +151,10 @@ export class AosRecruitService {
         } else if (templateId === SECURITY_RECRUIT_TEMPLATE_ID) {
             if (status.securityRecruited) {
                 throw new BadRequestException('Security sudah direkrut untuk toko ini');
+            }
+        } else if (templateId === FACILITIES_RECRUIT_TEMPLATE_ID) {
+            if (status.facilitiesRecruited) {
+                throw new BadRequestException('Facilities sudah direkrut untuk toko ini');
             }
         }
 
@@ -216,11 +225,20 @@ export class AosRecruitService {
             };
         }
 
+        if (templateId === SECURITY_RECRUIT_TEMPLATE_ID) {
+            return {
+                agent,
+                waConnectRequired: false,
+                message:
+                    'Security direkrut. Buka assessment keamanan — triage temuan live tenant; buat tiket remediasi butuh persetujuan manusia.',
+            };
+        }
+
         return {
             agent,
             waConnectRequired: false,
             message:
-                'Security direkrut. Buka assessment keamanan — triage temuan live tenant; buat tiket remediasi butuh persetujuan manusia.',
+                'Facilities direkrut. Buka BMS/DCIM untuk telemetri dan alarm — acknowledge alarm dan work order butuh persetujuan manusia.',
         };
     }
 }

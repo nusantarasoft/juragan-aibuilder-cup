@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { AosRecruitService } from './aos-recruit.service';
 import {
     DEVOPS_RECRUIT_TEMPLATE_ID,
+    FACILITIES_RECRUIT_TEMPLATE_ID,
     SECURITY_RECRUIT_TEMPLATE_ID,
     FINANCE_RECRUIT_TEMPLATE_ID,
     KASIR_RECRUIT_TEMPLATE_ID,
@@ -46,6 +47,8 @@ describe('AosRecruitService', () => {
         expect(catalog.some((c) => c.id === SALES_RECRUIT_TEMPLATE_ID && c.recruitable)).toBe(true);
         expect(catalog.some((c) => c.id === DEVOPS_RECRUIT_TEMPLATE_ID && c.recruitable)).toBe(true);
         expect(catalog.some((c) => c.id === SECURITY_RECRUIT_TEMPLATE_ID && c.recruitable)).toBe(true);
+        expect(catalog.some((c) => c.id === FACILITIES_RECRUIT_TEMPLATE_ID && c.recruitable)).toBe(true);
+        expect(catalog.some((c) => c.id === 'facilities-soon')).toBe(false);
         expect(catalog.some((c) => c.id === 'security-soon')).toBe(false);
         expect(catalog.some((c) => c.id === 'devops-soon')).toBe(false);
         expect(catalog.some((c) => c.id === 'sales-soon')).toBe(false);
@@ -336,5 +339,50 @@ describe('AosRecruitService', () => {
         const svc = new AosRecruitService(mockAos({ agents: [{ slug: 'security-2' }] }) as any);
         const st = await svc.getRecruitStatus(TENANT);
         expect(st.securityRecruited).toBe(true);
+    });
+
+    it('recruits facilities with cloud runner and work-order guardrails', async () => {
+        const aos = mockAos();
+        const svc = new AosRecruitService(aos as any);
+        const out = await svc.recruitAgent(
+            TENANT,
+            FACILITIES_RECRUIT_TEMPLATE_ID,
+            { id: 'u1', role: 'tenant_owner', tenantId: TENANT },
+            { id: 'u1' },
+        );
+        expect(out.agent.slug).toBe('facilities');
+        expect(out.waConnectRequired).toBe(false);
+        expect(aos.createAgent).toHaveBeenCalledWith(
+            TENANT,
+            expect.objectContaining({
+                runner: 'cloud',
+                slug: 'facilities',
+                modules: ['bms', 'dcim', 'scada'],
+                tools: expect.arrayContaining(['ticket.create', 'module.draft']),
+                guardrails: expect.objectContaining({
+                    requireApproval: expect.arrayContaining(['ticket.create', 'write']),
+                    noAutoCloseWorkOrders: true,
+                }),
+            }),
+            { id: 'u1' },
+        );
+    });
+
+    it('rejects duplicate facilities', async () => {
+        const svc = new AosRecruitService(mockAos({ agents: [{ slug: 'facilities' }] }) as any);
+        await expect(
+            svc.recruitAgent(
+                TENANT,
+                FACILITIES_RECRUIT_TEMPLATE_ID,
+                { id: 'u1', role: 'tenant_owner', tenantId: TENANT },
+                { id: 'u1' },
+            ),
+        ).rejects.toThrow(/Facilities/i);
+    });
+
+    it('reports facilitiesRecruited in status', async () => {
+        const svc = new AosRecruitService(mockAos({ agents: [{ slug: 'facilities-2' }] }) as any);
+        const st = await svc.getRecruitStatus(TENANT);
+        expect(st.facilitiesRecruited).toBe(true);
     });
 });

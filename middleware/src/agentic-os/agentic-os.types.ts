@@ -417,6 +417,7 @@ export class AosRecruitStatus {
     @Field() salesRecruited: boolean;
     @Field() devopsRecruited: boolean;
     @Field() securityRecruited: boolean;
+    @Field() facilitiesRecruited: boolean;
 }
 
 @ObjectType()

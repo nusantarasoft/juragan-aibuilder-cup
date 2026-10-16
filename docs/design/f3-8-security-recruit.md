@@ -17,7 +17,7 @@ Trial **`tenant_owner`** sees six selectable SKUs on `/admin/recruit` (trial cap
 | 5 | DevOps | Virtual Office; pipelines at `/admin/devops/pipelines` |
 | 6 | Security | Virtual Office; assessment at `/admin/security/pentest` |
 
-**Segera hadir:** CS WhatsApp, Stok & gudang, plus foreshadow card for **Facilities (F3-9)**.
+**Segera hadir (at F3-8 ship):** CS WhatsApp, Stok & gudang, plus foreshadow card for **Facilities (F3-9)**. Facilities went live in F3-9 — see [f3-9-facilities-recruit.md](f3-9-facilities-recruit.md).
 
 ## Server template (from `security` preset)
 

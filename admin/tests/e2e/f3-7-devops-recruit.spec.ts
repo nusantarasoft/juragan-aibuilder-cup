@@ -42,7 +42,7 @@ test.describe('F3-7 DevOps recruit (live stack)', () => {
         await page.goto('/admin/recruit');
         await expect(page.getByRole('heading', { name: /Rekrut karyawan/i })).toBeVisible();
         await expect(page.getByRole('heading', { name: 'DevOps' })).toBeVisible();
-        await expect(page.getByRole('button', { name: /Rekrut sekarang/i })).toHaveCount(6);
+        await expect(page.getByRole('button', { name: /Rekrut sekarang/i })).toHaveCount(7);
         await expect(page.getByRole('heading', { name: 'Security' })).toBeVisible();
         await expect(page.getByRole('heading', { name: 'Facilities' })).toBeVisible();
         await expect(page.getByText('Segera hadir').first()).toBeVisible();
