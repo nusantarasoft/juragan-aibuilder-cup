@@ -5,6 +5,7 @@ import {
     FINANCE_RECRUIT_TEMPLATE_ID,
     KASIR_RECRUIT_TEMPLATE_ID,
     RECRUIT_CATALOG,
+    SALES_RECRUIT_TEMPLATE_ID,
     SERVICE_DESK_RECRUIT_TEMPLATE_ID,
     TRIAL_MAX_RECRUITED_AGENTS,
     isRecruitedSlug,
@@ -23,6 +24,7 @@ export type RecruitSessionUser = {
 
 const SERVICE_DESK_EMPLOYEE_SLUG = SERVICE_DESK_RECRUIT_TEMPLATE_ID;
 const FINANCE_EMPLOYEE_SLUG = FINANCE_RECRUIT_TEMPLATE_ID;
+const SALES_EMPLOYEE_SLUG = SALES_RECRUIT_TEMPLATE_ID;
 
 @Injectable()
 export class AosRecruitService {
@@ -55,6 +57,7 @@ export class AosRecruitService {
         kasirRecruited: boolean;
         serviceDeskRecruited: boolean;
         financeRecruited: boolean;
+        salesRecruited: boolean;
     }> {
         const agents = await this.aos.listAgents(tenantId, false);
         const active = agents.filter((a) => !a.archivedAt);
@@ -63,8 +66,16 @@ export class AosRecruitService {
         );
         const serviceDeskRecruited = active.some((a) => isRecruitedSlug(SERVICE_DESK_EMPLOYEE_SLUG, a.slug));
         const financeRecruited = active.some((a) => isRecruitedSlug(FINANCE_EMPLOYEE_SLUG, a.slug));
+        const salesRecruited = active.some((a) => isRecruitedSlug(SALES_EMPLOYEE_SLUG, a.slug));
         const max = await this.maxAgentsForTenant(tenantId);
-        return { recruitedCount: active.length, maxAgents: max, kasirRecruited, serviceDeskRecruited, financeRecruited };
+        return {
+            recruitedCount: active.length,
+            maxAgents: max,
+            kasirRecruited,
+            serviceDeskRecruited,
+            financeRecruited,
+            salesRecruited,
+        };
     }
 
     private async maxAgentsForTenant(tenantId: string): Promise<number> {
@@ -114,6 +125,10 @@ export class AosRecruitService {
             if (status.financeRecruited) {
                 throw new BadRequestException('Finance sudah direkrut untuk toko ini');
             }
+        } else if (templateId === SALES_RECRUIT_TEMPLATE_ID) {
+            if (status.salesRecruited) {
+                throw new BadRequestException('Sales sudah direkrut untuk toko ini');
+            }
         }
 
         const d = defaults;
@@ -156,11 +171,20 @@ export class AosRecruitService {
             };
         }
 
+        if (templateId === FINANCE_RECRUIT_TEMPLATE_ID) {
+            return {
+                agent,
+                waConnectRequired: false,
+                message:
+                    'Finance direkrut. Buka modul akuntansi untuk buku besar dan laporan — draft jurnal saja, posting butuh persetujuan manusia.',
+            };
+        }
+
         return {
             agent,
             waConnectRequired: false,
             message:
-                'Finance direkrut. Buka modul akuntansi untuk buku besar dan laporan — draft jurnal saja, posting butuh persetujuan manusia.',
+                'Sales direkrut. Buka CRM untuk pipeline dan lead — draft follow-up saja, kirim email butuh persetujuan manusia.',
         };
     }
 }

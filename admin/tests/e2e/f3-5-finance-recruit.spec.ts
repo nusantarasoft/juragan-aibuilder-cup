@@ -42,8 +42,9 @@ test.describe('F3-5 Finance recruit (live stack)', () => {
         await page.goto('/admin/recruit');
         await expect(page.getByRole('heading', { name: /Rekrut karyawan/i })).toBeVisible();
         await expect(page.getByRole('heading', { name: 'Finance' })).toBeVisible();
-        await expect(page.getByRole('button', { name: /Rekrut sekarang/i })).toHaveCount(3);
-        await expect(page.getByText('Sales & CRM').first()).toBeVisible();
+        await expect(page.getByRole('button', { name: /Rekrut sekarang/i })).toHaveCount(4);
+        await expect(page.getByRole('heading', { name: 'Sales' })).toBeVisible();
+        await expect(page.getByText('DevOps').first()).toBeVisible();
         await expect(page.getByText('Segera hadir').first()).toBeVisible();
         await shot('recruit-page');
 

@@ -1,10 +1,11 @@
-/** Server-side recruit catalog (F2-2 + F3-1 + F3-5). Enterprise templates stay in Agent Studio for platform admins only. */
+/** Server-side recruit catalog (F2-2 + F3-1 + F3-5 + F3-6). Enterprise templates stay in Agent Studio for platform admins only. */
 
 export const TRIAL_MAX_RECRUITED_AGENTS = 3;
 
 export const KASIR_RECRUIT_TEMPLATE_ID = 'umkm-kasir';
 export const SERVICE_DESK_RECRUIT_TEMPLATE_ID = 'service-desk';
 export const FINANCE_RECRUIT_TEMPLATE_ID = 'finance';
+export const SALES_RECRUIT_TEMPLATE_ID = 'sales';
 
 export type RecruitCatalogKind = 'recruitable' | 'coming_soon' | 'enterprise_hidden';
 
@@ -48,13 +49,23 @@ export const RECRUIT_CATALOG: RecruitCatalogEntryDef[] = [
         sortOrder: 3,
     },
     {
+        id: SALES_RECRUIT_TEMPLATE_ID,
+        name: 'Sales',
+        role: 'Sales & Market Analyst',
+        description:
+            'Lead scoring, riset pasar, dan draft follow-up — hanya draft email; kirim butuh persetujuan manusia. Data CRM live tenant.',
+        kind: 'recruitable',
+        color: '#fb7185',
+        sortOrder: 4,
+    },
+    {
         id: 'cs-soon',
         name: 'Customer Service',
         role: 'CS WhatsApp',
         description: 'Balas pertanyaan pelanggan dan FAQ toko.',
         kind: 'coming_soon',
         color: '#a78bfa',
-        sortOrder: 4,
+        sortOrder: 5,
     },
     {
         id: 'stok-soon',
@@ -63,15 +74,6 @@ export const RECRUIT_CATALOG: RecruitCatalogEntryDef[] = [
         description: 'Pantau stok, alert habis, dan restock.',
         kind: 'coming_soon',
         color: '#f59e0b',
-        sortOrder: 5,
-    },
-    {
-        id: 'sales-soon',
-        name: 'Sales & CRM',
-        role: 'Sales & Market Analyst',
-        description: 'Lead scoring, riset pasar, dan draft follow-up — antrian F3-6.',
-        kind: 'coming_soon',
-        color: '#fb7185',
         sortOrder: 6,
     },
     {
@@ -180,10 +182,36 @@ export const FINANCE_RECRUIT_AGENT_DEFAULTS = {
     status: 'active',
 };
 
+/** Aligned with Agent Studio `sales` preset; draft CRM updates and email follow-ups only — no auto-send. */
+export const SALES_RECRUIT_AGENT_DEFAULTS = {
+    name: 'Sales',
+    baseSlug: SALES_RECRUIT_TEMPLATE_ID,
+    role: 'Sales & Market Analyst',
+    persona:
+        'You enrich and score leads, watch competitors and draft follow-ups for the sales team to send.',
+    color: '#fb7185',
+    zone: 'research',
+    deskId: 'research-1',
+    modules: ['crm', 'news'],
+    skills: ['Lead scoring', 'Market research'],
+    tools: ['module.read', 'module.draft', 'web.search', 'email.draft', 'activity.log'],
+    permissions: { crm: 'draft', news: 'read' } as Record<string, string>,
+    runner: 'cloud' as const,
+    guardrails: {
+        denySend: true,
+        denyShare: true,
+        denyDelete: true,
+        requireApproval: ['send'],
+        draftsOnlyOutbound: true,
+    },
+    status: 'active',
+};
+
 export const RECRUIT_TEMPLATE_IDS = [
     KASIR_RECRUIT_TEMPLATE_ID,
     SERVICE_DESK_RECRUIT_TEMPLATE_ID,
     FINANCE_RECRUIT_TEMPLATE_ID,
+    SALES_RECRUIT_TEMPLATE_ID,
 ] as const;
 
 export type RecruitTemplateId = (typeof RECRUIT_TEMPLATE_IDS)[number];
@@ -192,6 +220,7 @@ export function recruitDefaultsForTemplate(templateId: string) {
     if (templateId === KASIR_RECRUIT_TEMPLATE_ID) return KASIR_RECRUIT_AGENT_DEFAULTS;
     if (templateId === SERVICE_DESK_RECRUIT_TEMPLATE_ID) return SERVICE_DESK_RECRUIT_AGENT_DEFAULTS;
     if (templateId === FINANCE_RECRUIT_TEMPLATE_ID) return FINANCE_RECRUIT_AGENT_DEFAULTS;
+    if (templateId === SALES_RECRUIT_TEMPLATE_ID) return SALES_RECRUIT_AGENT_DEFAULTS;
     return null;
 }
 

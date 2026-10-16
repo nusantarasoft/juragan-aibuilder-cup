@@ -148,7 +148,7 @@ E2E: `admin/tests/e2e/f2-1-onboarding.spec.ts`.
 
 | Step | Expected |
 |------|----------|
-| `/admin/recruit` as `tenant_owner` | Kasir + Service Desk + Finance **Rekrut sekarang** (F3-1/F3-5); CS/Stok + F3-6…F3-9 queue cards “Segera hadir” |
+| `/admin/recruit` as `tenant_owner` | Kasir + Service Desk + Finance + Sales **Rekrut sekarang** (F3-1/F3-5/F3-6); CS/Stok + F3-7…F3-9 queue cards “Segera hadir” |
 | After recruit | Kasir on Virtual Office; message mentions F2-3 WA |
 | 4th recruit attempt (trial) | Blocked at cap **3** |
 | Outbound customer WA (cron/push) | Blocked until F2-3 connected |

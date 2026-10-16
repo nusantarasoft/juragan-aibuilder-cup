@@ -14,7 +14,7 @@ Trial **`tenant_owner`** sees three selectable SKUs on `/admin/recruit` (trial c
 | 2 | Service Desk / ITSM | Redirect Virtual Office; ITSM at `/admin/itsm/*` |
 | 3 | Finance | Redirect Virtual Office; accounting at `/admin/accounting/*` |
 
-**Segera hadir:** CS WhatsApp, Stok & gudang, plus foreshadow cards for **Sales (F3-6)**, **DevOps (F3-7)**, **Security (F3-8)**, **Facilities (F3-9)** — not recruitable until their F3-x ships.
+**Segera hadir (at F3-5 ship):** CS WhatsApp, Stok & gudang, plus foreshadow cards for **Sales (F3-6)**, **DevOps (F3-7)**, **Security (F3-8)**, **Facilities (F3-9)**. Sales went live in F3-6 — see [f3-6-sales-recruit.md](f3-6-sales-recruit.md).
 
 ## Server template (from `finance` preset)
 

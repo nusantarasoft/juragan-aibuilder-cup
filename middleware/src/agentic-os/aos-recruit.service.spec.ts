@@ -4,6 +4,7 @@ import { AosRecruitService } from './aos-recruit.service';
 import {
     FINANCE_RECRUIT_TEMPLATE_ID,
     KASIR_RECRUIT_TEMPLATE_ID,
+    SALES_RECRUIT_TEMPLATE_ID,
     SERVICE_DESK_RECRUIT_TEMPLATE_ID,
 } from './aos-recruit.catalog';
 
@@ -40,7 +41,8 @@ describe('AosRecruitService', () => {
         expect(catalog.some((c) => c.id === KASIR_RECRUIT_TEMPLATE_ID && c.recruitable)).toBe(true);
         expect(catalog.some((c) => c.id === SERVICE_DESK_RECRUIT_TEMPLATE_ID && c.recruitable)).toBe(true);
         expect(catalog.some((c) => c.id === FINANCE_RECRUIT_TEMPLATE_ID && c.recruitable)).toBe(true);
-        expect(catalog.some((c) => c.id === 'sales-soon' && c.kind === 'coming_soon')).toBe(true);
+        expect(catalog.some((c) => c.id === SALES_RECRUIT_TEMPLATE_ID && c.recruitable)).toBe(true);
+        expect(catalog.some((c) => c.id === 'sales-soon')).toBe(false);
         expect(catalog.some((c) => c.kind === 'coming_soon')).toBe(true);
         expect(catalog.some((c) => c.id === 'pembukuan-soon')).toBe(false);
     });
@@ -193,5 +195,50 @@ describe('AosRecruitService', () => {
         const svc = new AosRecruitService(mockAos({ agents: [{ slug: 'finance-2' }] }) as any);
         const st = await svc.getRecruitStatus(TENANT);
         expect(st.financeRecruited).toBe(true);
+    });
+
+    it('recruits sales with cloud runner and send guardrails', async () => {
+        const aos = mockAos();
+        const svc = new AosRecruitService(aos as any);
+        const out = await svc.recruitAgent(
+            TENANT,
+            SALES_RECRUIT_TEMPLATE_ID,
+            { id: 'u1', role: 'tenant_owner', tenantId: TENANT },
+            { id: 'u1' },
+        );
+        expect(out.agent.slug).toBe('sales');
+        expect(out.waConnectRequired).toBe(false);
+        expect(aos.createAgent).toHaveBeenCalledWith(
+            TENANT,
+            expect.objectContaining({
+                runner: 'cloud',
+                slug: 'sales',
+                modules: ['crm', 'news'],
+                tools: expect.arrayContaining(['web.search', 'email.draft']),
+                guardrails: expect.objectContaining({
+                    requireApproval: expect.arrayContaining(['send']),
+                    draftsOnlyOutbound: true,
+                }),
+            }),
+            { id: 'u1' },
+        );
+    });
+
+    it('rejects duplicate sales', async () => {
+        const svc = new AosRecruitService(mockAos({ agents: [{ slug: 'sales' }] }) as any);
+        await expect(
+            svc.recruitAgent(
+                TENANT,
+                SALES_RECRUIT_TEMPLATE_ID,
+                { id: 'u1', role: 'tenant_owner', tenantId: TENANT },
+                { id: 'u1' },
+            ),
+        ).rejects.toThrow(/Sales/i);
+    });
+
+    it('reports salesRecruited in status', async () => {
+        const svc = new AosRecruitService(mockAos({ agents: [{ slug: 'sales-2' }] }) as any);
+        const st = await svc.getRecruitStatus(TENANT);
+        expect(st.salesRecruited).toBe(true);
     });
 });
