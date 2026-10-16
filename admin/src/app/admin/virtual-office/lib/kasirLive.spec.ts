@@ -93,7 +93,7 @@ describe('mergeKasirIntoRoster', () => {
                 progress: 0.5,
                 startedAt: Date.now(),
                 moduleId: 'ai-studio',
-                route: '/admin/ai-studio/umkm',
+                route: '/admin/connect-wa',
                 steps: ['Proses'],
             },
         };

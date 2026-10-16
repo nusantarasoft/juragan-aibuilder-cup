@@ -69,6 +69,7 @@ import { useRouter, usePathname } from "next/navigation";
 import menuConfig from "@/config/menuConfig";
 import GlitchText from "@/components/react-bits/GlitchText";
 import { usePreferencesStore, hexToRgb } from "@/store/usePreferencesStore";
+import { useAuthStore } from "@/store/useAuthStore";
 import NotificationBell from "@/components/common/NotificationBell";
 import LanguageSwitcher from "@/components/layout/LanguageSwitcher";
 import LiveCursors from "@/components/common/LiveCursors";
@@ -408,6 +409,7 @@ export default function CMSLayoutImpl({
 }: CMSLayoutProps) {
     const router = useRouter();
     const currentPath = usePathname();
+    const appRole = useAuthStore((s) => s.user?.role);
     const [pathname, setPathname] = useState(currentPath || "/admin/dashboard");
 
     React.useEffect(() => {
@@ -1091,8 +1093,24 @@ export default function CMSLayoutImpl({
                                     return result;
                                 });
                             };
-                            return attachIcons(menuData).filter(item => 
-                                item.path !== "/admin/dashboard" && item.path !== "/admin/activity"
+                            const stripTenantPlatformOnly = (items: any[]): any[] =>
+                                items
+                                    .filter((item) => {
+                                        if (appRole !== "tenant_owner") return true;
+                                        if (item.path === "/admin/ai-studio/umkm") return false;
+                                        return true;
+                                    })
+                                    .map((item) => {
+                                        const next = { ...item };
+                                        if (next.children) next.children = stripTenantPlatformOnly(next.children);
+                                        if (next.routes) next.routes = stripTenantPlatformOnly(next.routes);
+                                        return next;
+                                    });
+
+                            return stripTenantPlatformOnly(
+                                attachIcons(menuData).filter(
+                                    (item) => item.path !== "/admin/dashboard" && item.path !== "/admin/activity",
+                                ),
                             );
                         }}
                         menuProps={{

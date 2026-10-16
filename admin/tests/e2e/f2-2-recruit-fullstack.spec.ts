@@ -51,8 +51,13 @@ test.describe('F2-2 recruit (live stack)', () => {
         await shot('recruit-page');
         await shot('coming-soon-skus');
 
-        await page.getByRole('button', { name: /Rekrut sekarang/i }).click();
-        await page.waitForURL((url) => url.pathname === '/admin/virtual-office', { timeout: 60_000 });
+        await page
+            .getByRole('listitem')
+            .filter({ hasText: 'Kasir UMKM' })
+            .getByRole('button', { name: /Rekrut sekarang/i })
+            .click();
+        await page.waitForURL((url) => url.pathname === '/admin/connect-wa', { timeout: 60_000 });
+        await page.goto('/admin/virtual-office');
         await expect(page.getByText('Kasir UMKM').first()).toBeVisible({ timeout: 60_000 });
         await shot('vo-kasir-recruited');
 
