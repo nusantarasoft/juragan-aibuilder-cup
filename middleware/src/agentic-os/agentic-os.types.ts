@@ -413,6 +413,7 @@ export class AosRecruitStatus {
     @Field(() => Int) maxAgents: number;
     @Field() kasirRecruited: boolean;
     @Field() serviceDeskRecruited: boolean;
+    @Field() financeRecruited: boolean;
 }
 
 @ObjectType()

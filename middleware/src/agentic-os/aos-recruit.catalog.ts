@@ -1,9 +1,10 @@
-/** Server-side recruit catalog (F2-2 + F3-1). Enterprise templates stay in Agent Studio for platform admins only. */
+/** Server-side recruit catalog (F2-2 + F3-1 + F3-5). Enterprise templates stay in Agent Studio for platform admins only. */
 
 export const TRIAL_MAX_RECRUITED_AGENTS = 3;
 
 export const KASIR_RECRUIT_TEMPLATE_ID = 'umkm-kasir';
 export const SERVICE_DESK_RECRUIT_TEMPLATE_ID = 'service-desk';
+export const FINANCE_RECRUIT_TEMPLATE_ID = 'finance';
 
 export type RecruitCatalogKind = 'recruitable' | 'coming_soon' | 'enterprise_hidden';
 
@@ -37,13 +38,23 @@ export const RECRUIT_CATALOG: RecruitCatalogEntryDef[] = [
         sortOrder: 2,
     },
     {
+        id: FINANCE_RECRUIT_TEMPLATE_ID,
+        name: 'Finance',
+        role: 'Finance Analyst',
+        description:
+            'Rekonsiliasi buku besar, flag anomali, dan laporan — draft jurnal saja; posting butuh persetujuan manusia. Data akuntansi live tenant.',
+        kind: 'recruitable',
+        color: '#facc15',
+        sortOrder: 3,
+    },
+    {
         id: 'cs-soon',
         name: 'Customer Service',
         role: 'CS WhatsApp',
         description: 'Balas pertanyaan pelanggan dan FAQ toko.',
         kind: 'coming_soon',
         color: '#a78bfa',
-        sortOrder: 3,
+        sortOrder: 4,
     },
     {
         id: 'stok-soon',
@@ -52,7 +63,43 @@ export const RECRUIT_CATALOG: RecruitCatalogEntryDef[] = [
         description: 'Pantau stok, alert habis, dan restock.',
         kind: 'coming_soon',
         color: '#f59e0b',
-        sortOrder: 4,
+        sortOrder: 5,
+    },
+    {
+        id: 'sales-soon',
+        name: 'Sales & CRM',
+        role: 'Sales & Market Analyst',
+        description: 'Lead scoring, riset pasar, dan draft follow-up — antrian F3-6.',
+        kind: 'coming_soon',
+        color: '#fb7185',
+        sortOrder: 6,
+    },
+    {
+        id: 'devops-soon',
+        name: 'DevOps',
+        role: 'DevOps Engineer',
+        description: 'Pipeline, observability, runbook — antrian F3-7.',
+        kind: 'coming_soon',
+        color: '#38bdf8',
+        sortOrder: 7,
+    },
+    {
+        id: 'security-soon',
+        name: 'Security',
+        role: 'Security Analyst',
+        description: 'Triage temuan keamanan dan tiket remediasi — antrian F3-8.',
+        kind: 'coming_soon',
+        color: '#f43f5e',
+        sortOrder: 8,
+    },
+    {
+        id: 'facilities-soon',
+        name: 'Facilities',
+        role: 'Facilities Engineer',
+        description: 'BMS / DCIM / SCADA telemetry dan work order — antrian F3-9.',
+        kind: 'coming_soon',
+        color: '#84cc16',
+        sortOrder: 9,
     },
 ];
 
@@ -108,13 +155,43 @@ export const SERVICE_DESK_RECRUIT_AGENT_DEFAULTS = {
     status: 'active',
 };
 
-export const RECRUIT_TEMPLATE_IDS = [KASIR_RECRUIT_TEMPLATE_ID, SERVICE_DESK_RECRUIT_TEMPLATE_ID] as const;
+/** Aligned with Agent Studio `finance` preset; draft journals/reports only — no auto-post. */
+export const FINANCE_RECRUIT_AGENT_DEFAULTS = {
+    name: 'Finance',
+    baseSlug: FINANCE_RECRUIT_TEMPLATE_ID,
+    role: 'Finance Analyst',
+    persona:
+        'You reconcile ledgers, flag anomalies and prepare reports. You never post journal entries without approval.',
+    color: '#facc15',
+    zone: 'research',
+    deskId: 'research-1',
+    modules: ['accounting', 'reports'],
+    skills: ['Reconciliation', 'Forecasting'],
+    tools: ['module.read', 'module.draft', 'db.query', 'report.generate', 'activity.log'],
+    permissions: { accounting: 'draft', reports: 'read' } as Record<string, string>,
+    runner: 'cloud' as const,
+    guardrails: {
+        denySend: true,
+        denyShare: true,
+        denyDelete: true,
+        requireApproval: ['journal.post', 'write', 'send'],
+        noAutoPostJournal: true,
+    },
+    status: 'active',
+};
+
+export const RECRUIT_TEMPLATE_IDS = [
+    KASIR_RECRUIT_TEMPLATE_ID,
+    SERVICE_DESK_RECRUIT_TEMPLATE_ID,
+    FINANCE_RECRUIT_TEMPLATE_ID,
+] as const;
 
 export type RecruitTemplateId = (typeof RECRUIT_TEMPLATE_IDS)[number];
 
 export function recruitDefaultsForTemplate(templateId: string) {
     if (templateId === KASIR_RECRUIT_TEMPLATE_ID) return KASIR_RECRUIT_AGENT_DEFAULTS;
     if (templateId === SERVICE_DESK_RECRUIT_TEMPLATE_ID) return SERVICE_DESK_RECRUIT_AGENT_DEFAULTS;
+    if (templateId === FINANCE_RECRUIT_TEMPLATE_ID) return FINANCE_RECRUIT_AGENT_DEFAULTS;
     return null;
 }
 

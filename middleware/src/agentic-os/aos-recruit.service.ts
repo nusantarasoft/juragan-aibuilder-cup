@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/com
 import { hasMinRole, normalizeAppRole } from '../auth/app-roles';
 import { AgenticOsService, type AosActor } from './agentic-os.service';
 import {
+    FINANCE_RECRUIT_TEMPLATE_ID,
     KASIR_RECRUIT_TEMPLATE_ID,
     RECRUIT_CATALOG,
     SERVICE_DESK_RECRUIT_TEMPLATE_ID,
@@ -21,6 +22,7 @@ export type RecruitSessionUser = {
 };
 
 const SERVICE_DESK_EMPLOYEE_SLUG = SERVICE_DESK_RECRUIT_TEMPLATE_ID;
+const FINANCE_EMPLOYEE_SLUG = FINANCE_RECRUIT_TEMPLATE_ID;
 
 @Injectable()
 export class AosRecruitService {
@@ -52,6 +54,7 @@ export class AosRecruitService {
         maxAgents: number;
         kasirRecruited: boolean;
         serviceDeskRecruited: boolean;
+        financeRecruited: boolean;
     }> {
         const agents = await this.aos.listAgents(tenantId, false);
         const active = agents.filter((a) => !a.archivedAt);
@@ -59,8 +62,9 @@ export class AosRecruitService {
             (a) => isRecruitedSlug(KASIR_EMPLOYEE_SLUG, a.slug) || isRecruitedSlug(KASIR_RECRUIT_TEMPLATE_ID, a.slug),
         );
         const serviceDeskRecruited = active.some((a) => isRecruitedSlug(SERVICE_DESK_EMPLOYEE_SLUG, a.slug));
+        const financeRecruited = active.some((a) => isRecruitedSlug(FINANCE_EMPLOYEE_SLUG, a.slug));
         const max = await this.maxAgentsForTenant(tenantId);
-        return { recruitedCount: active.length, maxAgents: max, kasirRecruited, serviceDeskRecruited };
+        return { recruitedCount: active.length, maxAgents: max, kasirRecruited, serviceDeskRecruited, financeRecruited };
     }
 
     private async maxAgentsForTenant(tenantId: string): Promise<number> {
@@ -106,6 +110,10 @@ export class AosRecruitService {
             if (status.serviceDeskRecruited) {
                 throw new BadRequestException('Service Desk sudah direkrut untuk toko ini');
             }
+        } else if (templateId === FINANCE_RECRUIT_TEMPLATE_ID) {
+            if (status.financeRecruited) {
+                throw new BadRequestException('Finance sudah direkrut untuk toko ini');
+            }
         }
 
         const d = defaults;
@@ -139,10 +147,20 @@ export class AosRecruitService {
             };
         }
 
+        if (templateId === SERVICE_DESK_RECRUIT_TEMPLATE_ID) {
+            return {
+                agent,
+                waConnectRequired: false,
+                message:
+                    'Service Desk direkrut. Buka ITSM untuk antrian tiket — hanya draft/komentar, tutup tiket butuh persetujuan manusia.',
+            };
+        }
+
         return {
             agent,
             waConnectRequired: false,
-            message: 'Service Desk direkrut. Buka ITSM untuk antrian tiket — hanya draft/komentar, tutup tiket butuh persetujuan manusia.',
+            message:
+                'Finance direkrut. Buka modul akuntansi untuk buku besar dan laporan — draft jurnal saja, posting butuh persetujuan manusia.',
         };
     }
 }

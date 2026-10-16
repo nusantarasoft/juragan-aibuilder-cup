@@ -1,5 +1,5 @@
 # NS3 Backlog — Superapp "rekrut agen AI seperti karyawan"
-Updated: 2026-10-15. Owner: PO-NS3. Status: TODO / DOING / REVIEW (await Akbar) / DONE / BLOCKED.
+Updated: 2026-10-16. Owner: PO-NS3. Status: TODO / DOING / REVIEW (await Akbar) / DONE / BLOCKED / SKIPPED.
 Rule: one DOING task at Cursor at a time (plus deploy). Gate: scope → PR → QA (backend + browser, build) → Akbar approve → merge → release → deploy → verify. New findings get appended as NEW items with a source.
 
 ## Fase 0 — Fondasi stabil
@@ -25,8 +25,15 @@ Rule: one DOING task at Cursor at a time (plus deploy). Gate: scope → PR → Q
 ## Fase 3 — Agen kedua & ready to use
 - [DONE] F3-1 Second agent — **Service Desk / ITSM** (PO lock); `/admin/recruit` SKU #2; design [docs/design/f3-1-service-desk-recruit.md](design/f3-1-service-desk-recruit.md); ops [docs/ops/f3-1-recruit-flow.md](ops/f3-1-recruit-flow.md); QA PASS 2026-10-15 (`.gstack/qa-reports/qa-f3-1-service-desk-recruit-2026-10-15.md`); screenshots `/cursor/stores/self/media/f3-1-service-desk-*.png`
 - [DONE] F3-2 Usage metrics per tenant/agent — merged [#60](https://github.com/nusantarasoft/nusantarasoft-3/pull/60) @ `9635883`; design [docs/design/f3-2-usage-metrics.md](design/f3-2-usage-metrics.md); QA `.gstack/qa-reports/qa-f3-2-usage-2026-10-15.md`; screenshots `/cursor/stores/self/media/f3-2-usage-*.png`
-- [DOING] F3-3 Pilot with 3–5 real stores, then fix findings — design [docs/design/f3-3-pilot.md](design/f3-3-pilot.md); ops [docs/ops/f3-3-pilot-runbook.md](ops/f3-3-pilot-runbook.md); baseline `master` @ `a122ab8`. **Done criteria:** (1) PO roster **3–5** stores with owner email + OTP phone + staff whitelist documented in design §3; (2) platform pre-pilot checklist (runbook §2) green on target env **or** explicit PO sign-off for staging-only pilot; (3) each enrolled store completes runbook §3 Phases A–C + smoke E1–E4; (4) optional Service Desk tracked per store (Phase D); (5) PO debrief + findings appended to **Discovered**; (6) no open **P0** at pilot close; (7) **no F3-4 pricing** work in this slice.
-- [TODO] F3-4 Pricing/subscription (Akbar decides)
+- [DOING] F3-3 Pilot with 3–5 real stores, then fix findings — **waiting on PO roster + prod deploy** (not closed in this PR); design [docs/design/f3-3-pilot.md](design/f3-3-pilot.md); ops [docs/ops/f3-3-pilot-runbook.md](ops/f3-3-pilot-runbook.md); baseline `master` @ `a122ab8`. **Done criteria:** (1) PO roster **3–5** stores with owner email + OTP phone + staff whitelist documented in design §3; (2) platform pre-pilot checklist (runbook §2) green on target env **or** explicit PO sign-off for staging-only pilot; (3) each enrolled store completes runbook §3 Phases A–C + smoke E1–E4; (4) optional Service Desk tracked per store (Phase D); (5) PO debrief + findings appended to **Discovered**; (6) no open **P0** at pilot close; (7) **no F3-4 pricing** work in this slice.
+- [SKIPPED] F3-4 Pricing/subscription — **deferred** per Akbar (pricing skip); revisit after pilot / F3-5+ wedge
+- [DOING] F3-5 **Finance** (accounting + reports) recruitable SKU — PR `cursor/f3-5-finance-recruit-a3ed`; design [docs/design/f3-5-finance-recruit.md](design/f3-5-finance-recruit.md); ops [docs/ops/f3-5-recruit-flow.md](ops/f3-5-recruit-flow.md); QA PASS 2026-10-16 (`.gstack/qa-reports/qa-f3-5-finance-recruit-2026-10-16.md`); screenshots `/cursor/stores/self/media/f3-5-finance-*.png`
+- [TODO] F3-6 **Sales** (CRM + news) recruitable SKU — backlog only (after Finance)
+- [TODO] F3-7 **DevOps** recruitable SKU — backlog only
+- [TODO] F3-8 **Security** recruitable SKU — backlog only
+- [TODO] F3-9 **Facilities** (BMS / DCIM / SCADA) recruitable SKU — backlog only
+
+**F3 recruit queue lock (Akbar 2026-10-16):** Finance → Sales → DevOps → Security → Facilities (CS WhatsApp + Stok/pembukuan remain **Segera hadir**).
 
 ## Fase 2+ — AI Studio depth (from D-3 / F1-4)
 - [DONE] P2-1 Web Crawler backend (job queue, worker, persist jobs) — PR [#55](https://github.com/nusantarasoft/nusantarasoft-3/pull/55); QA PASS `.gstack/qa-reports/qa-p2-1-web-crawler-2026-10-15.md`; screenshots `/cursor/stores/self/media/p2-1-crawler-*.png`
@@ -50,3 +57,4 @@ Rule: one DOING task at Cursor at a time (plus deploy). Gate: scope → PR → Q
 - [TODO] D-11 (F3-3 review @ `a122ab8`) Extend [release-f2-prod-readiness.md](ops/release-f2-prod-readiness.md) §5 functional smoke with **F3-1 Service Desk recruit** and **F3-2 `/admin/usage`** — follow-up doc PR (F3-3-FU-1); pilot blocked on public prod signup until existing Turnstile + SMTP + `WA_OTP` gate green
 - [TODO] D-12 (F3-3 review @ `a122ab8`) Pilot has no first-class in-app feedback capture — use PO debrief template in [f3-3-pilot.md](design/f3-3-pilot.md) §7 until product adds a form (optional backlog)
 - [TODO] D-13 (F3-3 review @ `a122ab8`) Confirm F2+F3 deploy SHA on prod/staging before pilot — backlog still notes F2 wedge @ `4800eba` awaiting Akbar deploy; pilot target includes F3-1/F3-2 @ `a122ab8` (coordinate with [deploy-master-production.md](deploy-master-production.md))
+- [TODO] D-14 (Akbar 2026-10-16 **all-queue**) Remaining Agent Studio templates queued on `/admin/recruit` as **Segera hadir** until F3-6…F3-9 ship; only **Finance** goes live in F3-5 PR

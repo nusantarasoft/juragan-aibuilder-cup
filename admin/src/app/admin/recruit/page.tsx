@@ -15,11 +15,16 @@ import { AosError } from "@/components/agentic-os/lib/api";
 
 const KASIR_ID = "umkm-kasir";
 const SERVICE_DESK_ID = "service-desk";
+const FINANCE_ID = "finance";
 
-function isRecruitedForTemplate(itemId: string, status: { kasirRecruited: boolean; serviceDeskRecruited: boolean } | null) {
+function isRecruitedForTemplate(
+    itemId: string,
+    status: { kasirRecruited: boolean; serviceDeskRecruited: boolean; financeRecruited: boolean } | null,
+) {
     if (!status) return false;
     if (itemId === KASIR_ID) return status.kasirRecruited;
     if (itemId === SERVICE_DESK_ID) return status.serviceDeskRecruited;
+    if (itemId === FINANCE_ID) return status.financeRecruited;
     return false;
 }
 
@@ -32,6 +37,7 @@ export default function RecruitPage() {
         maxAgents: number;
         kasirRecruited: boolean;
         serviceDeskRecruited: boolean;
+        financeRecruited: boolean;
     } | null>(null);
     const [loading, setLoading] = useState(true);
     const [recruitingId, setRecruitingId] = useState<string | null>(null);
@@ -82,8 +88,8 @@ export default function RecruitPage() {
                 <p className="text-sm font-medium text-indigo-400">Fase 3 · Rekrut agen</p>
                 <h1 className="mt-1 text-2xl font-bold text-white">Rekrut karyawan</h1>
                 <p className="mt-2 text-sm text-slate-400">
-                    Kasir UMKM untuk WhatsApp (hubungkan WA setelah rekrut pertama). Service Desk untuk tiket ITSM — data
-                    live tenant, bukan demo.
+                    Kasir UMKM untuk WhatsApp (hubungkan WA setelah rekrut pertama). Service Desk untuk tiket ITSM. Finance
+                    untuk akuntansi & laporan — data live tenant, bukan demo.
                 </p>
                 {status && (
                     <p className="mt-2 text-xs text-slate-500">
@@ -169,6 +175,13 @@ export default function RecruitPage() {
                                                 <Link href="/admin/itsm/tickets" className="text-xs font-semibold text-indigo-300 underline">
                                                     Buka antrian tiket →
                                                 </Link>
+                                            ) : item.id === FINANCE_ID ? (
+                                                <Link
+                                                    href="/admin/accounting/dashboard"
+                                                    className="text-xs font-semibold text-indigo-300 underline"
+                                                >
+                                                    Buka akuntansi →
+                                                </Link>
                                             ) : null}
                                         </div>
                                     ) : null}
@@ -181,8 +194,8 @@ export default function RecruitPage() {
 
             {role === "tenant_owner" && (
                 <p className="mt-8 text-xs text-slate-600">
-                    Template enterprise (DevOps, Security, dll.) disembunyikan untuk pemilik toko — gunakan halaman ini untuk wedge
-                    UMKM + Service Desk.
+                    Template enterprise di Agent Studio tetap untuk admin platform — halaman ini untuk wedge UMKM, Service Desk,
+                    Finance, plus kartu antrian F3-6…F3-9 (Segera hadir).
                 </p>
             )}
         </div>

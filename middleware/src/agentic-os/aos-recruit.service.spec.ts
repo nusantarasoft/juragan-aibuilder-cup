@@ -1,7 +1,11 @@
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 import { AosRecruitService } from './aos-recruit.service';
-import { KASIR_RECRUIT_TEMPLATE_ID, SERVICE_DESK_RECRUIT_TEMPLATE_ID } from './aos-recruit.catalog';
+import {
+    FINANCE_RECRUIT_TEMPLATE_ID,
+    KASIR_RECRUIT_TEMPLATE_ID,
+    SERVICE_DESK_RECRUIT_TEMPLATE_ID,
+} from './aos-recruit.catalog';
 
 const TENANT = '00000000-0000-0000-0000-000000000201';
 
@@ -35,6 +39,8 @@ describe('AosRecruitService', () => {
         const catalog = svc.listCatalogForRole('tenant_owner');
         expect(catalog.some((c) => c.id === KASIR_RECRUIT_TEMPLATE_ID && c.recruitable)).toBe(true);
         expect(catalog.some((c) => c.id === SERVICE_DESK_RECRUIT_TEMPLATE_ID && c.recruitable)).toBe(true);
+        expect(catalog.some((c) => c.id === FINANCE_RECRUIT_TEMPLATE_ID && c.recruitable)).toBe(true);
+        expect(catalog.some((c) => c.id === 'sales-soon' && c.kind === 'coming_soon')).toBe(true);
         expect(catalog.some((c) => c.kind === 'coming_soon')).toBe(true);
         expect(catalog.some((c) => c.id === 'pembukuan-soon')).toBe(false);
     });
@@ -141,5 +147,51 @@ describe('AosRecruitService', () => {
         const st = await svc.getRecruitStatus(TENANT);
         expect(st.serviceDeskRecruited).toBe(true);
         expect(st.kasirRecruited).toBe(false);
+        expect(st.financeRecruited).toBe(false);
+    });
+
+    it('recruits finance with cloud runner and journal guardrails', async () => {
+        const aos = mockAos();
+        const svc = new AosRecruitService(aos as any);
+        const out = await svc.recruitAgent(
+            TENANT,
+            FINANCE_RECRUIT_TEMPLATE_ID,
+            { id: 'u1', role: 'tenant_owner', tenantId: TENANT },
+            { id: 'u1' },
+        );
+        expect(out.agent.slug).toBe('finance');
+        expect(out.waConnectRequired).toBe(false);
+        expect(aos.createAgent).toHaveBeenCalledWith(
+            TENANT,
+            expect.objectContaining({
+                runner: 'cloud',
+                slug: 'finance',
+                modules: ['accounting', 'reports'],
+                tools: expect.arrayContaining(['report.generate', 'db.query']),
+                guardrails: expect.objectContaining({
+                    requireApproval: expect.arrayContaining(['journal.post']),
+                    noAutoPostJournal: true,
+                }),
+            }),
+            { id: 'u1' },
+        );
+    });
+
+    it('rejects duplicate finance', async () => {
+        const svc = new AosRecruitService(mockAos({ agents: [{ slug: 'finance' }] }) as any);
+        await expect(
+            svc.recruitAgent(
+                TENANT,
+                FINANCE_RECRUIT_TEMPLATE_ID,
+                { id: 'u1', role: 'tenant_owner', tenantId: TENANT },
+                { id: 'u1' },
+            ),
+        ).rejects.toThrow(/Finance/i);
+    });
+
+    it('reports financeRecruited in status', async () => {
+        const svc = new AosRecruitService(mockAos({ agents: [{ slug: 'finance-2' }] }) as any);
+        const st = await svc.getRecruitStatus(TENANT);
+        expect(st.financeRecruited).toBe(true);
     });
 });
