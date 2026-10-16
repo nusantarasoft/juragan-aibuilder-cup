@@ -7,6 +7,7 @@ describe('StudioWebCrawlerWorker', () => {
     let svc: {
         claimNextPendingJob: ReturnType<typeof vi.fn>;
         listRunningJobs: ReturnType<typeof vi.fn>;
+        getJobRow: ReturnType<typeof vi.fn>;
         patchJob: ReturnType<typeof vi.fn>;
     };
 
@@ -14,6 +15,10 @@ describe('StudioWebCrawlerWorker', () => {
         svc = {
             claimNextPendingJob: vi.fn().mockResolvedValue(null),
             listRunningJobs: vi.fn().mockResolvedValue([]),
+            getJobRow: vi.fn().mockImplementation(async (id: string) => ({
+                id,
+                status: 'running',
+            })),
             patchJob: vi.fn().mockResolvedValue(undefined),
         };
         worker = new StudioWebCrawlerWorker(svc as unknown as StudioWebCrawlerService);

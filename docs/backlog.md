@@ -53,10 +53,10 @@ Rule: one DOING task at Cursor at a time (plus deploy). Gate: scope → PR → Q
 - [DONE] D-23 (UI-wave-4) Full admin menuConfig + VO route crawl Playwright spec + coverage JSON (`.gstack/qa-reports/ui-wave-4-route-coverage.json`)
 - [TODO] D-24 (UI-wave-4) HR module GraphQL expects `hr_*` tables — QA stack missing schema; pages show empty until migrations land
 - [DONE] D-25 (UI-wave-4 PO #74) PM `me` query drops `fullName`; middleware PM lists use plain `select('*')` until tenant_users↔individuals FK lands
-- **Adityo last-seen (`development-adityo`):** `861a6588fe93594528f1079b7e58cc624a6550de` (2026-10-16 13:03 WIB). **Do not merge or cherry-pick** from `development-adityo` — integration only via PO-approved D-9-style PRs on `master`.
-- [TODO] D-26 (Adityo branch review @ `861a658`) Unresolved conflict markers + encoding garbage in `scripts/master-production/pull-on-server.sh` and `docs/deploy-master-production.md` on `development-adityo` — **master deploy-key version must win** when reconciling (no blind merge from his branch).
-- [TODO] D-27 (Adityo branch review @ `861a658`) VO HUD rewrite drops Wave 1 honesty labels + Kasir-only metrics and switches ID→EN copy — needs **D-9-style integration PR** (preserve Wave 1 inspector / recruit honesty; do not land HUD wholesale).
-- [TODO] D-28 (Adityo branch review @ `861a658`) `database_dump_data.sql` / `database_dump_full.sql` still tracked on `development-adityo` — tied to **F0-3** (rotate secrets + scrub branch history); do not import dumps into this repo.
+- **Adityo last-seen integrated (`development-adityo`):** `861a6588fe93594528f1079b7e58cc624a6550de` (2026-10-16 13:03 WIB) — VO HUD + Command Deck panels via D-9-style PR on `master` @ Wave 4 #74 tip; deploy docs / `pull-on-server.sh` **not** taken from his branch.
+- [DONE] D-26 (Adityo branch review @ `861a658`) Conflict markers + encoding garbage in `scripts/master-production/pull-on-server.sh` / `docs/deploy-master-production.md` on `development-adityo` — **master deploy-key version kept** in integration PR (no import from his branch).
+- [DONE] D-27 (Adityo branch review @ `861a658`) VO HUD rewrite integrated with Wave 1 honesty preserved (Kasir-only metrics, ID copy, demo labels, connect-wa, tenant settings).
+- [DONE] D-28 (Adityo branch review @ `861a658`) `database_dump_*.sql` **not** imported — remains on `development-adityo` only; tied to **F0-3** branch scrub.
 - [TODO] D-31 (UI-wave-4 PO #74) QA compose omits Supabase Realtime — Playwright narrow ignore for `realtime/v1/websocket` 503 only (`console.ts`)
 - [TODO] D-32 (UI-wave-4 PO #74) E-commerce `ecom_*` tables absent on minimal QA — narrow PGRST205 ignore until seed/migration
 - [TODO] D-33 (UI-wave-4 PO #74) system-health storage probe 401 without service JWT — narrow ignore on `/storage/v1/bucket` until ops proxy

@@ -131,6 +131,7 @@ describe('StudioUmkmCronService', () => {
                 '628111',
                 expect.stringContaining('Toko A'),
                 'sess1',
+                't1',
             );
         });
 
@@ -152,6 +153,7 @@ describe('StudioUmkmCronService', () => {
                 '628999',
                 expect.stringContaining('t2'),
                 undefined,
+                't2',
             );
         });
 

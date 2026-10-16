@@ -7,6 +7,7 @@
  * unavailable.
  */
 
+import { useCallback, useEffect, useState } from "react";
 import { create } from "zustand";
 import { fetchDeck, type DeckSnapshot } from "./api";
 import { useAosStore } from "./store";
@@ -109,6 +110,19 @@ export function startDeckPolling(ms: number): () => void {
 export type DeckView = "rings" | "circle" | "areas" | "links" | "timeline" | "orbit";
 export const DECK_VIEWS: DeckView[] = ["rings", "circle", "areas", "links", "timeline", "orbit"];
 
+export type SidePanelId = "left" | "right";
+export type SidePanelMode = "pinned-left" | "pinned-right" | "windowed" | "minimized";
+
+export interface SidePanelState {
+    mode: SidePanelMode;
+    lastPin: "pinned-left" | "pinned-right";
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+    z: number;
+}
+
 export interface DeckLayout {
     view: DeckView;
     names: boolean;
@@ -118,7 +132,13 @@ export interface DeckLayout {
     collapsed: Record<string, boolean>;
     secondTz: string;
     goalId: string | null;
+    panels: Record<SidePanelId, SidePanelState>;
 }
+
+export const DEFAULT_PANELS: Record<SidePanelId, SidePanelState> = {
+    left: { mode: "pinned-left", lastPin: "pinned-left", x: 20, y: 14, w: 300, h: 540, z: 20 },
+    right: { mode: "pinned-right", lastPin: "pinned-right", x: -1, y: 14, w: 300, h: 540, z: 21 },
+};
 
 export const DEFAULT_LAYOUT: DeckLayout = {
     view: "rings",
@@ -129,6 +149,7 @@ export const DEFAULT_LAYOUT: DeckLayout = {
     collapsed: {},
     secondTz: "Europe/London",
     goalId: null,
+    panels: DEFAULT_PANELS,
 };
 
 const LS_KEY = "aos.deck.layout.v1";
@@ -139,7 +160,16 @@ function loadLayout(): DeckLayout {
         const raw = window.localStorage.getItem(LS_KEY);
         if (!raw) return DEFAULT_LAYOUT;
         const v = JSON.parse(raw) as Partial<DeckLayout>;
-        return { ...DEFAULT_LAYOUT, ...v, view: DECK_VIEWS.includes(v.view as DeckView) ? (v.view as DeckView) : DEFAULT_LAYOUT.view };
+        const panels: Record<SidePanelId, SidePanelState> = {
+            left: { ...DEFAULT_PANELS.left, ...(v.panels?.left ?? {}) },
+            right: { ...DEFAULT_PANELS.right, ...(v.panels?.right ?? {}) },
+        };
+        return {
+            ...DEFAULT_LAYOUT,
+            ...v,
+            view: DECK_VIEWS.includes(v.view as DeckView) ? (v.view as DeckView) : DEFAULT_LAYOUT.view,
+            panels,
+        };
     } catch {
         return DEFAULT_LAYOUT;
     }
@@ -149,14 +179,15 @@ interface DeckUiState extends DeckLayout {
     hydrated: boolean;
     hydrate: () => void;
     patch: (p: Partial<DeckLayout>) => void;
+    patchPanel: (id: SidePanelId, p: Partial<SidePanelState>) => void;
     toggleCollapsed: (panel: string) => void;
     reset: () => void;
 }
 
 const persist = (s: DeckLayout) => {
     try {
-        const { view, names, motion, focus, graphHeight, collapsed, secondTz, goalId } = s;
-        window.localStorage.setItem(LS_KEY, JSON.stringify({ view, names, motion, focus, graphHeight, collapsed, secondTz, goalId }));
+        const { view, names, motion, focus, graphHeight, collapsed, secondTz, goalId, panels } = s;
+        window.localStorage.setItem(LS_KEY, JSON.stringify({ view, names, motion, focus, graphHeight, collapsed, secondTz, goalId, panels }));
     } catch {
         /* storage full / disabled — layout just won't persist */
     }
@@ -173,12 +204,90 @@ export const useDeckUi = create<DeckUiState>((set, get) => ({
         set(p);
         persist(get());
     },
+    patchPanel: (id, p) => {
+        set((s) => {
+            const cur = s.panels[id] ?? DEFAULT_PANELS[id];
+            const nextMode = p.mode ?? cur.mode;
+            const lastPin = nextMode === "pinned-left" || nextPinCheck(nextMode) ? (nextMode as "pinned-left" | "pinned-right") : p.lastPin ?? cur.lastPin;
+            return {
+                panels: {
+                    ...s.panels,
+                    [id]: { ...cur, ...p, lastPin },
+                },
+            };
+        });
+        persist(get());
+    },
     toggleCollapsed: (panel) => {
         set((s) => ({ collapsed: { ...s.collapsed, [panel]: !s.collapsed[panel] } }));
         persist(get());
     },
     reset: () => {
-        set({ ...DEFAULT_LAYOUT });
+        set({ ...DEFAULT_LAYOUT, panels: { left: { ...DEFAULT_PANELS.left }, right: { ...DEFAULT_PANELS.right } } });
         persist(get());
     },
 }));
+
+function nextPinCheck(m: SidePanelMode): m is "pinned-left" | "pinned-right" {
+    return m === "pinned-left" || m === "pinned-right";
+}
+
+/* ------------------------------------------------------------------ */
+/* Theme synchronization with Nusantarasoft main layout                */
+/* ------------------------------------------------------------------ */
+
+function readInitialDark(): boolean {
+    if (typeof document === "undefined") return true;
+    try {
+        const saved = window.localStorage.getItem("cms-dark-mode");
+        if (saved !== null) return saved === "true";
+    } catch {
+        /* ignore */
+    }
+    return true;
+}
+
+export function useAosTheme() {
+    const [isDark, setIsDark] = useState<boolean>(readInitialDark);
+
+    useEffect(() => {
+        const initial = readInitialDark();
+        setIsDark(initial);
+        document.documentElement.classList.toggle("dark", initial);
+
+        const onSync = (e: Event) => {
+            const detail = (e as CustomEvent<boolean>).detail;
+            if (typeof detail === "boolean") {
+                setIsDark(detail);
+                document.documentElement.classList.toggle("dark", detail);
+            }
+        };
+        window.addEventListener("cms-theme-sync", onSync);
+
+        const obs = new MutationObserver(() => {
+            setIsDark(document.documentElement.classList.contains("dark"));
+        });
+        obs.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+
+        return () => {
+            window.removeEventListener("cms-theme-sync", onSync);
+            obs.disconnect();
+        };
+    }, []);
+
+    const setTheme = useCallback((nextDark: boolean) => {
+        setIsDark(nextDark);
+        try {
+            window.localStorage.setItem("cms-dark-mode", String(nextDark));
+        } catch {
+            /* ignore */
+        }
+        document.documentElement.classList.toggle("dark", nextDark);
+        document.dispatchEvent(new CustomEvent("cms-set-dark-mode", { detail: nextDark }));
+        window.dispatchEvent(new CustomEvent("cms-theme-sync", { detail: nextDark }));
+    }, []);
+
+    return { isDark, light: !isDark, setTheme };
+}
+
+

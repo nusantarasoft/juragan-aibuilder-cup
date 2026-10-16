@@ -165,7 +165,7 @@ export function buildModel(inp: ModelInput): DeckModel {
     for (const mo of Object.values(MODULES)) {
         const ag = agents.filter((a) => a.modules.includes(mo.id));
         const open = openTasks.filter((t) => t.moduleId === mo.id).length;
-        add({ id: `m:${mo.id}`, kind: "app", label: mo.name, sub: `${ag.length} agents · ${open} open tasks`, color: mo.color, areaId: null, refId: mo.id, moduleId: mo.id, route: mo.route, live: running.some((t) => t.moduleId === mo.id) });
+        add({ id: `m:${mo.id}`, kind: "app", label: mo.name, sub: `${ag.length} agents · ${open} open tasks`, color: mo.color, areaId: null, refId: mo.id, moduleId: mo.id, route: mo.route, live: running.some((t) => t.moduleId === mo.id), open: ["playbooks", { moduleId: mo.id }] });
     }
 
     // Agents
@@ -202,7 +202,7 @@ export function buildModel(inp: ModelInput): DeckModel {
     }
     for (const p of inp.playbooks.filter((x) => !x.archivedAt)) {
         const mo = MODULES[p.moduleId as ModuleId];
-        add({ id: `p:${p.id}`, kind: "playbook", label: p.title, sub: `playbook · ${mo?.name ?? p.moduleId}${p.enabled ? "" : " · disabled"}`, color: mo?.color ?? "#34d399", areaId: null, refId: p.id, moduleId: p.moduleId, route: p.route, status: p.enabled ? "enabled" : "disabled", open: ["playbooks", {}] });
+        add({ id: `p:${p.id}`, kind: "playbook", label: p.title, sub: `playbook · ${mo?.name ?? p.moduleId}${p.enabled ? "" : " · disabled"}`, color: mo?.color ?? "#34d399", areaId: null, refId: p.id, moduleId: p.moduleId, route: p.route, status: p.enabled ? "enabled" : "disabled", open: ["playbooks", { playbookId: p.id }] });
         link(`p:${p.id}`, `m:${p.moduleId}`, "playbook");
         const ag = findAgent(p.agentId);
         if (ag) link(`a:${ag.id}`, `p:${p.id}`, "playbook");
@@ -795,7 +795,8 @@ export function layoutTimeline(m: DeckModel, now: number): Layout {
     const dated = of("memory")
         .filter((n) => n.ts !== undefined)
         .sort((a, b) => a.ts! - b.ts! || hash01(a.id) - hash01(b.id));
-    const rows = Math.max(6, Math.min(20, Math.round(Math.sqrt(dated.length * 0.75))));
+    const targetCols = Math.floor((0.62 * (TL_X1 - TL_X0)) / DOT);
+    const rows = Math.max(6, Math.min(20, Math.ceil((dated.length * 1.08) / targetCols)));
     let col = 0;
     let row = 0;
     let cap = rows;
@@ -813,10 +814,15 @@ export function layoutTimeline(m: DeckModel, now: number): Layout {
     const gridW = (col + (row ? 1 : 0)) * DOT;
     const gridBottom = gridTop + rows * DOT;
 
-    // No-date pile: everything that has no time of its own.
-    const pileX = TL_X0 - 210;
-    const pile = [...of("app"), ...of("skill"), ...of("playbook"), ...of("goal"), ...of("memory").filter((n) => n.ts === undefined)];
-    pile.forEach((n, i) => pos.set(n.id, { x: pileX + (i % 9) * 19 + (Math.floor(i / 9) % 2) * 9, y: gridTop + Math.floor(i / 9) * 17 }));
+    // No-date pile: everything that has no time of its own — apps on a loose grid, the rest tighter.
+    const pileX = TL_X0 - 220;
+    const pileApps = of("app");
+    const pileRest = [...of("skill"), ...of("playbook"), ...of("goal"), ...of("memory").filter((n) => n.ts === undefined)];
+    pileApps.forEach((n, i) => pos.set(n.id, { x: pileX + (i % 7) * 26, y: gridTop + 4 + Math.floor(i / 7) * 26 }));
+    const restTop = gridTop + 4 + Math.ceil(pileApps.length / 7) * 26 + 6;
+    pileRest.forEach((n, i) => pos.set(n.id, { x: pileX + (i % 12) * 14.5, y: restTop + Math.floor(i / 12) * 14 }));
+    const pileBottom = restTop + Math.ceil(pileRest.length / 12) * 14;
+    const pile = [...pileApps, ...pileRest];
 
     // Core + area badges fade out where their content went.
     pos.set("core", { x: pileX + 80, y: gridTop + 40 });
@@ -830,7 +836,7 @@ export function layoutTimeline(m: DeckModel, now: number): Layout {
     for (const n of m.nodes) if (!pos.has(n.id)) pos.set(n.id, { x: pileX, y: gridTop });
 
     const top = -40;
-    const bottom = Math.max(gridBottom, gridTop + Math.ceil(pile.length / 9) * 17) + 30;
+    const bottom = Math.max(gridBottom, pileBottom) + 30;
     return {
         kind: "timeline",
         pos,

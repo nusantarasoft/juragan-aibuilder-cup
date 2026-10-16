@@ -147,9 +147,10 @@ export interface GraphProps {
     onSelect: (id: string | null) => void;
     onIsolate: (kind: "ring" | "group" | "area", ref: string) => void;
     fitNonce: number;
+    light?: boolean;
 }
 
-export function DeckGraphSvg({ model, layout, visible, names, motion, search, selected, onSelect, onIsolate, fitNonce }: GraphProps) {
+export function DeckGraphSvg({ model, layout, visible, names, motion, search, selected, onSelect, onIsolate, fitNonce, light = false }: GraphProps) {
     const svgRef = useRef<SVGSVGElement>(null);
     const [xf, setXf] = useState<Xf>({ k: 1, x: 0, y: 0 });
     const [hover, setHover] = useState<string | null>(null);
@@ -349,21 +350,21 @@ export function DeckGraphSvg({ model, layout, visible, names, motion, search, se
         >
             <defs>
                 <radialGradient id="deck-core-glow">
-                    <stop offset="0%" stopColor="#f97316" stopOpacity="0.35" />
-                    <stop offset="55%" stopColor="#c2410c" stopOpacity="0.1" />
+                    <stop offset="0%" stopColor="#f97316" stopOpacity={light ? "0.28" : "0.35"} />
+                    <stop offset="55%" stopColor="#c2410c" stopOpacity={light ? "0.08" : "0.1"} />
                     <stop offset="100%" stopColor="#7c2d12" stopOpacity="0" />
                 </radialGradient>
                 <radialGradient id="deck-bg" cx="50%" cy="50%" r="60%">
-                    <stop offset="0%" stopColor="#1e293b" stopOpacity="0.45" />
-                    <stop offset="70%" stopColor="#0b0e13" stopOpacity="0.2" />
-                    <stop offset="100%" stopColor="#020617" stopOpacity="0" />
+                    <stop offset="0%" stopColor={light ? "#e2e8f0" : "#1e293b"} stopOpacity={light ? "0.55" : "0.45"} />
+                    <stop offset="70%" stopColor={light ? "#f1f5f9" : "#0b0e13"} stopOpacity={light ? "0.25" : "0.2"} />
+                    <stop offset="100%" stopColor={light ? "#f8fafc" : "#020617"} stopOpacity="0" />
                 </radialGradient>
             </defs>
             <rect data-bg="1" x={vb.x - 2000} y={vb.y - 2000} width={vb.w + 4000} height={vb.h + 4000} fill="url(#deck-bg)" />
             <g transform={`translate(${xf.x} ${xf.y}) scale(${k})`}>
                 {/* View decoration: the outgoing view fades out while the new one fades in. */}
-                {prev && <Decor layout={prev} alpha={1 - e} motion={motion} yaw={yaw.current} tilt={tilt.current} onIsolate={onIsolate} k={k} />}
-                <Decor layout={L} alpha={e} motion={motion} yaw={yaw.current} tilt={tilt.current} onIsolate={onIsolate} k={k} />
+                {prev && <Decor layout={prev} alpha={1 - e} motion={motion} yaw={yaw.current} tilt={tilt.current} onIsolate={onIsolate} k={k} light={light} />}
+                <Decor layout={L} alpha={e} motion={motion} yaw={yaw.current} tilt={tilt.current} onIsolate={onIsolate} k={k} light={light} />
 
                 {/* Core particle cloud */}
                 {visible.has("core") && corePos && corePos.o > 0.02 && (
@@ -379,7 +380,7 @@ export function DeckGraphSvg({ model, layout, visible, names, motion, search, se
                         if (!d) return null;
                         const on = focus ? l.s === focus || l.t === focus : false;
                         const off = focus ? !on : false;
-                        const base = l.kind === "core" ? 0.07 : l.kind === "member" ? 0.05 : 0.14;
+                        const base = (l.kind === "core" ? 0.07 : l.kind === "member" ? 0.05 : 0.14) * (light ? 1.85 : 1);
                         const fade = Math.min(pos.get(l.s)?.o ?? 1, pos.get(l.t)?.o ?? 1);
                         return <path key={i} d={d} stroke={LINK_COLOR[l.kind]} strokeOpacity={(on ? 0.85 : off ? 0.03 : l.live ? 0.5 : base) * fade} strokeWidth={(on ? 1.6 : 0.8) / Math.sqrt(k)} pointerEvents="none" />;
                     })}
@@ -432,9 +433,9 @@ export function DeckGraphSvg({ model, layout, visible, names, motion, search, se
                             }}
                         >
                             <g transform={`scale(${glyphScale})`}>
-                                <NodeGlyphMemo n={n} motion={motion} selected={isSel} />
+                                <NodeGlyphMemo n={n} motion={motion} selected={isSel} light={light} />
                             </g>
-                            {showLabel ? <NodeLabel n={n} p={p} k={k} mode={laneHead ? "left" : ringView ? "radial" : "below"} /> : null}
+                            {showLabel ? <NodeLabel n={n} p={p} k={k} mode={laneHead ? "left" : ringView ? "radial" : "below"} light={light} /> : null}
                         </g>
                     );
                 })}
@@ -453,7 +454,7 @@ export function DeckGraphSvg({ model, layout, visible, names, motion, search, se
                         onPointerEnter={() => setHover("core")}
                         onPointerLeave={() => setHover((h) => (h === "core" ? null : h))}
                     >
-                        <NodeGlyphMemo n={model.byId.get("core")!} motion={motion} selected={selected === "core"} />
+                        <NodeGlyphMemo n={model.byId.get("core")!} motion={motion} selected={selected === "core"} light={light} />
                     </g>
                 )}
 
@@ -461,11 +462,11 @@ export function DeckGraphSvg({ model, layout, visible, names, motion, search, se
                 {hovered && hp && (
                     <g transform={`translate(${hp.x} ${hp.y}) scale(${1 / k})`} pointerEvents="none">
                         <g transform="translate(14 -14)">
-                            <rect x={0} y={-30} width={Math.max(hovered.label.length, Math.min(hovered.sub.length, 60)) * 6.1 + 18} height={36} rx={6} fill="#020617" fillOpacity={0.95} stroke={hovered.color} strokeOpacity={0.6} />
-                            <text x={9} y={-16} fontSize={11} fontWeight={700} fill="#f8fafc">
+                            <rect x={0} y={-30} width={Math.max(hovered.label.length, Math.min(hovered.sub.length, 60)) * 6.1 + 18} height={36} rx={6} fill={light ? "#ffffff" : "#020617"} fillOpacity={0.96} stroke={hovered.color} strokeOpacity={0.65} />
+                            <text x={9} y={-16} fontSize={11} fontWeight={700} fill={light ? "#0f172a" : "#f8fafc"}>
                                 {hovered.label.length > 60 ? `${hovered.label.slice(0, 58)}…` : hovered.label}
                             </text>
-                            <text x={9} y={-3} fontSize={9.5} fill="#94a3b8">
+                            <text x={9} y={-3} fontSize={9.5} fill={light ? "#475569" : "#94a3b8"}>
                                 {hovered.sub.length > 60 ? `${hovered.sub.slice(0, 58)}…` : hovered.sub}
                             </text>
                         </g>
@@ -480,26 +481,33 @@ export function DeckGraphSvg({ model, layout, visible, names, motion, search, se
 /* View decoration                                                     */
 /* ------------------------------------------------------------------ */
 
-function Decor({ layout, alpha, motion, yaw, tilt, onIsolate, k }: { layout: Layout; alpha: number; motion: boolean; yaw: number; tilt: number; onIsolate: GraphProps["onIsolate"]; k: number }) {
+function Decor({ layout, alpha, motion, yaw, tilt, onIsolate, k, light }: { layout: Layout; alpha: number; motion: boolean; yaw: number; tilt: number; onIsolate: GraphProps["onIsolate"]; k: number; light: boolean }) {
     if (alpha < 0.02) return null;
     const ringView = layout.kind === "rings";
     return (
         <g opacity={alpha}>
             {layout.guides.map((g, i) => (
                 <g key={i}>
-                    <circle r={g.r} fill="none" stroke={g.strong ? "rgba(148,163,184,0.22)" : "rgba(148,163,184,0.09)"} strokeWidth={g.strong ? 1.2 : 1} strokeDasharray={g.dash ? "2 6" : undefined} pointerEvents="none">
+                    <circle
+                        r={g.r}
+                        fill="none"
+                        stroke={g.strong ? (light ? "rgba(15,23,42,0.24)" : "rgba(148,163,184,0.22)") : light ? "rgba(15,23,42,0.11)" : "rgba(148,163,184,0.09)"}
+                        strokeWidth={g.strong ? 1.2 : 1}
+                        strokeDasharray={g.dash ? "2 6" : undefined}
+                        pointerEvents="none"
+                    >
                         {motion && g.dash && <animateTransform attributeName="transform" type="rotate" from="0" to={i % 2 ? "-360" : "360"} dur={`${160 + i * 40}s`} repeatCount="indefinite" />}
                     </circle>
                     {ringView && g.strong && <RingTicks r={g.r} i={i} motion={motion} />}
                 </g>
             ))}
             {ringView && layout.guides.length > 0 && (
-                <circle r={Math.max(...layout.guides.map((g) => g.r)) + 16} fill="none" stroke="rgba(148,163,184,0.12)" strokeWidth={4} strokeDasharray="60 14 4 14" pointerEvents="none">
+                <circle r={Math.max(...layout.guides.map((g) => g.r)) + 16} fill="none" stroke={light ? "rgba(15,23,42,0.16)" : "rgba(148,163,184,0.12)"} strokeWidth={4} strokeDasharray="60 14 4 14" pointerEvents="none">
                     {motion && <animateTransform attributeName="transform" type="rotate" from="0" to="360" dur="320s" repeatCount="indefinite" />}
                 </circle>
             )}
-            {layout.timeline && <TimelineDeco t={layout.timeline} />}
-            {layout.kind === "orbit" && <OrbitDeco yaw={yaw} tilt={tilt} />}
+            {layout.timeline && <TimelineDeco t={layout.timeline} light={light} />}
+            {layout.kind === "orbit" && <OrbitDeco yaw={yaw} tilt={tilt} light={light} />}
 
             {/* Ring / group labels */}
             {layout.labels.map((l) => (
@@ -513,8 +521,18 @@ function Decor({ layout, alpha, motion, yaw, tilt, onIsolate, k }: { layout: Lay
                         onIsolate(l.kind === "ring" ? "ring" : "group", l.ref);
                     }}
                 >
-                    <rect x={-(l.text.length * 3.9 + (l.count !== undefined ? 16 : 0)) - 6} y={-8} width={(l.text.length * 3.9 + (l.count !== undefined ? 16 : 0)) * 2 + 12} height={16} rx={2} fill="#0b0e13" fillOpacity={0.8} />
-                    <text textAnchor="middle" dy={3.5} fontSize={9.5} letterSpacing={2} fill={l.color} fontWeight={600} fontFamily={MONO}>
+                    <rect
+                        x={-(l.text.length * 3.9 + (l.count !== undefined ? 16 : 0)) - 6}
+                        y={-8}
+                        width={(l.text.length * 3.9 + (l.count !== undefined ? 16 : 0)) * 2 + 12}
+                        height={16}
+                        rx={2}
+                        fill={light ? "#ffffff" : "#0b0e13"}
+                        fillOpacity={light ? 0.92 : 0.8}
+                        stroke={light ? "rgba(15,23,42,0.14)" : "none"}
+                        strokeWidth={0.8}
+                    />
+                    <text textAnchor="middle" dy={3.5} fontSize={9.5} letterSpacing={2} fill={light && (l.color === "#f8fafc" || l.color === "#e2e8f0" || l.color === "#cbd5e1") ? "#0f172a" : l.color} fontWeight={600} fontFamily={MONO}>
                         {l.text}
                         {l.count !== undefined ? ` ${l.count}` : ""}
                     </text>
@@ -538,12 +556,12 @@ const RingTicks = React.memo(function RingTicks({ r, i, motion }: { r: number; i
 });
 
 /** Timeline: day grid + now line over the lanes, the files header, axis and no-date pile caption. */
-const TimelineDeco = React.memo(function TimelineDeco({ t }: { t: TimelineDecor }) {
+const TimelineDeco = React.memo(function TimelineDeco({ t, light }: { t: TimelineDecor; light: boolean }) {
     return (
         <g pointerEvents="none" fontFamily={MONO}>
             {t.days.map((d) => (
                 <g key={d.x}>
-                    <line x1={d.x} x2={d.x} y1={t.laneTop - 12} y2={t.laneBottom + 10} stroke="#94a3b8" strokeOpacity={d.major ? 0.16 : 0.07} strokeWidth={0.8} />
+                    <line x1={d.x} x2={d.x} y1={t.laneTop - 12} y2={t.laneBottom + 10} stroke={light ? "#475569" : "#94a3b8"} strokeOpacity={d.major ? (light ? 0.28 : 0.16) : light ? 0.13 : 0.07} strokeWidth={0.8} />
                     {d.major && (
                         <text x={d.x + 3} y={t.laneTop - 16} fontSize={7} fill="#475569">
                             {d.label}
@@ -553,26 +571,26 @@ const TimelineDeco = React.memo(function TimelineDeco({ t }: { t: TimelineDecor 
             ))}
             {t.lanes.map((l, i) => (
                 <g key={i}>
-                    <line x1={t.laneHead + 14} x2={t.x1} y1={l.y} y2={l.y} stroke="#94a3b8" strokeOpacity={0.07} strokeDasharray="1 4" />
+                    <line x1={t.laneHead + 14} x2={t.x1} y1={l.y} y2={l.y} stroke={light ? "#475569" : "#94a3b8"} strokeOpacity={light ? 0.15 : 0.07} strokeDasharray="1 4" />
                     {l.label && (
-                        <text x={t.laneHead - 12} y={l.y + 3} textAnchor="end" fontSize={8.5} fill="#94a3b8">
+                        <text x={t.laneHead - 12} y={l.y + 3} textAnchor="end" fontSize={8.5} fill={light ? "#334155" : "#94a3b8"}>
                             {l.label}
                         </text>
                     )}
                 </g>
             ))}
             <line x1={t.nowX} x2={t.nowX} y1={t.laneTop - 14} y2={t.laneBottom + 12} stroke="#fb923c" strokeOpacity={0.65} strokeDasharray="3 3" />
-            <text x={t.nowX} y={t.laneTop - 18} textAnchor="middle" fontSize={7} fill="#fb923c">
+            <text x={t.nowX} y={t.laneTop - 18} textAnchor="middle" fontSize={7} fill={light ? "#ea580c" : "#fb923c"}>
                 now
             </text>
-            <line x1={t.pileX - 20} x2={t.x1} y1={t.filesY - 12} y2={t.filesY - 12} stroke="#94a3b8" strokeOpacity={0.1} />
+            <line x1={t.pileX - 20} x2={t.x1} y1={t.filesY - 12} y2={t.filesY - 12} stroke={light ? "#475569" : "#94a3b8"} strokeOpacity={light ? 0.18 : 0.1} />
             <text x={t.laneHead + 8} y={t.filesY} textAnchor="end" fontSize={8.5} letterSpacing={0.6}>
-                <tspan fill="#93c5fd" fontWeight={700}>
+                <tspan fill={light ? "#0284c7" : "#93c5fd"} fontWeight={700}>
                     FILES
                 </tspan>
                 <tspan fill="#64748b"> · by last change</tspan>
             </text>
-            <line x1={t.gridX - 9} x2={t.gridX - 9} y1={t.gridTop - 6} y2={t.gridBottom} stroke="#94a3b8" strokeOpacity={0.18} />
+            <line x1={t.gridX - 9} x2={t.gridX - 9} y1={t.gridTop - 6} y2={t.gridBottom} stroke={light ? "#475569" : "#94a3b8"} strokeOpacity={light ? 0.25 : 0.18} />
             {t.gridW > 0 && (
                 <>
                     <text x={t.gridX} y={t.gridBottom + 14} fontSize={7} fill="#475569">
@@ -591,7 +609,7 @@ const TimelineDeco = React.memo(function TimelineDeco({ t }: { t: TimelineDecor 
 });
 
 /** Orbit: wireframe globe, application ring and Pulse ring, projected at the current angle. */
-function OrbitDeco({ yaw, tilt }: { yaw: number; tilt: number }) {
+function OrbitDeco({ yaw, tilt, light }: { yaw: number; tilt: number; light: boolean }) {
     const G = ORBIT.globe;
     const path = (pts: Pt3[]) =>
         pts
@@ -614,13 +632,13 @@ function OrbitDeco({ yaw, tilt }: { yaw: number; tilt: number }) {
         <g pointerEvents="none" fill="none">
             <circle r={G * 1.05} fill="url(#deck-core-glow)" opacity={0.25} />
             {meridians.map((d, i) => (
-                <path key={`m${i}`} d={d} stroke="#94a3b8" strokeOpacity={0.07} strokeWidth={0.8} />
+                <path key={`m${i}`} d={d} stroke={light ? "#334155" : "#94a3b8"} strokeOpacity={light ? 0.16 : 0.07} strokeWidth={0.8} />
             ))}
             {parallels.map((d, i) => (
-                <path key={`p${i}`} d={d} stroke="#94a3b8" strokeOpacity={i === 2 ? 0.12 : 0.06} strokeWidth={0.8} />
+                <path key={`p${i}`} d={d} stroke={light ? "#334155" : "#94a3b8"} strokeOpacity={i === 2 ? (light ? 0.25 : 0.12) : light ? 0.14 : 0.06} strokeWidth={0.8} />
             ))}
-            <path d={ring((a) => ({ x: ORBIT.appRing * Math.cos(a), y: 0, z: ORBIT.appRing * Math.sin(a) }), 120)} stroke="#cbd5e1" strokeOpacity={0.32} strokeWidth={1.1} />
-            <path d={ring((a) => ({ x: ORBIT.pulseR * Math.cos(a), y: ORBIT.pulseY, z: ORBIT.pulseR * Math.sin(a) }))} stroke="#fb923c" strokeOpacity={0.3} strokeWidth={1} />
+            <path d={ring((a) => ({ x: ORBIT.appRing * Math.cos(a), y: 0, z: ORBIT.appRing * Math.sin(a) }), 120)} stroke={light ? "#475569" : "#cbd5e1"} strokeOpacity={light ? 0.45 : 0.32} strokeWidth={1.1} />
+            <path d={ring((a) => ({ x: ORBIT.pulseR * Math.cos(a), y: ORBIT.pulseY, z: ORBIT.pulseR * Math.sin(a) }))} stroke="#fb923c" strokeOpacity={light ? 0.45 : 0.3} strokeWidth={1} />
         </g>
     );
 }
@@ -629,8 +647,8 @@ function OrbitDeco({ yaw, tilt }: { yaw: number; tilt: number }) {
 /* Glyphs + labels                                                     */
 /* ------------------------------------------------------------------ */
 
-function NodeGlyph({ n, motion, selected }: { n: DeckNode; motion: boolean; selected: boolean }) {
-    const ring = selected ? <circle r={n.kind === "app" ? 18 : n.kind === "agent" ? 15 : 8} fill="none" stroke="#f8fafc" strokeWidth={1.4} strokeDasharray="3 2" /> : null;
+function NodeGlyph({ n, motion, selected, light }: { n: DeckNode; motion: boolean; selected: boolean; light: boolean }) {
+    const ring = selected ? <circle r={n.kind === "app" ? 18 : n.kind === "agent" ? 15 : 8} fill="none" stroke={light ? "#0f172a" : "#f8fafc"} strokeWidth={1.4} strokeDasharray="3 2" /> : null;
     const ping = (r: number, color: string) =>
         motion ? <circle r={r} fill="none" stroke={color} strokeWidth={1.4} className="animate-ping" style={{ transformBox: "fill-box", transformOrigin: "center" }} /> : <circle r={r} fill="none" stroke={color} strokeWidth={1.4} strokeOpacity={0.6} />;
     switch (n.kind) {
@@ -638,8 +656,8 @@ function NodeGlyph({ n, motion, selected }: { n: DeckNode; motion: boolean; sele
             return (
                 <g>
                     {ring}
-                    <rect x={-42} y={-10} width={84} height={20} rx={2} fill="#0b0e13" fillOpacity={0.92} stroke="#fdba74" strokeOpacity={0.45} />
-                    <text textAnchor="middle" dy={3.4} fontSize={9.5} fontWeight={700} letterSpacing={1.4} fill="#f8fafc" fontFamily={MONO}>
+                    <rect x={-42} y={-10} width={84} height={20} rx={2} fill={light ? "#ffffff" : "#0b0e13"} fillOpacity={0.95} stroke={light ? "#ea580c" : "#fdba74"} strokeOpacity={light ? 0.65 : 0.45} />
+                    <text textAnchor="middle" dy={3.4} fontSize={9.5} fontWeight={700} letterSpacing={1.4} fill={light ? "#0f172a" : "#f8fafc"} fontFamily={MONO}>
                         {n.label}
                     </text>
                 </g>
@@ -649,13 +667,13 @@ function NodeGlyph({ n, motion, selected }: { n: DeckNode; motion: boolean; sele
             const w = text.length * 6 + 8;
             return (
                 <g>
-                    <rect x={10} y={-8} width={w} height={16} rx={2} fill="#0b0e13" fillOpacity={0.82} />
-                    <circle r={8.5} fill="#0b0e13" stroke={n.color} strokeWidth={1.2} />
+                    <rect x={10} y={-8} width={w} height={16} rx={2} fill={light ? "#ffffff" : "#0b0e13"} fillOpacity={light ? 0.92 : 0.82} stroke={light ? "rgba(15,23,42,0.12)" : "none"} strokeWidth={0.8} />
+                    <circle r={8.5} fill={light ? "#ffffff" : "#0b0e13"} stroke={n.color} strokeWidth={1.2} />
                     <circle r={6.5} fill={n.color} />
-                    <text textAnchor="middle" dy={3.2} fontSize={8.5} fontWeight={800} fill="#0b0e13" fontFamily={MONO}>
+                    <text textAnchor="middle" dy={3.2} fontSize={8.5} fontWeight={800} fill={light ? "#ffffff" : "#0b0e13"} fontFamily={MONO}>
                         {n.label.slice(0, 1).toUpperCase()}
                     </text>
-                    <text x={14} dy={3.4} fontSize={9.5} fontWeight={600} letterSpacing={0.8} fill="#e2e8f0" fontFamily={MONO}>
+                    <text x={14} dy={3.4} fontSize={9.5} fontWeight={600} letterSpacing={0.8} fill={light ? "#0f172a" : "#e2e8f0"} fontFamily={MONO}>
                         {text}
                     </text>
                 </g>
@@ -705,7 +723,7 @@ function NodeGlyph({ n, motion, selected }: { n: DeckNode; motion: boolean; sele
                 <g>
                     {n.live && ping(9, n.color)}
                     {ring}
-                    <circle r={6} fill="#0b1020" stroke={n.color} strokeWidth={2} strokeDasharray={n.status === "disabled" ? "2 2" : undefined} />
+                    <circle r={6} fill={light ? "#ffffff" : "#0b1020"} stroke={n.color} strokeWidth={2} strokeDasharray={n.status === "disabled" ? "2 2" : undefined} />
                     <circle r={2} fill={n.color} />
                 </g>
             );
@@ -723,8 +741,8 @@ function NodeGlyph({ n, motion, selected }: { n: DeckNode; motion: boolean; sele
                 <g>
                     {n.live && ping(15, n.color)}
                     {ring}
-                    <circle r={11} fill="#0b0e13" stroke={n.live ? n.color : "#94a3b8"} strokeOpacity={n.live ? 1 : 0.75} strokeWidth={1.3} />
-                    <Icon x={-6} y={-6} width={12} height={12} color={n.live ? n.color : "#e2e8f0"} strokeWidth={1.8} />
+                    <circle r={11} fill={light ? "#ffffff" : "#0b0e13"} stroke={n.live ? n.color : light ? "#64748b" : "#94a3b8"} strokeOpacity={n.live ? 1 : 0.75} strokeWidth={1.3} />
+                    <Icon x={-6} y={-6} width={12} height={12} color={n.live ? n.color : light ? "#1e293b" : "#e2e8f0"} strokeWidth={1.8} />
                 </g>
             );
         }
@@ -743,15 +761,16 @@ function NodeGlyph({ n, motion, selected }: { n: DeckNode; motion: boolean; sele
 }
 const NodeGlyphMemo = React.memo(NodeGlyph);
 
-function NodeLabel({ n, p, k, mode }: { n: DeckNode; p: Pt; k: number; mode: "radial" | "below" | "left" }) {
+function NodeLabel({ n, p, k, mode, light }: { n: DeckNode; p: Pt; k: number; mode: "radial" | "below" | "left"; light: boolean }) {
     const small = n.kind === "memory" || n.kind === "skill" || n.kind === "playbook" || n.kind === "routine";
     const fs = (small ? 8 : n.kind === "app" ? 9.5 : 9) / Math.max(1, k * 0.85);
     const text = n.label.length > 26 ? `${n.label.slice(0, 24)}…` : n.label;
     const halo = { paintOrder: "stroke" as const };
+    const haloStroke = light ? "#f8fafc" : "#050816";
     if (mode === "left") {
         // Timeline lane head: right-aligned label to the left of the glyph.
         return (
-            <text x={-12 / Math.sqrt(k)} y={3} textAnchor="end" fontSize={8.5 / Math.max(1, k * 0.85)} fill="#cbd5e1" fontFamily={MONO} pointerEvents="none" style={halo} stroke="#050816" strokeWidth={3 / k}>
+            <text x={-12 / Math.sqrt(k)} y={3} textAnchor="end" fontSize={8.5 / Math.max(1, k * 0.85)} fill={light ? "#1e293b" : "#cbd5e1"} fontFamily={MONO} pointerEvents="none" style={halo} stroke={haloStroke} strokeWidth={3 / k}>
                 {text}
             </text>
         );
@@ -767,10 +786,10 @@ function NodeLabel({ n, p, k, mode }: { n: DeckNode; p: Pt; k: number; mode: "ra
                 y={Math.sin(a) * off + fs * 0.35}
                 textAnchor={Math.abs(Math.cos(a)) < 0.25 ? "middle" : right ? "start" : "end"}
                 fontSize={fs}
-                fill={n.kind === "app" ? "#cbd5e1" : "#94a3b8"}
+                fill={n.kind === "app" ? (light ? "#0f172a" : "#cbd5e1") : light ? "#334155" : "#94a3b8"}
                 pointerEvents="none"
                 style={halo}
-                stroke="#050816"
+                stroke={haloStroke}
                 strokeWidth={3 / k}
             >
                 {text}
@@ -779,7 +798,7 @@ function NodeLabel({ n, p, k, mode }: { n: DeckNode; p: Pt; k: number; mode: "ra
     }
     const dy = (n.kind === "agent" ? 22 : n.kind === "goal" ? 19 : 12) / Math.sqrt(k);
     return (
-        <text y={dy} textAnchor="middle" fontSize={fs} fill={n.kind === "agent" ? "#e2e8f0" : "#94a3b8"} fontWeight={n.kind === "agent" ? 700 : 500} pointerEvents="none" style={halo} stroke="#050816" strokeWidth={3 / k}>
+        <text y={dy} textAnchor="middle" fontSize={fs} fill={n.kind === "agent" ? (light ? "#0f172a" : "#e2e8f0") : light ? "#334155" : "#94a3b8"} fontWeight={n.kind === "agent" ? 700 : 500} pointerEvents="none" style={halo} stroke={haloStroke} strokeWidth={3 / k}>
             {text}
         </text>
     );
