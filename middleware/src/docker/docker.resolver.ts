@@ -45,7 +45,7 @@ export class DockerResolver {
     constructor(private readonly dockerService: DockerService) {}
 
     @Query(() => [DockerContainer], { name: 'dockerContainers' })
-    async listContainers(): Promise<DockerContainer[]> {
+    async listContainers(@Args('tenantId', { nullable: true }) _tenantId?: string): Promise<DockerContainer[]> {
         return this.dockerService.listContainers();
     }
 

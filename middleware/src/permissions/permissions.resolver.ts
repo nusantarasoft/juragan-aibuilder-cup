@@ -756,4 +756,109 @@ export class PermissionsResolver {
         const result = await this.permissionsService.getDataExportLogs(tenantId, limit, offset);
         return { logs: result.logs.map(mapExportLog), total: result.total };
     }
+
+    // ─── Admin access-analyzer aliases (wave-4) ───
+
+    @Query(() => [RbacProfileSummary])
+    async rbacProfiles(@Args('tenantId') tenantId: string) {
+        const profiles = await this.permissionsService.getProfiles(tenantId);
+        return Promise.all(profiles.map(async (p: any) => {
+            const [obj, sys] = await Promise.all([
+                this.permissionsService.getProfileObjectPermissions(p.id),
+                this.permissionsService.getProfileSystemPermissions(p.id),
+            ]);
+            const objectPermissions = JSON.stringify((obj || []).map((o: any) => ({
+                object: o.object_name,
+                create: o.can_create, read: o.can_read, edit: o.can_edit,
+                delete: o.can_delete, viewAll: o.can_view_all, modifyAll: o.can_modify_all,
+            })));
+            const systemPermissions = JSON.stringify((sys || []).filter((s: any) => s.is_enabled).map((s: any) => s.permission_key));
+            return { id: p.id, name: p.name, description: p.description || '', objectPermissions, systemPermissions };
+        }));
+    }
+
+    @Query(() => [RbacRoleSummary])
+    async rbacRoles(@Args('tenantId') tenantId: string) {
+        return (await this.permissionsService.getRoles(tenantId)).map((r: any) => ({
+            id: r.id, name: r.name, parentId: r.parent_id, description: r.description || '',
+        }));
+    }
+
+    @Query(() => [RbacPermissionSetSummary])
+    async rbacPermissionSets(@Args('tenantId') tenantId: string) {
+        return Promise.all((await this.permissionsService.getPermissionSets(tenantId)).map(async (ps: any) => {
+            const [obj, sys] = await Promise.all([
+                this.permissionsService.getPermissionSetObjectPermissions(ps.id),
+                this.permissionsService.getPermissionSetSystemPermissions(ps.id),
+            ]);
+            return {
+                id: ps.id, name: ps.name, description: ps.description || '',
+                objectPermissions: JSON.stringify(obj || []),
+                systemPermissions: JSON.stringify((sys || []).filter((s: any) => s.is_enabled).map((s: any) => s.permission_key)),
+                assignedUsers: '[]',
+            };
+        }));
+    }
+
+    @Query(() => [RbacSharingRuleSummary])
+    async rbacSharingRules(@Args('tenantId') tenantId: string) {
+        return (await this.permissionsService.getSharingRules(tenantId)).map((r: any) => ({
+            id: r.id, name: r.name, objectName: r.object_name, type: r.rule_type,
+            sharedFrom: r.share_from_id || r.share_from_type || '',
+            sharedTo: r.share_to_id || r.share_to_type || '',
+            accessLevel: r.access_level,
+        }));
+    }
+
+    @Query(() => [RbacOwdSummary])
+    async rbacOrgWideDefaults(@Args('tenantId') tenantId: string) {
+        return (await this.permissionsService.getOrgWideDefaults(tenantId)).map((o: any) => ({
+            id: o.id, objectName: o.object_name, defaultAccess: o.internal_access,
+        }));
+    }
+}
+
+@ObjectType()
+class RbacProfileSummary {
+    @Field(() => ID) id: string;
+    @Field() name: string;
+    @Field() description: string;
+    @Field() objectPermissions: string;
+    @Field() systemPermissions: string;
+}
+
+@ObjectType()
+class RbacRoleSummary {
+    @Field(() => ID) id: string;
+    @Field() name: string;
+    @Field({ nullable: true }) parentId?: string;
+    @Field() description: string;
+}
+
+@ObjectType()
+class RbacPermissionSetSummary {
+    @Field(() => ID) id: string;
+    @Field() name: string;
+    @Field() description: string;
+    @Field() objectPermissions: string;
+    @Field() systemPermissions: string;
+    @Field() assignedUsers: string;
+}
+
+@ObjectType()
+class RbacSharingRuleSummary {
+    @Field(() => ID) id: string;
+    @Field() name: string;
+    @Field() objectName: string;
+    @Field() type: string;
+    @Field() sharedFrom: string;
+    @Field() sharedTo: string;
+    @Field() accessLevel: string;
+}
+
+@ObjectType()
+class RbacOwdSummary {
+    @Field(() => ID) id: string;
+    @Field() objectName: string;
+    @Field() defaultAccess: string;
 }

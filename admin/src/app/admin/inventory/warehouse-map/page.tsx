@@ -13,8 +13,14 @@ import {
     CloseCircleOutlined, InboxOutlined, FormatPainterOutlined, HomeOutlined, RadarChartOutlined, SettingOutlined, BlockOutlined, DatabaseOutlined
 } from "@ant-design/icons";
 import { motion, AnimatePresence } from "framer-motion";
-import { Canvas } from "@react-three/fiber";
+import { Canvas, useThree } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
+
+function BinPreviewOrbitControls() {
+    const { gl } = useThree();
+    if (!gl?.domElement) return null;
+    return <OrbitControls makeDefault minDistance={1} maxDistance={4} maxPolarAngle={Math.PI / 2 - 0.05} />;
+}
 import CMSLayout from "@/components/layout/CMSLayout";
 import CADLayout from "@/components/cad/CADLayout";
 import CADRibbon from "@/components/cad/CADRibbon";
@@ -1619,8 +1625,14 @@ export default function WarehouseMapPage() {
             if (e.key === 'ArrowLeft') { e.preventDefault(); handleMove(-1, 0); }
             if (e.key === 'ArrowRight') { e.preventDefault(); handleMove(1, 0); }
         };
-        window.addEventListener('keydown', handler);
-        return () => window.removeEventListener('keydown', handler);
+        if (typeof window !== 'undefined') {
+            window.addEventListener('keydown', handler);
+        }
+        return () => {
+            if (typeof window !== 'undefined') {
+                window.removeEventListener('keydown', handler);
+            }
+        };
     }, [buildMode, showHelp, objects, clipboard, selectedId, selectedIds, handleDelete, handleRotate, handleDuplicate, handleUndo, handleRedo, handleMove, pushHistory, messageApi, snapIncrement]);
 
     const StatCard = ({
@@ -3283,7 +3295,7 @@ export default function WarehouseMapPage() {
                             <ambientLight intensity={0.6} />
                             <directionalLight position={[5, 10, 5]} intensity={1.5} castShadow />
                             <pointLight position={[-5, 5, -5]} intensity={0.5} />
-                            <OrbitControls makeDefault minDistance={1} maxDistance={4} maxPolarAngle={Math.PI/2 - 0.05} />
+                            <BinPreviewOrbitControls />
                             
                             {/* Bin Shelf Bounds (wireframe) */}
                             <mesh position={[0, 0.2, 0]}>

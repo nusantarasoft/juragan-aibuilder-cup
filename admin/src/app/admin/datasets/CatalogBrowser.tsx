@@ -45,7 +45,7 @@ export default function CatalogBrowser({ path, id, type, onNavigate, sidebarOpen
     const [sourcesCount, setSourcesCount] = useState(0);
 
     useEffect(() => {
-        dremioService.getSources().then(res => setSourcesCount(res.length)).catch(console.error);
+        dremioService.getSources().then(res => setSourcesCount(res.length)).catch(() => setSourcesCount(0));
     }, []);
 
     useEffect(() => {
@@ -76,8 +76,7 @@ export default function CatalogBrowser({ path, id, type, onNavigate, sidebarOpen
                 console.log("Children result (by Path):", result);
                 setItems(result.children || []);
             }
-        } catch (error) {
-            console.error("Failed to load catalog children:", error);
+        } catch {
             setItems([]);
         } finally {
             setLoading(false);

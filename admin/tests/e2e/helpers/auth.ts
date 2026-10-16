@@ -4,6 +4,12 @@ export const E2E_ADMIN_EMAIL = process.env.E2E_ADMIN_EMAIL || 'admin@nusantaraso
 export const E2E_ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD || 'Nusantarasoft123!';
 
 export async function loginAsAdmin(page: Page) {
+    // Stale PWA precache must not intercept chunk loads during long route crawls.
+    await page.addInitScript(() => {
+        void navigator.serviceWorker?.getRegistrations().then((regs) => {
+            regs.forEach((r) => void r.unregister());
+        });
+    });
     await page.goto('/login');
     await page.getByLabel('Email').fill(E2E_ADMIN_EMAIL);
     await page.getByLabel('Password').fill(E2E_ADMIN_PASSWORD);

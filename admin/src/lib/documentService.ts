@@ -18,7 +18,8 @@ export interface DocStats { totalFiles: number; totalFolders: number; totalSize:
 // ─── Service ─────────────────────────────────────────────
 export const documentService = {
     // ─── Folders ─────────────────────────────────────────
-    async getFolders(tenantId = DEFAULT_TENANT_ID, parentId?: string): Promise<DocFolder[]> {
+    async getFolders(tenantId: string = DEFAULT_TENANT_ID, parentId?: string): Promise<DocFolder[]> {
+        tenantId = tenantId ?? DEFAULT_TENANT_ID;
         const d = await gql<{ docFolders: DocFolder[] }>(`query($t:String!,$p:String){docFolders(tenantId:$t,parentId:$p){id tenantId name parentId module color description createdBy createdAt childCount fileCount}}`, { t: tenantId, p: parentId });
         return d.docFolders || [];
     },
@@ -39,7 +40,8 @@ export const documentService = {
         const d = await gql<{ docFiles: DocFile[] }>(`query($t:String!,$f:String,$s:String,$q:String,$m:String){docFiles(tenantId:$t,folderId:$f,status:$s,search:$q,module:$m){id tenantId folderId name mimeType sizeBytes storagePath currentVersion tags module moduleRefId status lockedBy lockedAt createdBy createdAt updatedAt}}`, { t: tenantId, f: filters?.folderId, s: filters?.status, q: filters?.search, m: filters?.module });
         return d.docFiles || [];
     },
-    async getRecentFiles(tenantId = DEFAULT_TENANT_ID, limit = 20): Promise<DocFile[]> {
+    async getRecentFiles(tenantId: string = DEFAULT_TENANT_ID, limit = 20): Promise<DocFile[]> {
+        tenantId = tenantId ?? DEFAULT_TENANT_ID;
         const d = await gql<{ docRecentFiles: DocFile[] }>(`query($t:String!,$l:Int){docRecentFiles(tenantId:$t,limit:$l){id tenantId folderId name mimeType sizeBytes currentVersion tags status createdBy createdAt updatedAt}}`, { t: tenantId, l: limit });
         return d.docRecentFiles || [];
     },

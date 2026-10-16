@@ -98,6 +98,7 @@ class DcimRack {
     @Field(() => Int, { nullable: true }) widthMm?: number;
     @Field(() => Int, { nullable: true }) depthMm?: number;
     @Field(() => Float, { nullable: true }) maxWeightKg?: number;
+    @Field(() => Float, { nullable: true }) maxWeight?: number;
     @Field(() => Float, { nullable: true }) positionX?: number;
     @Field(() => Float, { nullable: true }) positionY?: number;
     @Field(() => Float, { nullable: true }) positionZ?: number;
@@ -235,6 +236,7 @@ const mapRack = (dbRow: any) => ({
     widthMm: dbRow.width_mm,
     depthMm: dbRow.depth_mm,
     maxWeightKg: dbRow.max_weight_kg,
+    maxWeight: dbRow.max_weight_kg,
     positionX: dbRow.position_x,
     positionY: dbRow.position_y,
     positionZ: dbRow.position_z,
@@ -351,6 +353,12 @@ export class DcimResolver {
         @Args('rowId', { nullable: true }) rowId?: string
     ) {
         const data = await this.dcimService.getRacks(tenantId, { roomId, podId, rowId });
+        return data.map(mapRack);
+    }
+
+    @Query(() => [DcimRack], { name: 'getRacks' })
+    async getRacks(@Args('tenantId') tenantId: string) {
+        const data = await this.dcimService.getRacks(tenantId, {});
         return data.map(mapRack);
     }
 

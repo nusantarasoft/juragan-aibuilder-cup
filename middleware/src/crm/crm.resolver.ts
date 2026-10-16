@@ -378,6 +378,11 @@ class Deal {
     @Field({ nullable: true }) leadSource?: string;
     @Field({ nullable: true }) nextStep?: string;
     @Field({ nullable: true }) lossReason?: string;
+    @Field({ nullable: true }) lostReason?: string;
+    @Field({ nullable: true }) wonReason?: string;
+    @Field({ nullable: true }) priority?: string;
+    @Field({ nullable: true }) notes?: string;
+    @Field({ nullable: true }) dealName?: string;
     @Field({ nullable: true }) ownerId?: string;
     @Field({ nullable: true }) status?: string;
     @Field(() => GraphQLJSON, { nullable: true }) tags?: any;
@@ -807,7 +812,10 @@ function mapDeal(row: any): Deal {
         closeDate: row.close_date, accountId: row.account_id,
         contactId: row.contact_id, type: row.type,
         leadSource: row.lead_source, nextStep: row.next_step,
-        lossReason: row.loss_reason, ownerId: row.owner_id,
+        lossReason: row.loss_reason, lostReason: row.loss_reason, wonReason: row.won_reason,
+        priority: row.priority ?? row.custom_fields?.priority,
+        notes: row.description, dealName: row.name,
+        ownerId: row.owner_id,
         status: row.status, tags: row.tags, customFields: row.custom_fields,
         accountName: row.accounts?.name,
         contactName,
@@ -996,6 +1004,13 @@ export class CrmResolver {
     @Query(() => Contact)
     async contact(@Args('id') id: string) {
         return mapContact(await this.crmService.getContact(id));
+    }
+
+    /** Alias for admin CRM surveys (same rows as `individuals`). */
+    @Query(() => [Individual], { name: 'crmContacts' })
+    async crmContacts(@Args('tenantId') tenantId: string) {
+        const rows = await this.crmService.getIndividuals(tenantId, {});
+        return rows.map(mapIndividual);
     }
 
     @Query(() => [Contact])

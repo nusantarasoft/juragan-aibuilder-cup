@@ -51,17 +51,18 @@ Rule: one DOING task at Cursor at a time (plus deploy). Gate: scope → PR → Q
 - [DONE] D-21 (UI-wave-4) Platform Metrics — Prometheus summary API + Demo tag / honest empty state (no fake SLO table as Live)
 - [DONE] D-22 (UI-wave-4) SCADA historian GraphQL + trends live/sample banners; BMS energy sample banner; BMS dashboard charts stay empty until point history wired
 - [DONE] D-23 (UI-wave-4) Full admin menuConfig + VO route crawl Playwright spec + coverage JSON (`.gstack/qa-reports/ui-wave-4-route-coverage.json`)
-- [TODO] D-24 (UI-wave-4) HR module GraphQL expects `hr_*` tables — QA stack missing schema; pages show empty until migrations land
+- [DONE] D-24 (UI-wave-4) HR `hr_*` schema in `supabase/migrations/20261016170000_hr_module.sql`; GraphQL field aliases on `hr.resolver.ts`
 - [DONE] D-25 (UI-wave-4 PO #74) PM `me` query drops `fullName`; middleware PM lists use plain `select('*')` until tenant_users↔individuals FK lands
 - **Adityo last-seen integrated (`development-adityo`):** `861a6588fe93594528f1079b7e58cc624a6550de` (2026-10-16 13:03 WIB) — VO HUD + Command Deck panels via D-9-style PR on `master` @ Wave 4 #74 tip; deploy docs / `pull-on-server.sh` **not** taken from his branch.
 - [DONE] D-26 (Adityo branch review @ `861a658`) Conflict markers + encoding garbage in `scripts/master-production/pull-on-server.sh` / `docs/deploy-master-production.md` on `development-adityo` — **master deploy-key version kept** in integration PR (no import from his branch).
 - [DONE] D-27 (Adityo branch review @ `861a658`) VO HUD rewrite integrated with Wave 1 honesty preserved (Kasir-only metrics, ID copy, demo labels, connect-wa, tenant settings).
 - [DONE] D-28 (Adityo branch review @ `861a658`) `database_dump_*.sql` **not** imported — remains on `development-adityo` only; tied to **F0-3** branch scrub.
 - [TODO] D-31 (UI-wave-4 PO #74) QA compose omits Supabase Realtime — Playwright narrow ignore for `realtime/v1/websocket` 503 only (`console.ts`)
-- [TODO] D-32 (UI-wave-4 PO #74) E-commerce `ecom_*` tables absent on minimal QA — narrow PGRST205 ignore until seed/migration
-- [TODO] D-33 (UI-wave-4 PO #74) system-health storage probe 401 without service JWT — narrow ignore on `/storage/v1/bucket` until ops proxy
+- [DONE] D-32 (UI-wave-4) E-commerce GraphQL aligned (`ecomOrderItems` tenant scope, field aliases); `20261016170200_qa_ecom_inventory_extensions.sql` for offers/discounts/packages/returns + inventory ops tables
+- [DONE] D-33 (UI-wave-4) system-health probes REST/auth endpoints available on QA compose (no storage bucket 401)
 - [TODO] D-34 (UI-wave-4 PO #74) Agentic OS dynamic chunk flake on long crawl — narrow ignore for `Loading chunk … agentic-os`
-- [TODO] D-35 (UI-wave-4 PO #74) Inventory `inv_*` / stock REST on QA — narrow PGRST205 until migrations seed
+- [DONE] D-35 (UI-wave-4) Inventory REST on QA via consolidated migrations; warehouse-map SSR guard for keyboard listeners
+- [DONE] D-36 (UI-wave-4 PO #75) Route crawl 320/320 — Dremio catalog tree + CrmPicker console races; e2e SW unregister; ITSM migration `20261016170100_itsm_itil_v4_tables.sql`; QA report `.gstack/qa-reports/qa-ui-wave-4-crawl-zero-2026-10-16.md`
 - [DONE] D-18 (UI-wave-1) VO inspector before/after — `.gstack/qa-reports/screenshots/ui-wave-1-vo-inspector-*-after.png` (Playwright on live stack, PR #70)
 - [DONE] D-1 (audit #31) Wire VO Live mode to osAgentSource; mockAgentSource only in explicit demo mode  → F1-2
 - [DONE] D-2 (audit #31) Fix misleading "Demo" badge on real DB agents in Agentic OS → F1-4

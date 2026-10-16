@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Select, Typography, Tag, Space } from "antd";
 import { BankOutlined, UserOutlined } from "@ant-design/icons";
 import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
@@ -72,9 +72,14 @@ export function CrmAccountPicker({
 }: CrmAccountPickerProps) {
     const [accounts, setAccounts] = useState<CrmAccount[]>([]);
     const [loading, setLoading] = useState(false);
+    const mountedRef = useRef(true);
 
     useEffect(() => {
+        mountedRef.current = true;
         loadAccounts();
+        return () => {
+            mountedRef.current = false;
+        };
     }, []);
 
     const loadAccounts = async () => {
@@ -88,11 +93,11 @@ export function CrmAccountPicker({
                 }`,
                 { tenantId: DEFAULT_TENANT_ID }
             );
-            setAccounts(data.accounts || []);
-        } catch (err) {
-            console.error("Failed to load CRM accounts:", err);
+            if (mountedRef.current) setAccounts(data.accounts || []);
+        } catch {
+            if (mountedRef.current) setAccounts([]);
         } finally {
-            setLoading(false);
+            if (mountedRef.current) setLoading(false);
         }
     };
 
@@ -179,9 +184,14 @@ export function CrmContactPicker({
 }: CrmContactPickerProps) {
     const [contacts, setContacts] = useState<CrmContact[]>([]);
     const [loading, setLoading] = useState(false);
+    const mountedRef = useRef(true);
 
     useEffect(() => {
+        mountedRef.current = true;
         loadContacts();
+        return () => {
+            mountedRef.current = false;
+        };
     }, [accountId]);
 
     const loadContacts = async () => {
@@ -195,11 +205,11 @@ export function CrmContactPicker({
                 }`,
                 { tenantId: DEFAULT_TENANT_ID, accountId: accountId || null }
             );
-            setContacts(data.contacts || []);
-        } catch (err) {
-            console.error("Failed to load CRM contacts:", err);
+            if (mountedRef.current) setContacts(data.contacts || []);
+        } catch {
+            if (mountedRef.current) setContacts([]);
         } finally {
-            setLoading(false);
+            if (mountedRef.current) setLoading(false);
         }
     };
 

@@ -30,11 +30,11 @@ const anim = (i: number) => ({ initial: { opacity: 0, y: 18 }, animate: { opacit
 
 /* ═══ GraphQL Queries ═══ */
 const GET_HR_STATS = `query($tenantId: String!) { hrDashboardStats(tenantId: $tenantId) { totalEmployees activeEmployees avgTenure newHiresThisMonth turnoverRate avgSalary totalPayrollThisMonth } }`;
-const GET_ECOM_STATS = `query($tenantId: String!) { ecomStats(tenantId: $tenantId) }`;
+const GET_ECOM_STATS = `query($tenantId: String!) { ecomStats(tenantId: $tenantId) { totalOrders totalRevenue pending totalCustomers avgOrderValue } }`;
 const GET_ITSM_STATS = `query { itsmDashboardStats { openTickets totalTickets slaCompliancePct } }`;
 const GET_PM_STATS = `query($tenantId: String!) { pmProjects(tenantId: $tenantId) { id status } }`;
 const GET_ACCOUNTING = `query($tenantId: String!) { acctDashboard(tenantId: $tenantId) { totalRevenue totalExpenses netIncome totalAssets totalLiabilities } }`;
-const GET_NOTIFICATION_STATS = `query($tenantId: String!) { notificationStats(tenantId: $tenantId) }`;
+const GET_NOTIFICATION_STATS = `query($tenantId: String!) { notificationStats(tenantId: $tenantId) { totalLogs sentLogs failedLogs totalNotifications unreadNotifications activeChannels } }`;
 
 /* ═══ Demo / fallback data ═══ */
 const DEMO_REVENUE = [

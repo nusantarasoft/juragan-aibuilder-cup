@@ -1252,6 +1252,7 @@ class EcomCustomerType {
     @Field(() => Int, { nullable: true }) totalOrders?: number;
     @Field(() => Float, { nullable: true }) totalSpent?: number;
     @Field(() => Int, { nullable: true }) loyaltyPoints?: number;
+    @Field({ nullable: true }) loyaltyTier?: string;
     @Field({ nullable: true }) notes?: string;
     @Field(() => [String], { nullable: true }) tags?: string[];
     @Field({ nullable: true }) status?: string;
@@ -1259,6 +1260,8 @@ class EcomCustomerType {
     @Field({ nullable: true }) contactId?: string;
     @Field({ nullable: true }) createdAt?: string;
     @Field({ nullable: true }) updatedAt?: string;
+    @Field({ nullable: true }) name?: string;
+    @Field({ nullable: true }) lastOrderDate?: string;
 }
 
 @ObjectType()
@@ -1278,11 +1281,14 @@ class EcomOrderType {
     @Field(() => Float, { nullable: true }) shippingCost?: number;
     @Field(() => Float, { nullable: true }) subtotal?: number;
     @Field(() => Float, { nullable: true }) taxAmount?: number;
+    @Field(() => Float, { nullable: true }) tax?: number;
     @Field(() => Float, { nullable: true }) discountAmount?: number;
+    @Field(() => Float, { nullable: true }) discount?: number;
     @Field(() => Float, { nullable: true }) totalAmount?: number;
     @Field(() => Float, { nullable: true }) paidAmount?: number;
     @Field({ nullable: true }) paymentMethod?: string;
     @Field({ nullable: true }) paymentStatus?: string;
+    @Field({ nullable: true }) fulfillmentType?: string;
     @Field({ nullable: true }) notes?: string;
     @Field({ nullable: true }) internalNotes?: string;
     @Field({ nullable: true }) source?: string;
@@ -1310,6 +1316,9 @@ class EcomOrderItemType {
     @Field(() => Float, { nullable: true }) discount?: number;
     @Field(() => Float, { nullable: true }) tax?: number;
     @Field(() => Float) subtotal: number;
+    @Field(() => Float, { nullable: true }) totalPrice?: number;
+    @Field({ nullable: true }) category?: string;
+    @Field({ nullable: true }) sku?: string;
     @Field(() => GraphQLJSON, { nullable: true }) variantInfo?: any;
     @Field({ nullable: true }) notes?: string;
     @Field({ nullable: true }) status?: string;
@@ -1446,9 +1455,19 @@ const mapEcomCustomer = (r: any): any => ({
     city: r.city, province: r.province, postalCode: r.postal_code,
     idNumber: r.id_number, customerType: r.customer_type,
     totalOrders: r.total_orders, totalSpent: parseFloat(r.total_spent) || 0,
-    loyaltyPoints: r.loyalty_points, notes: r.notes, tags: r.tags,
+    loyaltyPoints: r.loyalty_points,
+    loyaltyTier: r.loyalty_tier || (() => {
+        const pts = r.loyalty_points || 0;
+        if (pts >= 5000) return 'platinum';
+        if (pts >= 2000) return 'gold';
+        if (pts >= 500) return 'silver';
+        return 'standard';
+    })(),
+    notes: r.notes, tags: r.tags,
     status: r.status, createdAt: r.created_at, updatedAt: r.updated_at,
     accountId: r.account_id, contactId: r.contact_id,
+    name: [r.first_name, r.last_name].filter(Boolean).join(' ').trim() || r.first_name,
+    lastOrderDate: r.last_order_date,
 });
 
 const mapEcomOrder = (r: any): any => ({
@@ -1459,7 +1478,10 @@ const mapEcomOrder = (r: any): any => ({
     shippingProvince: r.shipping_province, shippingPostalCode: r.shipping_postal_code,
     shippingMethod: r.shipping_method, shippingCost: parseFloat(r.shipping_cost) || 0,
     subtotal: parseFloat(r.subtotal) || 0, taxAmount: parseFloat(r.tax_amount) || 0,
+    tax: parseFloat(r.tax_amount) || 0,
     discountAmount: parseFloat(r.discount_amount) || 0,
+    discount: parseFloat(r.discount_amount) || 0,
+    fulfillmentType: r.fulfillment_type,
     totalAmount: parseFloat(r.total_amount) || 0,
     paidAmount: parseFloat(r.paid_amount) || 0,
     paymentMethod: r.payment_method, paymentStatus: r.payment_status,
@@ -1475,7 +1497,9 @@ const mapEcomOrderItem = (r: any): any => ({
     fulfillmentType: r.fulfillment_type, fulfillmentRef: r.fulfillment_ref,
     quantity: r.quantity, unitPrice: parseFloat(r.unit_price) || 0,
     discount: parseFloat(r.discount) || 0, tax: parseFloat(r.tax) || 0,
-    subtotal: parseFloat(r.subtotal) || 0, variantInfo: r.variant_info,
+    subtotal: parseFloat(r.subtotal) || 0, totalPrice: parseFloat(r.subtotal) || 0,
+    category: r.category, sku: r.item_sku,
+    variantInfo: r.variant_info,
     notes: r.notes, status: r.status, createdAt: r.created_at,
 });
 
@@ -3292,7 +3316,15 @@ export class InventoryResolver {
 
     // ─── Order Items ───────────────────────────────────────
     @Query(() => [EcomOrderItemType])
-    async ecomOrderItems(@Args('orderId') orderId: string) {
+    async ecomOrderItems(
+        @Args('orderId', { nullable: true }) orderId?: string,
+        @Args('tenantId', { nullable: true }) tenantId?: string,
+    ) {
+        if (tenantId && !orderId) {
+            const data = await this.inventoryService.getEcomOrderItemsForTenant(tenantId);
+            return data.map(mapEcomOrderItem);
+        }
+        if (!orderId) return [];
         const data = await this.inventoryService.getEcomOrderItems(orderId);
         return data.map(mapEcomOrderItem);
     }

@@ -25,40 +25,12 @@ const NARROW_IGNORE: Array<{ id: string; test: (msg: string) => boolean }> = [
             /WebSocket connection to 'ws:\/\/[^']*\/realtime\/v1\/websocket/i.test(m) &&
             /503|Unexpected response code: 503/i.test(m),
     },
-    // D-24: HR GraphQL hits PostgREST when hr_* migrations are absent on QA stack.
-    {
-        id: 'D-24',
-        test: (m) =>
-            /PGRST205/i.test(m) &&
-            (/hr_/i.test(m) || /Could not find the table 'public\.hr_/i.test(m)),
-    },
-    // D-32: E-commerce REST tables not seeded on minimal QA stack (inventory/ecom pages).
-    {
-        id: 'D-32',
-        test: (m) =>
-            /PGRST205/i.test(m) &&
-            (/ecom_/i.test(m) || /Could not find the table 'public\.ecom_/i.test(m)),
-    },
     // D-25 (residual): PM PostgREST embed tenant_users↔individuals until FK migration lands — only PGRST200 on that relationship.
     {
         id: 'D-25',
         test: (m) =>
             /PGRST200/i.test(m) &&
             /foreign key relationship between.*tenant_users.*individuals/i.test(m),
-    },
-    // D-33: system-health probes Kong routes without user JWT; storage bucket list returns 401 until service-role proxy exists.
-    {
-        id: 'D-33',
-        test: (m) =>
-            /Failed to load resource.*401/i.test(m) &&
-            /\/storage\/v1\/bucket/i.test(m),
-    },
-    // D-35: Inventory REST tables absent on minimal QA stack (fixed-assets, stock-ops).
-    {
-        id: 'D-35',
-        test: (m) =>
-            /PGRST205/i.test(m) &&
-            (/inv_/i.test(m) || /inventory_/i.test(m)),
     },
     // D-34: Agentic OS dynamic chunk load failure on slow crawl (known flaky chunk name, not a logic error).
     {

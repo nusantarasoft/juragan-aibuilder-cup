@@ -20,6 +20,22 @@ export class PmUserReference {
 }
 
 @ObjectType()
+class PmMemberUser {
+    @Field() id: string;
+    @Field() firstName: string;
+    @Field() lastName: string;
+    @Field({ nullable: true }) email?: string;
+}
+
+@ObjectType()
+class PmMember {
+    @Field() id: string;
+    @Field() userId: string;
+    @Field(() => PmMemberUser, { nullable: true }) user?: PmMemberUser;
+    @Field() role: string;
+}
+
+@ObjectType()
 export class PmProject {
     @Field(() => ID)
     id: string;
@@ -92,6 +108,12 @@ export class PmProject {
 
     @Field({ nullable: true })
     pmbokEdition?: string;
+
+    @Field(() => [String], { nullable: true })
+    linkedDealIds?: string[];
+
+    @Field(() => [String], { nullable: true })
+    linkedTicketIds?: string[];
 
     @Field()
     createdAt: string;
@@ -1230,6 +1252,8 @@ function mapProject(row: any): PmProject {
         pmbokRiskEnabled: row.pmbok_risk_enabled,
         pmbokProcurementEnabled: row.pmbok_procurement_enabled,
         pmbokStakeholderEnabled: row.pmbok_stakeholder_enabled,
+        linkedDealIds: row.linked_deal_ids || row.custom_fields?.linkedDealIds || [],
+        linkedTicketIds: row.linked_ticket_ids || row.custom_fields?.linkedTicketIds || [],
         createdAt: row.created_at,
         updatedAt: row.updated_at,
     };
@@ -2574,7 +2598,7 @@ export class PmResolver {
     }
 
     /** Backlog UI expects pmMembers; v1 returns empty until tenant_users roster is wired (D-25). */
-    @Query(() => [GraphQLJSON])
+    @Query(() => [PmMember])
     async pmMembers(@Args('tenantId') _tenantId: string) {
         return [];
     }
