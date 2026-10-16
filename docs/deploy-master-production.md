@@ -92,8 +92,9 @@ Step `[2/3]`–`[3/3]`: upload script pull + trigger `redeploy-detached.sh start
 | Log deploy | `/opt/nusantarasoft-3/logs/deploy-YYYYMMDD-HHMMSS.log` |
 | Lock | `/opt/nusantarasoft-3/logs/.deploy.lock` |
 | State | `/opt/nusantarasoft-3/logs/.deploy.state` — ditulis **segera** saat `start` (STATUS=`running`, LOG, SHA target, STARTED); diperbarui ke `success`/`failed` + EXIT saat job selesai |
+| Lock (early) | `.deploy.lock` ditulis bersamaan state (PID=`0` + LOG) **sebelum** wrapper spawn; PID wrapper menggantikan `0` setelah `nohup` (D-8) |
 
-Setelah putus: `deploy.ps1 -Attach` (tail sampai selesai) atau `-Status` (snapshot). Keduanya memastikan `logs/` ada, meng-upload `redeploy-detached.sh` terbaru, lalu poll status (lock/PID hidup menang atas state file stale). Lock menolak deploy concurrent; jangan start deploy baru saat yang lama masih jalan.
+Setelah putus: `deploy.ps1 -Attach` (tail sampai selesai) atau `-Status` (snapshot). Keduanya memastikan `logs/` ada, meng-upload `redeploy-detached.sh` terbaru, lalu poll status (lock/PID hidup menang atas state file stale; poll pertama retry idle ≤15s). Lock menolak deploy concurrent; jangan start deploy baru saat yang lama masih jalan.
 
 ## Hermes runtime (`volumes/hermes`)
 

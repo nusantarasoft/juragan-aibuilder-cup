@@ -144,20 +144,30 @@ function Sync-RemoteDeployHelper {
 }
 
 function Get-RemoteDeployStatus {
-  $cmd = "cd $remoteDir && bash $detachedSh status"
-  $r = Invoke-SshCaptureWithRetry $cmd
-  $kv = Parse-DeployKeyValues $r.Text
-  $status = $kv["STATUS"]
-  if ($status -eq "done") { $status = "success" }
-  return @{
-    SshExit   = $r.ExitCode
-    Raw       = $r.Text
-    Status    = $status
-    Log       = $kv["LOG"]
-    Pid       = $kv["PID"]
-    Exit      = $kv["EXIT"]
-    Started   = $kv["STARTED"]
-    Sha       = $kv["SHA"]
+  param(
+    [int]$IdleRetrySeconds = 0
+  )
+  $deadline = (Get-Date).AddSeconds($IdleRetrySeconds)
+  while ($true) {
+    $cmd = "cd $remoteDir && bash $detachedSh status"
+    $r = Invoke-SshCaptureWithRetry $cmd
+    $kv = Parse-DeployKeyValues $r.Text
+    $status = $kv["STATUS"]
+    if ($status -eq "done") { $status = "success" }
+    if ($IdleRetrySeconds -gt 0 -and $status -eq "idle" -and (Get-Date) -lt $deadline) {
+      Start-Sleep -Seconds 1
+      continue
+    }
+    return @{
+      SshExit   = $r.ExitCode
+      Raw       = $r.Text
+      Status    = $status
+      Log       = $kv["LOG"]
+      Pid       = $kv["PID"]
+      Exit      = $kv["EXIT"]
+      Started   = $kv["STARTED"]
+      Sha       = $kv["SHA"]
+    }
   }
 }
 
@@ -193,8 +203,11 @@ function Wait-RemoteDeploy {
 
   $offset = 0
   $pollSec = 10
+  $pollNum = 0
   while ($true) {
-    $st = Get-RemoteDeployStatus
+    $idleRetry = if ($pollNum -eq 0) { 15 } else { 0 }
+    $pollNum++
+    $st = Get-RemoteDeployStatus -IdleRetrySeconds $idleRetry
     if (-not $StatusOnly) {
       Write-RemoteDeployTail -LogPath $st.Log -ByteOffset ([ref]$offset)
     }

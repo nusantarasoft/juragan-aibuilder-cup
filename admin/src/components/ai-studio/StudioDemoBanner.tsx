@@ -30,3 +30,31 @@ export function StudioDemoBanner({ title, detail }: { title: string; detail?: st
         />
     );
 }
+
+/** AI Studio surfaces backed by middleware + DB (F1-4 / P2-1). */
+export function StudioLiveModeTag() {
+    return (
+        <Tag color="green" style={{ margin: 0, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+            Live
+        </Tag>
+    );
+}
+
+export function StudioLiveBanner({ title, detail }: { title: string; detail?: string }) {
+    return (
+        <Alert
+            type="info"
+            showIcon
+            message={
+                <span className="flex flex-wrap items-center gap-2">
+                    <StudioLiveModeTag />
+                    <span>
+                        <strong>{title}</strong>
+                        {detail ? ` — ${detail}` : null}
+                    </span>
+                </span>
+            }
+            style={{ marginBottom: 16 }}
+        />
+    );
+}

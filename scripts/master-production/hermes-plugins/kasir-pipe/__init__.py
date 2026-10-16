@@ -738,7 +738,15 @@ def _start_bridge_proxy() -> None:
                 logger.debug("kasir-bridge-proxy: " + fmt, *args)
 
             def _handle_pair(self) -> bool:
-                path = (self.path or "/").split("?", 1)[0]
+                raw_path = self.path or "/"
+                path = raw_path.split("?", 1)[0]
+                session_qs = None
+                if "?" in raw_path:
+                    from urllib.parse import parse_qs
+
+                    qs = parse_qs(raw_path.split("?", 1)[1])
+                    session_qs = (qs.get("session") or [None])[0]
+                pair_mod.set_active_session(session_qs)
                 if path == "/pair/status" and self.command == "GET":
                     _json_response(self, 200, pair_mod.status())
                     return True

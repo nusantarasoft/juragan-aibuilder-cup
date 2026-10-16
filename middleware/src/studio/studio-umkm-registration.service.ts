@@ -5,7 +5,9 @@ import {
     Logger,
     NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { SupabaseService } from '../supabase/supabase.service';
+import { checkOnboardingRateLimit } from '../onboarding/onboarding-rate-limit';
 import {
     WHATSAPP_TRANSPORT,
     WhatsAppTransport,
@@ -15,6 +17,7 @@ import { StudioUmkmService } from './studio-umkm.service';
 import { StudioWhatsAppService } from './studio-whatsapp.service';
 import { assertNoSupabaseError } from './studio-supabase.util';
 import { normalizePhoneDigits } from './studio-whatsapp.util';
+import { TenantProvisioningService } from '../onboarding/tenant-provisioning.service';
 
 export type UmkmRegistrationStatus =
     | 'draft'
@@ -60,6 +63,8 @@ export class StudioUmkmRegistrationService {
         private readonly studioService: StudioService,
         private readonly studioUmkmService: StudioUmkmService,
         private readonly studioWhatsAppService: StudioWhatsAppService,
+        private readonly tenantProvisioning: TenantProvisioningService,
+        private readonly config: ConfigService,
         @Inject(WHATSAPP_TRANSPORT) private readonly waTransport: WhatsAppTransport,
     ) {}
 
@@ -94,8 +99,19 @@ export class StudioUmkmRegistrationService {
         return data as StudioUmkmRegistrationRow;
     }
 
+    /** F2-1: instant trial — shared provisioning pipeline (web + WA). */
+    async provisionPendingRegistration(
+        id: string,
+        actor = 'system:auto-provision',
+    ): Promise<StudioUmkmRegistrationRow | null> {
+        const row = await this.getById(id);
+        if (row.status !== 'pending') return null;
+        if (row.tenant_id) return row;
+        return this.approve(id, actor);
+    }
+
     /**
-     * Approve a pending registration: notebook + UMKM setup + WhatsApp config,
+     * Provision a pending registration via shared tenant pipeline,
      * then notify the owner on WhatsApp (best-effort).
      */
     async approve(id: string, approvedBy: string): Promise<StudioUmkmRegistrationRow> {
@@ -117,43 +133,36 @@ export class StudioUmkmRegistrationService {
         if (phone.length < 8) {
             throw new BadRequestException('Registration phone is invalid');
         }
+        const waMax = Number(this.config.get('ONBOARDING_WA_PROVISION_MAX_PER_PHONE_DAY') ?? 2);
+        if (!checkOnboardingRateLimit(`wa-provision:phone:${phone}`, waMax, 86_400_000)) {
+            throw new BadRequestException(
+                'Daily WhatsApp registration limit reached for this number',
+            );
+        }
         const storeName = (row.store_name || '').trim() || 'Toko UMKM';
-        let tenantId = slugifyTenant(storeName);
-
-        // Avoid tenant_id collisions by appending short phone suffix.
-        const existing = await this.studioWhatsAppService.getConfig(tenantId);
+        let studioSlug = slugifyTenant(storeName);
+        const existing = await this.studioWhatsAppService.getConfig(studioSlug);
         if (existing) {
-            tenantId = `${tenantId}-${phone.slice(-4)}`.slice(0, 64);
+            studioSlug = `${studioSlug}-${phone.slice(-4)}`.slice(0, 64);
         }
 
-        const notebook = await this.studioService.createNotebook(
-            storeName,
-            'UMKM penjualan via WhatsApp (daftar WA)',
-            approvedBy,
-            'customer',
-        );
-        await this.studioUmkmService.setupUmkmNotebook(notebook.id, tenantId);
-        await this.studioWhatsAppService.updateConfig(
-            {
-                notebookId: notebook.id,
-                enabled: true,
-                allowlistPhones: [phone],
-                useGuidedFlow: false,
-                // Align with Admin UMKM create form (prod configs use default).
-                sessionName: 'default',
-                businessPhone: phone,
-                label: storeName,
-            },
-            tenantId,
-        );
+        const provision = await this.tenantProvisioning.provisionStore({
+            source: 'wa_daftar',
+            storeDisplayName: storeName,
+            ownerPhone: phone,
+            preferredSlug: studioSlug,
+        });
+
+        const config = await this.studioWhatsAppService.getConfig(provision.studioSlug);
+        const notebookId = config?.notebook_id ?? null;
 
         const now = new Date().toISOString();
         const { data, error } = await this.admin()
             .from('studio_umkm_registrations')
             .update({
                 status: 'approved',
-                tenant_id: tenantId,
-                notebook_id: notebook.id,
+                tenant_id: provision.studioSlug,
+                notebook_id: notebookId,
                 approved_at: now,
                 approved_by: approvedBy,
                 updated_at: now,
@@ -170,7 +179,7 @@ export class StudioUmkmRegistrationService {
 
         await this.notifyOwner(
             phone,
-            `✅ Toko *${storeName}* sudah diaktifkan admin.\nCoba ketik: *cek stok* / *laporan* / *jual 1 [nama barang]*.`,
+            `✅ Trial *${storeName}* aktif (14 hari).\nCoba ketik: *cek stok* / *laporan* / *jual 1 [nama barang]*.`,
         );
 
         return data as StudioUmkmRegistrationRow;

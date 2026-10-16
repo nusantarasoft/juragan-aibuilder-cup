@@ -14,6 +14,9 @@ import { AgenticOsService } from './agentic-os.service';
 import { AgenticOsPulse } from './agentic-os.pulse';
 import { AgenticOsWorkflows } from './agentic-os.workflows';
 import { AgenticOsGoals } from './agentic-os.goals';
+import { AosRecruitService } from './aos-recruit.service';
+import { AosTenantAgentSettingsService } from './aos-tenant-agent-settings.service';
+import { AosUsageMetricsService } from './aos-usage-metrics.service';
 import { AOS_DEFAULT_TENANT } from './agentic-os.types';
 
 const AOS_TASKS_QUERY = `query { aosTasks(limit: 2) { id status } }`;
@@ -72,6 +75,9 @@ describe('aosTasks GraphQL auth (GlobalAuthGuard)', () => {
                 { provide: AgenticOsPulse, useValue: {} },
                 { provide: AgenticOsWorkflows, useValue: {} },
                 { provide: AgenticOsGoals, useValue: {} },
+                { provide: AosRecruitService, useValue: {} },
+                { provide: AosTenantAgentSettingsService, useValue: {} },
+                { provide: AosUsageMetricsService, useValue: { getMetrics: vi.fn() } },
             ],
         }).compile();
 

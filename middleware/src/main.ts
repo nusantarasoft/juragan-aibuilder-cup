@@ -7,6 +7,14 @@ async function bootstrap() {
     // rawBody: true disables JSON parsing and breaks POST /graphql (login, notebooks, etc.)
     const app = await NestFactory.create(AppModule, { bodyParser: false });
 
+    const expressApp = app.getHttpAdapter().getInstance() as express.Application;
+    const trustProxy = process.env.TRUST_PROXY ?? '1';
+    if (trustProxy === 'true' || trustProxy === '1') {
+        expressApp.set('trust proxy', Number(process.env.TRUST_PROXY_HOPS ?? 1));
+    } else if (/^\d+$/.test(trustProxy)) {
+        expressApp.set('trust proxy', Number(trustProxy));
+    }
+
     app.use(
         express.json({
             limit: '50mb',

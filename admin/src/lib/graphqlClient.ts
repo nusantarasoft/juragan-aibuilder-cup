@@ -99,7 +99,7 @@ export const queries = {
     health: `query { health }`,
 
     // Auth queries
-    me: `query { me { id email role } }`,
+    me: `query { me { id email role tenantId studioSlug emailVerified } }`,
 
     // Pages queries
     pages: `query Pages($status: String) {
@@ -157,7 +157,7 @@ export const mutations = {
         signIn(input: { email: $email, password: $password }) {
             accessToken
             refreshToken
-            user { id email role }
+            user { id email role tenantId studioSlug emailVerified }
         }
     }`,
 

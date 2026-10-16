@@ -805,6 +805,12 @@ export class AgenticOsService {
         return updated;
     }
 
+    async getTenantSubscriptionPlan(tenantId: string): Promise<string> {
+        const t = tenantOf(tenantId);
+        const { data } = await this.db.from('tenants').select('subscription_plan').eq('id', t).maybeSingle();
+        return ((data as Row | null)?.subscription_plan as string | undefined) ?? 'trial';
+    }
+
     async createAgent(tenantId: string | undefined, input: AosAgentInput, actor: AosActor): Promise<AosAgent> {
         const t = tenantOf(tenantId);
         const name = (input.name ?? '').trim();

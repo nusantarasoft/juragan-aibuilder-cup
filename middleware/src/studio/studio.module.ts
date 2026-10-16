@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { StudioService } from './studio.service';
 import { GuideFlowService } from './guide-flow.service';
@@ -28,6 +28,16 @@ import { StudioOutputService } from './studio-output.service';
 import { InternalKasirConsultController } from './internal-kasir-consult.controller';
 import { KasirConsultAosTaskService } from './kasir-consult-aos-task.service';
 import { AgenticOsModule } from '../agentic-os/agentic-os.module';
+import { OnboardingModule } from '../onboarding/onboarding.module';
+import { StudioWebCrawlerService } from './studio-web-crawler.service';
+import { StudioWebCrawlerWorker } from './studio-web-crawler.worker';
+import { StudioWebCrawlerResolver } from './studio-web-crawler.resolver';
+import { StudioKnowledgeGraphService } from './studio-knowledge-graph.service';
+import { StudioKnowledgeGraphResolver } from './studio-knowledge-graph.resolver';
+import { StudioAgentBuilderService } from './studio-agent-builder.service';
+import { StudioAgentBuilderResolver } from './studio-agent-builder.resolver';
+import { StudioLabelStudioService } from './studio-label-studio.service';
+import { StudioLabelStudioResolver } from './studio-label-studio.resolver';
 
 @Module({
     imports: [
@@ -40,6 +50,7 @@ import { AgenticOsModule } from '../agentic-os/agentic-os.module';
         WhatsAppProviderModule,
         InventoryModule,
         AgenticOsModule,
+        forwardRef(() => OnboardingModule),
     ],
     controllers: [
         StudioUploadController,
@@ -64,6 +75,15 @@ import { AgenticOsModule } from '../agentic-os/agentic-os.module';
         StudioUmkmPendampingService,
         StudioUmkmCronService,
         KasirConsultAosTaskService,
+        StudioWebCrawlerService,
+        StudioWebCrawlerWorker,
+        StudioWebCrawlerResolver,
+        StudioKnowledgeGraphService,
+        StudioKnowledgeGraphResolver,
+        StudioAgentBuilderService,
+        StudioAgentBuilderResolver,
+        StudioLabelStudioService,
+        StudioLabelStudioResolver,
     ],
     exports: [
         StudioService,

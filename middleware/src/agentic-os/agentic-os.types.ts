@@ -395,6 +395,102 @@ export class AosKasirLiveSnapshot {
     @Field(() => Boolean, { nullable: true }) waOnline: boolean | null;
 }
 
+@ObjectType()
+export class AosRecruitCatalogEntry {
+    @Field() id: string;
+    @Field() name: string;
+    @Field() role: string;
+    @Field() description: string;
+    @Field() kind: string;
+    @Field() color: string;
+    @Field(() => Int) sortOrder: number;
+    @Field() recruitable: boolean;
+}
+
+@ObjectType()
+export class AosRecruitStatus {
+    @Field(() => Int) recruitedCount: number;
+    @Field(() => Int) maxAgents: number;
+    @Field() kasirRecruited: boolean;
+    @Field() serviceDeskRecruited: boolean;
+    @Field() financeRecruited: boolean;
+    @Field() salesRecruited: boolean;
+    @Field() devopsRecruited: boolean;
+    @Field() securityRecruited: boolean;
+    @Field() facilitiesRecruited: boolean;
+}
+
+@ObjectType()
+export class AosRecruitResult {
+    @Field(() => AosAgent) agent: AosAgent;
+    @Field() waConnectRequired: boolean;
+    @Field() message: string;
+}
+
+/** F3-2 — aggregated usage from AOS tasks + Studio WA / crawl / builder / KG (no parallel counters). */
+@ObjectType()
+export class AosAgentUsageMetrics {
+    @Field() agentId: string;
+    @Field() slug: string;
+    @Field() name: string;
+    @Field() role: string;
+    @Field() status: string;
+    @Field(() => Int) tasksCreated: number;
+    @Field(() => Int) tasksCompleted: number;
+    @Field(() => Int) tasksFailed: number;
+    @Field(() => Int) kasirWaTasks: number;
+}
+
+@ObjectType()
+export class AosTenantUsageMetrics {
+    @Field() available: boolean;
+    @Field() tenantId: string;
+    @Field(() => Int) periodDays: number;
+    @Field() periodStart: string;
+    @Field() periodEnd: string;
+    @Field(() => String, { nullable: true }) unavailableReason: string | null;
+    @Field(() => Int) recruitedAgents: number;
+    @Field(() => Int, { nullable: true }) waChatsToday: number | null;
+    @Field(() => Int, { nullable: true }) tasksCreated: number | null;
+    @Field(() => Int, { nullable: true }) tasksCompleted: number | null;
+    @Field(() => Int, { nullable: true }) tasksFailed: number | null;
+    @Field(() => Int, { nullable: true }) waInboundMessages: number | null;
+    @Field(() => Int, { nullable: true }) waOutboundReplies: number | null;
+    @Field(() => Int, { nullable: true }) crawlJobs: number | null;
+    @Field(() => Int, { nullable: true }) builderWorkflows: number | null;
+    @Field(() => Int, { nullable: true }) kgEmbeddedChunks: number | null;
+    @Field(() => [AosAgentUsageMetrics]) agents: AosAgentUsageMetrics[];
+}
+
+@ObjectType()
+export class AosTenantOwnerAgentSettings {
+    @Field() agentId: string;
+    @Field() slug: string;
+    @Field() name: string;
+    @Field() role: string;
+    @Field() status: string;
+    @Field(() => Int) dailyRunBudget: number;
+    @Field() quietHoursEnabled: boolean;
+    @Field() quietHoursTimezone: string;
+    @Field() quietHoursStart: string;
+    @Field() quietHoursEnd: string;
+}
+
+@InputType()
+export class AosTenantOwnerQuietHoursInput {
+    @Field(() => Boolean, { nullable: true }) enabled?: boolean;
+    @Field(() => String, { nullable: true }) timezone?: string;
+    @Field(() => String, { nullable: true }) start?: string;
+    @Field(() => String, { nullable: true }) end?: string;
+}
+
+@InputType()
+export class AosTenantOwnerAgentSettingsInput {
+    @Field(() => String, { nullable: true }) status?: string;
+    @Field(() => Int, { nullable: true }) dailyRunBudget?: number;
+    @Field(() => AosTenantOwnerQuietHoursInput, { nullable: true }) quietHours?: AosTenantOwnerQuietHoursInput | null;
+}
+
 // ── Phase 4 (Command Deck · Goals & gate reviews) ───────────────────────────
 
 @ObjectType()

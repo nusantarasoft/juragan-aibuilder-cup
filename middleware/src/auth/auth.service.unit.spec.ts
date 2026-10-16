@@ -76,10 +76,20 @@ function buildAuthService(options: {
         ),
     };
 
+    const emptyTenantQuery = {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        limit: vi.fn().mockReturnThis(),
+        maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+    };
+
     const supabaseMock = {
         getClient: () => ({ auth: authClient }),
         getAdminClient: () => ({
-            from: vi.fn().mockReturnValue(profileQuery),
+            from: vi.fn((table: string) => {
+                if (table === 'user_profiles') return profileQuery;
+                return emptyTenantQuery;
+            }),
         }),
         getClientWithToken: () => ({ auth: authClient }),
     } as unknown as SupabaseService;
@@ -227,6 +237,28 @@ describe('AuthService', () => {
         });
 
         await expect(service.signUp('a@b.com', 'Password123!')).rejects.toThrow('User already registered');
+    });
+
+    it('signIn rejects tenant_owner when email is not verified', async () => {
+        const { service } = buildAuthService({
+            profileRole: 'tenant_owner',
+            profileStatus: 'active',
+            signInResult: {
+                data: {
+                    user: {
+                        id: 'user-1',
+                        email: 'owner@example.com',
+                        email_confirmed_at: null,
+                    },
+                    session: { access_token: 'access-token', refresh_token: 'refresh-token' },
+                },
+                error: null,
+            },
+        });
+
+        await expect(service.signIn('owner@example.com', 'Password123!')).rejects.toThrow(
+            UnauthorizedException,
+        );
     });
 
     it('signIn uses DEFAULT_APP_ROLE when profile and fallback are empty', async () => {

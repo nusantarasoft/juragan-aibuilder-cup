@@ -3,19 +3,37 @@ import { hasMinRole } from '../auth/app-roles';
 import { tenantOf } from './agentic-os.service';
 import { AOS_DEFAULT_TENANT } from './agentic-os.types';
 
-export type AosSessionUser = { id: string; email?: string; role?: string };
+export type AosSessionUser = {
+    id: string;
+    email?: string;
+    role?: string;
+    tenantId?: string | null;
+};
 
-/** v1 CMS: admins are scoped to the platform default tenant; super_admin may pass another tenantId. */
+/** Platform admins → default tenant; tenant_owner → membership tenant; super_admin may override. */
 export function resolveAosTenant(user: AosSessionUser, requestedTenantId?: string | null): string {
-    const home = AOS_DEFAULT_TENANT;
     const normalized = requestedTenantId?.trim() || null;
+    const role = user.role ?? 'admin';
 
-    if (!normalized || normalized === 'default' || tenantOf(normalized) === home) {
+    if (hasMinRole(role, 'super_admin')) {
+        if (!normalized || normalized === 'default') return AOS_DEFAULT_TENANT;
+        return tenantOf(normalized);
+    }
+
+    if (role === 'tenant_owner') {
+        const home = user.tenantId?.trim();
+        if (!home) {
+            throw new ForbiddenException('Tenant membership required');
+        }
+        if (normalized && normalized !== 'default' && tenantOf(normalized) !== home) {
+            throw new ForbiddenException('You do not have access to this tenant');
+        }
         return home;
     }
 
-    if (hasMinRole(user.role ?? 'admin', 'super_admin')) {
-        return tenantOf(normalized);
+    const home = AOS_DEFAULT_TENANT;
+    if (!normalized || normalized === 'default' || tenantOf(normalized) === home) {
+        return home;
     }
 
     throw new ForbiddenException('You do not have access to this tenant');

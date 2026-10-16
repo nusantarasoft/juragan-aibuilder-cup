@@ -6,6 +6,7 @@ import { AosCapUsage, AosNextRun, AosPulseStatus, AosRun } from './agentic-os.ty
 import { cronNextIso } from './aos-cron';
 import { estimateCostUsd } from './aos-pricing';
 import { AgenticOsWorkflows } from './agentic-os.workflows';
+import { AosTenantAgentSettingsService } from './aos-tenant-agent-settings.service';
 
 const PULSE_TICK_MS = 20_000;
 const QUEUE_BATCH = 5;
@@ -99,6 +100,7 @@ export class AgenticOsPulse {
         private readonly svc: AgenticOsService,
         private readonly ai: AiRouterService,
         private readonly workflows: AgenticOsWorkflows,
+        private readonly tenantAgentSettings: AosTenantAgentSettingsService,
     ) {}
 
     // ════════════════════════════════════════════════════════════════════════
@@ -522,6 +524,8 @@ export class AgenticOsPulse {
             if (!agent) return `Agent ${agentRef} is missing`;
             if (agent.archived_at) return `Agent ${agent.name} is archived`;
             if (agent.status === 'offline' || agent.status === 'paused') return `Agent ${agent.name} is ${agent.status}`;
+            const autoGate = await this.tenantAgentSettings.assertAutoWorkAllowed(String(routine.tenant_id), String(agent.id));
+            if (autoGate.allowed === false) return autoGate.text;
         }
 
         const windowMinutes = Number(settings.rolling_window_minutes ?? 60);

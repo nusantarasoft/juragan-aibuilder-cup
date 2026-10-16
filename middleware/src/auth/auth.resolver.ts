@@ -14,6 +14,15 @@ class AuthUser {
 
     @Field(() => String, { nullable: true })
     role?: string;
+
+    @Field(() => String, { nullable: true })
+    tenantId?: string;
+
+    @Field(() => String, { nullable: true })
+    studioSlug?: string;
+
+    @Field(() => Boolean, { nullable: true })
+    emailVerified?: boolean;
 }
 
 @ObjectType()
@@ -77,6 +86,9 @@ export class AuthResolver {
                 id: result.user.id,
                 email: result.user.email,
                 role: result.user.role,
+                tenantId: (result.user as { tenantId?: string }).tenantId,
+                studioSlug: (result.user as { studioSlug?: string }).studioSlug,
+                emailVerified: Boolean((result.user as { emailVerified?: boolean }).emailVerified),
             } : undefined,
         };
     }
@@ -119,6 +131,9 @@ export class AuthResolver {
             id: user.id,
             email: user.email,
             role: user.role,
+            tenantId: (user as { tenantId?: string }).tenantId,
+            studioSlug: (user as { studioSlug?: string }).studioSlug,
+            emailVerified: Boolean((user as { emailVerified?: boolean }).emailVerified),
         } : null;
     }
 

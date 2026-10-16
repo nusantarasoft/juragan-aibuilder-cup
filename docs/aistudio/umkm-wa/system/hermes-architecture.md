@@ -61,7 +61,7 @@ Business ladder: [`diagrams/aistudio/umkm-wa/business/`](../../../../diagrams/ai
 | **studio_whatsapp_config** | Enabled tenants + `business_phone` ∪ `allowlist_phones` + notebook. |
 | **studio_umkm_registrations** | DAFTAR drafts/pending (wizard). |
 
-Shared **one** business WhatsApp number (not one Hermes profile per tenant). Tenants are separated by owner phone on the allowlist.
+**Default (F2-3):** shared **one** NS business WhatsApp number; tenant isolation = owner/staff on `tenant_wa_whitelist`. **Optional (P2-5):** per-store dedicated session (`tenant_stores.wa_inbox_mode=dedicated`, Hermes pair `?session=umkm-{slug}`) — shared remains default; see [docs/design/p2-5-dedicated-wa.md](../../../design/p2-5-dedicated-wa.md).
 
 ---
 

@@ -65,10 +65,10 @@ test.describe('F1-4 Live vs Demo — full stack (live GraphQL)', () => {
         await page.waitForTimeout(2500);
         await shot(page, 'f1-4-aistudio-home-live.png');
 
-        const routes: { path: string; file: string; expectDemo?: boolean }[] = [
-            { path: '/admin/ai-studio/web-crawler', file: 'f1-4-aistudio-crawler-demo.png', expectDemo: true },
-            { path: '/admin/ai-studio/knowledge-graph', file: 'f1-4-aistudio-knowledge-graph-demo.png', expectDemo: true },
-            { path: '/admin/ai-studio/agent-builder', file: 'f1-4-aistudio-agent-builder-demo.png', expectDemo: true },
+        const routes: { path: string; file: string; expectDemo?: boolean; expectLive?: boolean }[] = [
+            { path: '/admin/ai-studio/web-crawler', file: 'f1-4-aistudio-crawler-live.png', expectLive: true },
+            { path: '/admin/ai-studio/knowledge-graph', file: 'f1-4-aistudio-knowledge-graph-live.png', expectLive: true },
+            { path: '/admin/ai-studio/agent-builder', file: 'f1-4-aistudio-agent-builder-live.png', expectLive: true },
             { path: '/admin/ai-studio/label-studio', file: 'f1-4-aistudio-label-studio-demo.png', expectDemo: true },
             { path: '/admin/ai-studio/umkm', file: 'f1-4-aistudio-umkm-live.png' },
             { path: '/admin/ai-studio/ai-gateway', file: 'f1-4-aistudio-ai-gateway-live.png' },
@@ -80,6 +80,9 @@ test.describe('F1-4 Live vs Demo — full stack (live GraphQL)', () => {
             await page.waitForTimeout(2000);
             if (r.expectDemo) {
                 await expect(page.getByText('Demo', { exact: true }).first()).toBeVisible({ timeout: 30_000 });
+            }
+            if (r.expectLive) {
+                await expect(page.getByText('Live', { exact: true }).first()).toBeVisible({ timeout: 30_000 });
             }
             await shot(page, r.file);
         }

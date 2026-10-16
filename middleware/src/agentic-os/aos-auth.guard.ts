@@ -7,7 +7,7 @@ const SIGN_IN_MESSAGE = 'Sign in to change the Agentic OS';
 type AosGqlContext = {
     req?: {
         headers?: { authorization?: string };
-        user?: { id: string; email?: string; role?: string } | null;
+        user?: { id: string; email?: string; role?: string; tenantId?: string | null } | null;
     };
 };
 
@@ -39,7 +39,12 @@ export class AosAuthGuard implements CanActivate {
 
         try {
             const user = await this.authService.getUser(token);
-            req!.user = { id: user.id, email: user.email, role: user.role };
+            req!.user = {
+                id: user.id,
+                email: user.email,
+                role: user.role,
+                tenantId: (user as { tenantId?: string | null }).tenantId ?? null,
+            };
             return true;
         } catch (err) {
             throw new UnauthorizedException(err instanceof Error ? err.message : 'Invalid session');
