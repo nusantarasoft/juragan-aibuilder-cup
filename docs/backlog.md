@@ -29,8 +29,8 @@ Rule: one DOING task at Cursor at a time (plus deploy). Gate: scope → PR → Q
 - [SKIPPED] F3-4 Pricing/subscription — **deferred** per Akbar (pricing skip); revisit after pilot / F3-5+ wedge
 - [DONE] F3-5 **Finance** (accounting + reports) recruitable SKU — merged [#63](https://github.com/nusantarasoft/nusantarasoft-3/pull/63) @ `fc1b2e0`; design [docs/design/f3-5-finance-recruit.md](design/f3-5-finance-recruit.md); ops [docs/ops/f3-5-recruit-flow.md](ops/f3-5-recruit-flow.md); QA PASS 2026-10-16 (`.gstack/qa-reports/qa-f3-5-finance-recruit-2026-10-16.md`); screenshots `/cursor/stores/self/media/f3-5-finance-*.png`
 - [DONE] F3-6 **Sales** (CRM + news) recruitable SKU — merged [#64](https://github.com/nusantarasoft/nusantarasoft-3/pull/64) @ `1f06645`; design [docs/design/f3-6-sales-recruit.md](design/f3-6-sales-recruit.md); ops [docs/ops/f3-6-recruit-flow.md](ops/f3-6-recruit-flow.md); QA PASS 2026-10-16 (`.gstack/qa-reports/qa-f3-6-sales-recruit-2026-10-16.md`); screenshots `/cursor/stores/self/media/f3-6-sales-*.png`
-- [DOING] F3-7 **DevOps** recruitable SKU — PR `cursor/f3-7-devops-recruit-7f6e`; design [docs/design/f3-7-devops-recruit.md](design/f3-7-devops-recruit.md); ops [docs/ops/f3-7-recruit-flow.md](ops/f3-7-recruit-flow.md)
-- [TODO] F3-8 **Security** recruitable SKU — backlog only
+- [DONE] F3-7 **DevOps** recruitable SKU — merged [#65](https://github.com/nusantarasoft/nusantarasoft-3/pull/65) @ `f7dbd2b`; design [docs/design/f3-7-devops-recruit.md](design/f3-7-devops-recruit.md); ops [docs/ops/f3-7-recruit-flow.md](ops/f3-7-recruit-flow.md); QA PASS 2026-10-16 (`.gstack/qa-reports/qa-f3-7-devops-recruit-2026-10-16.md`)
+- [DOING] F3-8 **Security** recruitable SKU — PR `cursor/f3-8-security-recruit-fdca`; design [docs/design/f3-8-security-recruit.md](design/f3-8-security-recruit.md); ops [docs/ops/f3-8-recruit-flow.md](ops/f3-8-recruit-flow.md)
 - [TODO] F3-9 **Facilities** (BMS / DCIM / SCADA) recruitable SKU — backlog only
 
 **F3 recruit queue lock (Akbar 2026-10-16):** Finance → Sales → DevOps → Security → Facilities (CS WhatsApp + Stok/pembukuan remain **Segera hadir**).

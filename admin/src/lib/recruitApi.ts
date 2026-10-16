@@ -19,6 +19,7 @@ export type RecruitStatus = {
     financeRecruited: boolean;
     salesRecruited: boolean;
     devopsRecruited: boolean;
+    securityRecruited: boolean;
 };
 
 export async function fetchRecruitCatalog(): Promise<RecruitCatalogEntry[]> {
@@ -30,7 +31,7 @@ export async function fetchRecruitCatalog(): Promise<RecruitCatalogEntry[]> {
 
 export async function fetchRecruitStatus(): Promise<RecruitStatus> {
     const d = await aosGql<{ aosRecruitStatus: RecruitStatus }>(
-        `query { aosRecruitStatus { recruitedCount maxAgents kasirRecruited serviceDeskRecruited financeRecruited salesRecruited devopsRecruited } }`,
+        `query { aosRecruitStatus { recruitedCount maxAgents kasirRecruited serviceDeskRecruited financeRecruited salesRecruited devopsRecruited securityRecruited } }`,
     );
     return d.aosRecruitStatus;
 }

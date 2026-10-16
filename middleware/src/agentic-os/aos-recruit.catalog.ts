@@ -1,4 +1,4 @@
-/** Server-side recruit catalog (F2-2 + F3-1 + F3-5 + F3-6 + F3-7). Enterprise templates stay in Agent Studio for platform admins only. */
+/** Server-side recruit catalog (F2-2 + F3-1 + F3-5 + F3-6 + F3-7 + F3-8). Enterprise templates stay in Agent Studio for platform admins only. */
 
 export const TRIAL_MAX_RECRUITED_AGENTS = 3;
 
@@ -7,6 +7,7 @@ export const SERVICE_DESK_RECRUIT_TEMPLATE_ID = 'service-desk';
 export const FINANCE_RECRUIT_TEMPLATE_ID = 'finance';
 export const SALES_RECRUIT_TEMPLATE_ID = 'sales';
 export const DEVOPS_RECRUIT_TEMPLATE_ID = 'devops';
+export const SECURITY_RECRUIT_TEMPLATE_ID = 'security';
 
 export type RecruitCatalogKind = 'recruitable' | 'coming_soon' | 'enterprise_hidden';
 
@@ -70,13 +71,23 @@ export const RECRUIT_CATALOG: RecruitCatalogEntryDef[] = [
         sortOrder: 5,
     },
     {
+        id: SECURITY_RECRUIT_TEMPLATE_ID,
+        name: 'Security',
+        role: 'Security Analyst',
+        description:
+            'Triage temuan keamanan by exploitability, buka tiket remediasi dengan bukti — buat tiket butuh persetujuan manusia. Data security live tenant.',
+        kind: 'recruitable',
+        color: '#f43f5e',
+        sortOrder: 6,
+    },
+    {
         id: 'cs-soon',
         name: 'Customer Service',
         role: 'CS WhatsApp',
         description: 'Balas pertanyaan pelanggan dan FAQ toko.',
         kind: 'coming_soon',
         color: '#a78bfa',
-        sortOrder: 6,
+        sortOrder: 7,
     },
     {
         id: 'stok-soon',
@@ -85,15 +96,6 @@ export const RECRUIT_CATALOG: RecruitCatalogEntryDef[] = [
         description: 'Pantau stok, alert habis, dan restock.',
         kind: 'coming_soon',
         color: '#f59e0b',
-        sortOrder: 7,
-    },
-    {
-        id: 'security-soon',
-        name: 'Security',
-        role: 'Security Analyst',
-        description: 'Triage temuan keamanan dan tiket remediasi — antrian F3-8.',
-        kind: 'coming_soon',
-        color: '#f43f5e',
         sortOrder: 8,
     },
     {
@@ -234,12 +236,38 @@ export const DEVOPS_RECRUIT_AGENT_DEFAULTS = {
     status: 'active',
 };
 
+/** Aligned with Agent Studio `security` preset; remediation tickets need approval — no auto-write. */
+export const SECURITY_RECRUIT_AGENT_DEFAULTS = {
+    name: 'Security',
+    baseSlug: SECURITY_RECRUIT_TEMPLATE_ID,
+    role: 'Security Analyst',
+    persona:
+        'You triage security findings by real exploitability and raise remediation tickets with clear evidence.',
+    color: '#f43f5e',
+    zone: 'engineering',
+    deskId: 'eng-3-a',
+    modules: ['security', 'infrastructure'],
+    skills: ['Threat triage', 'CVE analysis'],
+    tools: ['module.read', 'module.draft', 'kb.search', 'ticket.create', 'activity.log'],
+    permissions: { security: 'draft', infrastructure: 'read' } as Record<string, string>,
+    runner: 'cloud' as const,
+    guardrails: {
+        denySend: true,
+        denyShare: true,
+        denyDelete: true,
+        requireApproval: ['ticket.create', 'write'],
+        noAutoRemediation: true,
+    },
+    status: 'active',
+};
+
 export const RECRUIT_TEMPLATE_IDS = [
     KASIR_RECRUIT_TEMPLATE_ID,
     SERVICE_DESK_RECRUIT_TEMPLATE_ID,
     FINANCE_RECRUIT_TEMPLATE_ID,
     SALES_RECRUIT_TEMPLATE_ID,
     DEVOPS_RECRUIT_TEMPLATE_ID,
+    SECURITY_RECRUIT_TEMPLATE_ID,
 ] as const;
 
 export type RecruitTemplateId = (typeof RECRUIT_TEMPLATE_IDS)[number];
@@ -250,6 +278,7 @@ export function recruitDefaultsForTemplate(templateId: string) {
     if (templateId === FINANCE_RECRUIT_TEMPLATE_ID) return FINANCE_RECRUIT_AGENT_DEFAULTS;
     if (templateId === SALES_RECRUIT_TEMPLATE_ID) return SALES_RECRUIT_AGENT_DEFAULTS;
     if (templateId === DEVOPS_RECRUIT_TEMPLATE_ID) return DEVOPS_RECRUIT_AGENT_DEFAULTS;
+    if (templateId === SECURITY_RECRUIT_TEMPLATE_ID) return SECURITY_RECRUIT_AGENT_DEFAULTS;
     return null;
 }
 
