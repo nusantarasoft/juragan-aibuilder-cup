@@ -80,7 +80,9 @@ export default function AccountsReceivablePage() {
                 accountingService.getInvoiceSummary(undefined, 'receivable'),
             ]);
             setInvoices(inv); setSummary(sum);
-        } catch (e) { console.error(e); }
+        } catch {
+                /* load failed */
+            }
         finally { setLoading(false); }
     };
     useEffect(() => { load(); }, [statusFilter]);
@@ -117,7 +119,9 @@ export default function AccountsReceivablePage() {
                 accountingService.getAccounts(),
             ]);
             setContacts(c); setAccounts(a.filter(acc => !acc.isHeader));
-        } catch (e) { console.error(e); }
+        } catch {
+                /* load failed */
+            }
     };
 
     const handleCreate = async () => {

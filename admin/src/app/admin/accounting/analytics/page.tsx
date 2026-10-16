@@ -15,7 +15,8 @@ import {
     Tooltip as RTooltip, ResponsiveContainer, PieChart, Pie, Cell,
     ReferenceLine, Legend,
 } from "recharts";
-import { gql, DEFAULT_TENANT_ID } from "@/lib/graphql";
+import { DEFAULT_TENANT_ID } from "@/lib/graphql";
+import { accountingService, type AcctAccount, type AcctJournal, type AcctInvoice } from "@/lib/accountingService";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import DecryptedText from "@/components/react-bits/DecryptedText";
@@ -27,17 +28,53 @@ const COLORS = ['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b', '#ef4444', '#ec4899'
 const fmt = (v: number) => v ? `Rp ${v.toLocaleString('id-ID')}` : 'Rp 0';
 const fmtShort = (v: number) => { if (Math.abs(v) >= 1e9) return `Rp ${(v / 1e9).toFixed(1)}B`; if (Math.abs(v) >= 1e6) return `Rp ${(v / 1e6).toFixed(1)}M`; if (Math.abs(v) >= 1e3) return `Rp ${(v / 1e3).toFixed(0)}K`; return `Rp ${Math.round(v)}`; };
 
-// ─── GraphQL Queries ───────────────────────────────────────
-const GET_DASHBOARD = `query($tenantId: String!) { accountingDashboard(tenantId: $tenantId) }`;
-const GET_JOURNALS = `query($tenantId: String!) { accountingJournalEntries(tenantId: $tenantId) { id entryNumber date description status totalDebit totalCredit lines { id accountId accountName debit credit description } createdAt } }`;
-const GET_ACCOUNTS = `query($tenantId: String!) { accountingChartOfAccounts(tenantId: $tenantId) { id code name type normalBalance parentId isActive } }`;
-const GET_INVOICES_AP = `query($tenantId: String!) { accountingInvoices(tenantId: $tenantId, type: "payable") { id invoiceNumber contactId contactName type status issueDate dueDate totalAmount paidAmount balanceDue createdAt } }`;
-const GET_INVOICES_AR = `query($tenantId: String!) { accountingInvoices(tenantId: $tenantId, type: "receivable") { id invoiceNumber contactId contactName type status issueDate dueDate totalAmount paidAmount balanceDue createdAt } }`;
-
 interface Account { id: string; code: string; name: string; type: string; normalBalance: string; parentId: string; isActive: boolean; }
 interface JournalLine { id: string; accountId: string; accountName: string; debit: number; credit: number; description: string; }
 interface Journal { id: string; entryNumber: string; date: string; description: string; status: string; totalDebit: number; totalCredit: number; lines: JournalLine[]; createdAt: string; }
 interface Invoice { id: string; invoiceNumber: string; contactId: string; contactName: string; type: string; status: string; issueDate: string; dueDate: string; totalAmount: number; paidAmount: number; balanceDue: number; createdAt: string; }
+
+function mapAccount(a: AcctAccount): Account {
+    return {
+        id: a.id,
+        code: a.accountCode,
+        name: a.name,
+        type: a.accountType,
+        normalBalance: a.normalBalance,
+        parentId: a.parentId || '',
+        isActive: a.status === 'active',
+    };
+}
+
+function mapJournal(j: AcctJournal): Journal {
+    return {
+        id: j.id,
+        entryNumber: j.journalNumber,
+        date: j.journalDate,
+        description: j.memo || j.reference || '',
+        status: j.status,
+        totalDebit: j.totalDebit,
+        totalCredit: j.totalCredit,
+        lines: [],
+        createdAt: j.createdAt || j.journalDate,
+    };
+}
+
+function mapInvoice(i: AcctInvoice, invoiceType: string): Invoice {
+    return {
+        id: i.id,
+        invoiceNumber: i.invoiceNumber,
+        contactId: i.contactId || '',
+        contactName: i.contactName || '',
+        type: invoiceType,
+        status: i.status,
+        issueDate: i.invoiceDate,
+        dueDate: i.dueDate,
+        totalAmount: i.totalAmount,
+        paidAmount: i.amountPaid,
+        balanceDue: i.amountDue,
+        createdAt: i.createdAt || i.invoiceDate,
+    };
+}
 
 export default function FinancialAnalyticsPage() {
     const [loading, setLoading] = useState(true);
@@ -51,16 +88,19 @@ export default function FinancialAnalyticsPage() {
     const isDark = antToken.colorBgContainer === '#141414' || antToken.colorBgBase?.includes('14');
 
     useEffect(() => {
-        const vars = { tenantId: DEFAULT_TENANT_ID };
+        const tenantId = DEFAULT_TENANT_ID;
         Promise.allSettled([
-            gql(GET_DASHBOARD, vars), gql(GET_JOURNALS, vars), gql(GET_ACCOUNTS, vars),
-            gql(GET_INVOICES_AR, vars), gql(GET_INVOICES_AP, vars),
+            accountingService.getDashboard(tenantId),
+            accountingService.getJournals(tenantId, { status: 'posted' }),
+            accountingService.getAccounts(tenantId),
+            accountingService.getInvoices(tenantId, { invoiceType: 'receivable' }),
+            accountingService.getInvoices(tenantId, { invoiceType: 'payable' }),
         ]).then(([d, j, a, ar, ap]) => {
-            if (d.status === 'fulfilled') setDashboard((d.value as any).accountingDashboard);
-            if (j.status === 'fulfilled') setJournals((j.value as any).accountingJournalEntries || []);
-            if (a.status === 'fulfilled') setAccounts((a.value as any).accountingChartOfAccounts || []);
-            if (ar.status === 'fulfilled') setInvoicesAR((ar.value as any).accountingInvoices || []);
-            if (ap.status === 'fulfilled') setInvoicesAP((ap.value as any).accountingInvoices || []);
+            if (d.status === 'fulfilled') setDashboard(d.value);
+            if (j.status === 'fulfilled') setJournals((j.value || []).map(mapJournal));
+            if (a.status === 'fulfilled') setAccounts((a.value || []).map(mapAccount));
+            if (ar.status === 'fulfilled') setInvoicesAR((ar.value || []).map((i) => mapInvoice(i, 'receivable')));
+            if (ap.status === 'fulfilled') setInvoicesAP((ap.value || []).map((i) => mapInvoice(i, 'payable')));
         }).finally(() => setLoading(false));
     }, []);
 
@@ -72,7 +112,7 @@ export default function FinancialAnalyticsPage() {
     const tooltipStyle = { background: isDark ? 'rgba(30,30,30,0.95)' : '#fff', border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#e5e7eb'}`, borderRadius: 8, fontSize: 12 };
 
     // ─── Derived data ──────────────────────────────────────
-    const dash = dashboard ? (typeof dashboard === 'string' ? JSON.parse(dashboard) : dashboard) : {};
+    const dash = dashboard || {};
     const totalRevenue = dash.totalRevenue || dash.total_revenue || 0;
     const totalExpenses = dash.totalExpenses || dash.total_expenses || 0;
     const netIncome = totalRevenue - totalExpenses;

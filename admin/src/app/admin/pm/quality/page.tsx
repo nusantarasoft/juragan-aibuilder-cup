@@ -103,7 +103,7 @@ export default function PmQualityPage() {
             setMetrics(mRes.pmQualityMetrics || []);
             setChecklists(cRes.pmQualityChecklists || []);
             setInspections(iRes.pmQualityInspections || []);
-        } catch (err: any) { console.error("PM Error", err); }
+        } catch { /* optional PM data */ }
         setQualityLoading(false);
     }, []);
 

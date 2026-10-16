@@ -107,7 +107,9 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
         let channel: RealtimeChannel | null = null;
         let pollingInterval: ReturnType<typeof setInterval> | null = null;
 
+        const realtimeEnabled = process.env.NEXT_PUBLIC_SUPABASE_REALTIME_ENABLED === 'true';
         try {
+            if (!realtimeEnabled) throw new Error('realtime disabled');
             const supabase = getSupabaseClient();
             channel = supabase
                 .channel('notifications-realtime')

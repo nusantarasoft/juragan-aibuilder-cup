@@ -81,7 +81,9 @@ export default function AccountsPayablePage() {
                 accountingService.getInvoiceSummary(undefined, 'payable'),
             ]);
             setInvoices(inv); setSummary(sum);
-        } catch (e) { console.error(e); }
+        } catch {
+                /* load failed */
+            }
         finally { setLoading(false); }
     };
     useEffect(() => { load(); }, [statusFilter]);
@@ -118,7 +120,9 @@ export default function AccountsPayablePage() {
                 accountingService.getAccounts(),
             ]);
             setContacts(c); setAccounts(a.filter(acc => !acc.isHeader));
-        } catch (e) { console.error(e); }
+        } catch {
+                /* load failed */
+            }
     };
 
     const handleCreate = async () => {

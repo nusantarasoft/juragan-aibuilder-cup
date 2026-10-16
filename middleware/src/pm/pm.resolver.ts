@@ -2572,5 +2572,11 @@ export class PmResolver {
     async generatePortfolioAnalysis(@Args('tenantId') tenantId: string) {
         return this.pmService.generatePortfolioAnalysis(tenantId);
     }
+
+    /** Backlog UI expects pmMembers; v1 returns empty until tenant_users roster is wired (D-25). */
+    @Query(() => [GraphQLJSON])
+    async pmMembers(@Args('tenantId') _tenantId: string) {
+        return [];
+    }
 }
 

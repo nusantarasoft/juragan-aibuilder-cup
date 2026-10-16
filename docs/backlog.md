@@ -48,8 +48,20 @@ Rule: one DOING task at Cursor at a time (plus deploy). Gate: scope → PR → Q
 - [DONE] D-17 (UI-wave-2) Sidebar **Hubungkan WhatsApp** + wedge links under AI Studio for `tenant_owner` — `menuConfig.tsx`, `tenantOwnerMenu.ts`
 - [DONE] D-19 (UI-wave-3 @ `5ebe69c`) Embed dashboards Refresh icons wired (`window.location.reload` + title) across datasets, infra, automation, collaboration, audit, tenants, messaging — `.gstack/qa-reports/qa-ui-wave-3-admin-buttons-2026-10-16.md`
 - [DONE] D-20 (UI-wave-3) BMS prefers live API systems/alarms; empty charts when no telemetry; sample banner only when tenant has no BMS rows — seed `20261016000000_bms_scada_qa_tenant_seed.sql`
-- [TODO] D-21 (UI-wave-3) Platform Metrics (`/admin/analytics/metrics`) still shows static SLO/demo endpoint table — needs Prometheus/Loki wiring or explicit Demo tag
-- [TODO] D-22 (UI-wave-3) SCADA/BMS environment trend charts still sample when historian not connected — honesty banners added; live charts follow telemetry API
+- [DONE] D-21 (UI-wave-4) Platform Metrics — Prometheus summary API + Demo tag / honest empty state (no fake SLO table as Live)
+- [DONE] D-22 (UI-wave-4) SCADA historian GraphQL + trends live/sample banners; BMS energy sample banner; BMS dashboard charts stay empty until point history wired
+- [DONE] D-23 (UI-wave-4) Full admin menuConfig + VO route crawl Playwright spec + coverage JSON (`.gstack/qa-reports/ui-wave-4-route-coverage.json`)
+- [TODO] D-24 (UI-wave-4) HR module GraphQL expects `hr_*` tables — QA stack missing schema; pages show empty until migrations land
+- [DONE] D-25 (UI-wave-4 PO #74) PM `me` query drops `fullName`; middleware PM lists use plain `select('*')` until tenant_users↔individuals FK lands
+- **Adityo last-seen (`development-adityo`):** `861a6588fe93594528f1079b7e58cc624a6550de` (2026-10-16 13:03 WIB). **Do not merge or cherry-pick** from `development-adityo` — integration only via PO-approved D-9-style PRs on `master`.
+- [TODO] D-26 (Adityo branch review @ `861a658`) Unresolved conflict markers + encoding garbage in `scripts/master-production/pull-on-server.sh` and `docs/deploy-master-production.md` on `development-adityo` — **master deploy-key version must win** when reconciling (no blind merge from his branch).
+- [TODO] D-27 (Adityo branch review @ `861a658`) VO HUD rewrite drops Wave 1 honesty labels + Kasir-only metrics and switches ID→EN copy — needs **D-9-style integration PR** (preserve Wave 1 inspector / recruit honesty; do not land HUD wholesale).
+- [TODO] D-28 (Adityo branch review @ `861a658`) `database_dump_data.sql` / `database_dump_full.sql` still tracked on `development-adityo` — tied to **F0-3** (rotate secrets + scrub branch history); do not import dumps into this repo.
+- [TODO] D-31 (UI-wave-4 PO #74) QA compose omits Supabase Realtime — Playwright narrow ignore for `realtime/v1/websocket` 503 only (`console.ts`)
+- [TODO] D-32 (UI-wave-4 PO #74) E-commerce `ecom_*` tables absent on minimal QA — narrow PGRST205 ignore until seed/migration
+- [TODO] D-33 (UI-wave-4 PO #74) system-health storage probe 401 without service JWT — narrow ignore on `/storage/v1/bucket` until ops proxy
+- [TODO] D-34 (UI-wave-4 PO #74) Agentic OS dynamic chunk flake on long crawl — narrow ignore for `Loading chunk … agentic-os`
+- [TODO] D-35 (UI-wave-4 PO #74) Inventory `inv_*` / stock REST on QA — narrow PGRST205 until migrations seed
 - [DONE] D-18 (UI-wave-1) VO inspector before/after — `.gstack/qa-reports/screenshots/ui-wave-1-vo-inspector-*-after.png` (Playwright on live stack, PR #70)
 - [DONE] D-1 (audit #31) Wire VO Live mode to osAgentSource; mockAgentSource only in explicit demo mode  → F1-2
 - [DONE] D-2 (audit #31) Fix misleading "Demo" badge on real DB agents in Agentic OS → F1-4

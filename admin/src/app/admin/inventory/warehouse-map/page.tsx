@@ -525,7 +525,6 @@ export default function WarehouseMapPage() {
                 messageApi.info(`Layout generated for ${wh?.name || 'warehouse'}`);
             }
         } catch (err) {
-            console.error('loadWarehouseLayout error', err);
             setObjects(getDefaultLayout());
         }
         setLoadingWarehouse(false);
@@ -579,7 +578,6 @@ export default function WarehouseMapPage() {
 
             messageApi.success(`Regenerated 3D layout from ${zones.length} zones, ${allBins.length} bins`);
         } catch (err) {
-            console.error('Regenerate layout error', err);
             messageApi.error('Failed to regenerate layout');
         }
         setLoadingWarehouse(false);

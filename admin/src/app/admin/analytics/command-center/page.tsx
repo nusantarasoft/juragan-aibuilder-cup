@@ -182,9 +182,9 @@ export default function CommandCenterPage() {
         (async () => {
             try {
                 const [uData, cData, sData] = await Promise.all([
-                    gql(`query($tenantId: String!) { users(tenantId: $tenantId) }`, { tenantId: DEFAULT_TENANT_ID }),
-                    gql(`query($tenantId: String!) { dockerContainers(tenantId: $tenantId) }`, { tenantId: DEFAULT_TENANT_ID }),
-                    gql(`query($tenantId: String!) { systemInfo(tenantId: $tenantId) }`, { tenantId: DEFAULT_TENANT_ID }),
+                    gql(`query { users { id } }`),
+                    gql(`query { dockerContainers { id } }`),
+                    gql(`query { systemInfo { hostname containerCount runningCount uptimeSeconds } }`),
                 ]);
                 if (Array.isArray((uData as any).users)) setUserCount((uData as any).users.length);
                 if (Array.isArray((cData as any).dockerContainers)) setContainerCount((cData as any).dockerContainers.length);

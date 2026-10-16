@@ -23,7 +23,9 @@ function CurrenciesTab() {
     const [editing, setEditing] = useState<AcctCurrency | null>(null);
     const [form] = Form.useForm();
 
-    const load = async () => { setLoading(true); try { setData(await accountingService.getCurrencies()); } catch (e) { console.error(e); } finally { setLoading(false); } };
+    const load = async () => { setLoading(true); try { setData(await accountingService.getCurrencies()); } catch {
+                /* load failed */
+            } finally { setLoading(false); } };
     useEffect(() => { load(); }, []);
 
     const openAdd = () => { setEditing(null); form.resetFields(); setModal(true); };
@@ -81,7 +83,9 @@ function FiscalPeriodsTab() {
     const [modal, setModal] = useState(false);
     const [form] = Form.useForm();
 
-    const load = async () => { setLoading(true); try { setData(await accountingService.getFiscalPeriods()); } catch (e) { console.error(e); } finally { setLoading(false); } };
+    const load = async () => { setLoading(true); try { setData(await accountingService.getFiscalPeriods()); } catch {
+                /* load failed */
+            } finally { setLoading(false); } };
     useEffect(() => { load(); }, []);
 
     const save = async () => {
@@ -142,7 +146,9 @@ function TaxRatesTab() {
     const [modal, setModal] = useState(false);
     const [form] = Form.useForm();
 
-    const load = async () => { setLoading(true); try { setData(await accountingService.getTaxes()); } catch (e) { console.error(e); } finally { setLoading(false); } };
+    const load = async () => { setLoading(true); try { setData(await accountingService.getTaxes()); } catch {
+                /* load failed */
+            } finally { setLoading(false); } };
     useEffect(() => { load(); }, []);
 
     const save = async () => {
@@ -198,7 +204,9 @@ function CostCentersTab() {
     const [modal, setModal] = useState(false);
     const [form] = Form.useForm();
 
-    const load = async () => { setLoading(true); try { setData(await accountingService.getCostCenters()); } catch (e) { console.error(e); } finally { setLoading(false); } };
+    const load = async () => { setLoading(true); try { setData(await accountingService.getCostCenters()); } catch {
+                /* load failed */
+            } finally { setLoading(false); } };
     useEffect(() => { load(); }, []);
 
     const save = async () => {

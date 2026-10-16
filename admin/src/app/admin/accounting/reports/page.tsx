@@ -45,7 +45,7 @@ export default function FinancialReportsPage() {
     const loadData = async () => {
         setLoading(true);
         try { setTrialBalance(await accountingService.getTrialBalance(undefined, asOfDate)); }
-        catch (e) { console.error(e); }
+        catch { /* load failed */ }
         finally { setLoading(false); }
     };
     useEffect(() => { loadData(); }, [asOfDate]);

@@ -2,18 +2,7 @@
  * Document Management Service - All operations via GraphQL Middleware
  */
 
-const GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_URL || 'http://127.0.0.1:4001/graphql';
-const DEFAULT_TENANT_ID = '00000000-0000-0000-0000-000000000010';
-
-async function gql<T>(query: string, variables?: Record<string, unknown>): Promise<T> {
-    const response = await fetch(GRAPHQL_URL, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query, variables }), cache: 'no-store',
-    });
-    const json = await response.json();
-    if (json.errors) throw new Error(json.errors[0].message);
-    return json.data;
-}
+import { DEFAULT_TENANT_ID, gql } from '@/lib/graphql';
 
 // ─── Types ───────────────────────────────────────────────
 export interface DocFolder { id: string; tenantId: string; name: string; parentId?: string; module?: string; moduleRefId?: string; color?: string; description?: string; createdBy?: string; createdAt?: string; childCount?: number; fileCount?: number; }

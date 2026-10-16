@@ -75,7 +75,7 @@ export default function SystemHealthPage() {
             if (service.endpoint === '/graphql') {
                 url = process.env.NEXT_PUBLIC_GRAPHQL_URL || 'http://localhost:4001/graphql';
             } else if (service.endpoint === '/') {
-                url = 'http://localhost:3003/';
+                url = typeof window !== 'undefined' ? `${window.location.origin}/` : 'http://127.0.0.1:3003/';
             } else {
                 url = `http://localhost:8000${service.endpoint}`;
             }

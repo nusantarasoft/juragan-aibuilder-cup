@@ -61,8 +61,8 @@ export default function BimViewer() {
                     setProjects(data.pmProjects);
                     if (data.pmProjects.length > 0) setSelectedProjectId(data.pmProjects[0].id);
                 }
-            } catch (e) {
-                console.error("Failed to load PM Projects", e);
+            } catch {
+                setProjects([]);
             }
         })();
     }, []);

@@ -9,6 +9,7 @@ export async function loginAsAdmin(page: Page) {
     await page.getByLabel('Password').fill(E2E_ADMIN_PASSWORD);
     await page.getByRole('button', { name: /sign in/i }).click();
     await expect(page).toHaveURL(/\/admin\//, { timeout: 30_000 });
+    await page.waitForFunction(() => !!localStorage.getItem('auth_access_token'), null, { timeout: 15_000 });
 }
 
 export async function expectLoginPage(page: Page) {

@@ -31,6 +31,40 @@ export class ScadaService {
         return data;
     }
 
+    async getTagValueHistory(
+        tenantId: string,
+        tagIds: string[],
+        from?: string,
+        to?: string,
+        limit = 120,
+    ) {
+        if (!tagIds.length) return [];
+
+        const { data: ownedTags, error: tagErr } = await this.db
+            .from('scada_tags')
+            .select('id')
+            .eq('tenant_id', tenantId)
+            .in('id', tagIds);
+        if (tagErr) throw tagErr;
+        const allowed = new Set((ownedTags ?? []).map((t) => t.id));
+        const scopedIds = tagIds.filter((id) => allowed.has(id));
+        if (!scopedIds.length) return [];
+
+        let query = this.db
+            .from('scada_tag_values')
+            .select('id, tag_id, timestamp, value_numeric, value_text, quality')
+            .in('tag_id', scopedIds)
+            .order('timestamp', { ascending: true })
+            .limit(limit);
+
+        if (from) query = query.gte('timestamp', from);
+        if (to) query = query.lte('timestamp', to);
+
+        const { data, error } = await query;
+        if (error) throw error;
+        return data ?? [];
+    }
+
     async getActiveAlarms(tenantId: string) {
         const { data: defs, error: defErr } = await this.db
             .from('scada_alarm_definitions')

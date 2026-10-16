@@ -31,6 +31,16 @@ class ScadaAlarmEvent {
     @Field() createdAt: string;
 }
 
+@ObjectType()
+class ScadaTagValuePoint {
+    @Field(() => ID) id: string;
+    @Field() tagId: string;
+    @Field() timestamp: string;
+    @Field(() => Float, { nullable: true }) valueNumeric?: number;
+    @Field({ nullable: true }) valueText?: string;
+    @Field({ nullable: true }) quality?: string;
+}
+
 const mapSource = (row: any) => ({
     id: row.id, name: row.name, protocol: row.protocol, host: row.host, port: row.port, status: row.status
 });
@@ -41,6 +51,15 @@ const mapTag = (row: any) => ({
 
 const mapEvent = (row: any) => ({
     id: row.id, tagId: row.tag_id, severity: row.severity, message: row.message, status: row.status, createdAt: row.created_at
+});
+
+const mapTagValue = (row: any) => ({
+    id: row.id,
+    tagId: row.tag_id,
+    timestamp: row.timestamp,
+    valueNumeric: row.value_numeric ?? undefined,
+    valueText: row.value_text ?? undefined,
+    quality: row.quality ?? undefined,
 });
 
 @Resolver()
@@ -63,5 +82,17 @@ export class ScadaResolver {
     async scadaActiveAlarms(@Args('tenantId') tenantId: string) {
         const data = await this.scadaService.getActiveAlarms(tenantId);
         return data.map(mapEvent);
+    }
+
+    @Query(() => [ScadaTagValuePoint])
+    async scadaTagValueHistory(
+        @Args('tenantId') tenantId: string,
+        @Args({ name: 'tagIds', type: () => [String] }) tagIds: string[],
+        @Args('from', { nullable: true }) from?: string,
+        @Args('to', { nullable: true }) to?: string,
+        @Args('limit', { nullable: true, type: () => Int }) limit?: number,
+    ) {
+        const data = await this.scadaService.getTagValueHistory(tenantId, tagIds, from, to, limit ?? 120);
+        return data.map(mapTagValue);
     }
 }

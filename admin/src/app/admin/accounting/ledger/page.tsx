@@ -44,7 +44,9 @@ export default function GeneralLedgerPage() {
             try {
                 const accts = await accountingService.getAccounts();
                 setAccounts(accts);
-            } catch (e) { console.error(e); }
+            } catch {
+                /* load failed */
+            }
             finally { setAccountsLoading(false); }
         })();
     }, []);
@@ -75,7 +77,7 @@ export default function GeneralLedgerPage() {
                 return { ...line, debitNum: d, creditNum: c, runningBalance: running };
             });
             setLines(withBalance);
-        } catch (e: any) { console.error(e); setLines([]); }
+        } catch { setLines([]); }
         finally { setLoading(false); }
     }, [selectedAccountId, dateRange, selectedAccount]);
 

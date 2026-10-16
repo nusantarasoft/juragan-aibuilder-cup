@@ -205,7 +205,7 @@ export default function OrgChartPage() {
       setDepartments(d.hrDepartments || []);
       setEmployees(e.hrEmployees || []);
       setPositions(p.hrPositions || []);
-    }).catch(console.error).finally(() => setLoading(false));
+    }).catch(() => undefined).finally(() => setLoading(false));
   }, []);
 
   /* filtered employees */

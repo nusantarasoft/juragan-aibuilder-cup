@@ -2094,10 +2094,15 @@ function ZoneStatsPopover({ obj, stats, onClose }: {
 // FIRST PERSON CONTROLLER
 // ═══════════════════════════════════════════════════
 function FirstPersonController({ gridCells }: { gridCells: number }) {
-    const { camera } = useThree();
+    const { camera, gl } = useThree();
     const [movement, setMovement] = useState({ forward: false, backward: false, left: false, right: false });
     const isLocked = useRef(false);
     const [showInstructions, setShowInstructions] = useState(true);
+    const [pointerReady, setPointerReady] = useState(false);
+
+    useEffect(() => {
+        if (gl?.domElement?.isConnected) setPointerReady(true);
+    }, [gl]);
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -2147,10 +2152,12 @@ function FirstPersonController({ gridCells }: { gridCells: number }) {
 
     return (
         <>
+            {pointerReady && (
             <PointerLockControls 
                 onLock={() => { isLocked.current = true; setShowInstructions(false); }} 
                 onUnlock={() => { isLocked.current = false; setShowInstructions(true); setMovement({forward:false, backward:false, left:false, right:false}); }} 
             />
+            )}
             {showInstructions && (
                 <Html center>
                     <div style={{
