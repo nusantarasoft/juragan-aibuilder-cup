@@ -1,0 +1,111 @@
+.kasir-root {
+  --kasir-ink: #14201a;
+  --kasir-ink-soft: #3d4f45;
+  --kasir-leaf: #1b6b4a;
+  --kasir-leaf-deep: #0f3d2c;
+  --kasir-mist: #e8f0eb;
+  --kasir-paper: #f6faf7;
+  --kasir-wa: #128c7e;
+  --kasir-wa-deep: #075e54;
+  --kasir-bubble-in: #ffffff;
+  --kasir-bubble-out: #d9f5e8;
+  --background: var(--kasir-paper);
+  --foreground: var(--kasir-ink);
+  min-height: 100vh;
+  color: #14201a !important;
+  background: #f6faf7 !important;
+  font-family: var(--font-kasir-sans), system-ui, sans-serif;
+  color-scheme: light;
+}
+
+.kasir-root * {
+  box-sizing: border-box;
+}
+
+.kasir-display {
+  font-family: var(--font-kasir-display), Georgia, serif;
+  font-optical-sizing: auto;
+}
+
+.kasir-hero-atmosphere {
+  background:
+    radial-gradient(120% 80% at 80% 10%, rgba(27, 107, 74, 0.22), transparent 55%),
+    radial-gradient(90% 70% at 10% 90%, rgba(18, 140, 126, 0.16), transparent 50%),
+    linear-gradient(165deg, #dfece4 0%, var(--kasir-paper) 42%, #eef6f1 100%);
+}
+
+.kasir-hero-atmosphere::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.35;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.45'/%3E%3C/svg%3E");
+  mix-blend-mode: soft-light;
+}
+
+@keyframes kasir-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+.kasir-float {
+  animation: kasir-float 5.5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kasir-float {
+    animation: none;
+  }
+}
+
+/* Mobile sticky WA CTA — shown after hero CTA scrolls away */
+.kasir-sticky-wa {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 40;
+  padding: 0.65rem 1rem calc(0.65rem + env(safe-area-inset-bottom, 0px));
+  background: rgba(246, 250, 247, 0.92);
+  border-top: 1px solid rgba(27, 107, 74, 0.18);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transform: translateY(110%);
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    transform 0.28s ease-out,
+    opacity 0.28s ease-out;
+}
+
+.kasir-sticky-wa.is-visible {
+  transform: translateY(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.kasir-main-sticky-pad {
+  padding-bottom: calc(4.25rem + env(safe-area-inset-bottom, 0px));
+}
+
+@media (min-width: 768px) {
+  .kasir-sticky-wa {
+    display: none;
+  }
+
+  .kasir-main-sticky-pad {
+    padding-bottom: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kasir-sticky-wa {
+    transition: none;
+  }
+}

@@ -1,0 +1,25 @@
+%% System L9: kurikulum consult hop (eng / ops)
+%% Hermes kasir_consult → Nest double-gate → Studio RAG notebook → WA copy
+%% Optional: KASIR_CONSULT_CITE_PAGES / KASIR_CONSULT_INJECT_METRICS (default off)
+flowchart LR
+  O[Owner: tanya / konsultasi / pendamping] --> H[Hermes SOUL]
+  H --> T[kasir_consult tool]
+  T -->|KASIR_CONSULT=0| Off[Copy: belum aktif]
+  T -->|KASIR_CONSULT=1| HTTP[POST /internal/kasir-consult<br/>X-Kasir-Consult-Key + phone?]
+  HTTP --> N[Nest middleware]
+  N -->|flag off / bad key| Off2[off / 401]
+  N -->|ok| Rag[consultFromNotebook]
+  Rag --> Emb[embed query]
+  Emb --> Match[match_studio_chunks<br/>notebook kurikulum]
+  Match -->|hits| Syn[LLM synthesize ≤800<br/>Qwen3.7 Flash via OpenRouter<br/>KASIR_CONSULT_SYNTH_*]
+  Match -->|0 hits| Miss[Miss copy — no free LLM]
+  Syn --> WA[Jawaban WA]
+  Miss --> WA
+
+  Inj{KASIR_CONSULT_INJECT_METRICS=1<br/>+ phone?}
+  Rag -.-> Inj
+  Inj -->|yes| Snap[today-report snapshot<br/>BLOK_KASIR label tools]
+  Snap -.->|synthesize only| Syn
+  Inj -->|no| Syn
+
+  DB[(Ledger stok/omzet)] -.->|FORBIDDEN into retrieve| Rag

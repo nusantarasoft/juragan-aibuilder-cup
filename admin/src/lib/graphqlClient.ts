@@ -3,6 +3,8 @@
  * All API requests go through NestJS Middleware
  */
 
+import { clearAuthPresenceCookie, setAuthPresenceCookie } from '@/lib/authCookie';
+
 const GRAPHQL_URL = (typeof window === 'undefined' && process.env.GRAPHQL_API_URL)
     ? process.env.GRAPHQL_API_URL
     : (process.env.NEXT_PUBLIC_GRAPHQL_URL || 'http://127.0.0.1:4001/graphql');
@@ -24,12 +26,14 @@ export function storeAuthTokens(accessToken: string, refreshToken: string): void
     if (typeof window === 'undefined') return;
     localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
     localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+    setAuthPresenceCookie();
 }
 
 export function clearAuthTokens(): void {
     if (typeof window === 'undefined') return;
     localStorage.removeItem(ACCESS_TOKEN_KEY);
     localStorage.removeItem(REFRESH_TOKEN_KEY);
+    clearAuthPresenceCookie();
 }
 
 const AUTH_ERROR_RE =

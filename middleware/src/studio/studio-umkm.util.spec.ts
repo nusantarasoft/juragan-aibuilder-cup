@@ -4,9 +4,14 @@ import {
     validateGuideFlowGraph,
 } from './guide-flow.definition';
 import {
+    canonicalUmkmConfirmText,
     detectUmkmConfirmReply,
     detectUmkmIntent,
     detectUmkmMenuDigit,
+    extractUmkmButtonReply,
+    isUmkmGreetingOnly,
+    isUmkmMoneyConfirmPreview,
+    umkmConfirmButtons,
     extractRupiahAmounts,
     extractStockProductQuery,
     formatDailyReportWa,
@@ -21,12 +26,24 @@ import {
     looksLikeSaleMessage,
     looksLikeUmkmDirectDataQuery,
     looksLikeUmkmOpenQuestion,
+    parsePendingQtyCorrection,
     parseRupiahToken,
     parseSaleHeuristic,
     parseSaleJsonFromLlm,
+    resumeJobClarification,
+    stripUmkmJobVerbs,
     toAidlcIntent,
+    matchUmkmIntakeJob,
+    leftoverAfterCousinSale,
+    normalizeUmkmQtyFirst,
+    formatJobClarificationPrompt,
+    formatPendingStickyHint,
+    isUmkmIntakeClearJob,
+    isUmkmPendampingExactAlias,
 } from './studio-umkm.util';
 import type { UmkmCommandsConfig } from './studio-umkm-commands';
+import { resolveUmkmCommands } from './studio-umkm-commands';
+import { STALE_RECORD_SALE } from './studio-umkm-stale-sale.fixture';
 import { resolveUmkmListenTarget } from './guide-flow.interpreter';
 
 describe('studio-umkm.util', () => {
@@ -38,6 +55,17 @@ describe('studio-umkm.util', () => {
         expect(detectUmkmIntent('ringkasan')).toBe('sales_report');
         expect(detectUmkmIntent('berapa omzet')).toBe('sales_report');
         expect(detectUmkmIntent('omzet hari ini')).toBe('sales_report');
+        expect(detectUmkmIntent('berapa yang beli hari ini?')).toBe('sales_report');
+        expect(
+            detectUmkmIntent('berapa yang beli hari ini?', {
+                keywords: { record_sale: [...STALE_RECORD_SALE], sales_report: ['laporan'] },
+            }),
+        ).toBe('sales_report');
+        expect(
+            detectUmkmIntent('omzet hari ini berapa ya', {
+                keywords: { sales_report: ['laporan'] },
+            }),
+        ).toBe('sales_report');
         expect(
             detectUmkmIntent('Bagaimana cara menaikkan omzet usaha saya hingga 20%'),
         ).toBe('ask');
@@ -49,6 +77,16 @@ describe('studio-umkm.util', () => {
         expect(detectUmkmIntent('stok kopi berapa')).toBe('check_stock');
         expect(detectUmkmIntent('bantuan')).toBe('help');
         expect(detectUmkmIntent('halo')).toBe('unknown');
+        expect(isUmkmGreetingOnly('halo')).toBe(true);
+        expect(isUmkmGreetingOnly('selamat pagi')).toBe(true);
+        expect(isUmkmGreetingOnly('halo jual 1 bakso')).toBe(false);
+        expect(isUmkmGreetingOnly('1')).toBe(false);
+        expect(isUmkmGreetingOnly('pagi, baru buka toko nih')).toBe(true);
+        expect(detectUmkmIntent('bantuan dong, mau catat jualan')).toBe('help');
+        expect(detectUmkmIntent('tadi ada yang beli 2 indomie goreng')).toBe('record_sale');
+        expect(detectUmkmIntent('kalau stok indomie mau habis, mending restock berapa?')).toBe(
+            'ask',
+        );
         expect(detectUmkmMenuDigit('2\n[User mengirim media yang tidak dapat diunduh]')).toBe(
             'menu_hub',
         );
@@ -74,6 +112,55 @@ describe('studio-umkm.util', () => {
         expect(detectUmkmConfirmReply('1')).toBeNull();
         expect(detectUmkmConfirmReply('0')).toBeNull();
         expect(detectUmkmConfirmReply('jual 2 kopi')).toBeNull();
+        expect(detectUmkmConfirmReply('Ya, simpan')).toBeNull();
+    });
+
+    it('maps WhatsApp button taps to confirm/cancel without treating them as a new sale', () => {
+        expect(extractUmkmButtonReply({ selectedButtonId: 'umkm_ya' })).toBe('confirm');
+        expect(extractUmkmButtonReply({ selectedButtonId: 'umkm_batal' })).toBe('cancel');
+        expect(
+            extractUmkmButtonReply({
+                listResponse: { singleSelectReply: { selectedRowId: 'umkm_ya' } },
+            }),
+        ).toBe('confirm');
+        expect(extractUmkmButtonReply({ body: 'Ya, simpan' })).toBe('confirm');
+        expect(extractUmkmButtonReply({ body: 'Batal' })).toBe('cancel');
+        expect(
+            extractUmkmButtonReply({
+                _data: {
+                    Info: { MediaType: 'list_response' },
+                    Message: {
+                        listResponseMessage: {
+                            title: 'Ya, simpan',
+                            singleSelectReply: { selectedRowID: 'umkm_ya' },
+                        },
+                    },
+                },
+            }),
+        ).toBe('confirm');
+        expect(
+            extractUmkmButtonReply({
+                _data: {
+                    Message: {
+                        listResponseMessage: {
+                            title: 'Batal',
+                            singleSelectReply: { selectedRowID: 'umkm_batal' },
+                        },
+                    },
+                },
+            }),
+        ).toBe('cancel');
+        expect(extractUmkmButtonReply({ body: 'jual 2 kopi' })).toBeNull();
+        expect(canonicalUmkmConfirmText('confirm')).toBe('ya');
+        expect(canonicalUmkmConfirmText('cancel')).toBe('batal');
+        expect(umkmConfirmButtons().map((b) => b.id)).toEqual(['umkm_ya', 'umkm_batal']);
+        expect(isUmkmMoneyConfirmPreview('📋 *Konfirmasi penjualan*\nTotal: *Rp 4.000*')).toBe(
+            true,
+        );
+        expect(isUmkmMoneyConfirmPreview('📋 *Konfirmasi belanja*\nTotal: *Rp 20.000*')).toBe(
+            true,
+        );
+        expect(isUmkmMoneyConfirmPreview('📦 *Cek Stok*')).toBe(false);
     });
 
     it('maps AIDLC intent aliases', () => {
@@ -85,11 +172,18 @@ describe('studio-umkm.util', () => {
 
     it('extracts stock product query', () => {
         expect(extractStockProductQuery('cek stok gula')).toBe('gula');
-        expect(extractStockProductQuery('stok kopi berapa')).toMatch(/kopi/i);
+        expect(extractStockProductQuery('sisa bakso')).toMatch(/^bakso$/i);
+        expect(extractStockProductQuery('masih ada berapa teh pucuk')).toMatch(/teh pucuk/i);
+        expect(extractStockProductQuery('stok indomie goreng masih berapa?')).toMatch(/indomie goreng/i);
+        expect(
+            extractStockProductQuery(
+                'kalau stok teh pucuk cyc mau habis, mending restock berapa?',
+            ),
+        ).toMatch(/^teh pucuk cyc$/i);
     });
 
     it('formats unknown command hint', () => {
-        expect(formatUnknownUmkmCommand()).toContain('belum dikenali');
+        expect(formatUnknownUmkmCommand()).toMatch(/Belum kebaca|jual 2 indomie/i);
         expect(formatUnknownUmkmCommand()).toMatch(/\*1\*/);
     });
 
@@ -153,7 +247,7 @@ describe('studio-umkm.util', () => {
     });
 });
 
-// Empty arrays mean "disabled" in resolveUmkmCommands, so these configs exercise fallbacks.
+// Empty menu/confirm still replace. Keyword arrays union into DEFAULT (empty does not wipe).
 const cfgNoMenu: Partial<UmkmCommandsConfig> = { menu: [] };
 const cfgNoMenuNoSaleKw: Partial<UmkmCommandsConfig> = {
     menu: [],
@@ -205,6 +299,7 @@ describe('studio-umkm.util — extra coverage', () => {
     it('extractStockProductQuery rejects too-short or stopword queries', () => {
         expect(extractStockProductQuery('cek stok')).toBeNull();
         expect(extractStockProductQuery('stok ada')).toBeNull();
+        expect(extractStockProductQuery('sisa stok')).toBeNull();
     });
 
     it('looksLikeUmkmOpenQuestion covers all trigger branches', () => {
@@ -213,6 +308,12 @@ describe('studio-umkm.util — extra coverage', () => {
         expect(looksLikeUmkmOpenQuestion('cara naikkan penjualan')).toBe(true); // cara naikkan
         expect(looksLikeUmkmOpenQuestion('mau meningkatkan omzet toko saya')).toBe(true); // verb+omzet
         expect(looksLikeUmkmOpenQuestion('barang biasa saja disini')).toBe(false); // no trigger
+        expect(looksLikeUmkmOpenQuestion('kalau stok mau habis mending restock berapa')).toBe(true);
+        expect(looksLikeUmkmDirectDataQuery('kalau stok mau habis mending restock berapa')).toBe(
+            false,
+        );
+        expect(parsePendingQtyCorrection('salah deh, maksudnya 2')).toBe(2);
+        expect(parsePendingQtyCorrection('ya simpan')).toBeNull();
     });
 
     it('looksLikeUmkmDirectDataQuery covers branches', () => {
@@ -403,12 +504,12 @@ describe('format functions — fallback branches via empty configs', () => {
         const withKw = formatUnknownUmkmCommand(cfgNoMenu); // menu empty, default keywords present
         expect(withKw).toContain('•');
         const noKw = formatUnknownUmkmCommand(cfgNoMenuNoSaleKw); // some keyword lists empty
-        expect(noKw).toContain('belum dikenali');
+        expect(noKw).toMatch(/Belum kebaca|jual 2 indomie/i);
     });
 
     it('formatUmkmHelp with empty menu + empty keyword lists', () => {
         const msg = formatUmkmHelp(cfgEmpty);
-        expect(msg).toContain('Asisten Penjualan');
+        expect(msg).toContain('jual 2 indomie');
         expect(msg).toContain('*ya*');
         expect(msg).toContain('*batal*');
     });
@@ -456,4 +557,150 @@ describe('defaultUmkmGuideFlowDefinition', () => {
         expect(resolveUmkmListenTarget(listen, 'ya', { hasPendingSale: true })).toBe('do_confirm');
         expect(resolveUmkmListenTarget(listen, 'batal', { hasPendingSale: true })).toBe('do_cancel');
         expect(def.nodes.some((n) => n.id === 'do_ask' && n.type === 'rag')).toBe(true);    });
+});
+
+describe('matchUmkmIntakeJob (D4.1)', () => {
+    it('clarifies muddy qty+name as sale vs add_stock', () => {
+        expect(matchUmkmIntakeJob('indomie 2')).toEqual({
+            kind: 'mixed',
+            candidates: ['sale', 'add_stock'],
+            originalText: 'indomie 2',
+        });
+        expect(matchUmkmIntakeJob('mie ayam 2 porsi').kind).toBe('mixed');
+    });
+
+    it('clarifies beli+qty+name as sale vs purchase', () => {
+        expect(matchUmkmIntakeJob('beli 10 indomie')).toEqual({
+            kind: 'mixed',
+            candidates: ['sale', 'purchase'],
+            originalText: 'beli 10 indomie',
+        });
+    });
+
+    it('clarifies stock+sale verbs without qty as sale vs check_stock', () => {
+        expect(matchUmkmIntakeJob('stok atau jual indomie')).toEqual({
+            kind: 'mixed',
+            candidates: ['sale', 'check_stock'],
+            originalText: 'stok atau jual indomie',
+        });
+    });
+
+    it('does not clarify price, hostile singles, or pembelian', () => {
+        expect(matchUmkmIntakeJob('belanja 10 indomie')).toEqual({
+            kind: 'purchase',
+            originalText: 'belanja 10 indomie',
+        });
+        expect(matchUmkmIntakeJob('kopi 15000').kind).toBe('none');
+        expect(matchUmkmIntakeJob('2').kind).toBe('none');
+        expect(matchUmkmIntakeJob('indomie').kind).toBe('none');
+        expect(matchUmkmIntakeJob('pembelian 10').kind).toBe('none');
+        expect(matchUmkmIntakeJob('pembelian 10 indomie').kind).toBe('none');
+    });
+
+    it('cousin-sale phrases are kind sale; berapa yang beli is a report', () => {
+        expect(matchUmkmIntakeJob('tadi ada yang beli 2 indomie goreng')).toEqual({
+            kind: 'sale',
+            originalText: 'tadi ada yang beli 2 indomie goreng',
+        });
+        expect(matchUmkmIntakeJob('ada yang beli').kind).toBe('sale');
+        expect(matchUmkmIntakeJob('tadi beli 2 indomie').kind).toBe('sale');
+        expect(matchUmkmIntakeJob('berapa yang beli hari ini?').kind).toBe('sales_report');
+        expect(matchUmkmIntakeJob('siapa yang beli indomie?').kind).toBe('none');
+    });
+
+    it('leftoverAfterCousinSale strips phrase and filler (tadi)', () => {
+        expect(leftoverAfterCousinSale('tadi ada yang beli 2 indomie goreng')).toBe(
+            '2 indomie goreng',
+        );
+        expect(leftoverAfterCousinSale('tadi ada yang beli indomie 2')).toBe('indomie 2');
+        expect(leftoverAfterCousinSale('tadi ada yang beli')).toBe('');
+        expect(leftoverAfterCousinSale('ada yang beli')).toBe('');
+        expect(leftoverAfterCousinSale('tadi beli 2 indomie')).toBe('2 indomie');
+    });
+
+    it('owns clear omzet / stok / daftar / belanja without the notebook stamp', () => {
+        expect(matchUmkmIntakeJob('omzet hari ini berapa ya').kind).toBe('sales_report');
+        expect(matchUmkmIntakeJob('cek stok bakso').kind).toBe('check_stock');
+        expect(matchUmkmIntakeJob('sisa teh pucuk groq').kind).toBe('check_stock');
+        expect(matchUmkmIntakeJob('masih ada berapa teh pucuk').kind).toBe('check_stock');
+        expect(matchUmkmIntakeJob('daftar barang').kind).toBe('list_products');
+        expect(matchUmkmIntakeJob('barang apa aja').kind).toBe('list_products');
+        expect(matchUmkmIntakeJob('etalase').kind).toBe('list_products');
+        expect(matchUmkmIntakeJob('daftar penjualan').kind).toBe('list_sales');
+        expect(matchUmkmIntakeJob('tambah stok bakso').kind).toBe('none');
+        expect(matchUmkmIntakeJob('daftar belanja').kind).toBe('none');
+        expect(matchUmkmIntakeJob('beli 5 bakso').kind).toBe('mixed');
+    });
+
+    it('bare catat/jual is empty sale, not mixed', () => {
+        expect(matchUmkmIntakeJob('catat')).toEqual({ kind: 'empty_sale' });
+        expect(matchUmkmIntakeJob('jual')).toEqual({ kind: 'empty_sale' });
+    });
+
+    it('resumeJobClarification maps aliases and skips matcher', () => {
+        expect(resumeJobClarification('jual', ['sale', 'add_stock'])).toEqual({
+            action: 'forced',
+            intent: 'sale',
+        });
+        expect(resumeJobClarification('tambah stok', ['sale', 'add_stock'])).toEqual({
+            action: 'forced',
+            intent: 'add_stock',
+        });
+        expect(resumeJobClarification('belanja', ['sale', 'purchase'])).toEqual({
+            action: 'forced',
+            intent: 'purchase',
+        });
+        expect(resumeJobClarification('cek stok', ['sale', 'check_stock'])).toEqual({
+            action: 'forced',
+            intent: 'check_stock',
+        });
+        expect(resumeJobClarification('stok', ['sale', 'check_stock'])).toEqual({
+            action: 'forced',
+            intent: 'check_stock',
+        });
+        expect(resumeJobClarification('stok', ['sale', 'add_stock']).action).toBe('none');
+        expect(resumeJobClarification('ya', ['sale', 'add_stock']).action).toBe('none');
+    });
+
+    it('qty-first normalize + strip verbs', () => {
+        expect(normalizeUmkmQtyFirst('indomie 2')).toBe('2 indomie');
+        expect(normalizeUmkmQtyFirst('2 indomie')).toBe('2 indomie');
+        expect(stripUmkmJobVerbs('beli 10 indomie')).toBe('10 indomie');
+    });
+
+    it('clarify copy lists accepted aliases; pending hint has no kirim ulang jual', () => {
+        const prompt = formatJobClarificationPrompt(['sale', 'add_stock']);
+        expect(prompt).toMatch(/jual/);
+        expect(prompt).toMatch(/tambah stok/);
+        expect(prompt).not.toMatch(/cek stok/);
+        const hint = formatPendingStickyHint('sale');
+        expect(hint).not.toMatch(/kirim ulang/);
+        expect(hint).toMatch(/batal/);
+        expect(isUmkmIntakeClearJob('cek stok')).toBe(true);
+        expect(isUmkmIntakeClearJob('indomie 2')).toBe(false);
+        expect(isUmkmIntakeClearJob('jual 2 indomie')).toBe(true);
+        const stale = resolveUmkmCommands({ keywords: { record_sale: [...STALE_RECORD_SALE] } });
+        expect(STALE_RECORD_SALE).not.toContain('ada yang beli');
+        expect(STALE_RECORD_SALE).not.toContain('tadi beli');
+        expect(STALE_RECORD_SALE).not.toContain('yang beli');
+        expect(stale.keywords.record_sale).toContain('ada yang beli');
+        expect(detectUmkmIntent('tadi ada yang beli 2 indomie goreng', stale)).toBe('record_sale');
+        expect(isUmkmIntakeClearJob('tadi ada yang beli 2 indomie goreng', stale)).toBe(true);
+    });
+
+    it('pendamping exact aliases: normalize, exclude open-Q and clear-job', () => {
+        expect(isUmkmPendampingExactAlias('pendamping')).toBe(true);
+        expect(isUmkmPendampingExactAlias('Saran Bisnis')).toBe(true);
+        expect(isUmkmPendampingExactAlias('pendamping bisnis.')).toBe(true);
+        expect(isUmkmPendampingExactAlias('  saran   bisnis  ')).toBe(true);
+        expect(isUmkmPendampingExactAlias('tips naikin omzet')).toBe(false);
+        expect(isUmkmPendampingExactAlias('saran dong')).toBe(false);
+        expect(looksLikeUmkmOpenQuestion('saran bisnis')).toBe(false);
+        expect(looksLikeUmkmOpenQuestion('tips naikin omzet toko saya')).toBe(true);
+        expect(detectUmkmIntent('saran bisnis')).not.toBe('ask');
+        expect(detectUmkmIntent('tips naikin omzet toko saya')).toBe('ask');
+        expect(isUmkmIntakeClearJob('saran bisnis')).toBe(false);
+        expect(isUmkmIntakeClearJob('pendamping')).toBe(false);
+        expect(formatUmkmHelp()).toMatch(/pendamping/);
+    });
 });

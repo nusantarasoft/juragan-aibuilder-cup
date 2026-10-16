@@ -20,7 +20,6 @@ describe('studio settings vertex credentials', () => {
             groq_model: 'x',
             ollama_base_url: 'http://127.0.0.1:11434',
             ollama_model: 'llama3',
-            waha_dashboard_url: 'http://x',
             google_service_account_json: JSON.stringify(sa),
         } as any);
         expect(pub.google_service_account_configured).toBe(true);

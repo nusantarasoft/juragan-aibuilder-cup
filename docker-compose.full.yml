@@ -1477,16 +1477,16 @@ services:
       - LABELSTUDIO_API_TOKEN=${LABELSTUDIO_API_TOKEN}
       - LABELSTUDIO_PROJECT_ID=${LABELSTUDIO_PROJECT_ID}
       - LABELSTUDIO_WEBHOOK_SECRET=${LABELSTUDIO_WEBHOOK_SECRET:-}
-      - WAHA_BASE_URL=http://waha:3000
-      - WAHA_API_KEY=${WAHA_API_KEY:-}
-      - WAHA_SESSION=${WAHA_SESSION:-default}
-      - WAHA_WEBHOOK_HMAC_KEY=${WAHA_WEBHOOK_HMAC_KEY:-}
+      # WHATSAPP_WEBHOOK_HMAC_KEY for inbound webhook signing
+      - WHATSAPP_WEBHOOK_HMAC_KEY=${WHATSAPP_WEBHOOK_HMAC_KEY:-}
+      - WHATSAPP_PROVIDER=${WHATSAPP_PROVIDER:-hermes}
+      - HERMES_BASE_URL=${HERMES_BASE_URL:-http://hermes:8642}
+      - HERMES_BRIDGE_URL=${HERMES_BRIDGE_URL:-http://hermes:8765}
     networks:
       - management-network
     depends_on:
       - postgres
       - minio
-      - waha
     volumes:
       - ./volumes/google-credentials.json:/gcp/key.json:ro
     extra_hosts:
@@ -1531,7 +1531,6 @@ services:
       - S3_ACCESS_KEY=${MINIO_ROOT_USER}
       - S3_SECRET_KEY=${MINIO_ROOT_PASSWORD}
       - S3_REGION=us-east-1
-      - NEXT_PUBLIC_WAHA_DASHBOARD_URL=${NEXT_PUBLIC_WAHA_DASHBOARD_URL:-http://localhost:${WAHA_HOST_PORT:-3010}/dashboard}
     networks:
       - management-network
     depends_on:
@@ -1603,63 +1602,7 @@ services:
     networks:
       - management-network
 
-  # ╔═══════════════════════════════════════════════════════════════════════════╗
-  # ║  13. AI AGENT GATEWAY                                                     ║
-  # ║     WAHA - WhatsApp HTTP API (AI Studio + notifications)                  ║
-  # ╚═══════════════════════════════════════════════════════════════════════════╝
-
-  waha:
-    image: ${WAHA_IMAGE:-devlikeapro/waha:latest}
-    container_name: waha
-    restart: unless-stopped
-    shm_size: "2gb"
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
-    deploy:
-      resources:
-        limits:
-          memory: 2g
-        reservations:
-          memory: 768m
-    ports:
-      - "${WAHA_HOST_PORT:-3010}:3000"
-    environment:
-      - WHATSAPP_HOOK_URL=${WHATSAPP_HOOK_URL:-http://middleware:4001/api/studio/whatsapp/webhook}
-      - WHATSAPP_HOOK_EVENTS=message,message.any
-      - WHATSAPP_HOOK_HMAC_KEY=${WAHA_WEBHOOK_HMAC_KEY:-}
-      - WAHA_API_KEY=${WAHA_API_KEY:-}
-      - WAHA_API_KEY_PLAIN=${WAHA_API_KEY_PLAIN:-${WAHA_API_KEY:-}}
-      - WAHA_API_KEY_EXCLUDE_PATH=health
-      - WAHA_DASHBOARD_USERNAME=${WAHA_DASHBOARD_USERNAME:-admin}
-      - WAHA_DASHBOARD_PASSWORD=${WAHA_DASHBOARD_PASSWORD:-}
-      - WHATSAPP_SWAGGER_USERNAME=${WHATSAPP_SWAGGER_USERNAME:-admin}
-      - WHATSAPP_SWAGGER_PASSWORD=${WHATSAPP_SWAGGER_PASSWORD:-}
-      - WAHA_BASE_URL=http://waha:3000
-      - WHATSAPP_DEFAULT_SESSION=${WAHA_SESSION:-default}
-      - WHATSAPP_DEFAULT_ENGINE=${WAHA_DEFAULT_ENGINE:-WEBJS}
-      - WAHA_SESSION_ENGINE_INFO_TIMEOUT=15000
-      - WHATSAPP_RESTART_ALL_SESSIONS=True
-    volumes:
-      - waha-sessions:/app/.sessions
-    dns:
-      - 8.8.8.8
-      - 8.8.4.4
-    networks:
-      - management-network
-    healthcheck:
-      test: ["CMD-SHELL", "wget -q --header=\"X-Api-Key: $$WAHA_API_KEY\" -O - http://127.0.0.1:3000/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 45s
-
-  # ╔═══════════════════════════════════════════════════════════════════════════╗
-  # ║     Retrieval Augmented Generation with Elasticsearch, MySQL, Redis       ║
-  # ╚═══════════════════════════════════════════════════════════════════════════╝
-
+networks:
   management-network:
     driver: bridge
 
@@ -1749,6 +1692,3 @@ volumes:
 
   # 12. Data & Analytics
   dremio-data:
-
-  # 13. WhatsApp (WAHA)
-  waha-sessions:

@@ -4,7 +4,7 @@ Dokumen ini menjelaskan **alur bisnis** (UMKM), **alur setup** (admin), dan **al
 
 Dokumen terkait:
 - [STUDIO_UMKM.md](./STUDIO_UMKM.md) — setup & konfigurasi
-- [STUDIO_WHATSAPP.md](./STUDIO_WHATSAPP.md) — WAHA & webhook
+- [STUDIO_WHATSAPP.md](./STUDIO_WHATSAPP.md) — Hermes & webhook
 - [STUDIO_GUIDED_CHAT.md](./STUDIO_GUIDED_CHAT.md) — guide flow umum
 
 ---
@@ -15,7 +15,7 @@ Dokumen terkait:
 |-------|-------|
 | **UMKM** | Pemilik/staff toko; pakai WhatsApp sehari-hari |
 | **Admin** | Setup sekali: notebook, WA, allowlist |
-| **WAHA** | Jembatan WhatsApp Web ↔ HTTP API |
+| **Hermes** | Jembatan WhatsApp Web ↔ HTTP API |
 | **Middleware** | NestJS: webhook, guide flow, parsing, DB |
 | **Postgres** | `ecom_orders` (tulis), `v_studio_sales_*` (baca) |
 
@@ -23,40 +23,56 @@ Dokumen terkait:
 
 ## 2. Alur bisnis (sudut pandang UMKM)
 
+Default menu digit (`umkm_commands.menu`) — dapat diubah di Admin → UMKM:
+
+| Digit | Intent | Label default |
+|-------|--------|---------------|
+| 0 | `help` | Bantuan |
+| 1 | `ask` | Tanya |
+| 2 | `menu_hub` | Menu (daftar / tambah / stok) |
+| 3 | `purchase_hub` | Belanja |
+| 4 | `list_sales` | Daftar penjualan |
+| 5 | `record_sale` | Tambah penjualan |
+| 6 | `report_hub` | Laporan |
+
+Keyword bebas (contoh): `cek stok` → `check_stock`, `jual …` → `record_sale`, `laporan` → `sales_report`.
+
 ```mermaid
 flowchart TD
     U[UMKM buka WhatsApp]
     U --> M1[Kirim pesan ke nomor bisnis]
     M1 --> W{Jenis pesan?}
 
-    W -->|1 / jual / catat / order| R[Preview penjualan]
-    W -->|2 / cek stok| S[Lihat stok ledger]
-    W -->|3 / daftar barang| K[Katalog produk]
-    W -->|4 / laporan / rekap / omzet| L[Lihat laporan hari ini]
-    W -->|5 / 0 / bantuan / menu| H[Terima panduan format]
-    W -->|bye| X[Penutup]
+    W -->|5 / jual / catat| R[Preview penjualan]
+    W -->|cek stok / stok| S[Lihat stok]
+    W -->|2 / daftar menu| K[Hub atau katalog]
+    W -->|3 / belanja| B[Hub atau catat belanja]
+    W -->|6 / laporan / omzet| L[Laporan]
+    W -->|0 / bantuan| H[Panduan + menu]
+    W -->|1 / tanya| A[Tanya / Agentic Ask]
 
     R --> P{User: ya/1 atau batal/0?}
-    P -->|ya / 1| RC[Commit: nomor order + total]
+    P -->|ya / 1| RC[Commit order]
     P -->|batal / 0| CX[Draft dibatalkan]
-    L --> LR[Ringkasan: order, omzet, produk terlaris]
 
     H --> M1
     S --> M1
     K --> M1
+    B --> M1
+    A --> M1
     RC --> M1
     CX --> M1
-    LR --> M1
+    L --> M1
 ```
 
 ### Contoh percakapan
 
 ```
-UMKM  → 5
-Bot   → Menu angka 1–5 + contoh format
+UMKM  → 0
+Bot   → Menu angka 0–6 + contoh format
 
-UMKM  → 1
-Bot   → Prompt: kirim detail jual ...
+UMKM  → 5
+Bot   → Prompt / alur tambah penjualan
 
 UMKM  → jual 3 es kopi 45000 tunai
 Bot   → 📋 Konfirmasi penjualan … Ketik ya / 1 atau batal / 0
@@ -64,12 +80,20 @@ Bot   → 📋 Konfirmasi penjualan … Ketik ya / 1 atau batal / 0
 UMKM  → 1
 Bot   → ✅ Penjualan tercatat! No. order WA-... Total Rp 45.000
 
-UMKM  → 2
-Bot   → 📦 Stok tersedia …
+UMKM  → cek stok gula
+Bot   → 📦 Cek Stok …
 
-UMKM  → 4
-Bot   → 📊 Order hari ini: 1, Omzet: Rp 45.000, ...
+UMKM  → 6
+Bot   → Hub laporan / ringkasan omzet
 ```
+
+### Verifikasi perintah di Admin (preview + Sim)
+
+Di **Admin → UMKM Penjualan WA → Edit**:
+
+1. Atur digit menu / keyword (termasuk **Cek stok**).
+2. **Preview perintah** — ketik contoh teks → **Cek intent** memanggil GraphQL `studioPreviewUmkmIntent` (matcher sama `detectUmkmIntent` di middleware).
+3. **Coba di Simulasi** — Simpan dulu, lalu buka Simulasi chat dengan composer terisi (kirim manual). Pipeline sama inbound WA tanpa kirim live.
 
 ---
 
@@ -78,23 +102,25 @@ Bot   → 📊 Order hari ini: 1, Omzet: Rp 45.000, ...
 ```mermaid
 flowchart LR
     A1[DB: ecom + sales views + wa config]
-    A2[Pair WAHA QR]
+    A2[Pair Hermes QR]
     A3[Buat / pilih notebook]
     A4[studioSetupUmkmNotebook]
-    A5[Config WhatsApp: notebook + allowlist + guided flow]
-    A6[Uji dari HP]
+    A5[Config WhatsApp: notebook + allowlist, use_guided_flow false]
+    A6[Preview intent + Simulasi chat di Admin]
+    A7[Uji dari HP]
 
-    A1 --> A2 --> A3 --> A4 --> A5 --> A6
+    A1 --> A2 --> A3 --> A4 --> A5 --> A6 --> A7
 ```
 
 | Step | Apa yang terjadi | Output |
 |------|------------------|--------|
 | 1 | Jalankan SQL schema & view | Tabel `ecom_orders`, view `v_studio_sales_today` |
-| 2 | Pair WAHA | Session `WORKING`, nomor bisnis aktif |
+| 2 | Pair Hermes | Session aktif, nomor bisnis aktif |
 | 3 | Notebook AI Studio | UUID notebook |
-| 4 | `studioSetupUmkmNotebook` | `umkm_mode: true` + flow **UMKM Penjualan WA** published |
-| 5 | `updateStudioWhatsAppConfig` | `enabled`, `allowlist_phones`, `use_guided_flow: true` |
-| 6 | Kirim `bantuan` dari HP | Welcome UMKM + menu |
+| 4 | `studioSetupUmkmNotebook` | `umkm_mode: true` (default **tidak** publish Guide Flow) |
+| 5 | `updateStudioWhatsAppConfig` | `enabled`, `allowlist_phones`, `use_guided_flow: false` |
+| 6 | Admin: Preview intent + **Simulasi chat** (opsional) | Konfirmasi mapping perintah tanpa kirim live |
+| 7 | Kirim `bantuan` / `0` dari HP | Welcome UMKM + menu |
 
 ---
 
@@ -104,7 +130,7 @@ flowchart LR
 sequenceDiagram
     participant U as UMKM (HP)
     participant WA as WhatsApp
-    participant WH as WAHA
+    participant WH as Hermes
     participant MW as StudioWhatsAppService
     participant GF as GuideFlowService
     participant UK as StudioUmkmService
@@ -118,7 +144,11 @@ sequenceDiagram
     MW->>MW: cek allowlist + rate limit
     MW->>DB: resolveSession(chat_id → conversation_id)
 
-    alt use_guided_flow = true
+    alt umkm_mode = true
+        MW->>UK: handleMessage()
+        UK->>DB: WRITE atau READ
+        Note over MW: tanya/null ask → Agentic Ask; unknown → bantuan UMKM (bukan RAG)
+    else use_guided_flow = true (bukan UMKM)
         MW->>GF: runGuidedTurn()
         GF->>GF: cek guide_flow_id vs published flow
         alt flow mismatch / belum bound
@@ -127,9 +157,6 @@ sequenceDiagram
         GF->>UK: action node (record_sale / sales_report / umkm_help)
         UK->>DB: INSERT order atau SELECT views
         UK-->>GF: teks balasan
-    else umkm_mode tanpa guided flow
-        MW->>UK: handleMessage() intent routing
-        UK->>DB: WRITE atau READ
     else mode generik
         MW->>MW: StudioService.chat() RAG
     end
@@ -147,8 +174,9 @@ handleWebhook()
   ├─ allowlist + rate limit
   ├─ resolveSession(chat_id)
   └─ routing jawaban:
-       ├─ use_guided_flow=true     → runGuidedTurn()      ← disarankan UMKM
-       ├─ umkm_mode && !guided     → StudioUmkmService
+       ├─ umkm_mode=true           → handleMessage()      ← produk UMKM
+       │     (tanya → Agentic Ask; unknown → bantuan; tidak pernah RAG)
+       ├─ else use_guided_flow     → runGuidedTurn()      ← notebook generik / Gateway
        └─ lainnya                  → StudioService.chat()
 ```
 
@@ -168,14 +196,14 @@ stateDiagram-v2
     start --> welcome: auto
     welcome --> listen_intent: pesan sambutan
 
-    listen_intent --> help: keyword bantuan/help/menu atau 0/5/9
+    listen_intent --> help: keyword bantuan/help atau digit 0
     listen_intent --> do_confirm: ya / 1 (saat ada pending)
     listen_intent --> do_cancel: batal / 0 (saat ada pending)
-    listen_intent --> do_list: 3 / daftar/katalog
-    listen_intent --> do_stock: 2 / cek stok
-    listen_intent --> do_report: 4 / keyword laporan/rekap/omzet
-    listen_intent --> do_record: 1 / regex jual/catat/order
-    listen_intent --> do_ask: default / tanya_umum
+    listen_intent --> do_list: daftar menu / list produk
+    listen_intent --> do_stock: cek stok / stok
+    listen_intent --> do_report: laporan/rekap/omzet atau hub 6
+    listen_intent --> do_record: digit 5 / regex jual/catat/order
+    listen_intent --> do_ask: digit 1 / default / tanya_umum
     listen_intent --> goodbye: keyword bye
 
     help --> listen_intent: action umkm_help
@@ -203,9 +231,9 @@ stateDiagram-v2
 | 6 | `cek stok` / `stok` | `do_stock` |
 | 7 | `laporan`, `rekap`, `omzet` | `do_report` |
 | 8 | regex `jual`, `jualan`, `catat`, `order`, `transaksi` | `do_record` |
-| 9 | **default** / `tanya_umum` (via QU) | `do_ask` (RAG) |
+| 9 | **default** / `tanya_umum` | `do_ask` (engine RAG — **tidak** dipakai saat `umkm_mode`) |
 
-> **Catatan:** Pesan bebas masuk `do_ask` (RAG). Query Understanding AIDLC dipakai bila jalur default/ambigu untuk remap intent atau minta klarifikasi. Commit hanya setelah `ya`.
+> **UMKM live (`umkm_mode`):** graph ini tidak dijalankan. Matcher D4.1 → `await_job_clarification` untuk job campur; unknown → bantuan string; tanya → Agentic Ask. Query Understanding **tidak** remap unknown→sale. Commit hanya setelah `ya`.
 
 ### Node `action` — eksekusi
 
@@ -300,6 +328,8 @@ flowchart TD
 
 Setiap `chat_id` WA dipetakan ke satu baris di `studio_whatsapp_sessions` → `studio_conversations`.
 
+Graf di bawah **hanya** untuk notebook `umkm_mode=false` (AI Gateway / Guide Flow). Notebook UMKM tidak masuk cabang ini — inbound selalu `handleMessage()`.
+
 ```mermaid
 flowchart TD
     IN[Pesan masuk dari chat_id] --> EX{Ada session?}
@@ -382,10 +412,9 @@ erDiagram
 
 | `umkm_mode` | `use_guided_flow` | Perilaku |
 |-------------|-------------------|----------|
-| `true` | `true` | **Disarankan** — welcome + routing listen + action nodes |
-| `true` | `false` | Intent langsung (`handleMessage`), tanpa welcome otomatis |
-| `false` | `true` | Guide flow generik (RAG), bukan UMKM |
-| `false` | `false` | Chat RAG bebas |
+| `true` | * | UMKM branch (`handleMessage()`); null hanya ask → Agentic Ask; unknown = bantuan |
+| `false` | `true` | Guide Flow (notebook generik / Gateway) |
+| `false` | `false` | Chat RAG |
 
 ---
 
@@ -427,7 +456,7 @@ flowchart LR
 
 | Gejala | Titik alur yang gagal | Solusi |
 |--------|----------------------|--------|
-| Tidak ada balasan | Webhook / WAHA tidak WORKING | Cek dashboard WAHA, webhook URL |
+| Tidak ada balasan | Webhook / Hermes session down | Cek dashboard Hermes, webhook URL |
 | Drop tanpa balasan | Allowlist | Tambah nomor atau kosongkan di dev |
 | Welcome lama (RAG) | Guide flow bukan UMKM | `studioSetupUmkmNotebook` + publish |
 | Error "not bound to guide flow" | Sesi lama + flow baru | Kirim pesan lagi (auto-restart) atau hapus session |
@@ -441,7 +470,7 @@ flowchart LR
 ```mermaid
 flowchart TB
     subgraph Setup["Setup (sekali)"]
-        S1[SQL + WAHA pair]
+        S1[SQL + Hermes pair]
         S2[studioSetupUmkmNotebook]
         S3[updateStudioWhatsAppConfig]
         S1 --> S2 --> S3

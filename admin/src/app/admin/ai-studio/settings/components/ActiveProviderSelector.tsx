@@ -8,7 +8,7 @@ import { PROVIDER_LABELS } from "../types";
 
 const { Text } = Typography;
 
-const PROVIDERS: LlmProvider[] = ["anthropic", "google", "openai", "groq", "ollama"];
+const PROVIDERS: LlmProvider[] = ["anthropic", "google", "openai", "groq", "openrouter", "ollama"];
 
 /** Short labels for compact cards (full name still in title attr). */
 const SHORT_LABELS: Record<LlmProvider, string> = {
@@ -16,6 +16,7 @@ const SHORT_LABELS: Record<LlmProvider, string> = {
     google: "Google",
     openai: "OpenAI",
     groq: "Groq",
+    openrouter: "OpenRouter",
     ollama: "Ollama",
 };
 

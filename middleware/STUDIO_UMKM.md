@@ -2,7 +2,7 @@
 
 > **Alur & diagram flow:** lihat [STUDIO_UMKM_FLOW.md](./STUDIO_UMKM_FLOW.md) (alur bisnis, guide flow, sesi WA, sub-alur catat/laporan).
 >
-> Acuan metodologi: **AIDLC** (AI Development Life Cycle) — guided-flow pipeline: pahami pesan → routing intent → preview konfirmasi → commit → evaluasi.
+> Acuan metodologi: **AIDLC** (AI Development Life Cycle) — pipeline UMKM: pahami pesan → routing intent (`handleMessage`) → preview konfirmasi → commit → evaluasi.
 
 Modul ini mengubah AI Studio menjadi **asisten penjualan UMKM** lewat WhatsApp:
 
@@ -14,10 +14,23 @@ Modul ini mengubah AI Studio menjadi **asisten penjualan UMKM** lewat WhatsApp:
 
 ```
 UMKM (WhatsApp)
-    → WAHA webhook
+    → Hermes webhook
     → StudioWhatsAppService
-        ├─ use_guided_flow=true  → GuideFlow (UMKM Penjualan WA) → action nodes
-        └─ umkm_mode (tanpa guided flow) → StudioUmkmService.handleMessage()
+        ├─ umkm_mode=true  → StudioUmkmService.handleMessage()  ← produk UMKM
+        │     ├─ greeting → welcome cheat-sheet (*7* when pendamping ON)
+        │     ├─ help → bantuan (*7* + alias when ON)
+        │     ├─ digit 7 / pendamping / saran bisnis / pendamping bisnis → PendampingService (string, never null)
+        │     │     └─ flag `umkm_pendamping_enabled===false` → short disabled copy (kill switch)
+        │     ├─ ask / tanya /1 → null → Agentic Ask (di router)
+        │     ├─ mixed job → await_job_clarification (bukan tebak)
+        │                  ├─ cousin-sale (`ada yang beli` / `tadi beli`) → record_sale
+        │     ├─ omzet / stok / daftar / belanja jelas → matcher (bukan stamp)
+        │     ├─ jual/stok/laporan → handler / slot wizard
+        │     └─ unknown → bantuan (string, tidak pernah RAG)
+        ├─ else use_guided_flow=true  → Guide Flow (notebook generik / AI Gateway)
+        └─ else → StudioService.chat() RAG
+        ├─ else use_guided_flow=true  → GuideFlow (notebook generik / AI Gateway)
+        └─ else → StudioService.chat() RAG
     → staging percakapan (pending sale) → konfirmasi
     → ecom_orders (WRITE) / inv_stock_ledger (READ) / v_studio_sales_* (READ)
     → balasan WhatsApp
@@ -37,17 +50,26 @@ Intent internal ↔ label AIDLC:
 
 | File | Peran |
 |------|-------|
-| `studio-umkm.util.ts` | Intent, parsing rupiah, format WA, alias AIDLC |
-| `studio-umkm.service.ts` | Preview/commit sale, stok, laporan, setup notebook |
+| `studio-umkm.util.ts` | Intent, matcher intake (D4.1 + cousin-sale), parsing rupiah, format WA, alias `pendamping` |
+| `studio-umkm.service.ts` | Preview/commit sale, stok, laporan, setup notebook; branch coach sebelum ask |
+| `studio-umkm-pendamping.service.ts` | Coach ritual: laporan minggu + stok tipis + playbook statis → ≤3 tips |
+| `studio-umkm-read-tools.ts` | Shared `executeUmkmReadTool` untuk Ask + Pendamping |
+| `curriculum/warung-pendamping.md` | Playbook statis (bukan notebook RAG) |
 | `guide-flow.definition.ts` | `defaultUmkmGuideFlowDefinition()` + node `action` |
 | `guide-flow.service.ts` | Eksekusi `record_sale`, `confirm_sale`, `check_stock`, … |
 | `studio-whatsapp.service.ts` | Routing UMKM saat `umkm_mode` |
+
+**Pendamping vs Tanya:** exact alias (`pendamping` / `saran bisnis` / `pendamping bisnis`) **atau digit `7` (first-line, special-case)** → coach string (never `null`). Soft tips (`tips naikin omzet`) tetap Agentic Ask. Pending jual/belanja **dan wizard aktif** menang atas alias/digit coach. Flag `context_config.umkm_pendamping_enabled` (missing = ON); `false` = kill switch. Help/welcome menampilkan `*7* Pendamping bisnis` saat ON; stamp menu digit 7 disuppress saat ON. Setelah sale `ya`, tidak ada nudge coach.
+
+Matcher `kind: sale` (`ada yang beli` / `tadi beli`) memaksa catat penjualan. Matcher juga **punya job jelas** omzet / cek stok / daftar / belanja (frasa DEFAULT + ekstra sepupu seperti `barang apa aja`, `etalase`, `sisa [barang]`, `masih ada berapa`) — stamp notebook tidak bisa menyembunyikannya. Keyword stamp tetap **union** ke DEFAULT sebagai alias tambahan. Help/ask tetap dijalankan sebelum matcher. Bare `yang beli` bukan cousin-sale. `berapa yang beli …` adalah **laporan** (`sales_report`), bukan jual dan bukan help. Mixed `beli` tetap klarifikasi.
+
+Preview jual/belanja di WhatsApp live mencoba tombol native, lalu **list** GOWS/NOWEB (**Ya, simpan** / **Batal**). Tap `umkm_ya`/`umkm_batal` dipetakan ke `ya`/`batal`. Ketik tetap jalan. Kalau transport menolak keduanya, bot jatuh ke teks.
 
 ## Setup aplikasi (step by step)
 
 ### Prasyarat
 
-- Docker: Postgres, WAHA, middleware
+- Docker: Postgres, Hermes, middleware
 - Tabel e-commerce: `supabase/ecommerce_schema.sql`
 - View penjualan: `middleware/sql/studio_sales_views.sql`
 - Tabel WhatsApp: `middleware/sql/studio_whatsapp.sql`
@@ -61,10 +83,10 @@ Root `.env` / `middleware/.env`:
 # Database (sesuaikan dengan docker compose Anda)
 DATABASE_URL=postgresql://supabase_admin:...@localhost:5432/nusantarasoft
 
-# WhatsApp / WAHA
-WAHA_API_KEY=your-api-key
-WAHA_SESSION=default
-WAHA_WEBHOOK_HMAC_KEY=your-webhook-secret
+# WhatsApp / Hermes
+WHATSAPP_PROVIDER=hermes
+HERMES_BRIDGE_URL=http://hermes:8765
+WHATSAPP_WEBHOOK_HMAC_KEY=your-webhook-secret
 
 # AI (opsional, untuk parsing pesan kompleks)
 ANTHROPIC_API_KEY=sk-ant-...
@@ -90,7 +112,7 @@ Get-Content .\supabase\studio_sales_seed.sql -Raw | docker exec -i postgres psql
 ### 3. Jalankan layanan
 
 ```powershell
-docker compose up -d postgres waha
+docker compose up -d postgres hermes
 cd middleware
 npm install
 npm run start:dev
@@ -104,7 +126,7 @@ npm install
 npm run dev
 ```
 
-### 4. Pair WhatsApp (WAHA)
+### 4. Pair WhatsApp (Hermes)
 
 1. Buka http://localhost:3010/dashboard
 2. Start session `default` → scan QR
@@ -128,11 +150,11 @@ mutation {
   )
 }
 
-# 2. Aktifkan mode UMKM + publish guide flow
+# 2. Aktifkan mode UMKM (jangan publish Guide Flow)
 mutation {
   studioSetupUmkmNotebook(
     notebookId: "NOTEBOOK_UUID"
-    publishGuideFlow: true
+    publishGuideFlow: false
   )
 }
 
@@ -142,7 +164,7 @@ mutation {
     notebookId: "NOTEBOOK_UUID"
     enabled: true
     allowlistPhones: ["6281234567890"]
-    useGuidedFlow: true
+    useGuidedFlow: false
   )
 }
 ```
@@ -153,34 +175,39 @@ Lihat `middleware/sql/studio_umkm_setup.sql`.
 
 ### 6. Uji di WhatsApp
 
-Kirim ke nomor bisnis yang ter-pair:
+Kirim ke nomor bisnis yang ter-pair. Menu default (`DEFAULT_UMKM_COMMANDS`):
 
 | Pesan | Hasil yang diharapkan |
 |-------|-----------------------|
-| `5` / `bantuan` / `menu` | Menu angka + contoh format |
-| `1` | Prompt catat penjualan (minta detail `jual ...`) |
-| `jual 3 es kopi 45000` | Preview konfirmasi (belum ke DB) |
-| `ya` / `1` (saat ada preview) | Order tersimpan + nomor `WA-...` |
-| `batal` / `0` (saat ada preview) | Draft dibatalkan |
-| `2` / `cek stok kopi` | Qty available dari ledger |
-| `3` / `daftar barang` | Katalog `inv_items` aktif |
-| `4` / `laporan hari ini` | Ringkasan omzet + produk terlaris |
+| `halo` / `0` / `bantuan` | Welcome cheat-sheet + menu 0–6 |
+| `1` / `tanya` | Agentic Ask (bukan RAG dokumen saja) |
+| `2` | Hub Menu (daftar / tambah menu / tambah stok) |
+| `3` | Hub Belanja |
+| `4` | Daftar penjualan |
+| `5` / `jual 3 es kopi 45000` | Mulai jual / preview konfirmasi (belum ke DB) |
+| `ya` (saat ada preview) | Order tersimpan + nomor `WA-...` |
+| `batal` (saat ada preview) | Draft dibatalkan |
+| `cek stok kopi` | Qty available dari ledger |
+| `6` / `laporan hari ini` | Ringkasan omzet |
 | `berapa penjualan hari ini` | Sama (laporan) |
-| `catat 2 tas total 500rb tunai` lalu `ya` | Order lunas |
 
-### Menu angka (gaya CS)
+**Cutover:** setelah deploy, digit sisa dari menu Guide Flow lama **bukan** no-op. `3` membuka **Belanja**, bukan “daftar barang”. Reset Sim / ketik `0` sebelum pesan pertama.
 
-Balas **satu digit** kapan saja (bisa digabung dengan kalimat):
+### Menu angka (DEFAULT_UMKM_COMMANDS)
+
+Balas **satu digit**:
 
 | Angka | Aksi |
 |-------|------|
-| `1` | Catat penjualan → lalu kirim detail `jual ...` |
-| `2` | Cek stok (semua / lanjut `cek stok [nama]`) |
-| `3` | Daftar barang |
-| `4` | Laporan hari ini |
-| `5` / `0` / `9` | Bantuan / menu |
+| `1` | Tanya (Agentic Ask) |
+| `2` | Hub Menu |
+| `3` | Hub Belanja |
+| `4` | Daftar penjualan |
+| `5` | Tambah penjualan |
+| `6` | Hub Laporan |
+| `0` | Bantuan |
 
-Saat ada preview penjualan: `1` = konfirmasi simpan, `0` = batalkan (setara `ya` / `batal`).
+Saat ada preview penjualan: `ya` / `ok` = konfirmasi, `batal` = batalkan.
 
 ## Menu WhatsApp (default baru)
 
@@ -221,14 +248,15 @@ mutation {
       confirm: ["ya", "ok", "1"]
       cancel: ["batal", "0"]
     }
-    republishGuideFlow: true
+    republishGuideFlow: false
   )
 }
 ```
 
-- **Tambah/hapus** item di `menu` atau array keyword = perintah berubah.
+- Stamp `keywords` di notebook **digabung** dengan default (tambah alias, tidak menimpa). Array kosong tidak menghapus frasa default. `menu` / `confirm` / `cancel` tetap replace jika diisi.
+- **Tambah** alias di array keyword notebook; menghapus frasa default tidak bisa lewat stamp kosong — ganti lewat default kode atau alias tambahan.
 - Intent aksi tetap: `record_sale` | `check_stock` | `list_products` | `sales_report` | `help`.
-- Saat simpan dengan `republishGuideFlow: true`, guide flow **UMKM Penjualan WA** digenerate ulang dari config yang sama.
+- Saat simpan, **jangan** `republishGuideFlow: true` di produksi UMKM — inbound memakai `handleMessage()`, bukan graph XState.
 - Setup UMKM men-seed default jika `umkm_commands` belum ada (tidak menimpa custom).
 - Query default: `studioUmkmCommandsDefaults`.
 
@@ -281,6 +309,8 @@ Data disimpan ke `ecom_orders` dengan `source=api`, `status=completed`.
 
 Flow bawaan: **UMKM Penjualan WA** (`defaultUmkmGuideFlowDefinition(commands)`).
 
+Produk UMKM **tidak** memakai flow ini. Graph tetap ada untuk notebook generik / hatch GraphQL `publishGuideFlow: true` (bukan path admin UMKM).
+
 Welcome + transisi `listen_intent` digenerate dari `context_config.umkm_commands` saat `createAndPublishUmkmFlow`.
 
 Node `action`:
@@ -295,17 +325,17 @@ Node `action`:
 | `list_products` | Daftar barang dari `inv_items` |
 | `umkm_help` | Tampilkan menu bantuan |
 
-Aktifkan dengan `useGuidedFlow: true` di config WhatsApp.
+Jangan aktifkan dengan `useGuidedFlow: true` untuk notebook `umkm_mode`. Produk UMKM adalah `handleMessage()` (router umkm-first). Guide Flow tetap untuk notebook generik di AI Gateway.
 
-> Notebook yang sudah publish flow lama perlu **re-publish** template UMKM agar node `confirm_sale` / `check_stock` aktif. Mode `umkm_mode` tanpa guided flow sudah mendukung konfirmasi via memory per nomor.
+> Notebook yang sudah publish flow lama **UMKM Penjualan WA** dibiarkan (orphan). Routing `umkm_mode` membuatnya tidak terpanggil. Mode `umkm_mode` tanpa guided flow mendukung konfirmasi via pending sale per nomor.
 
 ## Mode operasi
 
 | `umkm_mode` | `use_guided_flow` | Perilaku |
 |-------------|-------------------|----------|
-| `true` | `true` | Guide flow UMKM (disarankan) |
-| `true` | `false` | Intent langsung via `StudioUmkmService` (+ pending in-memory) |
-| `false` | * | Chat RAG generik (bukan UMKM) |
+| `true` | * | UMKM branch (`handleMessage()`); null hanya ask → Agentic Ask; unknown = bantuan |
+| `false` | `true` | Guide Flow (notebook generik / AI Gateway) |
+| `false` | `false` | Chat RAG |
 
 `umkm_mode` diset lewat `studio_notebooks.context_config`:
 
@@ -346,7 +376,7 @@ Unit test: `studio-umkm.util.spec.ts` (intent, parsing, guide flow graph).
 | "belum bisa memahami penjualan" | Gunakan format contoh; set `ANTHROPIC_API_KEY` |
 | Preview muncul tapi order tidak tersimpan | Balas `ya` dalam 15 menit |
 | Laporan selalu 0 | Pastikan `studio_sales_views.sql` terpasang; catat + konfirmasi dulu |
-| WA tidak membalas | Cek allowlist, WAHA status WORKING, notebook_id di config |
+| WA tidak membalas | Cek allowlist, Hermes session status, notebook_id di config |
 | Order tidak muncul di laporan | View filter `tenant_id=default`; sesuaikan `context_config.tenant_id` |
 | Stok selalu 0 | Isi `inv_stock_ledger` untuk `item_id` terkait |
 
@@ -362,7 +392,7 @@ Unit test: `studio-umkm.util.spec.ts` (intent, parsing, guide flow graph).
 - **Feedback logging** — ketik `nilai 1–5` / `4/5` / `puas` / `kurang` → tabel `studio_umkm_feedback` (angka polos `1–5` = menu CS, bukan rating)
 - **Potong stok otomatis** — `SALE_OUT` via `InventoryService` saat commit (item match katalog)
 - **Laporan harian cron** — `StudioUmkmCronService` pukul 13:00 UTC (~20:00 WIB); matikan dengan `STUDIO_UMKM_DAILY_REPORT_ENABLED=false`
-- **WhatsApp via WAHA** — inbound webhook + outbound `sendText` (tidak memakai Meta Cloud API)
+- **WhatsApp via Hermes** — inbound webhook + outbound `sendText` (tidak memakai Meta Cloud API)
 
 ```env
 STUDIO_UMKM_DAILY_REPORT_ENABLED=true
@@ -375,6 +405,6 @@ Get-Content .\middleware\sql\studio_umkm_feedback.sql -Raw | docker exec -i post
 
 ## Referensi
 
-- [STUDIO_WHATSAPP.md](./STUDIO_WHATSAPP.md) — WAHA & webhook
+- [STUDIO_WHATSAPP.md](./STUDIO_WHATSAPP.md) — Hermes & webhook
 - [STUDIO_DB_CONTEXT.md](./STUDIO_DB_CONTEXT.md) — view penjualan untuk chat
 - [STUDIO_GUIDED_CHAT.md](./STUDIO_GUIDED_CHAT.md) — guide flow umum

@@ -1,4 +1,4 @@
-export type LlmProvider = 'anthropic' | 'google' | 'openai' | 'ollama' | 'groq';
+export type LlmProvider = 'anthropic' | 'google' | 'openai' | 'ollama' | 'groq' | 'openrouter';
 export type EmbeddingProvider = 'auto' | 'google_ai' | 'vertex' | 'openai' | 'ollama';
 
 export interface StudioSettings {
@@ -18,10 +18,11 @@ export interface StudioSettings {
     openai_api_key_configured: boolean;
     groq_model: string;
     groq_api_key_configured: boolean;
+    openrouter_model: string;
+    openrouter_api_key_configured: boolean;
     ollama_base_url: string;
     ollama_model: string;
     ollama_embedding_model?: string;
-    waha_dashboard_url: string;
 }
 
 export interface ProviderReadiness {
@@ -37,7 +38,6 @@ export interface StudioAiStatus {
     embeddingProvider: EmbeddingProvider;
     embeddingModel: string;
     providers: ProviderReadiness[];
-    wahaDashboardUrl: string;
 }
 
 export interface AiConnectionTestResult {
@@ -54,11 +54,13 @@ export type StudioSettingsFormValues = StudioSettings & {
     google_service_account_json?: string;
     openai_api_key?: string;
     groq_api_key?: string;
+    openrouter_api_key?: string;
     clear_anthropic_api_key?: boolean;
     clear_google_api_key?: boolean;
     clear_google_service_account_json?: boolean;
     clear_openai_api_key?: boolean;
     clear_groq_api_key?: boolean;
+    clear_openrouter_api_key?: boolean;
 };
 
 export const PROVIDER_LABELS: Record<LlmProvider, string> = {
@@ -66,6 +68,7 @@ export const PROVIDER_LABELS: Record<LlmProvider, string> = {
     google: 'Google (Gemini / Vertex)',
     openai: 'OpenAI',
     groq: 'Groq',
+    openrouter: 'OpenRouter',
     ollama: 'Ollama (Local)',
 };
 

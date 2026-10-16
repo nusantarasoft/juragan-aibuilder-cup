@@ -1,0 +1,15 @@
+{
+  "date": "2026-08-23",
+  "url": "production://31.97.66.39/umkm-warung-klontong-bahagia",
+  "healthScore": 92,
+  "head": "ac96425",
+  "issues": [],
+  "categoryScores": {
+    "console": 100,
+    "functional": 95,
+    "ux": 90,
+    "performance": 90,
+    "content": 85
+  },
+  "live": { "passed": 7, "failed": 0 }
+}

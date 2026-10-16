@@ -3,13 +3,22 @@
 import {
     buildUmkmCommandMatcher,
     DEFAULT_UMKM_COMMANDS,
+    keywordsToRegex,
+    menuRowsForPendampingDisplay,
     resolveUmkmCommands,
     uniqueMenuForDisplay,
     UMKM_INTENT_DETECT_ORDER,
     type UmkmCommandIntent,
     type UmkmCommandsConfig,
     type UmkmCommandMatcher,
+    type UmkmPendampingDisplayOpts,
 } from './studio-umkm-commands';
+import type { StudioContextConfig } from './studio-db-context.service';
+import type { UmkmIntakeJobCandidate } from './studio-umkm-durable.util';
+
+export type { UmkmPendampingDisplayOpts };
+
+export type { UmkmIntakeJobCandidate };
 
 export type UmkmIntent = UmkmCommandIntent | 'unknown' | 'check_stock';
 
@@ -115,6 +124,111 @@ export function detectUmkmConfirmReply(
     return null;
 }
 
+/** WhatsApp reply-button ids for money confirm. Keep short; WhatsApp title max 20 chars. */
+export const UMKM_WA_CONFIRM_BUTTON_ID = 'umkm_ya';
+export const UMKM_WA_CANCEL_BUTTON_ID = 'umkm_batal';
+export const UMKM_WA_CONFIRM_BUTTON_TEXT = 'Ya, simpan';
+export const UMKM_WA_CANCEL_BUTTON_TEXT = 'Batal';
+
+export function umkmConfirmButtons(): { id: string; text: string }[] {
+    return [
+        { id: UMKM_WA_CONFIRM_BUTTON_ID, text: UMKM_WA_CONFIRM_BUTTON_TEXT },
+        { id: UMKM_WA_CANCEL_BUTTON_ID, text: UMKM_WA_CANCEL_BUTTON_TEXT },
+    ];
+}
+
+function collectInteractiveChoiceIds(value: unknown, depth = 0, out: string[] = []): string[] {
+    if (depth > 8 || value == null) return out;
+    if (Array.isArray(value)) {
+        for (const item of value) collectInteractiveChoiceIds(item, depth + 1, out);
+        return out;
+    }
+    if (typeof value !== 'object') return out;
+    const rec = value as Record<string, unknown>;
+    for (const key of [
+        'selectedRowID',
+        'selectedRowId',
+        'selectedButtonId',
+        'selectedId',
+        'rowId',
+        'buttonId',
+    ]) {
+        const s = String(rec[key] ?? '').trim();
+        if (s) out.push(s);
+    }
+    for (const key of [
+        'reply',
+        'buttonReply',
+        'listResponse',
+        'singleSelectReply',
+        'listResponseMessage',
+        'Message',
+        '_data',
+        'message',
+    ]) {
+        if (key in rec) collectInteractiveChoiceIds(rec[key], depth + 1, out);
+    }
+    return out;
+}
+
+function collectInteractiveTitles(value: unknown, depth = 0, out: string[] = []): string[] {
+    if (depth > 8 || value == null) return out;
+    if (Array.isArray(value)) {
+        for (const item of value) collectInteractiveTitles(item, depth + 1, out);
+        return out;
+    }
+    if (typeof value !== 'object') return out;
+    const rec = value as Record<string, unknown>;
+    for (const key of ['title', 'text', 'displayText', 'description']) {
+        const s = String(rec[key] ?? '').trim();
+        if (s) out.push(s);
+    }
+    for (const key of [
+        'reply',
+        'buttonReply',
+        'listResponse',
+        'singleSelectReply',
+        'listResponseMessage',
+        'Message',
+        '_data',
+        'message',
+    ]) {
+        if (key in rec) collectInteractiveTitles(rec[key], depth + 1, out);
+    }
+    return out;
+}
+
+/**
+ * Map a WhatsApp button/list tap to confirm/cancel. Canonical text `ya`/`batal` still
+ * works via detectUmkmConfirmReply; this only reads interactive payload ids.
+ */
+export function extractUmkmButtonReply(
+    payload: Record<string, unknown>,
+): 'confirm' | 'cancel' | null {
+    const ids = collectInteractiveChoiceIds(payload);
+    if (ids.includes(UMKM_WA_CONFIRM_BUTTON_ID)) return 'confirm';
+    if (ids.includes(UMKM_WA_CANCEL_BUTTON_ID)) return 'cancel';
+
+    const titles = [
+        String(payload.body ?? '').trim(),
+        ...collectInteractiveTitles(payload),
+    ];
+    for (const title of titles) {
+        if (/^ya,?\s*simpan$/i.test(title)) return 'confirm';
+        if (/^batal$/i.test(title)) return 'cancel';
+    }
+    return null;
+}
+
+/** True when outbound copy is a sale/purchase money preview (send buttons). */
+export function isUmkmMoneyConfirmPreview(text: string): boolean {
+    return /\*?Konfirmasi (?:penjualan|belanja)\*?/i.test(text);
+}
+
+export function canonicalUmkmConfirmText(kind: 'confirm' | 'cancel'): 'ya' | 'batal' {
+    return kind === 'confirm' ? 'ya' : 'batal';
+}
+
 /** Extract product query from stock-check phrasing. */
 export function extractStockProductQuery(text: string): string | null {
     const t = text.trim();
@@ -122,6 +236,9 @@ export function extractStockProductQuery(text: string): string | null {
         /(?:cek\s+)?stok\s+(?:berapa\s+)?(.+?)(?:\s+berapa)?$/i,
         /berapa\s+stok\s+(.+)$/i,
         /sisa\s+(?:stok|barang)\s+(.+)$/i,
+        /sisa\s+(.+)$/i,
+        /masih\s+ada(?:\s+berapa)?\s+(.+)$/i,
+        /ada\s+stok\s+(.+)$/i,
         /stock\s+(.+)$/i,
         /tambah\s+stok\s+(.+)$/i,
     ];
@@ -129,22 +246,76 @@ export function extractStockProductQuery(text: string): string | null {
         const m = t.match(re);
         if (!m?.[1]) continue;
         const q = m[1]
-            .replace(/\b(berapa|ya|dong|kah|sih|aja|sekarang)\b/gi, '')
+            .replace(/\b(berapa|ya|dong|kah|sih|aja|sekarang|masih|dulu|nih)\b/gi, '')
+            .replace(/[,?!].*$/, '')
+            .replace(/\b(mau\s+habis|mending|restock|restok|sebaiknya|lebih\s+baik).*$/i, '')
             .trim();
-        if (q.length >= 2 && !/^(berapa|ada|semua|all)$/i.test(q)) return q;
+        if (q.length >= 2 && !/^(berapa|ada|semua|all|stok|stock|barang)$/i.test(q)) return q;
     }
     return null;
+}
+
+const UMKM_PENDAMPING_ALIASES = new Set([
+    'pendamping',
+    'saran bisnis',
+    'pendamping bisnis',
+]);
+
+/** Normalize for exact pendamping alias match (trim, lower, collapse space, strip trailing .!?). */
+export function normalizeUmkmPendampingAlias(text: string): string {
+    return text
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, ' ')
+        .replace(/[.!?]+$/g, '')
+        .trim();
+}
+
+/**
+ * Exact command-gated coach aliases. Soft tips ("tips naikin omzet") stay Agentic Ask.
+ * Pending sticky wins: aliases are not clear jobs.
+ */
+export function isUmkmPendampingExactAlias(text: string): boolean {
+    return UMKM_PENDAMPING_ALIASES.has(normalizeUmkmPendampingAlias(text));
+}
+
+/** Kill switch: missing/undefined = ON; only explicit false disables. */
+export function isUmkmPendampingEnabled(config?: StudioContextConfig | null): boolean {
+    return config?.umkm_pendamping_enabled !== false;
+}
+
+/**
+ * First-line digit `7` (media-polluted OK). Special-case — not menu stamp intent.
+ */
+export function isPendampingDigit(text: string): boolean {
+    const lines = text
+        .trim()
+        .split(/\r?\n/)
+        .map((l) => l.trim())
+        .filter(Boolean);
+    return (lines[0] || '') === '7';
+}
+
+export function formatPendampingDisabled(): string {
+    return (
+        'Pendamping bisnis tidak aktif untuk toko ini. ' +
+        'Ketik *jual ...*, *stok ...*, atau *0* untuk menu kasir.'
+    );
 }
 
 /**
  * Advice / open question (tips, bagaimana, menaikkan omzet…) — route to Tanya,
  * not operational commands that share keywords like "omzet" / "penjualan".
+ * Exact pendamping aliases are excluded (dedicated coach path).
  */
 export function looksLikeUmkmOpenQuestion(text: string): boolean {
     const t = text.trim();
     if (!t || t.length < 8) return false;
+    if (isUmkmPendampingExactAlias(t)) return false;
     if (
-        /\b(bagaimana|gimana|tips|saran|rekomendasi|strategi|ide|kenapa|mengapa)\b/i.test(t)
+        /\b(bagaimana|gimana|tips|saran|rekomendasi|strategi|ide|kenapa|mengapa|mending|sebaiknya|lebih baik)\b/i.test(
+            t,
+        )
     ) {
         return true;
     }
@@ -165,6 +336,9 @@ export function looksLikeUmkmOpenQuestion(text: string): boolean {
 export function looksLikeUmkmDirectDataQuery(text: string): boolean {
     const t = text.trim();
     if (!t) return false;
+    // Advice dressed as a question ("mending restock berapa") is not a data lookup.
+    if (/\b(mending|sebaiknya|lebih baik)\b/i.test(t)) return false;
+    if (/\bkalau\b/i.test(t) && /\b(habis|restock|restok|mending)\b/i.test(t)) return false;
     if (
         /\b(berapa|lihat|tampilkan|cek|show|total|hari\s+ini|minggu\s+ini|bulan\s+ini|rekap|laporan)\b/i.test(
             t,
@@ -186,9 +360,18 @@ export function detectUmkmIntent(
     const menu = detectUmkmMenuDigit(t, m.commands);
     if (menu) return menu;
 
+    // "bantuan dong, mau catat jualan" is help, not a sale of "jualan".
+    if (/^(bantuan|help|panduan)\b/i.test(t)) return 'help';
+
     // Advice Q before keyword scan: "cara menaikkan omzet" must not hit sales_report.
     if (looksLikeUmkmOpenQuestion(t) && !looksLikeUmkmDirectDataQuery(t)) {
         return 'ask';
+    }
+
+    // "berapa yang beli hari ini?" is a report. Must win over record_sale keyword "yang beli"
+    // and over stamped notebooks that omit sales_report phrases (same idea as cousin-sale).
+    if (/\bberapa\s+yang\s+beli\b/i.test(t)) {
+        return 'sales_report';
     }
 
     for (const intent of UMKM_INTENT_DETECT_ORDER) {
@@ -196,6 +379,46 @@ export function detectUmkmIntent(
         if (re?.test(t)) return intent;
     }
     return 'unknown';
+}
+
+/** Greeting-only inbound (no sale/menu payload) — send welcome cheat-sheet before QU. */
+export function isUmkmGreetingOnly(text: string): boolean {
+    const t = text
+        .trim()
+        .toLowerCase()
+        .replace(/[!.,?…]+$/g, '')
+        .trim();
+    if (!t) return false;
+    if (isUmkmMenuOnly(text)) return false;
+    if (looksLikeSaleMessage(text)) return false;
+    if (
+        /^(halo|hai|hi|hello|hei|hey|selamat\s+(pagi|siang|sore|malam)|assalamu['']?alaikum|assalamualaikum|permisi|ping)(\s+(kak|bos|min|admin|semua))?$/.test(
+            t,
+        )
+    ) {
+        return true;
+    }
+    // Shop-open small talk: "pagi, baru buka toko nih"
+    const openShop = /\b(buka toko|baru buka|selamat\s+(pagi|siang|sore|malam)|^(pagi|siang|sore|malam)\b)/i.test(
+        t,
+    );
+    const operational =
+        /\b(jual|jualan|catat|stok|belanja|tambah|omzet|omset|daftar|bantuan|beli|laporan|harga|order)\b/i.test(
+            t,
+        );
+    return openShop && !operational && t.length < 80;
+}
+
+/** Qty correction while a sale preview is waiting: "salah, maksudnya 2". */
+export function parsePendingQtyCorrection(text: string): number | null {
+    const t = text.trim().toLowerCase();
+    if (!t) return null;
+    if (!/\b(salah|maksudnya|maksud|harusnya|bukan|typo|koreksi)\b/.test(t)) return null;
+    const m = t.match(/\b(\d{1,4})\b/);
+    if (!m) return null;
+    const n = parseInt(m[1], 10);
+    if (!Number.isFinite(n) || n <= 0) return null;
+    return n;
 }
 
 /** True if text looks like a sale message (for heuristic parser gate). */
@@ -471,7 +694,11 @@ export function formatRecordSaleMenuPrompt(commands?: UmkmCommandsConfig | unkno
 export function formatUnknownUmkmCommand(commands?: UmkmCommandsConfig | unknown): string {
     const cfg = resolveUmkmCommands(commands ?? DEFAULT_UMKM_COMMANDS);
     const menu = uniqueMenuForDisplay(cfg);
-    const lines = ['🤔 Perintah belum dikenali.', '', 'Balas angka menu, atau ketik perintah:'];
+    const lines = [
+        'Belum kebaca. Ketik aja seperti biasa, contoh *jual 2 indomie* atau *stok indomie*.',
+        '',
+        'Atau balas angka:',
+    ];
     for (const m of menu) {
         lines.push(`*${m.digit}* ${m.label}`);
     }
@@ -485,12 +712,21 @@ export function formatUnknownUmkmCommand(commands?: UmkmCommandsConfig | unknown
     return lines.join('\n');
 }
 
-export function formatUmkmHelp(commands?: UmkmCommandsConfig | unknown): string {
+export function formatUmkmHelp(
+    commands?: UmkmCommandsConfig | unknown,
+    opts?: UmkmPendampingDisplayOpts,
+): string {
     const cfg = resolveUmkmCommands(commands ?? DEFAULT_UMKM_COMMANDS);
-    const menu = uniqueMenuForDisplay(cfg);
-    const lines = ['📒 *Asisten Penjualan UMKM*', ''];
+    const enabled = opts?.pendampingEnabled !== false;
+    const menu = menuRowsForPendampingDisplay(cfg, { pendampingEnabled: enabled });
+    const lines = [
+        'Bisa. Mau catat jualan, cek stok, belanja, atau tanya — ketik seperti biasa.',
+        '',
+        'Contoh: *jual 2 indomie* · *stok indomie* · *omzet hari ini*',
+        '',
+    ];
     if (menu.length) {
-        lines.push('*Menu* — balas angka:');
+        lines.push('*Menu* — kalau mau balas angka:');
         for (const m of menu) {
             lines.push(`*${m.digit}* ${m.label}`);
         }
@@ -513,6 +749,9 @@ export function formatUmkmHelp(commands?: UmkmCommandsConfig | unknown): string 
     const confirmHint = cfg.confirm.slice(0, 2).map((c) => `*${c}*`).join(' / ') || '*ya*';
     const cancelHint = cfg.cancel.slice(0, 2).map((c) => `*${c}*`).join(' / ') || '*batal*';
     lines.push(`Setelah preview penjualan: ${confirmHint} = simpan, ${cancelHint} = batalkan.`);
+    if (enabled) {
+        lines.push('Ketik *pendamping* untuk saran bisnis.');
+    }
     return lines.join('\n');
 }
 
@@ -601,3 +840,296 @@ export function parseSaleJsonFromLlm(raw: string): ParsedUmkmSale | null {
         return null;
     }
 }
+
+export type UmkmIntakeMatch =
+    | { kind: 'none' }
+    | { kind: 'empty_sale' }
+    | { kind: 'sale'; originalText: string }
+    | { kind: 'purchase'; originalText: string }
+    | { kind: 'check_stock'; originalText: string }
+    | { kind: 'sales_report'; originalText: string }
+    | { kind: 'list_products'; originalText: string }
+    | { kind: 'list_sales'; originalText: string }
+    | { kind: 'mixed'; candidates: UmkmIntakeJobCandidate[]; originalText: string };
+
+const INTAKE_JOB_VERBS = new Set([
+    'jual',
+    'jualan',
+    'catat',
+    'order',
+    'beli',
+    'belanja',
+    'stok',
+    'stock',
+    'tambah',
+    'cek',
+    'restok',
+    'restock',
+    'penjualan',
+    'pembelian',
+]);
+
+const INTAKE_FILLER = new Set([
+    'ya',
+    'batal',
+    'rb',
+    'jt',
+    'ribu',
+    'juta',
+    'atau',
+    'dan',
+    'yang',
+    'ada',
+    'tadi',
+    'dong',
+    'sih',
+    'nih',
+    'porsi',
+]);
+
+function intakeTokens(text: string): string[] {
+    return text
+        .toLowerCase()
+        .split(/[^a-zA-Z0-9\u00C0-\u024F]+/)
+        .filter(Boolean);
+}
+
+function intakeProductLikeTokens(text: string): string[] {
+    return intakeTokens(text).filter((tok) => {
+        if (/^\d+$/.test(tok)) return false;
+        if (INTAKE_FILLER.has(tok) || INTAKE_JOB_VERBS.has(tok)) return false;
+        return tok.length >= 2;
+    });
+}
+
+function intakeHasQty1to999(text: string): boolean {
+    return /\b([1-9]\d{0,2})\b/.test(text);
+}
+
+function intakeHasPriceShape(text: string): boolean {
+    if (/\b\d+[.,]?\d*\s*(rb|ribu|jt|juta)\b/i.test(text)) return true;
+    return /\b\d{4,}\b/.test(text);
+}
+
+function intakeHasJobVerb(text: string): boolean {
+    return /\b(jual|jualan|catat|order|beli|belanja|stok|stock|tambah|cek|restok|restock|pembelian|penjualan)\b/i.test(
+        text,
+    );
+}
+
+const COUSIN_SALE_PHRASE_RE = /\b(?:ada\s+yang\s+beli|tadi\s+beli)\b/i;
+
+/** Strip cousin-sale phrases, then drop leftover INTAKE_FILLER tokens (e.g. tadi). */
+export function leftoverAfterCousinSale(text: string): string {
+    const stripped = text
+        .replace(/\bada\s+yang\s+beli\b/gi, ' ')
+        .replace(/\btadi\s+beli\b/gi, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    if (!stripped) return '';
+    return stripped
+        .split(/[^a-zA-Z0-9\u00C0-\u024F]+/)
+        .filter(Boolean)
+        .filter((tok) => !INTAKE_FILLER.has(tok.toLowerCase()))
+        .join(' ');
+}
+
+const COUSIN_LIST_RE = /\b(?:barang\s+apa\s+aja|ada\s+barang\s+apa|etalase)\b/i;
+const COUSIN_STOCK_RE = /\b(?:masih\s+ada(?:\s+berapa)?|ada\s+stok)\b/i;
+
+function defaultKeywordRe(intent: UmkmCommandIntent): RegExp | null {
+    return keywordsToRegex(DEFAULT_UMKM_COMMANDS.keywords[intent] || []);
+}
+
+/**
+ * Clear jobs owned by the matcher (DEFAULT phrases + a few cousin extras).
+ * Notebook stamp cannot hide these. Mixed/cousin-sale rules must run first.
+ * `tambah stok` stays add_stock via detectUmkmIntent (not check_stock).
+ */
+function matchCoreClearJob(originalText: string): UmkmIntakeMatch {
+    if (/\bberapa\s+yang\s+beli\b/i.test(originalText)) {
+        return { kind: 'sales_report', originalText };
+    }
+    if (defaultKeywordRe('sales_report')?.test(originalText)) {
+        return { kind: 'sales_report', originalText };
+    }
+    if (COUSIN_LIST_RE.test(originalText) || defaultKeywordRe('list_products')?.test(originalText)) {
+        return { kind: 'list_products', originalText };
+    }
+    if (defaultKeywordRe('list_sales')?.test(originalText)) {
+        return { kind: 'list_sales', originalText };
+    }
+    if (
+        defaultKeywordRe('add_stock')?.test(originalText) ||
+        defaultKeywordRe('list_purchases')?.test(originalText)
+    ) {
+        return { kind: 'none' };
+    }
+    if (defaultKeywordRe('check_stock')?.test(originalText) || COUSIN_STOCK_RE.test(originalText)) {
+        return { kind: 'check_stock', originalText };
+    }
+    if (/\bsisa\b/i.test(originalText) && !/\b(omzet|omset|laporan)\b/i.test(originalText)) {
+        const products = intakeProductLikeTokens(originalText);
+        if (products.length >= 1 || /\b(stok|stock|barang)\b/i.test(originalText)) {
+            return { kind: 'check_stock', originalText };
+        }
+    }
+    if (defaultKeywordRe('record_purchase')?.test(originalText)) {
+        return { kind: 'purchase', originalText };
+    }
+    return { kind: 'none' };
+}
+
+/**
+ * Muddy-job matcher (D4.1). Runs after ask/help override, before detectUmkmIntent.
+ * Does not guess: mixed jobs return candidates for await_job_clarification.
+ * Rule 1 cousin-sale ignores notebook `record_sale` keywords (stamped lists).
+ * After mixed rules, DEFAULT omzet/stok/daftar/belanja (plus cousin extras) are matcher-owned.
+ */
+export function matchUmkmIntakeJob(text: string): UmkmIntakeMatch {
+    const originalText = text.trim();
+    if (!originalText) return { kind: 'none' };
+
+    // 6. Bare catat/jual → empty sale slots, not mixed.
+    if (/^(catat|jual|jualan)\s*$/i.test(originalText)) {
+        return { kind: 'empty_sale' };
+    }
+
+    // 1. Customer-sale phrases → forced sale. Never mixed. Bare "yang beli" is not this rule.
+    if (COUSIN_SALE_PHRASE_RE.test(originalText)) {
+        return { kind: 'sale', originalText };
+    }
+
+    const products = intakeProductLikeTokens(originalText);
+    const hasQty = intakeHasQty1to999(originalText);
+
+    // 3. Token beli (not pembelian) + qty + name → sale vs purchase.
+    if (/\bbeli\b/i.test(originalText) && hasQty && products.length >= 1) {
+        return { kind: 'mixed', candidates: ['sale', 'purchase'], originalText };
+    }
+
+    // 4. Qty 1–999 + product, no job verb, not price-shaped → sale vs add_stock.
+    if (
+        !intakeHasJobVerb(originalText) &&
+        !intakeHasPriceShape(originalText) &&
+        hasQty &&
+        products.length >= 1
+    ) {
+        return { kind: 'mixed', candidates: ['sale', 'add_stock'], originalText };
+    }
+
+    // 5. Stock verb AND sale verb, no qty → sale vs check_stock.
+    const hasSaleVerb = /\b(jual|jualan|catat|order)\b/i.test(originalText);
+    const hasStockVerb =
+        /\b(stok|stock|restok|restock)\b/i.test(originalText) || /cek\s+stok/i.test(originalText);
+    if (hasSaleVerb && hasStockVerb && !hasQty) {
+        return { kind: 'mixed', candidates: ['sale', 'check_stock'], originalText };
+    }
+
+    return matchCoreClearJob(originalText);
+}
+
+/** Map a clarify-turn alias to a forced job. Does not re-run the matcher. */
+export function resumeJobClarification(
+    text: string,
+    candidates: UmkmIntakeJobCandidate[],
+): { action: 'forced'; intent: UmkmIntakeJobCandidate } | { action: 'none' } {
+    const t = text.trim().toLowerCase().replace(/\s+/g, ' ');
+    if (!t) return { action: 'none' };
+    const has = (c: UmkmIntakeJobCandidate) => candidates.includes(c);
+
+    if (has('add_stock') && /^(tambah\s+stok|stok\s+masuk)\b/.test(t)) {
+        return { action: 'forced', intent: 'add_stock' };
+    }
+    if (has('check_stock') && /^(cek\s+stok|cek)\b/.test(t)) {
+        return { action: 'forced', intent: 'check_stock' };
+    }
+    if (has('purchase') && /^belanja\b/.test(t)) {
+        return { action: 'forced', intent: 'purchase' };
+    }
+    if (has('sale') && /^(jual|penjualan|catat)\b/.test(t)) {
+        return { action: 'forced', intent: 'sale' };
+    }
+    if (has('check_stock') && !has('add_stock') && /^stok\b/.test(t)) {
+        return { action: 'forced', intent: 'check_stock' };
+    }
+    return { action: 'none' };
+}
+
+export function formatJobClarificationPrompt(candidates: UmkmIntakeJobCandidate[]): string {
+    const lines = ['Belum kebaca mau apa. Maksudnya:', ''];
+    if (candidates.includes('sale')) lines.push('• *jual* — catat penjualan');
+    if (candidates.includes('add_stock')) lines.push('• *tambah stok*');
+    if (candidates.includes('check_stock')) lines.push('• *cek stok*');
+    if (candidates.includes('purchase')) lines.push('• *belanja*');
+    lines.push('', 'Balas salah satu, atau *batal*.');
+    return lines.join('\n');
+}
+
+export function stripUmkmJobVerbs(text: string): string {
+    return text
+        .replace(
+            /\b(beli|jual|jualan|belanja|stok|stock|catat|order|tambah|cek|restok|restock|atau|penjualan|pembelian)\b/gi,
+            ' ',
+        )
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+/** `indomie 2` → `2 indomie` so allowFollowUp sale parse keeps qty. */
+export function normalizeUmkmQtyFirst(text: string): string {
+    const t = text.trim();
+    if (!t) return t;
+    if (/^\d{1,3}\s+\S/.test(t)) return t;
+    const m = t.match(/^(.+?)\s+(\d{1,3})$/);
+    if (m) {
+        const qty = parseInt(m[2], 10);
+        if (qty >= 1 && qty <= 999) return `${qty} ${m[1].trim()}`;
+    }
+    return t;
+}
+
+/** True when this turn should leave a pending sale/purchase (narrow sticky). */
+export function isUmkmIntakeClearJob(
+    text: string,
+    commands?: UmkmCommandsConfig | unknown,
+): boolean {
+    const match = matchUmkmIntakeJob(text);
+    if (match.kind === 'mixed') return false;
+    if (
+        match.kind === 'sale' ||
+        match.kind === 'purchase' ||
+        match.kind === 'check_stock' ||
+        match.kind === 'sales_report' ||
+        match.kind === 'list_products' ||
+        match.kind === 'list_sales'
+    ) {
+        return true;
+    }
+    return detectUmkmIntent(text, commands) !== 'unknown';
+}
+
+export function formatPendingStickyHint(
+    kind: 'sale' | 'purchase',
+    commands?: UmkmCommandsConfig | unknown,
+): string {
+    const cfg = resolveUmkmCommands(commands ?? DEFAULT_UMKM_COMMANDS);
+    const confirmHint = cfg.confirm[0] || 'ya';
+    const cancelHint = cfg.cancel[0] || 'batal';
+    if (kind === 'purchase') {
+        return [
+            'Masih ada draft belanja menunggu konfirmasi.',
+            `Ketik *${confirmHint}* untuk simpan, *${cancelHint}* untuk batalkan.`,
+            `Untuk job lain, ketik *${cancelHint}* dulu.`,
+        ].join('\n');
+    }
+    return [
+        'Masih ada draft penjualan menunggu konfirmasi.',
+        `Ketik *${confirmHint}* untuk simpan, *${cancelHint}* untuk batalkan.`,
+        'Kalau jumlahnya salah, ketik *salah, maksudnya 2*.',
+        `Untuk job lain, ketik *${cancelHint}* dulu.`,
+    ].join('\n');
+}
+
+export const UMKM_CLARIFY_EXPIRED_COPY =
+    'Sesi sebelumnya sudah lewat. Ketik ulang barang dan jumlah, contoh *indomie 2*.';

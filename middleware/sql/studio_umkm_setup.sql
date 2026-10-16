@@ -4,7 +4,7 @@
 --            studio_whatsapp_multitenant.sql, studio_whatsapp_shared_inbox.sql
 -- ═══════════════════════════════════════════════════════════
 
--- Model: SATU nomor WhatsApp admin (WAHA session `default`).
+-- Model: SATU nomor WhatsApp admin (session `default`).
 -- Setiap UMKM didaftarkan dengan nomor HP PEMILIK yang mengirim WA ke nomor admin.
 -- Routing tenant = cocokkan nomor pengirim (from) dengan business_phone / allowlist_phones.
 
@@ -12,7 +12,7 @@
 
 -- UPDATE studio_whatsapp_config SET
 --   notebook_id = 'NOTEBOOK_ID',
---   waha_session = 'default',
+--   session_name = 'default',
 --   business_phone = '6288123456789',
 --   label = 'Toko Dev',
 --   enabled = true,
@@ -23,7 +23,7 @@
 -- ── UMKM kedua (contoh) ───────────────────────────────────
 
 -- INSERT INTO studio_whatsapp_config (
---   tenant_id, notebook_id, waha_session, business_phone, label,
+--   tenant_id, notebook_id, session_name, business_phone, label,
 --   enabled, allowlist_phones, use_guided_flow, updated_at
 -- ) VALUES (
 --   'umkm-toko-bu-ani',

@@ -50,7 +50,7 @@ import { AnalyticsModule } from './analytics/analytics.module';
 import { DocumentsModule } from './documents/documents.module';
 import { ReportsModule } from './reports/reports.module';
 import { FormsModule } from './forms/forms.module';
-import { WahaModule } from './waha/waha.module';
+import { WhatsAppProviderModule } from './whatsapp/whatsapp-provider.module';
 import { FacilityModule } from './facility/facility.module';
 import { PentestModule } from './pentest/pentest.module';
 import { AgenticOsModule } from './agentic-os/agentic-os.module';
@@ -62,7 +62,7 @@ import { AgenticOsModule } from './agentic-os/agentic-os.module';
             // First file wins on duplicate keys (Nest merges with Object.assign(parsed, existing)).
             envFilePath: ['.env.local', '../.env.local', '.env', '../.env'],
         }),
-        WahaModule,
+        WhatsAppProviderModule,
         ScheduleModule.forRoot(),
 
         // GraphQL configuration (Code-First)
@@ -70,8 +70,14 @@ import { AgenticOsModule } from './agentic-os/agentic-os.module';
             driver: ApolloDriver,
             autoSchemaFile: true,
             sortSchema: true,
-            playground: true,
-            introspection: true,
+            playground:
+                process.env.GRAPHQL_PLAYGROUND === 'true' ||
+                (process.env.NODE_ENV !== 'production' &&
+                    process.env.GRAPHQL_PLAYGROUND !== 'false'),
+            introspection:
+                process.env.GRAPHQL_INTROSPECTION === 'true' ||
+                (process.env.NODE_ENV !== 'production' &&
+                    process.env.GRAPHQL_INTROSPECTION !== 'false'),
             context: ({ req, res }) => ({ req, res }),
         }),
 

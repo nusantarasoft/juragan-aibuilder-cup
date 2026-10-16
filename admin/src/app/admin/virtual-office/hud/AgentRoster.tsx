@@ -6,6 +6,7 @@ import { Activity, ChevronLeft, ChevronRight, CircleCheck, Info, Search, Triangl
 import { STATUS_META, ZONES } from "../lib/floorplan";
 import { useOfficeStore } from "../lib/store";
 import type { ActivityEntry, ActivityLevel, Agent, AgentStatus } from "../lib/types";
+import { RosterKindBadge } from "@/components/agentic-os/ui/RosterKindBadge";
 import { AgentBadge, GLASS, ModuleChip, ProgressBar, cx, relativeTime, useNow } from "./shared";
 
 type Filter = "all" | "active" | "idle" | "meeting" | "attention";
@@ -42,6 +43,7 @@ function AgentRow({ agent, selected, onSelect, onHover }: { agent: Agent; select
             <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-2">
                     <span className="truncate text-[13px] font-semibold text-white">{agent.name}</span>
+                    {agent.rosterKind && <RosterKindBadge kind={agent.rosterKind} />}
                     <span className="shrink-0 text-[10px] font-medium" style={{ color: meta.color }}>
                         {meta.label}
                     </span>

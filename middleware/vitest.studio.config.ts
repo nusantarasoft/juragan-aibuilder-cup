@@ -5,11 +5,14 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
     test: {
         globals: true,
-        include: ['src/studio/**/*.spec.ts'],
+        include: [
+            'src/studio/**/*.spec.ts',
+            'src/whatsapp/**/*.spec.ts',
+        ],
         coverage: {
             provider: 'v8',
             all: true,
-            include: ['src/studio/**/*.ts'],
+            include: ['src/studio/**/*.ts', 'src/whatsapp/**/*.ts'],
             exclude: [
                 '**/*.spec.ts',
                 '**/*.module.ts',
@@ -23,6 +26,7 @@ export default defineConfig({
                 '**/*.controller.ts',
                 // Type-only declarations (no runtime code to exercise).
                 'src/studio/studio-umkm-agentic-ask.types.ts',
+                'src/whatsapp/whatsapp-transport.types.ts',
                 // Test-only helpers / harnesses.
                 'src/studio/studio-test.helpers.ts',
                 'src/studio/studio-umkm-test-harness.ts',

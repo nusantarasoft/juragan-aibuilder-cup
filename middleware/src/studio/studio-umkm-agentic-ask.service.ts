@@ -11,17 +11,14 @@ import { StudioDbContextService, type StudioContextConfig } from './studio-db-co
 import { StudioService } from './studio.service';
 import { StudioUmkmService } from './studio-umkm.service';
 import { planAgenticAskTools } from './studio-umkm-agentic-ask.planner';
-import {
-    buildAgenticAskSynthesizePrompt,
-    formatSuggestMenuActionContent,
-} from './studio-umkm-agentic-ask.prompts';
+import { buildAgenticAskSynthesizePrompt } from './studio-umkm-agentic-ask.prompts';
 import type {
     AgenticAskInput,
     AgenticAskOutput,
     AgenticAskToolCall,
     AgenticAskToolResult,
 } from './studio-umkm-agentic-ask.types';
-import type { UmkmReportPeriod } from './studio-umkm-ops.util';
+import { executeUmkmReadTool } from './studio-umkm-read-tools';
 import type { QueryUnderstandingResult } from './query-understanding';
 
 @Injectable()
@@ -92,6 +89,20 @@ export class StudioUmkmAgenticAskService {
         }
 
         const q = (question || '').toLowerCase();
+        const restockLike = /\b(restock|restok|mending|mau\s+habis)\b/i.test(q);
+        if (restockLike) {
+            const stock = ok.find((r) => r.name === 'get_stock');
+            const lines = [
+                'Soal restock, cek sisa dulu:',
+                '',
+                stock?.content || 'Stok item itu belum ketemu di etalase.',
+                '',
+                'Kalau mau isi ulang: ketik *tambah stok [nama] [jumlah]* atau *belanja [jumlah] [nama] @harga*.',
+                'Mau hitung yang laku? Ketik *daftar penjualan* atau *laporan hari ini*.',
+            ];
+            return lines.join('\n');
+        }
+
         const adviceLike =
             /\b(bagaimana|gimana|tips|saran|strategi|rekomendasi|menaikkan|meningkatkan|tingkatkan|naikkan)\b/i.test(
                 q,
@@ -135,66 +146,22 @@ export class StudioUmkmAgenticAskService {
         references?: AgenticAskOutput['references'];
         rawChunks?: AgenticAskOutput['rawChunks'];
     }> {
-        try {
-            switch (call.name) {
-                case 'search_docs':
-                    return this.toolSearchDocs(input, config);
-                case 'get_stock': {
-                    const text = call.productQuery
-                        ? `cek stok ${call.productQuery}`
-                        : input.question;
-                    const content = await this.umkm.buildStockCheckMessage(text, input.tenantId);
-                    return { result: { name: call.name, ok: true, content } };
-                }
-                case 'get_sales_summary': {
-                    const period = (call.period || 'today') as UmkmReportPeriod;
-                    const content = await this.umkm.buildSalesListMessage(input.tenantId, period);
-                    return { result: { name: call.name, ok: true, content } };
-                }
-                case 'get_purchases_summary': {
-                    const period = (call.period || 'month') as UmkmReportPeriod;
-                    const content = await this.umkm.buildPurchaseListMessage(input.tenantId, period);
-                    return { result: { name: call.name, ok: true, content } };
-                }
-                case 'get_combined_report': {
-                    const period = (call.period || 'today') as UmkmReportPeriod;
-                    const content = await this.umkm.buildCombinedReportMessage(
-                        input.tenantId,
-                        period,
-                    );
-                    return { result: { name: call.name, ok: true, content } };
-                }
-                case 'list_products': {
-                    const content = await this.umkm.buildProductListMessage(input.tenantId);
-                    return { result: { name: call.name, ok: true, content } };
-                }
-                case 'suggest_menu_action':
-                    return {
-                        result: {
-                            name: call.name,
-                            ok: true,
-                            content: formatSuggestMenuActionContent(),
-                        },
-                    };
-                default:
-                    return {
-                        result: {
-                            name: call.name,
-                            ok: false,
-                            content: `Tool tidak dikenali: ${call.name}`,
-                        },
-                    };
-            }
-        } catch (e: any) {
-            this.logger.warn(`agentic-ask tool ${call.name}: ${e?.message}`);
-            return {
-                result: {
-                    name: call.name,
-                    ok: false,
-                    content: `Gagal menjalankan ${call.name}: ${e?.message || 'error'}`,
-                },
-            };
+        if (call.name === 'search_docs') {
+            return this.toolSearchDocs(input, config);
         }
+        const shared = await executeUmkmReadTool(this.umkm, call, {
+            question: input.question,
+            tenantId: input.tenantId,
+            logger: this.logger,
+        });
+        if (shared) return shared;
+        return {
+            result: {
+                name: call.name,
+                ok: false,
+                content: `Tool tidak dikenali: ${call.name}`,
+            },
+        };
     }
 
     private async toolSearchDocs(

@@ -10,7 +10,7 @@ import {
     phonesMatch,
     StudioWhatsAppRateLimiter,
     stripWhatsAppMediaAnnotations,
-    wahaPayloadHasMedia,
+    whatsappPayloadHasMedia,
 } from './studio-whatsapp.util';
 
 describe('normalizePhoneDigits', () => {
@@ -25,38 +25,44 @@ describe('normalizePhoneDigits', () => {
     it('falls back to full-input digits when local part has too few', () => {
         expect(normalizePhoneDigits('abc@12345678')).toBe('12345678');
     });
+
+    // Regression: ISSUE-001 follow-up — Baileys meId device suffix must not inflate digits
+    // Found by /qa on 2026-09-03
+    it('strips Baileys device suffix after colon', () => {
+        expect(normalizePhoneDigits('62811924689:7@s.whatsapp.net')).toBe('62811924689');
+    });
 });
 
-describe('wahaPayloadHasMedia', () => {
+describe('whatsappPayloadHasMedia', () => {
     it('ignores bare _data on text messages', () => {
-        expect(wahaPayloadHasMedia({ body: '2', _data: { id: 'x', type: 'chat' } })).toBe(false);
+        expect(whatsappPayloadHasMedia({ body: '2', _data: { id: 'x', type: 'chat' } })).toBe(false);
     });
 
     it('detects hasMedia flag and image type', () => {
-        expect(wahaPayloadHasMedia({ hasMedia: true })).toBe(true);
-        expect(wahaPayloadHasMedia({ _data: { type: 'image', mimetype: 'image/jpeg' } })).toBe(
+        expect(whatsappPayloadHasMedia({ hasMedia: true })).toBe(true);
+        expect(whatsappPayloadHasMedia({ _data: { type: 'image', mimetype: 'image/jpeg' } })).toBe(
             true,
         );
     });
 
     it('detects a trimmed mediaUrl', () => {
-        expect(wahaPayloadHasMedia({ mediaUrl: 'https://x/y.jpg' })).toBe(true);
+        expect(whatsappPayloadHasMedia({ mediaUrl: 'https://x/y.jpg' })).toBe(true);
     });
 
     it('returns false when there is no _data object', () => {
-        expect(wahaPayloadHasMedia({ body: 'hi' })).toBe(false);
+        expect(whatsappPayloadHasMedia({ body: 'hi' })).toBe(false);
     });
 
     it('detects encrypted media keys inside _data', () => {
-        expect(wahaPayloadHasMedia({ _data: { mediaKey: 'abc' } })).toBe(true);
+        expect(whatsappPayloadHasMedia({ _data: { mediaKey: 'abc' } })).toBe(true);
     });
 
     it('detects media by message type without mimetype', () => {
-        expect(wahaPayloadHasMedia({ type: 'video', _data: {} })).toBe(true);
+        expect(whatsappPayloadHasMedia({ type: 'video', _data: {} })).toBe(true);
     });
 
     it('returns false when _data has no type on either payload or data', () => {
-        expect(wahaPayloadHasMedia({ _data: { id: 'x' } })).toBe(false);
+        expect(whatsappPayloadHasMedia({ _data: { id: 'x' } })).toBe(false);
     });
 });
 
@@ -101,7 +107,7 @@ describe('shared inbox routing', () => {
     const configs = [
         {
             tenant_id: 'umkm-a',
-            waha_session: 'default',
+            session_name: 'default',
             business_phone: '6281111111111',
             allowlist_phones: [],
             enabled: true,
@@ -109,7 +115,7 @@ describe('shared inbox routing', () => {
         },
         {
             tenant_id: 'umkm-b',
-            waha_session: 'default',
+            session_name: 'default',
             business_phone: '6282222222222',
             allowlist_phones: ['6283333333333'],
             enabled: true,
@@ -180,42 +186,42 @@ describe('pickWhatsAppConfigForWebhook (deprecated)', () => {
 
     it('matches a unique session', () => {
         const configs = [
-            base({ tenant_id: 'a', waha_session: 'sess-a' }),
-            base({ tenant_id: 'b', waha_session: 'sess-b' }),
+            base({ tenant_id: 'a', session_name: 'sess-a' }),
+            base({ tenant_id: 'b', session_name: 'sess-b' }),
         ];
         expect(pickWhatsAppConfigForWebhook(configs, 'SESS-A')?.tenant_id).toBe('a');
     });
 
     it('falls through to business phone when session is ambiguous', () => {
         const configs = [
-            base({ tenant_id: 'a', waha_session: 'default', business_phone: '6281111111111' }),
-            base({ tenant_id: 'b', waha_session: 'default', business_phone: '6282222222222' }),
+            base({ tenant_id: 'a', session_name: 'default', business_phone: '6281111111111' }),
+            base({ tenant_id: 'b', session_name: 'default', business_phone: '6282222222222' }),
         ];
         expect(pickWhatsAppConfigForWebhook(configs, 'default', '6282222222222')?.tenant_id).toBe('b');
     });
 
     it('uses business phone when session key is blank', () => {
         const configs = [
-            base({ tenant_id: 'a', waha_session: 'default', business_phone: '6281111111111' }),
-            base({ tenant_id: 'b', waha_session: 'default', business_phone: '6282222222222' }),
+            base({ tenant_id: 'a', session_name: 'default', business_phone: '6281111111111' }),
+            base({ tenant_id: 'b', session_name: 'default', business_phone: '6282222222222' }),
         ];
         expect(pickWhatsAppConfigForWebhook(configs, '   ', '6281111111111')?.tenant_id).toBe('a');
     });
 
     it('falls back to single/default tenant when nothing else matches', () => {
-        const configs = [base({ tenant_id: 'default', waha_session: 'other' })];
+        const configs = [base({ tenant_id: 'default', session_name: 'other' })];
         expect(pickWhatsAppConfigForWebhook(configs, 'nomatch')?.tenant_id).toBe('default');
     });
 
-    it('treats missing waha_session as "default" when matching session', () => {
-        const configs = [base({ tenant_id: 'only', waha_session: null })];
+    it('treats missing session_name as "default" when matching session', () => {
+        const configs = [base({ tenant_id: 'only', session_name: null })];
         expect(pickWhatsAppConfigForWebhook(configs, 'default')?.tenant_id).toBe('only');
     });
 
     it('handles configs without business_phone and no phone match (fallback)', () => {
         const configs = [
-            base({ tenant_id: 'a', waha_session: 'shared', business_phone: null }),
-            base({ tenant_id: 'b', waha_session: 'shared', business_phone: null }),
+            base({ tenant_id: 'a', session_name: 'shared', business_phone: null }),
+            base({ tenant_id: 'b', session_name: 'shared', business_phone: null }),
         ];
         // ambiguous session + business phone with no match -> single/default fallback -> null
         expect(pickWhatsAppConfigForWebhook(configs, 'shared', '6289999999999')).toBeNull();
@@ -223,7 +229,7 @@ describe('pickWhatsAppConfigForWebhook (deprecated)', () => {
 });
 
 describe('extractBusinessPhoneFromPayload', () => {
-    it('reads me.id from WAHA payload', () => {
+    it('reads me.id from WhatsApp payload', () => {
         expect(
             extractBusinessPhoneFromPayload({ me: { id: '6281110115321@c.us' } }),
         ).toBe('6281110115321');

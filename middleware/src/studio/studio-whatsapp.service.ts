@@ -1,17 +1,34 @@
-import { BadRequestException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createHmac, timingSafeEqual } from 'crypto';
 import { SupabaseService } from '../supabase/supabase.service';
-import { WahaClientService } from '../waha/waha-client.service';
+import { HermesProvider } from '../whatsapp/hermes.provider';
+import {
+    WHATSAPP_TRANSPORT,
+    WhatsAppProviderId,
+    WhatsAppTransport,
+} from '../whatsapp/whatsapp-transport.types';
+import { resolveWhatsAppProviderId } from '../whatsapp/whatsapp-provider.module';
 import { StudioService } from './studio.service';
 import { GuideFlowService } from './guide-flow.service';
-import { StudioDbContextService } from './studio-db-context.service';
+import { StudioDbContextService, getUmkmCommandsFromConfig } from './studio-db-context.service';
 import { StudioUmkmService } from './studio-umkm.service';
+import { StudioUmkmAgenticAskService } from './studio-umkm-agentic-ask.service';
 import {
     detectUmkmFeedback,
     formatFeedbackThanks,
 } from './studio-umkm-feedback.util';
-import { detectUmkmConfirmReply } from './studio-umkm.util';
+import {
+    canonicalUmkmConfirmText,
+    detectUmkmConfirmReply,
+    detectUmkmIntent,
+    extractUmkmButtonReply,
+    formatUmkmHelp,
+    formatUnknownUmkmCommand,
+    isUmkmMoneyConfirmPreview,
+    isUmkmPendampingEnabled,
+    umkmConfirmButtons,
+} from './studio-umkm.util';
 import { assertNoSupabaseError } from './studio-supabase.util';
 import {
     collectUmkmOwnerPhones,
@@ -22,7 +39,7 @@ import {
     pickTenantConfigBySenderPhone,
     StudioWhatsAppRateLimiter,
     stripWhatsAppMediaAnnotations,
-    wahaPayloadHasMedia,
+    whatsappPayloadHasMedia,
 } from './studio-whatsapp.util';
 
 const WA_CHUNK = 4000;
@@ -32,11 +49,12 @@ const RATE_LIMIT_MESSAGE =
     'Terlalu banyak pesan dalam waktu singkat. Mohon tunggu sebentar sebelum mengirim lagi.';
 const UNREGISTERED_SENDER_MESSAGE =
     'Nomor Anda belum terdaftar sebagai pemilik UMKM. Hubungi admin untuk mendaftarkan nomor HP Anda.';
+export const UMKM_INBOUND_APOLOGY = 'Sistem sibuk, ketik ulang.';
 
 export type StudioWhatsAppConfigRow = {
     tenant_id: string;
     notebook_id: string | null;
-    waha_session: string | null;
+    session_name: string | null;
     business_phone: string | null;
     label: string | null;
     enabled: boolean;
@@ -53,11 +71,13 @@ export class StudioWhatsAppService {
     constructor(
         private readonly configService: ConfigService,
         private readonly supabaseService: SupabaseService,
-        private readonly wahaClient: WahaClientService,
+        @Inject(WHATSAPP_TRANSPORT) private readonly waTransport: WhatsAppTransport,
+        private readonly hermesProvider: HermesProvider,
         private readonly studioService: StudioService,
         private readonly guideFlowService: GuideFlowService,
         private readonly dbContextService: StudioDbContextService,
         private readonly umkmService: StudioUmkmService,
+        private readonly agenticAskService: StudioUmkmAgenticAskService,
     ) {
         this.rateLimiter = new StudioWhatsAppRateLimiter(this.getRateLimitPerMinute());
     }
@@ -68,14 +88,16 @@ export class StudioWhatsAppService {
         return all.filter((c) => c.enabled && c.notebook_id);
     }
 
-    /** Outbound text to phone (digits or chatId). Used by daily report cron — WAHA only. */
+    /** Outbound text to phone (digits or chatId). Used by daily report cron. */
     async sendOutboundText(phoneOrChatId: string, text: string, session?: string): Promise<boolean> {
         const chatId = phoneOrChatId.includes('@')
             ? phoneOrChatId
-            : this.wahaClient.phoneToChatId(phoneOrChatId);
-        const res = await this.wahaClient.sendText(chatId, text, session);
+            : this.waTransport.phoneToChatId(phoneOrChatId);
+        const res = await this.waTransport.sendText(chatId, text, session);
         if (!res.success) {
-            this.logger.warn(`sendOutboundText failed (WAHA): ${res.error}`);
+            this.logger.warn(
+                `sendOutboundText failed (${this.waTransport.providerId}): ${res.error}`,
+            );
         }
         return res.success;
     }
@@ -85,11 +107,22 @@ export class StudioWhatsAppService {
     }
 
     verifyWebhookHmac(rawBody: Buffer, signatureHeader?: string): void {
-        const key = this.configService.get('WAHA_WEBHOOK_HMAC_KEY') || '';
+        const key = this.configService.get('WHATSAPP_WEBHOOK_HMAC_KEY') || '';
         if (!key) return;
+        // Fail closed when key is set. Escape hatch for local/dev only.
+        const allowMissing = ['1', 'true', 'yes'].includes(
+            String(this.configService.get('WHATSAPP_WEBHOOK_HMAC_ALLOW_MISSING') || '')
+                .trim()
+                .toLowerCase(),
+        );
         if (!signatureHeader) {
-            this.logger.warn('WAHA_WEBHOOK_HMAC_KEY set but X-Webhook-Hmac missing — skip verify (dev)');
-            return;
+            if (allowMissing) {
+                this.logger.warn(
+                    'WHATSAPP_WEBHOOK_HMAC_KEY set but X-Webhook-Hmac missing — allowed by WHATSAPP_WEBHOOK_HMAC_ALLOW_MISSING',
+                );
+                return;
+            }
+            throw new UnauthorizedException('Missing webhook HMAC');
         }
         const expected = createHmac('sha512', key).update(rawBody).digest('hex');
         const sig = signatureHeader.replace(/^sha512=/i, '').trim();
@@ -99,7 +132,8 @@ export class StudioWhatsAppService {
             if (a.length !== b.length || !timingSafeEqual(a, b)) {
                 throw new UnauthorizedException('Invalid webhook HMAC');
             }
-        } catch {
+        } catch (e) {
+            if (e instanceof UnauthorizedException) throw e;
             throw new UnauthorizedException('Invalid webhook HMAC');
         }
     }
@@ -124,7 +158,7 @@ export class StudioWhatsAppService {
     }
 
     async resolveConfigForWebhook(
-        wahaSession: string,
+        sessionName: string,
         senderPhone: string,
         payload?: Record<string, unknown>,
     ): Promise<StudioWhatsAppConfigRow | null> {
@@ -148,7 +182,7 @@ export class StudioWhatsAppService {
         if (payload) {
             extractBusinessPhoneFromPayload(payload);
         }
-        void wahaSession;
+        void sessionName;
         return null;
     }
 
@@ -201,6 +235,7 @@ export class StudioWhatsAppService {
         return {
             allowlistRequired: this.isAllowlistRequired(),
             rateLimitPerMinute: this.getRateLimitPerMinute(),
+            whatsappProvider: this.resolveProvider(),
         };
     }
 
@@ -210,7 +245,7 @@ export class StudioWhatsAppService {
             enabled: boolean;
             allowlistPhones: string[];
             useGuidedFlow: boolean;
-            wahaSession: string | null;
+            sessionName: string | null;
             businessPhone: string | null;
             label: string | null;
         }>,
@@ -246,10 +281,10 @@ export class StudioWhatsAppService {
         if (patch.enabled !== undefined) row.enabled = patch.enabled;
         if (patch.allowlistPhones !== undefined) row.allowlist_phones = patch.allowlistPhones;
         if (patch.useGuidedFlow !== undefined) row.use_guided_flow = patch.useGuidedFlow;
-        if (patch.wahaSession !== undefined) {
-            row.waha_session = patch.wahaSession?.trim() || 'default';
-        } else if (!existing?.waha_session) {
-            row.waha_session = 'default';
+        if (patch.sessionName !== undefined) {
+            row.session_name = patch.sessionName?.trim() || 'default';
+        } else if (!existing?.session_name) {
+            row.session_name = 'default';
         }
         if (patch.businessPhone !== undefined) {
             row.business_phone = patch.businessPhone
@@ -267,63 +302,42 @@ export class StudioWhatsAppService {
         return data as StudioWhatsAppConfigRow;
     }
 
-    async getWahaSessionStatus() {
-        const status = await this.wahaClient.getSessionStatus();
-        const sessions = await this.wahaClient.listSessions();
-        const version = await this.wahaClient.getVersion();
-        return { session: status, sessions, version };
+    private resolveProvider(_override?: string | null): WhatsAppProviderId {
+        return resolveWhatsAppProviderId();
     }
 
-    async restartWahaSession() {
-        return this.wahaClient.restartSession();
-    }
-
-    async syncWahaSession() {
-        return this.wahaClient.syncStuckSession();
-    }
-
-    async getWahaAuthQr(session?: string) {
-        const st = await this.wahaClient.getSessionStatus(session);
-        if (!st) {
-            return {
-                available: false,
-                imageBase64: null,
-                mimetype: null,
-                error: 'WAHA tidak reachable — pastikan container waha berjalan',
-            };
-        }
-        if (st.connected) {
-            return {
-                available: false,
-                imageBase64: null,
-                mimetype: null,
-                error: null,
-                connected: true,
-            };
-        }
-        const qr = await this.wahaClient.getAuthQr(session);
-        if (!qr) {
-            return {
-                available: false,
-                imageBase64: null,
-                mimetype: null,
-                error: 'QR belum tersedia — klik Mulai sesi atau tunggu beberapa detik',
-            };
-        }
+    async getSessionStatus(_provider?: string | null) {
+        const status = await this.hermesProvider.getSessionStatus();
         return {
-            available: true,
-            imageBase64: qr.data,
-            mimetype: qr.mimetype,
-            error: null,
+            provider: 'hermes' as const,
+            session: status,
+            sessions: status ? [{ name: status.name, status: status.status }] : [],
+            version: { version: 'hermes-bridge', engine: 'BAILEYS' },
         };
     }
 
-    async startWahaSession(session?: string) {
-        return this.wahaClient.ensureSessionStarted(session);
+    async restartSession(_provider?: string | null) {
+        return this.hermesProvider.restartSession();
     }
 
-    async logoutWahaSession(session?: string) {
-        return this.wahaClient.logoutSession(session);
+    async rebindHermesSession() {
+        return this.hermesProvider.rebindSession();
+    }
+
+    async syncSession(_provider?: string | null) {
+        return this.hermesProvider.syncSession();
+    }
+
+    async getAuthQr(_session?: string, _provider?: string | null) {
+        return this.hermesProvider.getAuthQr();
+    }
+
+    async startSession(_session?: string, _provider?: string | null) {
+        return this.hermesProvider.startSession();
+    }
+
+    async logoutSession(_session?: string, _provider?: string | null) {
+        return this.hermesProvider.logoutSession();
     }
 
     async handleWebhook(body: Record<string, unknown>, session?: string): Promise<void> {
@@ -354,25 +368,28 @@ export class StudioWhatsAppService {
             return;
         }
 
-        const wahaSession = (session || String(body.session || '') || this.wahaClient.defaultSession).trim();
+        const inboxSession = (session || String(body.session || '') || this.waTransport.defaultSession).trim();
         const phone = this.extractPhone(chatId);
 
-        const config = await this.resolveConfigForWebhook(wahaSession, phone, payload);
+        const config = await this.resolveConfigForWebhook(inboxSession, phone, payload);
         if (!config?.enabled || !config.notebook_id) {
             this.logger.warn(
-                `WA sender ${phone} not mapped to any UMKM tenant (shared inbox ${wahaSession})`,
+                `WA sender ${phone} not mapped to any UMKM tenant (shared inbox ${inboxSession})`,
             );
-            await this.sendReplyChunks(chatId, UNREGISTERED_SENDER_MESSAGE, wahaSession);
+            await this.sendReplyChunks(chatId, UNREGISTERED_SENDER_MESSAGE, inboxSession);
             return;
         }
 
         const tenantId = config.tenant_id;
         this.logger.log(
-            `WA inbound inbox=${wahaSession} tenant=${tenantId} sender=${phone}`,
+            `WA inbound inbox=${inboxSession} tenant=${tenantId} sender=${phone}`,
         );
 
+        const buttonReply = extractUmkmButtonReply(payload);
         const question = stripWhatsAppMediaAnnotations(
-            await this.buildQuestionFromPayload(payload, wahaSession),
+            buttonReply
+                ? canonicalUmkmConfirmText(buttonReply)
+                : await this.buildQuestionFromPayload(payload, inboxSession),
         );
         if (!question.trim()) return;
 
@@ -382,16 +399,16 @@ export class StudioWhatsAppService {
             chatId,
             question,
             displayName: String(payload.notifyName || payload.pushName || ''),
-            feedbackProvider: 'waha',
+            feedbackProvider: this.waTransport.providerId,
             enforceRateLimit: true,
         });
 
-        await this.sendReplyChunks(chatId, result.answer, wahaSession);
+        await this.sendReplyChunks(chatId, result.answer, inboxSession);
     }
 
     /**
      * Admin simulator: same decision tree as real WA inbound (guided / handleMessage / RAG),
-     * without sending via WAHA. Session chatId is `sim:{tenant}:{phone}` so it won't clash with live WA.
+     * without sending live WhatsApp. Session chatId is `sim:{tenant}:{phone}` so it won't clash with live WA.
      */
     async simulateInboundMessage(params: {
         tenantId: string;
@@ -431,6 +448,46 @@ export class StudioWhatsAppService {
             feedbackProvider: 'whatsapp_sim',
             enforceRateLimit: false,
         });
+    }
+
+    /**
+     * Admin Sim Reset: clear sticky UMKM wizard/pending state and drop the sim WA session row
+     * so the next message starts a fresh conversation (UI clear alone is not enough).
+     */
+    async resetSimSession(params: {
+        tenantId: string;
+        phone?: string;
+    }): Promise<{ ok: true; phone: string; chatId: string }> {
+        const tenantId = String(params.tenantId || '').trim();
+        if (!tenantId) throw new BadRequestException('tenantId required');
+
+        const phone = normalizePhoneDigits(params.phone || '6280000000001');
+        if (phone.length < 8) throw new BadRequestException('phone tidak valid');
+
+        const chatId = `sim:${tenantId}:${phone}`;
+
+        const { data: existing } = await this.admin()
+            .from('studio_whatsapp_sessions')
+            .select('conversation_id')
+            .eq('tenant_id', tenantId)
+            .eq('chat_id', chatId)
+            .maybeSingle();
+
+        const conversationId =
+            existing?.conversation_id != null ? String(existing.conversation_id) : undefined;
+
+        this.umkmService.resetSessionState(tenantId, phone, conversationId);
+
+        const { error } = await this.admin()
+            .from('studio_whatsapp_sessions')
+            .delete()
+            .eq('tenant_id', tenantId)
+            .eq('chat_id', chatId);
+        if (error) {
+            this.logger.warn(`resetSimSession delete session: ${error.message}`);
+        }
+
+        return { ok: true, phone, chatId };
     }
 
     /**
@@ -510,28 +567,62 @@ export class StudioWhatsAppService {
 
         let answer: string;
         let path: 'guided' | 'umkm' | 'rag' = 'rag';
-        if (config.use_guided_flow) {
-            path = 'guided';
-            answer = await this.runGuidedTurn(
-                config.notebook_id!,
-                question,
-                conversationId,
-                chatId,
-                tenantId,
-            );
-        } else if (umkmMode) {
-            path = 'umkm';
-            const umkmAnswer = await this.umkmService.handleMessage(
-                question,
-                tenantId,
-                phone,
-                { ...notebookCfg, tenant_id: tenantId },
-                { conversationId },
-            );
-            if (umkmAnswer) {
-                answer = umkmAnswer;
+        try {
+            if (umkmMode) {
+                path = 'umkm';
+                const umkmAnswer = await this.umkmService.handleMessage(
+                    question,
+                    tenantId,
+                    phone,
+                    { ...notebookCfg, tenant_id: tenantId },
+                    { conversationId, notebookId: config.notebook_id! },
+                );
+                if (umkmAnswer) {
+                    answer = umkmAnswer;
+                } else {
+                    const commands = getUmkmCommandsFromConfig({
+                        ...notebookCfg,
+                        tenant_id: tenantId,
+                    });
+                    if (detectUmkmIntent(question, commands) === 'ask') {
+                        const lines = await this.studioService.getRecentConversationLines(
+                            conversationId,
+                            12,
+                        );
+                        const agentic = await this.agenticAskService.answer(
+                            {
+                                question,
+                                notebookId: config.notebook_id!,
+                                conversationId,
+                                tenantId,
+                                notebookName: notebook?.name,
+                                conversationLines: lines.map(
+                                    (l) =>
+                                        `${l.role === 'assistant' ? 'Assistant' : 'User'}: ${l.content}`,
+                                ),
+                            },
+                            { ...notebookCfg, tenant_id: tenantId },
+                        );
+                        answer = agentic.answer || formatUmkmHelp(commands, {
+                            pendampingEnabled: isUmkmPendampingEnabled(notebookCfg),
+                        });
+                    } else {
+                        this.logger.warn(
+                            `UMKM handleMessage returned null for non-ask intent tenant=${tenantId}`,
+                        );
+                        answer = UMKM_INBOUND_APOLOGY;
+                    }
+                }
+            } else if (config.use_guided_flow) {
+                path = 'guided';
+                answer = await this.runGuidedTurn(
+                    config.notebook_id!,
+                    question,
+                    conversationId,
+                    chatId,
+                    tenantId,
+                );
             } else {
-                path = 'rag';
                 const result = await this.studioService.chat(
                     config.notebook_id!,
                     question,
@@ -540,16 +631,25 @@ export class StudioWhatsAppService {
                 );
                 answer = result.answer || '';
             }
-        } else {
-            const result = await this.studioService.chat(
-                config.notebook_id!,
-                question,
-                conversationId,
-                undefined,
+        } catch (e: any) {
+            this.logger.error(
+                `WA inbound failed tenant=${tenantId} sender=${phone}: ${e?.message}`,
+                e?.stack,
             );
-            answer = result.answer || '';
+            answer = UMKM_INBOUND_APOLOGY;
         }
 
+        if (
+            umkmMode &&
+            /masih mengindeks|Sumber di notebook ini belum siap/i.test(answer || '')
+        ) {
+            answer = formatUnknownUmkmCommand(
+                getUmkmCommandsFromConfig({ ...notebookCfg, tenant_id: tenantId }),
+            );
+            path = 'umkm';
+        }
+
+        this.logger.log(`WA inbound path=${path} tenant=${tenantId} sender=${phone}`);
         return { answer, conversationId, path, phone, chatId };
     }
 
@@ -565,10 +665,10 @@ export class StudioWhatsAppService {
         const body = String(payload.body || payload.caption || '').trim();
         if (body) parts.push(body);
 
-        const hasMedia = wahaPayloadHasMedia(payload);
+        const hasMedia = whatsappPayloadHasMedia(payload);
         const messageId = String(payload.id || '');
         if (hasMedia && messageId) {
-            const media = await this.wahaClient.downloadMedia(messageId, session);
+            const media = await this.waTransport.downloadMedia(messageId, session);
             if (media) {
                 const kind = media.mimetype.startsWith('image/') ? 'gambar' : 'file';
                 parts.push(`[User mengirim ${kind}: ${media.filename}, tipe ${media.mimetype}]`);
@@ -714,14 +814,25 @@ export class StudioWhatsAppService {
     private async sendReplyChunks(chatId: string, answer: string, session?: string): Promise<void> {
         const text = this.formatForWhatsApp(answer);
         if (!text.trim()) {
-            await this.wahaClient.sendText(chatId, 'Maaf, tidak ada jawaban.', session);
+            await this.waTransport.sendText(chatId, 'Maaf, tidak ada jawaban.', session);
             return;
+        }
+        if (isUmkmMoneyConfirmPreview(text)) {
+            const choices = umkmConfirmButtons();
+            const buttons = await this.waTransport.sendButtons(chatId, text, choices, session);
+            if (buttons.success) return;
+            this.logger.warn(`WA confirm buttons unavailable: ${buttons.error}`);
+            const list = await this.waTransport.sendList(chatId, text, choices, session);
+            if (list.success) return;
+            this.logger.warn(`WA confirm list unavailable, sending text: ${list.error}`);
         }
         for (let i = 0; i < text.length; i += WA_CHUNK) {
             const chunk = text.slice(i, i + WA_CHUNK);
-            const res = await this.wahaClient.sendText(chatId, chunk, session);
+            const res = await this.waTransport.sendText(chatId, chunk, session);
             if (!res.success) {
-                this.logger.error(`Failed to send WA chunk (WAHA): ${res.error}`);
+                this.logger.error(
+                    `Failed to send WA chunk (${this.waTransport.providerId}): ${res.error}`,
+                );
                 break;
             }
         }

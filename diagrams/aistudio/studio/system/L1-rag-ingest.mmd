@@ -1,0 +1,7 @@
+%% Studio RAG L1 — ingest once per source
+flowchart LR
+  U[Upload / import / reindex] --> E[Extract text]
+  E --> C[Chunk ~1200 + overlap]
+  C --> V[embedText<br/>embedding model locked]
+  V --> DB[(studio_source_chunks)]
+  DB --> S[Source status: done]

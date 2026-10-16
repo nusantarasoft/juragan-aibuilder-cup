@@ -18,6 +18,7 @@ import {
     Switch,
     Table,
     Tag,
+    Tooltip,
     Typography,
 } from 'antd';
 import {
@@ -28,14 +29,14 @@ import {
     UnorderedListOutlined,
     MessageOutlined,
     DeleteOutlined,
+    CheckOutlined,
+    CloseOutlined,
 } from '@ant-design/icons';
-import { usePreferencesStore } from '@/store/usePreferencesStore';
-import { AuroraText } from '@/components/magicui/aurora-text';
-import DecryptedText from '@/components/react-bits/DecryptedText';
 import {
     studioService,
     StudioNotebook,
     StudioWhatsAppConfig,
+    StudioUmkmRegistration,
     UmkmCommandIntent,
     UmkmCommandsConfig,
     UmkmMenuCommand,
@@ -52,14 +53,13 @@ const glass = {
     borderRadius: 14,
 };
 
-const DEFAULT_WAHA_DASHBOARD = 'http://127.0.0.1:3010/dashboard';
-
 const INTENT_OPTIONS: { value: UmkmCommandIntent; label: string }[] = [
     { value: 'ask', label: 'Tanya' },
     { value: 'menu_hub', label: 'Hub Menu' },
     { value: 'list_products', label: 'Daftar menu' },
     { value: 'add_product', label: 'Tambah menu' },
     { value: 'add_stock', label: 'Tambah stok' },
+    { value: 'check_stock', label: 'Cek stok' },
     { value: 'purchase_hub', label: 'Hub Belanja' },
     { value: 'list_purchases', label: 'Daftar belanja' },
     { value: 'record_purchase', label: 'Tambah belanja' },
@@ -76,6 +76,7 @@ const KEYWORD_INTENTS: UmkmCommandIntent[] = [
     'list_products',
     'add_product',
     'add_stock',
+    'check_stock',
     'purchase_hub',
     'list_purchases',
     'record_purchase',
@@ -85,6 +86,10 @@ const KEYWORD_INTENTS: UmkmCommandIntent[] = [
     'sales_report',
     'help',
 ];
+
+const INTENT_LABEL: Record<string, string> = Object.fromEntries(
+    INTENT_OPTIONS.map((o) => [o.value, o.label]),
+);
 
 function slugifyTenant(input: string): string {
     return input
@@ -121,6 +126,7 @@ function emptyCommands(): UmkmCommandsConfig {
             list_products: [],
             add_product: [],
             add_stock: [],
+            check_stock: [],
             purchase_hub: [],
             list_purchases: [],
             record_purchase: [],
@@ -140,40 +146,61 @@ function commandsFromNotebook(nb: StudioNotebook | undefined): UmkmCommandsConfi
     return cfg?.umkm_commands ?? null;
 }
 
+function pendampingEnabledFromNotebook(nb: StudioNotebook | undefined): boolean {
+    const cfg = nb?.context_config as { umkm_pendamping_enabled?: boolean } | undefined;
+    return cfg?.umkm_pendamping_enabled !== false;
+}
+
 export default function UmkmStudioPage() {
-    const { themeColor } = usePreferencesStore();
     const { loading: authLoading } = useAuth();
     const userId = useStudioUserId();
 
     const [loading, setLoading] = useState(true);
     const [configs, setConfigs] = useState<StudioWhatsAppConfig[]>([]);
+    const [pendingRegs, setPendingRegs] = useState<StudioUmkmRegistration[]>([]);
+    const [actingRegId, setActingRegId] = useState<string | null>(null);
     const [notebooks, setNotebooks] = useState<StudioNotebook[]>([]);
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [editing, setEditing] = useState<StudioWhatsAppConfig | null>(null);
     const [simTarget, setSimTarget] = useState<StudioWhatsAppConfig | null>(null);
+    const [simInitialMessage, setSimInitialMessage] = useState<string | undefined>(undefined);
     const [saving, setSaving] = useState(false);
     const [settingUp, setSettingUp] = useState(false);
     const [form] = Form.useForm();
-    const [wahaDashboard, setWahaDashboard] = useState(DEFAULT_WAHA_DASHBOARD);
     const [commands, setCommands] = useState<UmkmCommandsConfig>(emptyCommands());
     const [defaults, setDefaults] = useState<UmkmCommandsConfig | null>(null);
+    const [previewSample, setPreviewSample] = useState('');
+    const [previewIntent, setPreviewIntent] = useState<string | null>(null);
+    const [previewConfirm, setPreviewConfirm] = useState<'confirm' | 'cancel' | null>(null);
+    const [previewing, setPreviewing] = useState(false);
+    const [commandsDirty, setCommandsDirty] = useState(false);
+    const [pendampingEnabled, setPendampingEnabled] = useState(true);
+    const [pendampingDirty, setPendampingDirty] = useState(false);
 
     useEffect(() => {
-        studioService.getSettings().then((s) => {
-            if (s?.waha_dashboard_url) setWahaDashboard(s.waha_dashboard_url);
-        }).catch(() => {});
         studioService.getUmkmCommandsDefaults().then(setDefaults).catch(() => {});
     }, []);
 
     const load = useCallback(async () => {
         setLoading(true);
         try {
-            const [list, nbs] = await Promise.all([
+            const [list, nbs, regsResult] = await Promise.all([
                 studioService.listWhatsAppConfigs(),
                 userId ? studioService.getNotebooks(userId) : Promise.resolve([]),
+                studioService
+                    .listUmkmRegistrations('pending')
+                    .then((regs) => ({ ok: true as const, regs }))
+                    .catch((e: unknown) => ({ ok: false as const, error: e })),
             ]);
             setConfigs(list);
             setNotebooks(nbs);
+            if (regsResult.ok) {
+                setPendingRegs(regsResult.regs);
+            } else {
+                setPendingRegs([]);
+                const err = regsResult.error as { message?: string };
+                message.error(err?.message || 'Gagal memuat antrian pending UMKM');
+            }
         } catch (e: unknown) {
             const err = e as { message?: string };
             message.error(err.message || 'Gagal memuat data UMKM');
@@ -181,6 +208,34 @@ export default function UmkmStudioPage() {
             setLoading(false);
         }
     }, [userId]);
+
+    const handleApproveReg = async (row: StudioUmkmRegistration) => {
+        setActingRegId(row.id);
+        try {
+            await studioService.approveUmkmRegistration(row.id);
+            message.success(`Disetujui: ${row.store_name || row.phone}`);
+            await load();
+        } catch (e: unknown) {
+            const err = e as { message?: string };
+            message.error(err.message || 'Gagal approve');
+        } finally {
+            setActingRegId(null);
+        }
+    };
+
+    const handleRejectReg = async (row: StudioUmkmRegistration) => {
+        setActingRegId(row.id);
+        try {
+            await studioService.rejectUmkmRegistration(row.id);
+            message.success(`Ditolak: ${row.store_name || row.phone}`);
+            await load();
+        } catch (e: unknown) {
+            const err = e as { message?: string };
+            message.error(err.message || 'Gagal tolak');
+        } finally {
+            setActingRegId(null);
+        }
+    };
 
     useEffect(() => {
         if (authLoading) return;
@@ -190,10 +245,14 @@ export default function UmkmStudioPage() {
     const loadCommandsForNotebook = (notebookId?: string | null) => {
         if (!notebookId) {
             setCommands(defaults ? structuredClone(defaults) : emptyCommands());
+            setPendampingEnabled(true);
+            setPendampingDirty(false);
             return;
         }
         const nb = notebooks.find((n) => n.id === notebookId);
         const fromNb = commandsFromNotebook(nb);
+        setPendampingEnabled(pendampingEnabledFromNotebook(nb));
+        setPendampingDirty(false);
         if (fromNb) {
             setCommands({
                 menu: [...(fromNb.menu || [])],
@@ -203,6 +262,7 @@ export default function UmkmStudioPage() {
                     list_products: [...(fromNb.keywords?.list_products || [])],
                     add_product: [...(fromNb.keywords?.add_product || [])],
                     add_stock: [...(fromNb.keywords?.add_stock || [])],
+                    check_stock: [...(fromNb.keywords?.check_stock || [])],
                     purchase_hub: [...(fromNb.keywords?.purchase_hub || [])],
                     list_purchases: [...(fromNb.keywords?.list_purchases || [])],
                     record_purchase: [...(fromNb.keywords?.record_purchase || [])],
@@ -225,12 +285,18 @@ export default function UmkmStudioPage() {
         form.resetFields();
         form.setFieldsValue({
             enabled: true,
-            useGuidedFlow: true,
-            wahaSession: 'default',
+            useGuidedFlow: false,
+            sessionName: 'default',
             ownerPhones: [],
             createNewNotebook: true,
         });
         setCommands(defaults ? structuredClone(defaults) : emptyCommands());
+        setCommandsDirty(false);
+        setPendampingEnabled(true);
+        setPendampingDirty(false);
+        setPreviewSample('');
+        setPreviewIntent(null);
+        setPreviewConfirm(null);
         setDrawerOpen(true);
     };
 
@@ -238,8 +304,9 @@ export default function UmkmStudioPage() {
         setEditing(row);
         form.setFieldsValue({
             tenantId: row.tenant_id,
-            label: row.label ?? '',
-            wahaSession: row.waha_session ?? '',
+            // Match table display: fall back to tenant_id when label is empty
+            label: row.label || row.tenant_id || '',
+            sessionName: row.session_name ?? '',
             ownerPhones: collectConfigOwnerPhones(row),
             notebookId: row.notebook_id ?? undefined,
             enabled: row.enabled,
@@ -247,6 +314,10 @@ export default function UmkmStudioPage() {
             createNewNotebook: false,
         });
         loadCommandsForNotebook(row.notebook_id);
+        setCommandsDirty(false);
+        setPreviewSample('');
+        setPreviewIntent(null);
+        setPreviewConfirm(null);
         setDrawerOpen(true);
     };
 
@@ -262,10 +333,10 @@ export default function UmkmStudioPage() {
         }
     };
 
-    const handleSave = async () => {
-        const values = await form.validateFields();
-        setSaving(true);
+    const handleSave = async (opts?: { openSimWith?: string }): Promise<boolean> => {
         try {
+            const values = await form.validateFields();
+            setSaving(true);
             let notebookId = values.notebookId as string | undefined;
 
             if (!editing && values.createNewNotebook) {
@@ -288,28 +359,96 @@ export default function UmkmStudioPage() {
                 throw new Error('Minimal satu nomor pemilik toko');
             }
 
+            const tenantId = values.tenantId as string;
+
+            await studioService.setupUmkmNotebook(notebookId, tenantId, false);
             await studioService.updateWhatsAppConfig({
-                tenantId: values.tenantId,
+                tenantId,
                 notebookId,
                 enabled: values.enabled,
-                useGuidedFlow: values.useGuidedFlow,
+                useGuidedFlow: false,
                 allowlistPhones: ownerPhones,
-                wahaSession: 'default',
+                sessionName: 'default',
                 businessPhone: ownerPhones[0],
                 label: values.label || null,
             });
 
-            await studioService.updateUmkmCommands(notebookId, commands, values.useGuidedFlow !== false);
+            await studioService.updateUmkmCommands(
+                notebookId,
+                commands,
+                false,
+                pendampingDirty ? pendampingEnabled : undefined,
+            );
 
             message.success(editing ? 'UMKM diperbarui' : 'UMKM baru ditambahkan');
+            setCommandsDirty(false);
+            setPendampingDirty(false);
             setDrawerOpen(false);
             await load();
+
+            if (opts?.openSimWith?.trim()) {
+                const list = await studioService.listWhatsAppConfigs();
+                const row = list.find((c) => c.tenant_id === tenantId) ?? null;
+                if (row?.enabled && row.notebook_id) {
+                    setSimInitialMessage(opts.openSimWith.trim());
+                    setSimTarget(row);
+                } else {
+                    message.warning('Simpan OK, tapi Simulasi butuh WA aktif + notebook');
+                }
+            }
+            return true;
         } catch (e: unknown) {
-            const err = e as { message?: string };
-            message.error(err.message || 'Gagal menyimpan');
+            const err = e as {
+                message?: string;
+                errorFields?: { errors?: string[]; name?: (string | number)[] }[];
+            };
+            if (err.errorFields?.length) {
+                const first = err.errorFields[0]?.errors?.[0] || 'Lengkapi field wajib dulu';
+                message.error(first);
+                form.scrollToField(err.errorFields[0]?.name?.[0] as string, {
+                    block: 'center',
+                });
+            } else {
+                message.error(err.message || 'Gagal menyimpan');
+            }
+            return false;
         } finally {
             setSaving(false);
         }
+    };
+
+    const runPreview = async () => {
+        const sample = previewSample.trim();
+        if (!sample) {
+            setPreviewIntent('unknown');
+            setPreviewConfirm(null);
+            return;
+        }
+        setPreviewing(true);
+        try {
+            const res = await studioService.previewUmkmIntent(sample, commands);
+            setPreviewIntent(res.intent);
+            setPreviewConfirm(res.confirm);
+        } catch (e: unknown) {
+            const err = e as { message?: string };
+            message.error(err.message || 'Gagal preview intent');
+            setPreviewIntent(null);
+            setPreviewConfirm(null);
+        } finally {
+            setPreviewing(false);
+        }
+    };
+
+    const handleTryInSim = async () => {
+        const sample = previewSample.trim();
+        if (!sample) {
+            message.warning('Isi contoh pesan dulu');
+            return;
+        }
+        if (commandsDirty) {
+            message.info('Menyimpan dulu supaya Simulasi memakai perintah terbaru…');
+        }
+        await handleSave({ openSimWith: sample });
     };
 
     const handleSetupUmkm = async (row: StudioWhatsAppConfig) => {
@@ -319,7 +458,7 @@ export default function UmkmStudioPage() {
         }
         setSettingUp(true);
         try {
-            await studioService.setupUmkmNotebook(row.notebook_id, row.tenant_id, true);
+            await studioService.setupUmkmNotebook(row.notebook_id, row.tenant_id, false);
             message.success(`Mode UMKM aktif untuk ${row.label || row.tenant_id}`);
             await load();
         } catch (e: unknown) {
@@ -331,12 +470,22 @@ export default function UmkmStudioPage() {
     };
 
     const updateMenuRow = (index: number, patch: Partial<UmkmMenuCommand>) => {
+        setCommandsDirty(true);
         setCommands((prev) => {
             const menu = [...prev.menu];
             menu[index] = { ...menu[index], ...patch };
             return { ...prev, menu };
         });
     };
+
+    const previewLabel = (() => {
+        if (previewConfirm) {
+            return previewConfirm === 'confirm' ? 'Konfirmasi (ya)' : 'Batal';
+        }
+        if (!previewIntent) return null;
+        if (previewIntent === 'unknown') return 'Tidak cocok / unknown';
+        return INTENT_LABEL[previewIntent] || previewIntent;
+    })();
 
     const columns = [
         {
@@ -376,7 +525,6 @@ export default function UmkmStudioPage() {
                     <Tag color={row.enabled ? 'success' : 'default'}>
                         {row.enabled ? 'WA aktif' : 'WA off'}
                     </Tag>
-                    {row.use_guided_flow ? <Tag color="blue">Guided flow</Tag> : null}
                 </Space>
             ),
         },
@@ -396,14 +544,27 @@ export default function UmkmStudioPage() {
                     >
                         Setup UMKM
                     </Button>
-                    <Button
-                        size="small"
-                        icon={<MessageOutlined />}
-                        onClick={() => setSimTarget(row)}
-                        disabled={!row.enabled || !row.notebook_id}
+                    <Tooltip
+                        title={
+                            !row.enabled || !row.notebook_id
+                                ? 'Aktifkan WhatsApp dan set notebook dulu'
+                                : undefined
+                        }
                     >
-                        Simulasi chat
-                    </Button>
+                        <span style={{ display: 'inline-block' }}>
+                            <Button
+                                size="small"
+                                icon={<MessageOutlined />}
+                                onClick={() => {
+                                    setSimInitialMessage(undefined);
+                                    setSimTarget(row);
+                                }}
+                                disabled={!row.enabled || !row.notebook_id}
+                            >
+                                Simulasi chat
+                            </Button>
+                        </span>
+                    </Tooltip>
                     <Link href={`/admin/ai-studio/ai-gateway?tenant=${encodeURIComponent(row.tenant_id)}`}>
                         <Button size="small" icon={<WhatsAppOutlined />}>
                             WA
@@ -423,33 +584,17 @@ export default function UmkmStudioPage() {
 
     return (
         <CMSLayout
-            title={
-                <AuroraText colors={[themeColor, '#25d366', '#f59e0b']}>
-                    UMKM Penjualan WA
-                </AuroraText>
-            }
-            subTitle={
-                <DecryptedText
-                    text="Satu nomor WA admin — tiap UMKM boleh punya beberapa nomor pemilik toko"
-                    animateOn="view"
-                    revealDirection="center"
-                    speed={40}
-                    maxIterations={12}
-                    sequential
-                />
-            }
+            title="UMKM Penjualan WA"
+            subTitle="Satu nomor WA admin — tiap UMKM boleh punya beberapa nomor pemilik toko"
             extra={[
                 <Button key="add" type="primary" icon={<PlusOutlined />} onClick={openCreate}>
                     Tambah UMKM
                 </Button>,
-                <Link key="setup" href="/admin/ai-studio/waha-setup">
-                    <Button>Setup WAHA</Button>
+                <Link key="setup" href="/admin/ai-studio/ai-gateway">
+                    <Button>Setup WhatsApp</Button>
                 </Link>,
-                <Button key="waha" onClick={() => window.open(wahaDashboard, '_blank')}>
-                    WAHA Dashboard
-                </Button>,
                 <Button key="r" icon={<ReloadOutlined />} onClick={load} loading={loading} />,
-            ]}
+            ].filter(Boolean)}
         >
             <motion.div
                 initial={{ opacity: 0, y: 16 }}
@@ -459,28 +604,96 @@ export default function UmkmStudioPage() {
                 <Alert
                     type="info"
                     showIcon
-                    title="Model: satu nomor WA admin (WAHA)"
+                    title="Model: satu nomor WA admin (Hermes)"
                     description={
                         <ol style={{ margin: '8px 0 0', paddingLeft: 18, fontSize: 12 }}>
                             <li>
                                 Pair <strong>satu</strong> nomor admin di{' '}
-                                <Link href="/admin/ai-studio/waha-setup">Setup WAHA</Link> (session{' '}
-                                <code>default</code>)
+                                <Link href="/admin/ai-studio/ai-gateway">
+                                    WhatsApp Gateway (Hermes)
+                                </Link>
                             </li>
                             <li>
-                                <strong>Tambah UMKM</strong> — daftarkan nomor HP pemilik + atur perintah WA
+                                Pemilik bisa daftar sendiri lewat WA: ketik <strong>DAFTAR</strong> → antrean
+                                di bawah → Approve
                             </li>
                             <li>
-                                <strong>Setup UMKM</strong> — aktifkan flow penjualan
+                                Atau <strong>Tambah UMKM</strong> manual — nomor HP pemilik + perintah WA
                             </li>
                             <li>
-                                Pemilik kirim WA ke nomor admin memakai angka menu atau keyword yang Anda set —
-                                atau uji dulu lewat tombol <strong>Simulasi chat</strong> (tanpa WAHA)
+                                Uji lewat <strong>Simulasi chat</strong> (tanpa kirim WA live), lalu isi{' '}
+                                <strong>Katalog</strong> per tenant
                             </li>
-                            <li>Isi <strong>Katalog</strong> per tenant</li>
                         </ol>
                     }
                 />
+
+                <Card
+                    size="small"
+                    style={glass}
+                    title={
+                        <Space>
+                            <Text strong>Menunggu approve</Text>
+                            {pendingRegs.length > 0 ? (
+                                <Tag color="orange">{pendingRegs.length}</Tag>
+                            ) : null}
+                        </Space>
+                    }
+                >
+                    <Table
+                        rowKey="id"
+                        loading={loading}
+                        dataSource={pendingRegs}
+                        pagination={false}
+                        locale={{ emptyText: 'Tidak ada antrean DAFTAR dari WhatsApp' }}
+                        columns={[
+                            {
+                                title: 'Waktu',
+                                dataIndex: 'created_at',
+                                width: 160,
+                                render: (v: string) =>
+                                    v ? new Date(v).toLocaleString('id-ID') : '—',
+                            },
+                            {
+                                title: 'Nomor WA',
+                                dataIndex: 'phone',
+                                render: (p: string) => <Tag color="green">{p}</Tag>,
+                            },
+                            {
+                                title: 'Nama toko',
+                                dataIndex: 'store_name',
+                                render: (n: string | null) => n || '—',
+                            },
+                            {
+                                title: '',
+                                key: 'actions',
+                                width: 200,
+                                render: (_: unknown, row: StudioUmkmRegistration) => (
+                                    <Space>
+                                        <Button
+                                            type="primary"
+                                            size="small"
+                                            icon={<CheckOutlined />}
+                                            loading={actingRegId === row.id}
+                                            onClick={() => void handleApproveReg(row)}
+                                        >
+                                            Approve
+                                        </Button>
+                                        <Button
+                                            danger
+                                            size="small"
+                                            icon={<CloseOutlined />}
+                                            loading={actingRegId === row.id}
+                                            onClick={() => void handleRejectReg(row)}
+                                        >
+                                            Tolak
+                                        </Button>
+                                    </Space>
+                                ),
+                            },
+                        ]}
+                    />
+                </Card>
 
                 <Card size="small" style={glass} title={<Text strong>Daftar UMKM</Text>}>
                     <Table
@@ -500,7 +713,7 @@ export default function UmkmStudioPage() {
                 open={drawerOpen}
                 onClose={() => setDrawerOpen(false)}
                 extra={
-                    <Button type="primary" loading={saving} onClick={handleSave}>
+                    <Button type="primary" loading={saving} onClick={() => void handleSave()}>
                         Simpan
                     </Button>
                 }
@@ -524,7 +737,7 @@ export default function UmkmStudioPage() {
                     >
                         <Input placeholder="umkm-warung-bu-ani" disabled={!!editing} />
                     </Form.Item>
-                    <Form.Item name="wahaSession" hidden initialValue="default">
+                    <Form.Item name="sessionName" hidden initialValue="default">
                         <Input />
                     </Form.Item>
                     <Form.Item
@@ -584,8 +797,20 @@ export default function UmkmStudioPage() {
                     <Form.Item name="enabled" label="Aktifkan WhatsApp" valuePropName="checked">
                         <Switch />
                     </Form.Item>
-                    <Form.Item name="useGuidedFlow" label="Gunakan guided flow UMKM" valuePropName="checked">
-                        <Switch />
+
+                    <Form.Item
+                        label="Pendamping bisnis"
+                        extra="Digit *7* + alias pendamping. Matikan untuk kill-switch per toko."
+                    >
+                        <Switch
+                            checked={pendampingEnabled}
+                            checkedChildren="ON"
+                            unCheckedChildren="OFF"
+                            onChange={(checked) => {
+                                setPendampingEnabled(checked);
+                                setPendampingDirty(true);
+                            }}
+                        />
                     </Form.Item>
 
                     <Divider titlePlacement="start" plain>
@@ -600,23 +825,26 @@ export default function UmkmStudioPage() {
                         <Button
                             size="small"
                             icon={<PlusOutlined />}
-                            onClick={() =>
+                            onClick={() => {
+                                setCommandsDirty(true);
                                 setCommands((prev) => ({
                                     ...prev,
                                     menu: [
                                         ...prev.menu,
                                         { digit: '', intent: 'help', label: 'Baru' },
                                     ],
-                                }))
-                            }
+                                }));
+                            }}
                         >
                             Tambah menu
                         </Button>
                         <Button
                             size="small"
                             onClick={() => {
-                                if (defaults) setCommands(structuredClone(defaults));
-                                else message.warning('Default belum termuat');
+                                if (defaults) {
+                                    setCommands(structuredClone(defaults));
+                                    setCommandsDirty(true);
+                                } else message.warning('Default belum termuat');
                             }}
                         >
                             Reset ke default
@@ -652,12 +880,13 @@ export default function UmkmStudioPage() {
                                 danger
                                 size="small"
                                 icon={<DeleteOutlined />}
-                                onClick={() =>
+                                onClick={() => {
+                                    setCommandsDirty(true);
                                     setCommands((prev) => ({
                                         ...prev,
                                         menu: prev.menu.filter((_, i) => i !== index),
-                                    }))
-                                }
+                                    }));
+                                }}
                             />
                         </Space>
                     ))}
@@ -674,12 +903,13 @@ export default function UmkmStudioPage() {
                                 placeholder="Ketik lalu Enter"
                                 tokenSeparators={[',']}
                                 open={false}
-                                onChange={(tags: string[]) =>
+                                onChange={(tags: string[]) => {
+                                    setCommandsDirty(true);
                                     setCommands((prev) => ({
                                         ...prev,
                                         keywords: { ...prev.keywords, [intent]: tags },
-                                    }))
-                                }
+                                    }));
+                                }}
                             />
                         </Form.Item>
                     ))}
@@ -691,9 +921,10 @@ export default function UmkmStudioPage() {
                             placeholder="ya, oke, 1"
                             tokenSeparators={[',']}
                             open={false}
-                            onChange={(tags: string[]) =>
-                                setCommands((prev) => ({ ...prev, confirm: tags }))
-                            }
+                            onChange={(tags: string[]) => {
+                                setCommandsDirty(true);
+                                setCommands((prev) => ({ ...prev, confirm: tags }));
+                            }}
                         />
                     </Form.Item>
                     <Form.Item label="Batal (batal / 0 / …)" style={{ marginBottom: 10 }}>
@@ -703,18 +934,71 @@ export default function UmkmStudioPage() {
                             placeholder="batal, 0"
                             tokenSeparators={[',']}
                             open={false}
-                            onChange={(tags: string[]) =>
-                                setCommands((prev) => ({ ...prev, cancel: tags }))
-                            }
+                            onChange={(tags: string[]) => {
+                                setCommandsDirty(true);
+                                setCommands((prev) => ({ ...prev, cancel: tags }));
+                            }}
                         />
                     </Form.Item>
+
+                    <Divider titlePlacement="start" plain>
+                        Preview perintah
+                    </Divider>
+                    <Paragraph type="secondary" style={{ fontSize: 12, marginTop: -8 }}>
+                        Ketik contoh pesan (atau digit menu) terhadap perintah di atas — prediksi intent
+                        memakai matcher yang sama dengan WhatsApp.
+                    </Paragraph>
+                    <Space.Compact style={{ width: '100%', marginBottom: 8 }}>
+                        <Input
+                            value={previewSample}
+                            placeholder="contoh: cek stok gula / 5 / jual 2 mie"
+                            onChange={(e) => {
+                                setPreviewSample(e.target.value);
+                                setPreviewIntent(null);
+                                setPreviewConfirm(null);
+                            }}
+                            onPressEnter={() => void runPreview()}
+                        />
+                        <Button loading={previewing} onClick={() => void runPreview()}>
+                            Cek intent
+                        </Button>
+                    </Space.Compact>
+                    {previewLabel != null && (
+                        <Paragraph style={{ marginBottom: 8 }}>
+                            Intent:{' '}
+                            <Tag color={previewIntent === 'unknown' && !previewConfirm ? 'default' : 'green'}>
+                                {previewLabel}
+                            </Tag>
+                            {previewIntent && previewIntent !== 'unknown' && !previewConfirm ? (
+                                <Text type="secondary" style={{ fontSize: 11 }}>
+                                    ({previewIntent})
+                                </Text>
+                            ) : null}
+                        </Paragraph>
+                    )}
+                    <Button
+                        icon={<MessageOutlined />}
+                        loading={saving}
+                        disabled={!previewSample.trim()}
+                        onClick={() => void handleTryInSim()}
+                    >
+                        Coba di Simulasi
+                    </Button>
+                    <Paragraph type="secondary" style={{ fontSize: 11, marginTop: 6 }}>
+                        Menyimpan dulu (Simulasi memakai perintah tersimpan), lalu membuka chat dengan
+                        pesan sudah terisi — kirim manual.
+                    </Paragraph>
                 </Form>
             </Drawer>
 
             <WhatsAppSimChatDrawer
                 open={!!simTarget}
                 config={simTarget}
-                onClose={() => setSimTarget(null)}
+                initialMessage={simInitialMessage}
+                onClose={() => {
+                    setSimTarget(null);
+                    setSimInitialMessage(undefined);
+                }}
             />
         </CMSLayout>
     );

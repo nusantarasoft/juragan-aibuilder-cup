@@ -1,0 +1,22 @@
+%% Studio RAG L3 — embed lock vs LLM swap (best practice)
+flowchart TB
+  subgraph lock["Lock together"]
+    EM[Embedding model]
+    IDX[Chunk vectors in DB]
+    EM --- IDX
+  end
+
+  subgraph free["Swap freely"]
+    LLM1[LLM A e.g. Gemini]
+    LLM2[LLM B e.g. OpenRouter]
+    LLM3[LLM C e.g. Groq]
+  end
+
+  Q[Query] --> EM
+  EM --> RET[Retrieve chunks]
+  RET --> LLM1
+  RET --> LLM2
+  RET --> LLM3
+
+  BAD[Ganti embedding tanpa reindex] -.->|FORBIDDEN| IDX
+  NOTE[Jawaban jelek setelah ganti LLM:<br/>cek prompt / kepatuhan dulu<br/>bukan wajib samakan vendor embed]

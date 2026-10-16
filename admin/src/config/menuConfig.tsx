@@ -1237,7 +1237,7 @@ const menuConfig = {
                     },
                     {
                         path: "/admin/ai-studio/ai-gateway",
-                        name: "WhatsApp & WAHA",
+                        name: "WhatsApp Gateway",
                         icon: <NodeIndexOutlined />,
                         isLeaf: true,
                     },

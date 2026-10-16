@@ -1,4 +1,4 @@
--- AI Studio — WhatsApp (WAHA) channel tables and conversation extensions
+-- AI Studio — WhatsApp channel tables and conversation extensions
 
 ALTER TABLE public.studio_conversations
     ADD COLUMN IF NOT EXISTS channel text DEFAULT 'web',
@@ -23,7 +23,7 @@ CREATE INDEX IF NOT EXISTS idx_studio_conversations_external_chat
 CREATE TABLE IF NOT EXISTS public.studio_whatsapp_config (
     tenant_id text PRIMARY KEY DEFAULT 'default',
     notebook_id uuid REFERENCES public.studio_notebooks(id) ON DELETE SET NULL,
-    waha_session text,
+    session_name text,
     business_phone text,
     label text,
     enabled boolean NOT NULL DEFAULT false,

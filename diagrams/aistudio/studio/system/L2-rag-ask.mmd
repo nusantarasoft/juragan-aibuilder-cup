@@ -1,0 +1,8 @@
+%% Studio RAG L2 — ask path (Studio Chat or Nest consult)
+flowchart TB
+  Q[Pertanyaan user] --> EQ[embedText query<br/>sama model dengan index]
+  EQ --> M[match_studio_chunks<br/>top_k + threshold]
+  M -->|hits| CTX[fileContext dari chunk]
+  M -->|0 hits| MISS[Miss / canned<br/>no free LLM]
+  CTX --> LLM[LLM synthesize<br/>boleh beda vendor]
+  LLM --> A[Jawaban + sitasi ringan]

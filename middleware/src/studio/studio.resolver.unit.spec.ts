@@ -66,12 +66,12 @@ function build() {
         getConfig: vi.fn().mockResolvedValue({ id: 'wa-1', notebook_id: 'nb-1' }),
         listConfigs: vi.fn().mockResolvedValue([{ id: 'wa-1' }]),
         getSecurityMeta: vi.fn().mockResolvedValue({ meta: true }),
-        getWahaSessionStatus: vi.fn().mockResolvedValue({ status: 'WORKING' }),
-        restartWahaSession: vi.fn().mockResolvedValue({ ok: true }),
-        syncWahaSession: vi.fn().mockResolvedValue({ ok: true }),
-        getWahaAuthQr: vi.fn().mockResolvedValue({ qr: 'data' }),
-        startWahaSession: vi.fn().mockResolvedValue({ ok: true }),
-        logoutWahaSession: vi.fn().mockResolvedValue({ ok: true }),
+        getSessionStatus: vi.fn().mockResolvedValue({ status: 'WORKING' }),
+        restartSession: vi.fn().mockResolvedValue({ ok: true }),
+        syncSession: vi.fn().mockResolvedValue({ ok: true }),
+        getAuthQr: vi.fn().mockResolvedValue({ qr: 'data' }),
+        startSession: vi.fn().mockResolvedValue({ ok: true }),
+        logoutSession: vi.fn().mockResolvedValue({ ok: true }),
         updateConfig: vi.fn().mockResolvedValue({ id: 'wa-1', enabled: true }),
         simulateInboundMessage: vi.fn().mockResolvedValue({
             answer: 'ok sim',
@@ -80,10 +80,20 @@ function build() {
             phone: '6280000000001',
             chatId: 'sim:t1:6280000000001',
         }),
+        resetSimSession: vi.fn().mockResolvedValue({
+            ok: true,
+            phone: '6280000000001',
+            chatId: 'sim:t1:6280000000001',
+        }),
     };
     const umkmService = {
         setupUmkmNotebook: vi.fn().mockResolvedValue({ setup: true }),
         updateUmkmCommands: vi.fn().mockResolvedValue({ updated: true }),
+    };
+    const registrationService = {
+        listRegistrations: vi.fn().mockResolvedValue([{ id: 'reg-1', status: 'pending' }]),
+        approve: vi.fn().mockResolvedValue({ id: 'reg-1', status: 'approved' }),
+        reject: vi.fn().mockResolvedValue({ id: 'reg-1', status: 'rejected' }),
     };
 
     const resolver = new StudioResolver(
@@ -91,8 +101,16 @@ function build() {
         guideFlowService as any,
         whatsAppService as any,
         umkmService as any,
+        registrationService as any,
     );
-    return { resolver, studioService, guideFlowService, whatsAppService, umkmService };
+    return {
+        resolver,
+        studioService,
+        guideFlowService,
+        whatsAppService,
+        umkmService,
+        registrationService,
+    };
 }
 
 describe('StudioResolver — auth context', () => {
@@ -486,40 +504,46 @@ describe('StudioResolver — whatsapp/umkm', () => {
 
     it('studioWhatsAppSessionStatus delegates', async () => {
         await h.resolver.studioWhatsAppSessionStatus();
-        expect(h.whatsAppService.getWahaSessionStatus).toHaveBeenCalled();
+        expect(h.whatsAppService.getSessionStatus).toHaveBeenCalled();
     });
 
-    it('restartStudioWahaSession delegates', async () => {
-        await h.resolver.restartStudioWahaSession();
-        expect(h.whatsAppService.restartWahaSession).toHaveBeenCalled();
+    it('restartStudioWhatsAppSession delegates', async () => {
+        await h.resolver.restartStudioWhatsAppSession();
+        expect(h.whatsAppService.restartSession).toHaveBeenCalled();
     });
 
-    it('syncStudioWahaSession delegates', async () => {
-        await h.resolver.syncStudioWahaSession();
-        expect(h.whatsAppService.syncWahaSession).toHaveBeenCalled();
+    it('syncStudioWhatsAppSession delegates', async () => {
+        await h.resolver.syncStudioWhatsAppSession();
+        expect(h.whatsAppService.syncSession).toHaveBeenCalled();
     });
 
-    it('studioWahaAuthQr with and without session', async () => {
-        await h.resolver.studioWahaAuthQr('s1');
-        expect(h.whatsAppService.getWahaAuthQr).toHaveBeenCalledWith('s1');
-        await h.resolver.studioWahaAuthQr('');
-        expect(h.whatsAppService.getWahaAuthQr).toHaveBeenCalledWith(undefined);
+    it('studioWhatsAppAuthQr with and without session', async () => {
+        await h.resolver.studioWhatsAppAuthQr('s1');
+        expect(h.whatsAppService.getAuthQr).toHaveBeenCalledWith('s1', undefined);
+        await h.resolver.studioWhatsAppAuthQr('');
+        expect(h.whatsAppService.getAuthQr).toHaveBeenCalledWith(undefined, undefined);
     });
 
-    it('startStudioWahaSession passes session', async () => {
-        await h.resolver.startStudioWahaSession('s1');
-        expect(h.whatsAppService.startWahaSession).toHaveBeenCalledWith('s1');
+    it('startStudioWhatsAppSession passes session', async () => {
+        await h.resolver.startStudioWhatsAppSession('s1');
+        expect(h.whatsAppService.startSession).toHaveBeenCalledWith('s1', undefined);
     });
 
-    it('logoutStudioWahaSession passes undefined when empty', async () => {
-        await h.resolver.logoutStudioWahaSession('');
-        expect(h.whatsAppService.logoutWahaSession).toHaveBeenCalledWith(undefined);
+    it('logoutStudioWhatsAppSession passes undefined when empty', async () => {
+        await h.resolver.logoutStudioWhatsAppSession('');
+        expect(h.whatsAppService.logoutSession).toHaveBeenCalledWith(undefined, undefined);
     });
 
-    it('setupUmkmNotebook publishes flow by default', async () => {
+    it('setupUmkmNotebook skips flow by default', async () => {
         const res = await h.resolver.setupUmkmNotebook(ctx(), 'nb-1', 't1', undefined as any);
         expect(h.studioService.assertNotebookOwner).toHaveBeenCalledWith('nb-1', USER_ID);
         expect(h.umkmService.setupUmkmNotebook).toHaveBeenCalledWith('nb-1', 't1');
+        expect(h.guideFlowService.createAndPublishUmkmFlow).not.toHaveBeenCalled();
+        expect(res.flow).toBeNull();
+    });
+
+    it('setupUmkmNotebook publishes flow when publishGuideFlow=true', async () => {
+        const res = await h.resolver.setupUmkmNotebook(ctx(), 'nb-1', 't1', true);
         expect(h.guideFlowService.createAndPublishUmkmFlow).toHaveBeenCalledWith('nb-1');
         expect(res.flow).toEqual({ id: 'f-umkm' });
     });
@@ -530,9 +554,15 @@ describe('StudioResolver — whatsapp/umkm', () => {
         expect(res.flow).toBeNull();
     });
 
-    it('updateStudioUmkmCommands republishes by default', async () => {
+    it('updateStudioUmkmCommands skips republish by default', async () => {
         const res = await h.resolver.updateStudioUmkmCommands(ctx(), 'nb-1', { a: 1 }, undefined);
-        expect(h.umkmService.updateUmkmCommands).toHaveBeenCalledWith('nb-1', { a: 1 });
+        expect(h.umkmService.updateUmkmCommands).toHaveBeenCalledWith('nb-1', { a: 1 }, undefined);
+        expect(h.guideFlowService.createAndPublishUmkmFlow).not.toHaveBeenCalled();
+        expect(res.flow).toBeNull();
+    });
+
+    it('updateStudioUmkmCommands republishes when republishGuideFlow=true', async () => {
+        const res = await h.resolver.updateStudioUmkmCommands(ctx(), 'nb-1', { a: 1 }, true);
         expect(h.guideFlowService.createAndPublishUmkmFlow).toHaveBeenCalledWith('nb-1');
         expect(res.flow).toEqual({ id: 'f-umkm' });
     });
@@ -543,8 +573,32 @@ describe('StudioResolver — whatsapp/umkm', () => {
         expect(res.flow).toBeNull();
     });
 
+    it('updateStudioUmkmCommands passes pendampingEnabled true/false/null', async () => {
+        await h.resolver.updateStudioUmkmCommands(ctx(), 'nb-1', { a: 1 }, false, true);
+        expect(h.umkmService.updateUmkmCommands).toHaveBeenCalledWith('nb-1', { a: 1 }, true);
+        await h.resolver.updateStudioUmkmCommands(ctx(), 'nb-1', { a: 1 }, false, false);
+        expect(h.umkmService.updateUmkmCommands).toHaveBeenCalledWith('nb-1', { a: 1 }, false);
+        await h.resolver.updateStudioUmkmCommands(ctx(), 'nb-1', { a: 1 }, false, null);
+        expect(h.umkmService.updateUmkmCommands).toHaveBeenCalledWith('nb-1', { a: 1 }, null);
+    });
+
     it('studioUmkmCommandsDefaults returns defaults', async () => {
         await expect(h.resolver.studioUmkmCommandsDefaults()).resolves.toBe(DEFAULT_UMKM_COMMANDS);
+    });
+
+    it('studioPreviewUmkmIntent maps check_stock via draft commands', async () => {
+        const res = await h.resolver.studioPreviewUmkmIntent(
+            ctx(),
+            'cek stok gula',
+            DEFAULT_UMKM_COMMANDS as unknown as Record<string, unknown>,
+        );
+        expect(res).toEqual({ intent: 'check_stock', confirm: null });
+    });
+
+    it('studioPreviewUmkmIntent returns unknown for blank text', async () => {
+        const res = await h.resolver.studioPreviewUmkmIntent(ctx(), '   ', null as any);
+        expect(res.intent).toBe('unknown');
+        expect(res.confirm).toBeNull();
     });
 
     it('updateStudioWhatsAppConfig without notebookId skips ownership + setup', async () => {
@@ -555,14 +609,14 @@ describe('StudioResolver — whatsapp/umkm', () => {
         expect(h.whatsAppService.updateConfig).toHaveBeenCalledWith(
             {
                 notebookId: null, enabled: true, allowlistPhones: [], useGuidedFlow: false,
-                wahaSession: undefined, businessPhone: undefined, label: undefined,
+                sessionName: undefined, businessPhone: undefined, label: undefined,
             },
             undefined,
         );
         expect(h.umkmService.setupUmkmNotebook).not.toHaveBeenCalled();
     });
 
-    it('updateStudioWhatsAppConfig with notebookId + tenant sets up and publishes flow', async () => {
+    it('updateStudioWhatsAppConfig with notebookId + tenant writes config only', async () => {
         await h.resolver.updateStudioWhatsAppConfig(
             ctx(), 't1', 'nb-1', true, ['62812'], true, 'sess', '62800', 'Toko',
         );
@@ -570,19 +624,19 @@ describe('StudioResolver — whatsapp/umkm', () => {
         expect(h.whatsAppService.updateConfig).toHaveBeenCalledWith(
             {
                 notebookId: 'nb-1', enabled: true, allowlistPhones: ['62812'], useGuidedFlow: true,
-                wahaSession: 'sess', businessPhone: '62800', label: 'Toko',
+                sessionName: 'sess', businessPhone: '62800', label: 'Toko',
             },
             't1',
         );
-        expect(h.umkmService.setupUmkmNotebook).toHaveBeenCalledWith('nb-1', 't1');
-        expect(h.guideFlowService.createAndPublishUmkmFlow).toHaveBeenCalledWith('nb-1');
+        expect(h.umkmService.setupUmkmNotebook).not.toHaveBeenCalled();
+        expect(h.guideFlowService.createAndPublishUmkmFlow).not.toHaveBeenCalled();
     });
 
-    it('updateStudioWhatsAppConfig with notebookId but disabled skips umkm flow publish', async () => {
+    it('updateStudioWhatsAppConfig with notebookId but disabled still skips umkm setup/publish', async () => {
         await h.resolver.updateStudioWhatsAppConfig(
             ctx(), 't1', 'nb-1', false, undefined as any, false, undefined as any, undefined as any, undefined as any,
         );
-        expect(h.umkmService.setupUmkmNotebook).toHaveBeenCalledWith('nb-1', 't1');
+        expect(h.umkmService.setupUmkmNotebook).not.toHaveBeenCalled();
         expect(h.guideFlowService.createAndPublishUmkmFlow).not.toHaveBeenCalled();
     });
 
@@ -596,5 +650,31 @@ describe('StudioResolver — whatsapp/umkm', () => {
             phone: '62812',
         });
         expect(res.answer).toBe('ok sim');
+    });
+
+    it('studioWhatsAppSimReset checks ownership then resets session', async () => {
+        const res = await h.resolver.studioWhatsAppSimReset(ctx(), 't1', '62812');
+        expect(h.whatsAppService.getConfig).toHaveBeenCalledWith('t1');
+        expect(h.studioService.assertNotebookOwner).toHaveBeenCalledWith('nb-1', USER_ID);
+        expect(h.whatsAppService.resetSimSession).toHaveBeenCalledWith({
+            tenantId: 't1',
+            phone: '62812',
+        });
+        expect(res.ok).toBe(true);
+    });
+
+    it('studioUmkmRegistrations defaults to pending', async () => {
+        await h.resolver.studioUmkmRegistrations(ctx());
+        expect(h.registrationService.listRegistrations).toHaveBeenCalledWith('pending');
+    });
+
+    it('studioApproveUmkmRegistration passes token user id', async () => {
+        await h.resolver.studioApproveUmkmRegistration(ctx(), 'reg-1');
+        expect(h.registrationService.approve).toHaveBeenCalledWith('reg-1', USER_ID);
+    });
+
+    it('studioRejectUmkmRegistration passes reason + token user', async () => {
+        await h.resolver.studioRejectUmkmRegistration(ctx(), 'reg-1', 'duplikat');
+        expect(h.registrationService.reject).toHaveBeenCalledWith('reg-1', 'duplikat', USER_ID);
     });
 });

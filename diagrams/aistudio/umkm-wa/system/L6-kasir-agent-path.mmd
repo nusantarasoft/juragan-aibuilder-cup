@@ -1,0 +1,27 @@
+%% System: allowlisted kasir turn (Hermes) — tools not skills; chat-only default
+flowchart TB
+  U[Owner WhatsApp] --> B[Baileys]
+  B --> P[kasir-pipe]
+  P -->|foto/suara OFF| REF[Refuse: ketik jual/stok]
+  REF --> U
+  P -->|foto/suara ON| GV[Gateway STT / vision]
+  P -->|deny| R[DAFTAR wizard]
+  P -->|ok stamp per-chat| G[Gateway plus LLM]
+  GV --> G
+  G --> S[SOUL.md shared]
+  S --> T[kasir-tools]
+  T -->|stok laporan jual tutup| DB[(Supabase tenant)]
+  T -->|kasir_consult| Nest[Nest /internal/kasir-consult<br/>kurikulum RAG]
+  Nest --> Buku[Jawaban buku UKM]
+  T -->|draft jual beli| POLL[send-poll Ya Batal]
+  POLL --> U
+  T -->|confirm / tutup toko| DB
+  G --> E[transform_llm_output<br/>user_safe egress]
+  E --> U
+
+  subgraph deny["Disabled on WhatsApp"]
+    X1[terminal file browser web]
+    X2[skills code_execution]
+    X3[delegation computer_use]
+  end
+  G -.->|must not call| deny

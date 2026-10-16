@@ -32,7 +32,7 @@
 
 See [`STUDIO_DB_CONTEXT.md`](STUDIO_DB_CONTEXT.md): apply `middleware/sql/studio_sales_views.sql` and optional `supabase/studio_sales_seed.sql`.
 
-## WhatsApp channel (WAHA)
+## WhatsApp channel (Hermes)
 
 See [`STUDIO_WHATSAPP.md`](STUDIO_WHATSAPP.md): inbound webhook → same `invokeRagQuery` / guided flow; configure notebook in Admin → AI Studio → WhatsApp.
 

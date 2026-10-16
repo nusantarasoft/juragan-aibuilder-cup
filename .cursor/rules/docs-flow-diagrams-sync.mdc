@@ -1,0 +1,40 @@
+---
+description: Keep docs, flow diagrams, and process visuals in sync with every behavior-changing code change.
+alwaysApply: true
+---
+
+# Docs + flow + diagrams sync (mandatory)
+
+When you change **product behavior**, **user/ops flow**, **architecture**, or **Hermes/kasir/WA** paths, docs and diagrams are part of the same change — not a follow-up.
+
+## Gate (do this before claiming done)
+
+1. **Affects users/ops/architecture?** → update docs + diagrams in the **same session** (same PR/commit set when shipping).
+2. **Pure refactor / no behavior change?** → skip only if you state that explicitly in the reply; still fix docs if names/paths moved.
+3. **Never** ship code that invents a new owner phrase, gate, env flag, or tool without updating the matching pitch/ops/system doc and ladder diagram.
+
+## What to check / upgrade / add
+
+| Kind | Where (UMKM WA example) | Action |
+|------|-------------------------|--------|
+| Pitch / sales | `docs/aistudio/umkm-wa/business/pitch.md` | Table of owner phrases + “belum v1” |
+| Ops / trial | `docs/aistudio/umkm-wa/business/ops/` | AIDLC examples, checklist |
+| System | `docs/aistudio/umkm-wa/system/hermes-architecture.md` (+ gaps/local) | Mental model, env, failure modes, platform locks |
+| Business diagrams | `diagrams/aistudio/umkm-wa/business/` L0–L4 (+ L0b, **L0c**) | Update `.mmd` **and** re-render `.svg` |
+| System diagrams | `diagrams/aistudio/umkm-wa/system/` L5–**L8** | Same — source + SVG |
+| Indexes | `docs/aistudio/umkm-wa/README.md`, `diagrams/aistudio/umkm-wa/**/README.md` | Link new levels |
+
+Other product areas: same duty under their `docs/` + `diagrams/` trees — find the nearest ladder README and extend it.
+
+## Diagram rules
+
+- Edit **`.mmd` first**, then regenerate **`.svg`** (mermaid.ink or `@mermaid-js/mermaid-cli`).
+- New distinct concern (modality, gate order, ritual) → **new level** (e.g. L0c, L7), don’t overload one chart.
+- Keep sales diagrams free of eng jargon; put pipe/env/tools on L5–L7.
+
+## Done criteria
+
+- [ ] Docs mention the new behavior (phrase / env / failure path)
+- [ ] Affected flow SVG matches code
+- [ ] README index lists any new diagram level
+- [ ] Reply briefly lists which docs/diagrams changed (or “N/A — no behavior change”)

@@ -1,0 +1,68 @@
+flowchart TB
+  subgraph Clients
+    Admin["Admin CMS\n/admin/ai-studio"]
+    WA["WhatsApp UMKM"]
+  end
+
+  subgraph Edge
+    Hermes["Hermes\nBaileys + kasir-pipe"]
+  end
+
+  subgraph Middleware["Middleware NestJS :4001"]
+    GQL["StudioResolver\nGraphQL"]
+    REST["Upload / Chat stream\nShare / WA webhook"]
+    Studio["StudioService"]
+    Ingest["StudioIngestionService"]
+    Ctx["StudioContextService"]
+    Guide["GuideFlowService"]
+    Out["StudioOutputService"]
+    WASvc["StudioWhatsAppService"]
+    Umkm["StudioUmkmService\n+ AgenticAsk / Pendamping"]
+    AI["AiRouterService"]
+    RAG["RagService\nextract / chunk / embed"]
+  end
+
+  subgraph Data["Supabase Postgres + pgvector"]
+    NB["studio_notebooks\nsources / chunks"]
+    Conv["studio_conversations\nguide_flows / outputs"]
+    Cfg["studio_settings\nwhatsapp_config"]
+    Sales["ecom + inventory\nv_studio_sales_*"]
+  end
+
+  subgraph Ext["External AI"]
+    LLM["Vertex / Groq / Ollama\n+ embeddings"]
+  end
+
+  Admin --> GQL
+  Admin --> REST
+  WA --> Hermes --> REST
+
+  GQL --> Studio
+  GQL --> Guide
+  GQL --> WASvc
+  REST --> Studio
+  REST --> WASvc
+
+  Studio --> Ctx
+  Studio --> Ingest
+  Studio --> Out
+  Guide --> Ctx
+  WASvc --> Umkm
+  WASvc --> Guide
+  WASvc --> Studio
+
+  Ingest --> RAG
+  Ctx --> RAG
+  Ctx --> AI
+  Studio --> AI
+  Umkm --> Sales
+  Ctx --> Sales
+
+  Studio --> NB
+  Studio --> Conv
+  Ingest --> NB
+  Guide --> Conv
+  WASvc --> Cfg
+  AI --> LLM
+  RAG --> LLM
+  RAG --> NB

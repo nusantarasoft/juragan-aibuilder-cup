@@ -368,6 +368,22 @@ export class AosStats {
     @Field(() => Int) pendingApprovals: number;
 }
 
+/** Read-only live metrics for the AI Studio UMKM Kasir “first employee” slice. */
+@ObjectType()
+export class AosKasirLiveSnapshot {
+    @Field() available: boolean;
+    @Field() tenantId: string;
+    @Field() slug: string;
+    @Field() name: string;
+    @Field() role: string;
+    @Field() source: string;
+    @Field(() => String, { nullable: true }) unavailableReason: string | null;
+    @Field(() => Int, { nullable: true }) waChatsToday: number | null;
+    @Field(() => Int, { nullable: true }) transactionsToday: number | null;
+    @Field(() => String, { nullable: true }) lastActivityAt: string | null;
+    @Field(() => Boolean, { nullable: true }) waOnline: boolean | null;
+}
+
 // ── Phase 4 (Command Deck · Goals & gate reviews) ───────────────────────────
 
 @ObjectType()

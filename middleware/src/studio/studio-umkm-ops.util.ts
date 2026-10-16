@@ -1,6 +1,16 @@
 /** UMKM ops helpers — date ranges, purchase / product / stock parsing. */
 
-export type UmkmReportPeriod = 'today' | 'week' | 'month' | 'all';
+/** Mirror Hermes kasir-tools period presets (+ Nest-only `all`). WA totals = Hermes RPC SoT. */
+export type UmkmReportPeriod =
+    | 'today'
+    | 'week'
+    | 'month'
+    | 'year'
+    | 'quarter'
+    | 'quarter_last'
+    | 'last_3_months'
+    | 'last_year'
+    | 'all';
 
 export type ParsedUmkmPurchaseItem = {
     name: string;
@@ -50,6 +60,7 @@ export function periodRange(period: UmkmReportPeriod, now = new Date()): {
     from: string | null;
     to: string | null;
 } {
+    // Keep `year` YTD bounds in sync with Hermes kasir-tools `_period_range`.
     const { y, m, day } = jakartaDateParts(now);
     const today = toIsoDate(y, m, day);
     if (period === 'today') {
@@ -76,6 +87,57 @@ export function periodRange(period: UmkmReportPeriod, now = new Date()): {
         const to = toIsoDate(e.y, e.m, e.day);
         return { label: 'minggu ini', from: `${from}T00:00:00+07:00`, to: `${to}T23:59:59.999+07:00` };
     }
+    if (period === 'year') {
+        // Calendar YTD Asia/Jakarta: Jan 1 → end of today (WA totals still Hermes RPC).
+        const from = toIsoDate(y, 1, 1);
+        return { label: 'tahun ini', from: `${from}T00:00:00+07:00`, to: `${today}T23:59:59.999+07:00` };
+    }
+    if (period === 'last_year') {
+        const from = toIsoDate(y - 1, 1, 1);
+        const to = toIsoDate(y - 1, 12, 31);
+        return { label: 'tahun lalu', from: `${from}T00:00:00+07:00`, to: `${to}T23:59:59.999+07:00` };
+    }
+    if (period === 'quarter') {
+        const qm = Math.floor((m - 1) / 3) * 3 + 1;
+        const qn = Math.floor((qm - 1) / 3) + 1;
+        const from = toIsoDate(y, qm, 1);
+        return {
+            label: `kuartal ${qn} ${y}`,
+            from: `${from}T00:00:00+07:00`,
+            to: `${today}T23:59:59.999+07:00`,
+        };
+    }
+    if (period === 'quarter_last') {
+        const qm = Math.floor((m - 1) / 3) * 3 + 1;
+        let py = y;
+        let pqm = qm - 3;
+        if (pqm < 1) {
+            py = y - 1;
+            pqm = 10;
+        }
+        const qn = Math.floor((pqm - 1) / 3) + 1;
+        const from = toIsoDate(py, pqm, 1);
+        const lastMonth = pqm + 2;
+        const lastDay = new Date(Date.UTC(py, lastMonth, 0)).getUTCDate();
+        const to = toIsoDate(py, lastMonth, lastDay);
+        return {
+            label: `kuartal ${qn} ${py}`,
+            from: `${from}T00:00:00+07:00`,
+            to: `${to}T23:59:59.999+07:00`,
+        };
+    }
+    if (period === 'last_3_months') {
+        // From day-1 of (month - 2) through today — parity with Hermes.
+        const monthIdx = y * 12 + (m - 1) - 2;
+        const sy = Math.floor(monthIdx / 12);
+        const sm = (monthIdx % 12) + 1;
+        const from = toIsoDate(sy, sm, 1);
+        return {
+            label: '3 bulan terakhir',
+            from: `${from}T00:00:00+07:00`,
+            to: `${today}T23:59:59.999+07:00`,
+        };
+    }
     return { label: 'semua waktu', from: null, to: null };
 }
 
@@ -84,6 +146,19 @@ export function detectReportPeriod(text: string): UmkmReportPeriod | null {
     if (/^(1|hari(\s+ini)?|today)$/i.test(t) || /\bhari\s+ini\b/i.test(t)) return 'today';
     if (/^(2|minggu(\s+ini)?|week)$/i.test(t) || /\bminggu\s+ini\b/i.test(t)) return 'week';
     if (/^(3|bulan(\s+ini)?|month)$/i.test(t) || /\bbulan\s+ini\b/i.test(t)) return 'month';
+    if (/\b3\s*bulan\s+terakhir\b/i.test(t) || /\btiga\s+bulan\s+terakhir\b/i.test(t)) {
+        return 'last_3_months';
+    }
+    if (/\bkuartal\s+lalu\b/i.test(t) || /\bquarter_last\b/i.test(t)) return 'quarter_last';
+    if (/\bkuartal(\s+ini)?\b/i.test(t) || /\bquarter\b/i.test(t)) return 'quarter';
+    if (/\btahun\s+lalu\b/i.test(t) || /\blast\s+year\b/i.test(t)) return 'last_year';
+    if (
+        /^(tahun(\s+ini)?|year|ytd)$/i.test(t) ||
+        /\btahun\s+ini\b/i.test(t) ||
+        /\bthis\s+year\b/i.test(t)
+    ) {
+        return 'year';
+    }
     if (/^(4|semua|all)$/i.test(t) || /\bsemua\b/i.test(t)) return 'all';
     return null;
 }
@@ -140,8 +215,10 @@ export function parseAddProductMessage(text: string): ParsedAddProduct | null {
         /^[\d.,\s]+$/.test(n) ||
         /^(?:rp\.?\s*)?[\d.,]+(?:\s*rb)?$/i.test(n);
 
-    // Trailing price: "mie ayam 15000" / "es teh @5000" / "bakso harga 18rb"
-    const priceMatch = withoutCost.match(/(?:@|harga|rp\.?\s*)?\s*([\d][\d.,]*(?:\s*rb)?)\s*$/i);
+    // Trailing price: "mie ayam 15000" / "es teh @5000" / "bakso harga jual 18rb"
+    const priceMatch = withoutCost.match(
+        /(?:@|harga(?:\s+jual)?|rp\.?\s*)?\s*([\d][\d.,]*(?:\s*rb)?)\s*$/i,
+    );
     if (priceMatch && priceMatch.index != null && priceMatch.index > 0) {
         const before = withoutCost.slice(0, priceMatch.index).trim();
         if (!isWeakName(before)) {
@@ -159,7 +236,10 @@ export function parseAddProductMessage(text: string): ParsedAddProduct | null {
         }
     }
 
-    name = name.replace(/[,\-–]+$/, '').trim();
+    name = name
+        .replace(/\s*(?:harga\s+jual|harga|jual)\s*$/i, '')
+        .replace(/[,\-–]+$/, '')
+        .trim();
     if (isWeakName(name)) return null;
     if (sellingPrice <= 0) {
         sellingPrice = 0;

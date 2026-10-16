@@ -1,0 +1,8 @@
+flowchart TD
+  M[Pesan WA masuk] --> G{Nomor pengirim<br/>di allowlist?}
+  G -->|Ya| AIDLC[Hermes agent kasir<br/>AIDLC: intent preview commit]
+  G -->|Tidak| F{KASIR_REGISTRATION?}
+  F -->|0| S[Silent skip]
+  F -->|1| W[Wizard non-LLM<br/>DAFTAR STATUS YA]
+  W --> P[(studio_umkm_registrations)]
+  AIDLC --> DB[(katalog / stok / orders)]

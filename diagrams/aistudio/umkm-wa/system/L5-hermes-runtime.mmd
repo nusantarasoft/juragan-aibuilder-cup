@@ -1,0 +1,44 @@
+flowchart TB
+  subgraph wa["WhatsApp"]
+    U[Owner / admin phones]
+  end
+
+  subgraph hermes["Hermes container"]
+    B[Baileys bridge<br/>127.0.0.1:3000]
+    G[Gateway + LLM<br/>Gemini 2.5 Flash<br/>OpenRouter · SOUL.md]
+    P[kasir-pipe<br/>pre_gateway_dispatch]
+    T[kasir-tools only<br/>user_safe wrap]
+    PX[Bridge+pair proxy<br/>0.0.0.0:8765]
+    B --> G
+    G --> P
+    P -->|media + multimodal OFF| REF[Refuse teks<br/>ketik jual/stok]
+    REF --> B
+    P -->|allowlist OK<br/>stamp per-chat v2| G
+    G --> T
+    P -->|deny + REG=1| W[DAFTAR wizard]
+    W --> B
+    PX --> B
+  end
+
+  subgraph mid["Middleware Nest"]
+    HP[HermesProvider]
+    WH[POST /whatsapp/webhook<br/>Simulasi / legacy only]
+  end
+
+  subgraph db["Supabase / Kong"]
+    CFG[(studio_whatsapp_config)]
+    REG[(studio_umkm_registrations)]
+    KAS[(katalog / stok / orders)]
+  end
+
+  U <--> B
+  HP -->|send / pair / send-poll| PX
+  T --> CFG
+  T --> KAS
+  P --> CFG
+  W --> REG
+  HP -.->|approve notify| PX
+  WH -.->|not kasir inbound| mid
+
+  %% Platform locks: chat-only refuse, tool allowlist clarify+kasir, multi-chat stamp.
+  %% See L6 / L7 + hermes-architecture Platform locks.

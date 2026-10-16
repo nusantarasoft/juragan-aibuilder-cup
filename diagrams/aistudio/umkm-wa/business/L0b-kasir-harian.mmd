@@ -1,0 +1,12 @@
+%% Owner daily ritual after Approve (sales / pitch — no eng jargon)
+flowchart LR
+  A[Owner chat teks] --> B{Mau apa?}
+  B -->|Cek stok| C[Jawaban sisa barang]
+  B -->|Ada yang beli| D[Ringkasan jual]
+  D --> E[Ya, simpan / Batal]
+  E -->|Ya| F[Tercatat]
+  F --> G[Satu lagi opsional]
+  B -->|Belanja / restock| H[Ringkasan belanja → Ya]
+  B -->|Laporan / laris| I[Omzet & ringkasan]
+  B -->|Tutup toko| J[Omzet hari ini + stok menipis]
+  B -->|Tanya / konsultasi bisnis| K[Saran dari buku kurikulum UKM]

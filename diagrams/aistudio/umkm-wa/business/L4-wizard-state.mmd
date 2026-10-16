@@ -1,0 +1,11 @@
+stateDiagram-v2
+  [*] --> Intro
+  Intro --> AskStore: DAFTAR
+  AskStore --> Confirm: nama toko
+  Confirm --> Pending: YA
+  Confirm --> Rejected: BATAL
+  AskStore --> Rejected: BATAL
+  Pending --> Approved: Admin Approve
+  Pending --> Rejected: Admin Tolak
+  Rejected --> AskStore: DAFTAR lagi
+  Approved --> [*]: masuk allowlist

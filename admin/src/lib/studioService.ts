@@ -799,7 +799,7 @@ export const studioService = {
     async setupUmkmNotebook(
         notebookId: string,
         tenantId?: string,
-        publishGuideFlow = true,
+        publishGuideFlow = false,
     ): Promise<StudioUmkmSetupResult> {
         const data = await graphqlRequest(`
             mutation($notebookId: String!, $tenantId: String, $publishGuideFlow: Boolean) {
@@ -818,24 +818,52 @@ export const studioService = {
         return data.studioUmkmCommandsDefaults;
     },
 
+    /** Preview intent for draft commands (same matcher as inbound WA). */
+    async previewUmkmIntent(
+        text: string,
+        commands?: UmkmCommandsConfig | null,
+    ): Promise<{ intent: string; confirm: 'confirm' | 'cancel' | null }> {
+        const data = await graphqlRequest(
+            `
+            query($text: String!, $commands: JSONObject) {
+                studioPreviewUmkmIntent(text: $text, commands: $commands)
+            }
+        `,
+            { text, commands: commands ?? null },
+        );
+        return data.studioPreviewUmkmIntent;
+    },
+
     async updateUmkmCommands(
         notebookId: string,
         commands: UmkmCommandsConfig,
-        republishGuideFlow = true,
+        republishGuideFlow = false,
+        pendampingEnabled?: boolean,
     ): Promise<{ notebookId: string; commands: UmkmCommandsConfig }> {
         const data = await graphqlRequest(`
-            mutation($notebookId: String!, $commands: JSONObject!, $republishGuideFlow: Boolean) {
+            mutation(
+                $notebookId: String!
+                $commands: JSONObject!
+                $republishGuideFlow: Boolean
+                $pendampingEnabled: Boolean
+            ) {
                 updateStudioUmkmCommands(
                     notebookId: $notebookId
                     commands: $commands
                     republishGuideFlow: $republishGuideFlow
+                    pendampingEnabled: $pendampingEnabled
                 )
             }
-        `, { notebookId, commands, republishGuideFlow });
+        `, {
+            notebookId,
+            commands,
+            republishGuideFlow,
+            pendampingEnabled: pendampingEnabled ?? null,
+        });
         return data.updateStudioUmkmCommands;
     },
 
-    // ── WhatsApp (WAHA) ─────────────────────────────────────
+    // ── WhatsApp (Hermes) ───────────────────────────────────
 
     async listWhatsAppConfigs(): Promise<StudioWhatsAppConfig[]> {
         const data = await graphqlRequest(`query { studioWhatsAppConfigs }`);
@@ -856,46 +884,61 @@ export const studioService = {
         return data.studioWhatsAppSecurityMeta;
     },
 
-    async getWhatsAppSessionStatus(): Promise<StudioWhatsAppSessionStatus> {
-        const data = await graphqlRequest(`query { studioWhatsAppSessionStatus }`);
+    async getWhatsAppSessionStatus(provider?: string): Promise<StudioWhatsAppSessionStatus> {
+        const data = await graphqlRequest(
+            `query($provider: String) { studioWhatsAppSessionStatus(provider: $provider) }`,
+            { provider: provider ?? null },
+        );
         return data.studioWhatsAppSessionStatus;
     },
 
-    async restartWahaSession(): Promise<{ status: string }> {
-        const data = await graphqlRequest(`mutation { restartStudioWahaSession }`);
-        return data.restartStudioWahaSession;
+    async restartWhatsAppSession(provider?: string): Promise<{ status: string }> {
+        const data = await graphqlRequest(
+            `mutation($provider: String) { restartStudioWhatsAppSession(provider: $provider) }`,
+            { provider: provider ?? null },
+        );
+        return data.restartStudioWhatsAppSession;
     },
 
-    async syncWahaSession(): Promise<{ status: string; connected: boolean }> {
-        const data = await graphqlRequest(`mutation { syncStudioWahaSession }`);
-        return data.syncStudioWahaSession;
+    async syncWhatsAppSession(provider?: string): Promise<{ status: string; connected: boolean }> {
+        const data = await graphqlRequest(
+            `mutation($provider: String) { syncStudioWhatsAppSession(provider: $provider) }`,
+            { provider: provider ?? null },
+        );
+        return data.syncStudioWhatsAppSession;
     },
 
-    async getWahaAuthQr(session?: string): Promise<StudioWahaAuthQr> {
+    async getWhatsAppAuthQr(session?: string, provider?: string): Promise<StudioWhatsAppAuthQr> {
         const data = await graphqlRequest(`
-            query($session: String) {
-                studioWahaAuthQr(session: $session)
+            query($session: String, $provider: String) {
+                studioWhatsAppAuthQr(session: $session, provider: $provider)
             }
-        `, { session: session ?? null });
-        return data.studioWahaAuthQr;
+        `, { session: session ?? null, provider: provider ?? null });
+        return data.studioWhatsAppAuthQr;
     },
 
-    async startWahaSession(session?: string): Promise<{ status: string; connected: boolean }> {
+    async startWhatsAppSession(session?: string, provider?: string): Promise<{ status: string; connected: boolean; error?: string }> {
         const data = await graphqlRequest(`
-            mutation($session: String) {
-                startStudioWahaSession(session: $session)
+            mutation($session: String, $provider: String) {
+                startStudioWhatsAppSession(session: $session, provider: $provider)
             }
-        `, { session: session ?? null });
-        return data.startStudioWahaSession;
+        `, { session: session ?? null, provider: provider ?? null });
+        return data.startStudioWhatsAppSession;
     },
 
-    async logoutWahaSession(session?: string): Promise<{ status: string }> {
+    /** Wipe old Hermes WhatsApp number and start a fresh QR for a new phone. */
+    async rebindHermesSession(): Promise<{ status: string; connected: boolean; error?: string }> {
+        const data = await graphqlRequest(`mutation { rebindStudioHermesSession }`);
+        return data.rebindStudioHermesSession;
+    },
+
+    async logoutWhatsAppSession(session?: string, provider?: string): Promise<{ status: string }> {
         const data = await graphqlRequest(`
-            mutation($session: String) {
-                logoutStudioWahaSession(session: $session)
+            mutation($session: String, $provider: String) {
+                logoutStudioWhatsAppSession(session: $session, provider: $provider)
             }
-        `, { session: session ?? null });
-        return data.logoutStudioWahaSession;
+        `, { session: session ?? null, provider: provider ?? null });
+        return data.logoutStudioWhatsAppSession;
     },
 
     async updateWhatsAppConfig(params: {
@@ -904,7 +947,7 @@ export const studioService = {
         enabled: boolean;
         allowlistPhones?: string[];
         useGuidedFlow?: boolean;
-        wahaSession?: string | null;
+        sessionName?: string | null;
         businessPhone?: string | null;
         label?: string | null;
     }): Promise<StudioWhatsAppConfig> {
@@ -915,7 +958,7 @@ export const studioService = {
                 $enabled: Boolean!
                 $allowlistPhones: [String!]
                 $useGuidedFlow: Boolean
-                $wahaSession: String
+                $sessionName: String
                 $businessPhone: String
                 $label: String
             ) {
@@ -925,7 +968,7 @@ export const studioService = {
                     enabled: $enabled
                     allowlistPhones: $allowlistPhones
                     useGuidedFlow: $useGuidedFlow
-                    wahaSession: $wahaSession
+                    sessionName: $sessionName
                     businessPhone: $businessPhone
                     label: $label
                 )
@@ -936,14 +979,42 @@ export const studioService = {
             enabled: params.enabled,
             allowlistPhones: params.allowlistPhones ?? [],
             useGuidedFlow: params.useGuidedFlow ?? false,
-            wahaSession: params.wahaSession ?? null,
+            sessionName: params.sessionName ?? null,
             businessPhone: params.businessPhone ?? null,
             label: params.label ?? null,
         });
         return data.updateStudioWhatsAppConfig;
     },
 
-    /** Simulasi inbound WA tanpa WAHA (pipeline sama webhook). */
+    async listUmkmRegistrations(
+        status: 'draft' | 'pending' | 'approved' | 'rejected' | 'expired' | 'all' = 'pending',
+    ): Promise<StudioUmkmRegistration[]> {
+        const data = await graphqlRequest(
+            `query($status: String) { studioUmkmRegistrations(status: $status) }`,
+            { status },
+        );
+        return data.studioUmkmRegistrations || [];
+    },
+
+    async approveUmkmRegistration(id: string): Promise<StudioUmkmRegistration> {
+        const data = await graphqlRequest(
+            `mutation($id: String!) { studioApproveUmkmRegistration(id: $id) }`,
+            { id },
+        );
+        return data.studioApproveUmkmRegistration;
+    },
+
+    async rejectUmkmRegistration(id: string, reason?: string): Promise<StudioUmkmRegistration> {
+        const data = await graphqlRequest(
+            `mutation($id: String!, $reason: String) {
+                studioRejectUmkmRegistration(id: $id, reason: $reason)
+            }`,
+            { id, reason: reason ?? null },
+        );
+        return data.studioRejectUmkmRegistration;
+    },
+
+    /** Simulasi inbound WA tanpa transport live (pipeline sama webhook). */
     async whatsAppSimChat(params: {
         tenantId: string;
         message: string;
@@ -965,6 +1036,22 @@ export const studioService = {
             phone: params.phone ?? null,
         });
         return data.studioWhatsAppSimChat;
+    },
+
+    /** Clear sticky Sim session (wizard / pending / conversation) for a phone. */
+    async whatsAppSimReset(params: {
+        tenantId: string;
+        phone?: string;
+    }): Promise<{ ok: boolean; phone: string; chatId: string }> {
+        const data = await graphqlRequest(`
+            mutation($tenantId: String!, $phone: String) {
+                studioWhatsAppSimReset(tenantId: $tenantId, phone: $phone)
+            }
+        `, {
+            tenantId: params.tenantId,
+            phone: params.phone ?? null,
+        });
+        return data.studioWhatsAppSimReset;
     },
 
     // ── Settings ──────────────────────────────────────────────
@@ -1049,7 +1136,7 @@ export interface StudioUmkmSetupResult {
 export interface StudioWhatsAppConfig {
     tenant_id: string;
     notebook_id: string | null;
-    waha_session?: string | null;
+    session_name?: string | null;
     business_phone?: string | null;
     label?: string | null;
     enabled: boolean;
@@ -1058,12 +1145,32 @@ export interface StudioWhatsAppConfig {
     updated_at?: string;
 }
 
+export interface StudioUmkmRegistration {
+    id: string;
+    phone: string;
+    store_name?: string | null;
+    owner_name?: string | null;
+    status: 'draft' | 'pending' | 'approved' | 'rejected' | 'expired';
+    tenant_id?: string | null;
+    notebook_id?: string | null;
+    reject_reason?: string | null;
+    wizard_step?: string | null;
+    session_name?: string;
+    created_at?: string;
+    updated_at?: string;
+    expires_at?: string;
+    approved_at?: string | null;
+    approved_by?: string | null;
+}
+
 export interface StudioWhatsAppSecurityMeta {
     allowlistRequired: boolean;
-    rateLimitPerMinute: number;
+    rateLimitPerMinute?: number;
+    whatsappProvider?: 'hermes' | string;
 }
 
 export interface StudioWhatsAppSessionStatus {
+    provider?: 'hermes' | string;
     session: {
         name: string;
         status: string;
@@ -1076,10 +1183,11 @@ export interface StudioWhatsAppSessionStatus {
     version?: { version: string; engine: string } | null;
 }
 
-export interface StudioWahaAuthQr {
+export interface StudioWhatsAppAuthQr {
     available: boolean;
     imageBase64: string | null;
     mimetype: string | null;
+    qr?: string | null;
     error?: string | null;
     connected?: boolean;
 }

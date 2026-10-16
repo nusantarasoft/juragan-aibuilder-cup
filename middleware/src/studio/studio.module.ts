@@ -15,14 +15,17 @@ import { GqlAuthGuard } from '../auth/gql-auth.guard';
 import { AiModule } from '../ai/ai.module';
 import { RagModule } from '../rag/rag.module';
 import { DremioModule } from '../dremio/dremio.module';
-import { WahaModule } from '../waha/waha.module';
+import { WhatsAppProviderModule } from '../whatsapp/whatsapp-provider.module';
 import { InventoryModule } from '../inventory/inventory.module';
 import { StudioWhatsAppController } from './studio-whatsapp.controller';
 import { StudioWhatsAppService } from './studio-whatsapp.service';
 import { StudioUmkmService } from './studio-umkm.service';
+import { StudioUmkmRegistrationService } from './studio-umkm-registration.service';
 import { StudioUmkmCronService } from './studio-umkm.cron';
 import { StudioUmkmAgenticAskService } from './studio-umkm-agentic-ask.service';
+import { StudioUmkmPendampingService } from './studio-umkm-pendamping.service';
 import { StudioOutputService } from './studio-output.service';
+import { InternalKasirConsultController } from './internal-kasir-consult.controller';
 
 @Module({
     imports: [
@@ -32,10 +35,16 @@ import { StudioOutputService } from './studio-output.service';
         AiModule,
         RagModule,
         DremioModule,
-        WahaModule,
+        WhatsAppProviderModule,
         InventoryModule,
     ],
-    controllers: [StudioUploadController, StudioChatController, StudioShareController, StudioWhatsAppController],
+    controllers: [
+        StudioUploadController,
+        StudioChatController,
+        StudioShareController,
+        StudioWhatsAppController,
+        InternalKasirConsultController,
+    ],
     providers: [
         GqlAuthGuard,
         StudioService,
@@ -47,7 +56,9 @@ import { StudioOutputService } from './studio-output.service';
         StudioOutputService,
         StudioWhatsAppService,
         StudioUmkmService,
+        StudioUmkmRegistrationService,
         StudioUmkmAgenticAskService,
+        StudioUmkmPendampingService,
         StudioUmkmCronService,
     ],
     exports: [
@@ -57,7 +68,9 @@ import { StudioOutputService } from './studio-output.service';
         StudioContextService,
         StudioWhatsAppService,
         StudioUmkmService,
+        StudioUmkmRegistrationService,
         StudioUmkmAgenticAskService,
+        StudioUmkmPendampingService,
     ],
 })
 export class StudioModule {}

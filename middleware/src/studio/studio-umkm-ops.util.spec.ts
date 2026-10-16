@@ -63,6 +63,39 @@ describe('periodRange', () => {
         const r = periodRange('all', now);
         expect(r).toEqual({ label: 'semua waktu', from: null, to: null });
     });
+
+    it('year is calendar YTD Jakarta (parity with Hermes)', () => {
+        // Fixture shared with Hermes test_period_rpc.py — 2026-03-15 Jakarta.
+        const mid = new Date('2026-03-15T05:00:00Z'); // Jakarta 12:00
+        const r = periodRange('year', mid);
+        expect(r.label).toBe('tahun ini');
+        expect(r.from).toBe('2026-01-01T00:00:00+07:00');
+        expect(r.to).toBe('2026-03-15T23:59:59.999+07:00');
+    });
+
+    it('last_year is prior calendar year', () => {
+        const mid = new Date('2026-10-05T05:00:00Z');
+        const r = periodRange('last_year', mid);
+        expect(r.label).toBe('tahun lalu');
+        expect(r.from).toBe('2025-01-01T00:00:00+07:00');
+        expect(r.to).toBe('2025-12-31T23:59:59.999+07:00');
+    });
+
+    it('last_3_months from day-1 of month-2', () => {
+        const mid = new Date('2026-10-05T05:00:00Z');
+        const r = periodRange('last_3_months', mid);
+        expect(r.label).toBe('3 bulan terakhir');
+        expect(r.from).toBe('2026-08-01T00:00:00+07:00');
+        expect(r.to).toBe('2026-10-05T23:59:59.999+07:00');
+    });
+
+    it('quarter is current Q start through today', () => {
+        const mid = new Date('2026-10-05T05:00:00Z');
+        const r = periodRange('quarter', mid);
+        expect(r.label).toBe('kuartal 4 2026');
+        expect(r.from).toBe('2026-10-01T00:00:00+07:00');
+        expect(r.to).toBe('2026-10-05T23:59:59.999+07:00');
+    });
 });
 
 describe('detectReportPeriod', () => {
@@ -80,6 +113,20 @@ describe('detectReportPeriod', () => {
     it('month variants', () => {
         expect(detectReportPeriod('3')).toBe('month');
         expect(detectReportPeriod('bulan ini')).toBe('month');
+    });
+    it('year variants', () => {
+        expect(detectReportPeriod('tahun ini')).toBe('year');
+        expect(detectReportPeriod('year')).toBe('year');
+        expect(detectReportPeriod('laporan tahun ini')).toBe('year');
+        expect(detectReportPeriod('ytd')).toBe('year');
+    });
+    it('last_year / quarter / last_3_months', () => {
+        expect(detectReportPeriod('tahun lalu')).toBe('last_year');
+        expect(detectReportPeriod('laporan tahun lalu')).toBe('last_year');
+        expect(detectReportPeriod('kuartal ini')).toBe('quarter');
+        expect(detectReportPeriod('kuartal lalu')).toBe('quarter_last');
+        expect(detectReportPeriod('3 bulan terakhir')).toBe('last_3_months');
+        expect(detectReportPeriod('tiga bulan terakhir')).toBe('last_3_months');
     });
     it('all variants', () => {
         expect(detectReportPeriod('4')).toBe('all');

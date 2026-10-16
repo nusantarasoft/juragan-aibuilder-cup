@@ -4,8 +4,10 @@ import { StudioService } from './studio.service';
 import { GuideFlowService } from './guide-flow.service';
 import { StudioWhatsAppService } from './studio-whatsapp.service';
 import { StudioUmkmService } from './studio-umkm.service';
+import { StudioUmkmRegistrationService } from './studio-umkm-registration.service';
 import { GraphQLJSONObject } from 'graphql-type-json';
 import { DEFAULT_UMKM_COMMANDS } from './studio-umkm-commands';
+import { detectUmkmConfirmReply, detectUmkmIntent } from './studio-umkm.util';
 import { GqlAuthGuard } from '../auth/gql-auth.guard';
 
 /** Shape of the GraphQL context after GqlAuthGuard populates req.user. */
@@ -23,6 +25,7 @@ export class StudioResolver {
         private readonly guideFlowService: GuideFlowService,
         private readonly studioWhatsAppService: StudioWhatsAppService,
         private readonly studioUmkmService: StudioUmkmService,
+        private readonly studioUmkmRegistrationService: StudioUmkmRegistrationService,
     ) { }
 
     /** Authenticated user id from the JWT (guaranteed present by GqlAuthGuard). */
@@ -540,7 +543,7 @@ export class StudioResolver {
         return this.guideFlowService.guidedChatTurn(notebookId, flowId, message, conversationId, userId);
     }
 
-    // ── WhatsApp (WAHA) ─────────────────────────────────────────────
+    // ── WhatsApp (Hermes) ───────────────────────────────────────────
 
     @Query(() => GraphQLJSONObject, { name: 'studioWhatsAppConfig', nullable: true })
     async studioWhatsAppConfig(
@@ -560,39 +563,53 @@ export class StudioResolver {
     }
 
     @Query(() => GraphQLJSONObject, { name: 'studioWhatsAppSessionStatus' })
-    async studioWhatsAppSessionStatus() {
-        return this.studioWhatsAppService.getWahaSessionStatus();
-    }
-
-    @Mutation(() => GraphQLJSONObject, { name: 'restartStudioWahaSession' })
-    async restartStudioWahaSession() {
-        return this.studioWhatsAppService.restartWahaSession();
-    }
-
-    @Mutation(() => GraphQLJSONObject, { name: 'syncStudioWahaSession' })
-    async syncStudioWahaSession() {
-        return this.studioWhatsAppService.syncWahaSession();
-    }
-
-    @Query(() => GraphQLJSONObject, { name: 'studioWahaAuthQr' })
-    async studioWahaAuthQr(
-        @Args('session', { type: () => String, nullable: true }) session?: string,
+    async studioWhatsAppSessionStatus(
+        @Args('provider', { type: () => String, nullable: true }) provider?: string,
     ) {
-        return this.studioWhatsAppService.getWahaAuthQr(session || undefined);
+        return this.studioWhatsAppService.getSessionStatus(provider || undefined);
     }
 
-    @Mutation(() => GraphQLJSONObject, { name: 'startStudioWahaSession' })
-    async startStudioWahaSession(
-        @Args('session', { type: () => String, nullable: true }) session?: string,
+    @Mutation(() => GraphQLJSONObject, { name: 'restartStudioWhatsAppSession' })
+    async restartStudioWhatsAppSession(
+        @Args('provider', { type: () => String, nullable: true }) provider?: string,
     ) {
-        return this.studioWhatsAppService.startWahaSession(session || undefined);
+        return this.studioWhatsAppService.restartSession(provider || undefined);
     }
 
-    @Mutation(() => GraphQLJSONObject, { name: 'logoutStudioWahaSession' })
-    async logoutStudioWahaSession(
-        @Args('session', { type: () => String, nullable: true }) session?: string,
+    @Mutation(() => GraphQLJSONObject, { name: 'syncStudioWhatsAppSession' })
+    async syncStudioWhatsAppSession(
+        @Args('provider', { type: () => String, nullable: true }) provider?: string,
     ) {
-        return this.studioWhatsAppService.logoutWahaSession(session || undefined);
+        return this.studioWhatsAppService.syncSession(provider || undefined);
+    }
+
+    @Query(() => GraphQLJSONObject, { name: 'studioWhatsAppAuthQr' })
+    async studioWhatsAppAuthQr(
+        @Args('session', { type: () => String, nullable: true }) session?: string,
+        @Args('provider', { type: () => String, nullable: true }) provider?: string,
+    ) {
+        return this.studioWhatsAppService.getAuthQr(session || undefined, provider || undefined);
+    }
+
+    @Mutation(() => GraphQLJSONObject, { name: 'startStudioWhatsAppSession' })
+    async startStudioWhatsAppSession(
+        @Args('session', { type: () => String, nullable: true }) session?: string,
+        @Args('provider', { type: () => String, nullable: true }) provider?: string,
+    ) {
+        return this.studioWhatsAppService.startSession(session || undefined, provider || undefined);
+    }
+
+    @Mutation(() => GraphQLJSONObject, { name: 'rebindStudioHermesSession' })
+    async rebindStudioHermesSession() {
+        return this.studioWhatsAppService.rebindHermesSession();
+    }
+
+    @Mutation(() => GraphQLJSONObject, { name: 'logoutStudioWhatsAppSession' })
+    async logoutStudioWhatsAppSession(
+        @Args('session', { type: () => String, nullable: true }) session?: string,
+        @Args('provider', { type: () => String, nullable: true }) provider?: string,
+    ) {
+        return this.studioWhatsAppService.logoutSession(session || undefined, provider || undefined);
     }
 
     @Mutation(() => GraphQLJSONObject, { name: 'studioSetupUmkmNotebook' })
@@ -605,7 +622,7 @@ export class StudioResolver {
         await this.studioService.assertNotebookOwner(notebookId, this.requireUserId(context));
         const setup = await this.studioUmkmService.setupUmkmNotebook(notebookId, tenantId);
         let flow = null;
-        if (publishGuideFlow !== false) {
+        if (publishGuideFlow === true) {
             flow = await this.guideFlowService.createAndPublishUmkmFlow(notebookId);
         }
         return { ...setup, flow };
@@ -617,11 +634,17 @@ export class StudioResolver {
         @Args('notebookId', { type: () => String }) notebookId: string,
         @Args('commands', { type: () => GraphQLJSONObject }) commands: Record<string, unknown>,
         @Args('republishGuideFlow', { type: () => Boolean, nullable: true }) republishGuideFlow?: boolean,
+        @Args('pendampingEnabled', { type: () => Boolean, nullable: true })
+        pendampingEnabled?: boolean | null,
     ) {
         await this.studioService.assertNotebookOwner(notebookId, this.requireUserId(context));
-        const result = await this.studioUmkmService.updateUmkmCommands(notebookId, commands);
+        const result = await this.studioUmkmService.updateUmkmCommands(
+            notebookId,
+            commands,
+            pendampingEnabled,
+        );
         let flow = null;
-        if (republishGuideFlow !== false) {
+        if (republishGuideFlow === true) {
             flow = await this.guideFlowService.createAndPublishUmkmFlow(notebookId);
         }
         return { ...result, flow };
@@ -632,6 +655,23 @@ export class StudioResolver {
         return DEFAULT_UMKM_COMMANDS;
     }
 
+    /**
+     * Preview intent mapping for draft umkm_commands (no DB write).
+     * Uses the same detectUmkmIntent matcher as inbound WhatsApp.
+     */
+    @Query(() => GraphQLJSONObject, { name: 'studioPreviewUmkmIntent' })
+    async studioPreviewUmkmIntent(
+        @Context() context: StudioAuthContext,
+        @Args('text', { type: () => String }) text: string,
+        @Args('commands', { type: () => GraphQLJSONObject, nullable: true })
+        commands?: Record<string, unknown>,
+    ) {
+        this.requireUserId(context);
+        const intent = detectUmkmIntent(text, commands);
+        const confirm = detectUmkmConfirmReply(text, commands);
+        return { intent, confirm };
+    }
+
     @Mutation(() => GraphQLJSONObject, { name: 'updateStudioWhatsAppConfig' })
     async updateStudioWhatsAppConfig(
         @Context() context: StudioAuthContext,
@@ -640,7 +680,7 @@ export class StudioResolver {
         @Args('enabled', { type: () => Boolean }) enabled: boolean,
         @Args('allowlistPhones', { type: () => [String], nullable: true }) allowlistPhones: string[],
         @Args('useGuidedFlow', { type: () => Boolean, nullable: true }) useGuidedFlow: boolean,
-        @Args('wahaSession', { type: () => String, nullable: true }) wahaSession: string,
+        @Args('sessionName', { type: () => String, nullable: true }) sessionName: string,
         @Args('businessPhone', { type: () => String, nullable: true }) businessPhone: string,
         @Args('label', { type: () => String, nullable: true }) label: string,
     ) {
@@ -654,24 +694,17 @@ export class StudioResolver {
                 enabled,
                 allowlistPhones: allowlistPhones ?? [],
                 useGuidedFlow: useGuidedFlow ?? false,
-                wahaSession: wahaSession ?? undefined,
+                sessionName: sessionName ?? undefined,
                 businessPhone: businessPhone ?? undefined,
                 label: label ?? undefined,
             },
             resolvedTenant,
         );
-        if (notebookId && resolvedTenant) {
-            await this.studioUmkmService.setupUmkmNotebook(notebookId, resolvedTenant);
-            // Ensure AIDLC guide flow exists when UMKM WA config is enabled
-            if (enabled && useGuidedFlow !== false) {
-                await this.guideFlowService.createAndPublishUmkmFlow(notebookId);
-            }
-        }
         return row;
     }
 
     /**
-     * Simulasi chat WA tanpa WAHA — pipeline sama dengan webhook inbound
+     * Simulasi chat WA tanpa kirim live — pipeline sama dengan webhook inbound
      * (guided / handleMessage / RAG sesuai config UMKM).
      */
     @Mutation(() => GraphQLJSONObject, { name: 'studioWhatsAppSimChat' })
@@ -694,5 +727,63 @@ export class StudioResolver {
             message,
             phone: phone || undefined,
         });
+    }
+
+    /** Clear Sim chat sticky state (wizard / pending / sim session) for a phone. */
+    @Mutation(() => GraphQLJSONObject, { name: 'studioWhatsAppSimReset' })
+    async studioWhatsAppSimReset(
+        @Context() context: StudioAuthContext,
+        @Args('tenantId', { type: () => String }) tenantId: string,
+        @Args('phone', { type: () => String, nullable: true }) phone?: string,
+    ) {
+        this.requireUserId(context);
+        const config = await this.studioWhatsAppService.getConfig(tenantId);
+        if (config?.notebook_id) {
+            await this.studioService.assertNotebookOwner(
+                config.notebook_id,
+                this.requireUserId(context),
+            );
+        }
+        return this.studioWhatsAppService.resetSimSession({
+            tenantId,
+            phone: phone || undefined,
+        });
+    }
+
+    // ── UMKM self-serve registrations (WA DAFTAR → admin approve) ────
+
+    @Query(() => [GraphQLJSONObject], { name: 'studioUmkmRegistrations' })
+    async studioUmkmRegistrations(
+        @Context() context: StudioAuthContext,
+        @Args('status', { type: () => String, nullable: true }) status?: string,
+    ) {
+        this.requireUserId(context);
+        const st = (status || 'pending').trim().toLowerCase();
+        const allowed = new Set(['draft', 'pending', 'approved', 'rejected', 'expired', 'all']);
+        if (!allowed.has(st)) {
+            return this.studioUmkmRegistrationService.listRegistrations('pending');
+        }
+        return this.studioUmkmRegistrationService.listRegistrations(st as any);
+    }
+
+    @Mutation(() => GraphQLJSONObject, { name: 'studioApproveUmkmRegistration' })
+    async studioApproveUmkmRegistration(
+        @Context() context: StudioAuthContext,
+        @Args('id', { type: () => String }) id: string,
+    ) {
+        return this.studioUmkmRegistrationService.approve(id, this.requireUserId(context));
+    }
+
+    @Mutation(() => GraphQLJSONObject, { name: 'studioRejectUmkmRegistration' })
+    async studioRejectUmkmRegistration(
+        @Context() context: StudioAuthContext,
+        @Args('id', { type: () => String }) id: string,
+        @Args('reason', { type: () => String, nullable: true }) reason?: string,
+    ) {
+        return this.studioUmkmRegistrationService.reject(
+            id,
+            reason,
+            this.requireUserId(context),
+        );
     }
 }

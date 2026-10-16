@@ -1,6 +1,7 @@
 /**
  * Agentic OS — GraphQL client for the middleware `agentic-os` module.
- * Reads are open; mutations need a signed-in session (Bearer token).
+ * Kasir live snapshot and mutations require a signed-in session (Bearer token).
+ * Other AOS reads are open unless guarded server-side.
  */
 
 import { getStoredToken } from "@/lib/graphqlClient";
@@ -36,6 +37,7 @@ import type {
     OsWorkflow,
     OsWorkflowInput,
     OsWorkflowRun,
+    OsKasirLiveSnapshot,
     WfGraph,
 } from "./types";
 
@@ -102,6 +104,19 @@ export interface AosSnapshot {
 }
 
 /** Everything the OS + Virtual Office need, in one round-trip. */
+export async function fetchKasirLiveSnapshot(tenantId?: string): Promise<OsKasirLiveSnapshot> {
+    const d = await aosGql<{ aosKasirLiveSnapshot: OsKasirLiveSnapshot }>(
+        `query AosKasirLive($tenantId: String) {
+            aosKasirLiveSnapshot(tenantId: $tenantId) {
+                available tenantId slug name role source unavailableReason
+                waChatsToday transactionsToday lastActivityAt waOnline
+            }
+        }`,
+        tenantId ? { tenantId } : {},
+    );
+    return d.aosKasirLiveSnapshot;
+}
+
 export async function fetchSnapshot(includeArchived = false): Promise<AosSnapshot> {
     const d = await aosGql<{
         aosAgents: OsAgent[];

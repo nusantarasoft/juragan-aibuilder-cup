@@ -5,7 +5,14 @@
  * NO direct Supabase access
  */
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import React, {
+    createContext,
+    useCallback,
+    useContext,
+    useEffect,
+    useState,
+    type ReactNode,
+} from "react";
 import {
     graphql,
     queries,
@@ -15,9 +22,13 @@ import {
     storeAuthTokens,
     clearAuthTokens,
     isAuthGraphQLError,
+    ACCESS_TOKEN_KEY,
 } from "@/lib/graphqlClient";
+import { clearAuthPresenceCookie, setAuthPresenceCookie } from "@/lib/authCookie";
 import type { User, AuthResponse } from "@/lib/graphqlTypes";
 import { useAuthStore } from "@/store/useAuthStore";
+
+export type SessionStatus = "loading" | "authenticated" | "unauthenticated" | "unreachable";
 
 // User profile type for backward compatibility
 interface UserProfile {
@@ -34,6 +45,8 @@ interface AuthContextType {
     user: User | null;
     profile: UserProfile | null;
     loading: boolean;
+    sessionStatus: SessionStatus;
+    refreshSession: () => Promise<void>;
     signIn: (email: string, password: string) => Promise<{ error?: string; requiresTwoFactor?: boolean }>;
     signUp: (email: string, password: string, fullName?: string) => Promise<{ error?: string }>;
     signOut: () => Promise<void>;
@@ -80,15 +93,21 @@ async function tryRefreshTokens(): Promise<string | null> {
 export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
     const [profile, setProfile] = useState<UserProfile | null>(null);
-    const [loading, setLoading] = useState(true);
-    useEffect(() => {
-        checkSession();
+    const [sessionStatus, setSessionStatus] = useState<SessionStatus>("loading");
+
+    const markUnauthenticated = useCallback(() => {
+        setUser(null);
+        setProfile(null);
+        setSessionStatus("unauthenticated");
+        useAuthStore.getState().clearUser();
     }, []);
 
-    const checkSession = async () => {
+    const checkSession = useCallback(async () => {
+        setSessionStatus("loading");
         const token = getStoredToken();
         if (!token) {
-            setLoading(false);
+            clearAuthPresenceCookie();
+            markUnauthenticated();
             return;
         }
 
@@ -116,18 +135,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 const session = applyUserSession(me);
                 setUser(session.user);
                 setProfile(session.profile);
+                setAuthPresenceCookie();
+                setSessionStatus("authenticated");
             } else {
                 clearAuthTokens();
-                useAuthStore.getState().clearUser();
+                markUnauthenticated();
             }
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
-            console.error("Session check failed:", message);
-            // Network / middleware errors: keep tokens so refresh does not feel like logout
+            console.warn("[auth-gate] session check unreachable:", message);
+            // Keep tokens — network / middleware down must not feel like logout
+            setSessionStatus("unreachable");
         }
+    }, [markUnauthenticated]);
 
-        setLoading(false);
-    };
+    useEffect(() => {
+        void checkSession();
+    }, [checkSession]);
+
+    useEffect(() => {
+        const onStorage = (event: StorageEvent) => {
+            if (event.key !== ACCESS_TOKEN_KEY) return;
+            if (event.newValue) return;
+            console.warn("[auth-gate] access token cleared in another tab");
+            clearAuthPresenceCookie();
+            markUnauthenticated();
+        };
+        window.addEventListener("storage", onStorage);
+        return () => window.removeEventListener("storage", onStorage);
+    }, [markUnauthenticated]);
 
     const signIn = async (email: string, password: string) => {
         try {
@@ -140,6 +176,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 const session = applyUserSession(data.signIn.user);
                 setUser(session.user);
                 setProfile(session.profile);
+                setSessionStatus("authenticated");
                 return {};
             }
 
@@ -160,6 +197,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 const session = applyUserSession(data.signUp.user);
                 setUser(session.user);
                 setProfile(session.profile);
+                setSessionStatus("authenticated");
                 return {};
             }
 
@@ -186,21 +224,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         clearAuthTokens();
-        setUser(null);
-        setProfile(null);
-        useAuthStore.getState().clearUser();
+        markUnauthenticated();
     };
 
     return (
-        <AuthContext.Provider value={{
-            user,
-            profile,
-            loading,
-            signIn,
-            signUp,
-            signOut,
-            verifyTwoFactor,
-        }}>
+        <AuthContext.Provider
+            value={{
+                user,
+                profile,
+                loading: sessionStatus === "loading",
+                sessionStatus,
+                refreshSession: checkSession,
+                signIn,
+                signUp,
+                signOut,
+                verifyTwoFactor,
+            }}
+        >
             {children}
         </AuthContext.Provider>
     );

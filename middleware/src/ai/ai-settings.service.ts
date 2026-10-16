@@ -123,6 +123,8 @@ export class AiSettingsService {
                 return settings.openai_model?.trim() || DEFAULT_STUDIO_SETTINGS.openai_model;
             case 'groq':
                 return settings.groq_model?.trim() || DEFAULT_STUDIO_SETTINGS.groq_model;
+            case 'openrouter':
+                return settings.openrouter_model?.trim() || DEFAULT_STUDIO_SETTINGS.openrouter_model;
             case 'ollama':
                 return settings.ollama_model?.trim() || DEFAULT_STUDIO_SETTINGS.ollama_model;
             default:
@@ -211,6 +213,16 @@ export class AiSettingsService {
         };
     }
 
+    async getOpenRouterConfig(tenantId?: string) {
+        const s = await this.getRawSettings(tenantId);
+        const fromDb = s.openrouter_api_key?.trim();
+        const fromEnv = process.env.OPENROUTER_API_KEY?.trim();
+        return {
+            apiKey: fromDb || fromEnv || undefined,
+            model: s.openrouter_model?.trim() || DEFAULT_STUDIO_SETTINGS.openrouter_model,
+        };
+    }
+
     async getOllamaConfig(tenantId?: string) {
         const s = await this.getRawSettings(tenantId);
         const rawBase = s.ollama_base_url?.trim() || DEFAULT_STUDIO_SETTINGS.ollama_base_url;
@@ -231,6 +243,7 @@ export class AiSettingsService {
             await this.checkProviderReadiness('google', settings),
             await this.checkProviderReadiness('openai', settings),
             await this.checkProviderReadiness('groq', settings),
+            await this.checkProviderReadiness('openrouter', settings),
             await this.checkProviderReadiness('ollama', settings),
         ];
 
@@ -240,7 +253,6 @@ export class AiSettingsService {
             embeddingProvider: normalizeEmbeddingProvider(settings.default_embedding_provider),
             embeddingModel: embedding.model,
             providers,
-            wahaDashboardUrl: settings.waha_dashboard_url || DEFAULT_STUDIO_SETTINGS.waha_dashboard_url,
         };
     }
 
@@ -287,6 +299,18 @@ export class AiSettingsService {
                     model: settings.groq_model || DEFAULT_STUDIO_SETTINGS.groq_model,
                     message: settings.groq_api_key?.trim() ? undefined : 'API key required',
                 };
+            case 'openrouter': {
+                const key =
+                    !!settings.openrouter_api_key?.trim() || !!process.env.OPENROUTER_API_KEY?.trim();
+                return {
+                    provider,
+                    configured: key,
+                    model: settings.openrouter_model || DEFAULT_STUDIO_SETTINGS.openrouter_model,
+                    message: key
+                        ? undefined
+                        : 'OpenRouter API key required (Settings or OPENROUTER_API_KEY)',
+                };
+            }
             case 'ollama':
                 return {
                     provider,

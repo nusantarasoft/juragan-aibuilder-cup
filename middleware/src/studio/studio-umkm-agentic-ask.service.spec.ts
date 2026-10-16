@@ -92,6 +92,26 @@ describe('StudioUmkmAgenticAskService', () => {
         expect(out.answer).toMatch(/Stok|data yang berhasil/i);
     });
 
+    it('NEGATIF LLM down pada tanya restock → saran isi ulang, bukan dump pencarian', async () => {
+        aiRouter.generateText.mockResolvedValueOnce('LLM provider not configured');
+        umkm.buildStockCheckMessage.mockResolvedValueOnce(
+            '📦 *Cek Stok*\n\nPencarian: *teh pucuk cyc*\n\n• teh pucuk cyc — sisa *28*',
+        );
+        const out = await svc.answer({
+            question: 'kalau stok teh pucuk cyc mau habis, mending restock berapa?',
+            notebookId: 'nb1',
+            conversationId: 'c1',
+            tenantId: 't1',
+        });
+        expect(umkm.buildStockCheckMessage).toHaveBeenCalledWith(
+            expect.stringMatching(/cek stok teh pucuk cyc$/i),
+            't1',
+        );
+        expect(out.answer).toMatch(/tambah stok|belanja/i);
+        expect(out.answer).toMatch(/sisa \*28\*/i);
+        expect(out.answer).not.toMatch(/data yang berhasil diambil/i);
+    });
+
     it('NEGATIF LLM down pada tips omzet → saran, bukan template laporan utuh', async () => {
         aiRouter.generateText.mockResolvedValueOnce('LLM provider not configured');
         umkm.buildCombinedReportMessage.mockResolvedValueOnce(
@@ -150,6 +170,23 @@ describe('StudioUmkmAgenticAskService', () => {
         );
         expect(msg).toMatch(/data yang berhasil diambil/i);
         expect(msg).toMatch(/Stok: 10/);
+    });
+
+    it('fallbackAnswer restock → saran isi ulang, bukan dump data', () => {
+        const msg = (svc as any).fallbackAnswer(
+            [
+                {
+                    name: 'get_stock',
+                    ok: true,
+                    content: '📦 *Cek Stok*\n• teh pucuk cyc — sisa *28*',
+                },
+            ],
+            'kalau stok teh pucuk cyc mau habis, mending restock berapa?',
+        );
+        expect(msg).toMatch(/restock|tambah stok/i);
+        expect(msg).toMatch(/sisa \*28\*/i);
+        expect(msg).not.toMatch(/data yang berhasil diambil/i);
+        expect(msg).not.toMatch(/saran singkat berdasarkan data toko/i);
     });
 
     it('fallbackAnswer advice tanpa report/catalog', () => {

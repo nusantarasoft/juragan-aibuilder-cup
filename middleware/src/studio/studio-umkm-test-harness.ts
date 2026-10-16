@@ -2,13 +2,31 @@
  * Shared test harness for UMKM WA wizard / intent scenario tests.
  */
 import { vi } from 'vitest';
-import { StudioUmkmService } from './studio-umkm.service';
+import type { StudioContextConfig } from './studio-db-context.service';
+import { DEFAULT_UMKM_COMMANDS } from './studio-umkm-commands';
+import { DEFAULT_STUDIO_UMKM_CONTEXT, StudioUmkmService } from './studio-umkm.service';
+import { STALE_RECORD_SALE } from './studio-umkm-stale-sale.fixture';
+
+export { STALE_RECORD_SALE } from './studio-umkm-stale-sale.fixture';
 
 export const TEST_CATALOG = [
     { id: 'p1', name: 'Mie Ayam', sku: 'MA-01', sellingPrice: 15000 },
     { id: 'p2', name: 'Bakso', sku: 'BK-01', sellingPrice: 18000 },
     { id: 'p3', name: 'Es Teh', sku: 'ET-01', sellingPrice: 5000 },
 ];
+
+export function staleUmkmContext(): StudioContextConfig {
+    return {
+        ...DEFAULT_STUDIO_UMKM_CONTEXT,
+        umkm_commands: {
+            ...DEFAULT_UMKM_COMMANDS,
+            keywords: {
+                ...DEFAULT_UMKM_COMMANDS.keywords,
+                record_sale: [...STALE_RECORD_SALE],
+            },
+        },
+    };
+}
 
 export type MakeUmkmServiceOpts = {
     products?: typeof TEST_CATALOG;
@@ -28,34 +46,40 @@ export type MakeUmkmServiceOpts = {
 };
 
 export function makeUmkmService(opts?: MakeUmkmServiceOpts) {
-    const products = opts?.products ?? TEST_CATALOG;
+    const products = [...(opts?.products ?? TEST_CATALOG)];
     const purchases = opts?.purchases ?? [];
     const orders = opts?.orders ?? [];
 
     const createItem = vi.fn(
         async (_tenant: string, input: { name: string; sellingPrice: number; costPrice?: number }) => {
             if (opts?.createItemError) throw opts.createItemError;
-            return {
+            const row = {
+                id: `p-new-${products.length + 1}`,
                 name: input.name,
-                sku: 'SKU-NEW',
-                selling_price: input.sellingPrice,
+                sku: `SKU-NEW-${products.length + 1}`,
+                sellingPrice: input.sellingPrice,
+            };
+            products.push(row);
+            return {
+                name: row.name,
+                sku: row.sku,
+                selling_price: row.sellingPrice,
             };
         },
     );
     const createStockMovement = vi.fn(async () => ({ id: 'mov-1' }));
 
+    const invRows = () =>
+        products.map((p) => ({
+            id: p.id,
+            name: p.name,
+            sku: p.sku,
+            selling_price: p.sellingPrice,
+        }));
     const invChain: any = {
         select: vi.fn().mockReturnThis(),
         eq: vi.fn().mockReturnThis(),
-        order: vi.fn().mockResolvedValue({
-            data: products.map((p) => ({
-                id: p.id,
-                name: p.name,
-                sku: p.sku,
-                selling_price: p.sellingPrice,
-            })),
-            error: null,
-        }),
+        order: vi.fn().mockImplementation(async () => ({ data: invRows(), error: null })),
     };
 
     const purchaseChain: any = {
@@ -139,6 +163,23 @@ export function makeUmkmService(opts?: MakeUmkmServiceOpts) {
     };
     const ai = { generateText: vi.fn(async () => '') };
     const inventory = { createItem, createStockMovement };
-    const svc = new StudioUmkmService(supabase as any, ai as any, inventory as any);
-    return { svc, createItem, createStockMovement, reportSales };
+    const coach = vi.fn(
+        async (
+            _text: string,
+            _tenantId: string,
+            _config?: unknown,
+            _notebookId?: string,
+        ) => '*Pendamping*\n\nStub tips untuk tes.',
+    );
+    const gateAndCoach = vi.fn(
+        async (input: {
+            text: string;
+            tenantId: string;
+            config?: StudioContextConfig;
+            notebookId?: string;
+        }) => coach(input.text, input.tenantId, input.config, input.notebookId),
+    );
+    const pendamping = { coach, gateAndCoach };
+    const svc = new StudioUmkmService(supabase as any, ai as any, inventory as any, pendamping as any);
+    return { svc, createItem, createStockMovement, reportSales, pendamping };
 }

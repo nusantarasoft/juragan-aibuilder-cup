@@ -3,6 +3,7 @@ import {
     deserializeWizard,
     isConversationalWizard,
     serializeWizardPayload,
+    type UmkmWizard,
 } from './studio-umkm-durable.util';
 
 describe('studio-umkm-durable.util', () => {
@@ -33,8 +34,38 @@ describe('studio-umkm-durable.util', () => {
     it('conversational wizard kinds', () => {
         expect(isConversationalWizard('await_sale_slots')).toBe(true);
         expect(isConversationalWizard('await_add_product')).toBe(true);
+        expect(isConversationalWizard('await_add_stock')).toBe(true);
         expect(isConversationalWizard('await_purchase')).toBe(true);
+        expect(isConversationalWizard('await_job_clarification')).toBe(true);
         expect(isConversationalWizard('menu_hub')).toBe(false);
+    });
+
+    it('round-trips await_job_clarification payload (originalText + candidates)', () => {
+        const w: UmkmWizard = {
+            kind: 'await_job_clarification',
+            createdAt: 400,
+            originalText: 'indomie 2',
+            candidates: ['sale', 'add_stock'],
+            retryCount: 1,
+        };
+        const payload = serializeWizardPayload(w);
+        expect(payload.originalText).toBe('indomie 2');
+        expect(payload.candidates).toEqual(['sale', 'add_stock']);
+        expect(payload.retryCount).toBe(1);
+        expect(deserializeWizard('await_job_clarification', payload, 400)).toEqual({
+            kind: 'await_job_clarification',
+            createdAt: 400,
+            originalText: 'indomie 2',
+            candidates: ['sale', 'add_stock'],
+            retryCount: 1,
+        });
+        expect(deserializeWizard('await_job_clarification', {}, 400)).toEqual({
+            kind: 'await_job_clarification',
+            createdAt: 400,
+            originalText: '',
+            candidates: [],
+            retryCount: 0,
+        });
     });
 
     it('round-trips add-product draft (name awaiting price)', () => {

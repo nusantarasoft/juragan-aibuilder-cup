@@ -1,4 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { GoneException } from '@nestjs/common';
 import { StudioWhatsAppController } from './studio-whatsapp.controller';
 
 describe('StudioWhatsAppController', () => {
@@ -6,17 +7,45 @@ describe('StudioWhatsAppController', () => {
         verifyWebhookHmac: vi.fn(),
         handleWebhook: vi.fn(async () => undefined),
     };
+    const configService = {
+        get: vi.fn((key: string) => {
+            if (key === 'WHATSAPP_WEBHOOK_ENABLED') return '1';
+            return undefined;
+        }),
+    };
     let ctrl: StudioWhatsAppController;
 
     beforeEach(() => {
         vi.clearAllMocks();
-        ctrl = new StudioWhatsAppController(whatsAppService as any);
+        configService.get.mockImplementation((key: string) => {
+            if (key === 'WHATSAPP_WEBHOOK_ENABLED') return '1';
+            return undefined;
+        });
+        ctrl = new StudioWhatsAppController(
+            whatsAppService as any,
+            configService as any,
+        );
         vi.spyOn(ctrl['logger'], 'log').mockImplementation(() => undefined);
         vi.spyOn(ctrl['logger'], 'error').mockImplementation(() => undefined);
+        vi.spyOn(ctrl['logger'], 'warn').mockImplementation(() => undefined);
     });
 
     const makeReq = (opts: { rawBody?: Buffer; body?: any }) =>
         ({ rawBody: opts.rawBody, body: opts.body }) as any;
+
+    it('returns 410 when WHATSAPP_WEBHOOK_ENABLED is off (pipe-only default)', async () => {
+        configService.get.mockReturnValue('');
+        ctrl = new StudioWhatsAppController(
+            whatsAppService as any,
+            configService as any,
+        );
+        vi.spyOn(ctrl['logger'], 'warn').mockImplementation(() => undefined);
+
+        await expect(ctrl.webhook(makeReq({ body: { session: 's' } }))).rejects.toBeInstanceOf(
+            GoneException,
+        );
+        expect(whatsAppService.handleWebhook).not.toHaveBeenCalled();
+    });
 
     it('memverifikasi HMAC saat rawBody ada, lalu memproses webhook', async () => {
         const raw = Buffer.from('{"event":"message"}');
@@ -31,7 +60,7 @@ describe('StudioWhatsAppController', () => {
         const res = await ctrl.webhook(makeReq({ body: { session: 's2' } }));
         expect(whatsAppService.verifyWebhookHmac).not.toHaveBeenCalled();
         expect(whatsAppService.handleWebhook).toHaveBeenCalledWith(
-            { session: 's2' },
+            expect.objectContaining({ session: 's2' }),
             's2',
         );
         expect(res).toEqual({ ok: true });

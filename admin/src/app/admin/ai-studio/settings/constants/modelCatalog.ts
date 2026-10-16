@@ -23,6 +23,15 @@ export const CHAT_MODEL_CATALOG: Record<LlmProvider, { label: string; value: str
         { label: 'Llama 3.1 8B Instant', value: 'llama-3.1-8b-instant' },
         { label: 'Qwen3.6 27B', value: 'qwen/qwen3.6-27b' },
     ],
+    openrouter: [
+        { label: 'Qwen3.7 Flash (consult default)', value: 'qwen/qwen3.7-flash' },
+        { label: 'Qwen3.8 Flash', value: 'qwen/qwen3.8-flash' },
+        { label: 'Qwen3.5 Flash', value: 'qwen/qwen3.5-flash-02-23' },
+        { label: 'Gemini 2.5 Flash', value: 'google/gemini-2.5-flash' },
+        { label: 'DeepSeek V3.2', value: 'deepseek/deepseek-v3.2' },
+        { label: 'GLM 5.2', value: 'z-ai/glm-5.2' },
+        { label: 'Kimi K3', value: 'moonshotai/kimi-k3' },
+    ],
     ollama: [
         { label: 'Llama 3', value: 'llama3' },
         { label: 'Llama 3.1', value: 'llama3.1' },

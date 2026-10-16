@@ -1,5 +1,5 @@
 /**
- * PO scenarios — Simulasi chat WA (tanpa WAHA), coverage penuh pipeline inbound.
+ * PO scenarios — Simulasi chat WA (tanpa transport live), coverage penuh pipeline inbound.
  *
  * Target 100% statements/branches pada:
  *   - simulateInboundMessage
@@ -8,7 +8,7 @@
  */
 import { describe, expect, it, vi } from 'vitest';
 import { BadRequestException } from '@nestjs/common';
-import { StudioWhatsAppService } from './studio-whatsapp.service';
+import { StudioWhatsAppService, UMKM_INBOUND_APOLOGY } from './studio-whatsapp.service';
 import { DEFAULT_STUDIO_UMKM_CONTEXT } from './studio-umkm.service';
 import { makeUmkmService } from './studio-umkm-test-harness';
 
@@ -55,7 +55,7 @@ function makeSim(opts?: SimOpts) {
     const configRow = {
         tenant_id: TENANT,
         notebook_id: notebookId,
-        waha_session: 'default',
+        session_name: 'default',
         business_phone: null as string | null,
         label: 'Toko Sim',
         enabled,
@@ -90,11 +90,12 @@ function makeSim(opts?: SimOpts) {
                     return b;
                 }
                 if (table === 'studio_whatsapp_sessions') {
-                    const state: { chatId?: string } = {};
+                    const state: { chatId?: string; tenantId?: string } = {};
                     const b: any = {
                         select: vi.fn().mockReturnThis(),
                         eq: vi.fn((col: string, val: string) => {
                             if (col === 'chat_id') state.chatId = val;
+                            if (col === 'tenant_id') state.tenantId = val;
                             return b;
                         }),
                         maybeSingle: vi.fn(async () => {
@@ -112,6 +113,20 @@ function makeSim(opts?: SimOpts) {
                             eq: vi.fn().mockReturnValue({
                                 eq: vi.fn().mockResolvedValue({ data: null, error: null }),
                             }),
+                        }),
+                        delete: vi.fn(() => {
+                            const del: any = {
+                                eq: vi.fn((col: string, val: string) => {
+                                    if (col === 'chat_id') state.chatId = val;
+                                    if (col === 'tenant_id') state.tenantId = val;
+                                    return del;
+                                }),
+                                then: (resolve: (v: unknown) => unknown) => {
+                                    if (state.chatId) sessions.delete(state.chatId);
+                                    return Promise.resolve(resolve({ data: null, error: null }));
+                                },
+                            };
+                            return del;
                         }),
                     };
                     return b;
@@ -154,7 +169,7 @@ function makeSim(opts?: SimOpts) {
         }),
     };
 
-    const wahaSend = vi.fn(async () => ({ success: true }));
+    const transportSend = vi.fn(async () => ({ success: true }));
     const studioChat = vi.fn(async () => ({ answer: 'RAG-FALLBACK', conversationId: 'c-rag' }));
     const startGuidedSession = vi.fn(async () => guidedStart);
     const guidedChatTurn = vi.fn(async () => ({
@@ -162,6 +177,11 @@ function makeSim(opts?: SimOpts) {
         waitingForInput: true,
     }));
     const getPublishedFlowForNotebook = vi.fn(async () => publishedFlow);
+    const agenticAnswer = vi.fn(async () => ({
+        answer: 'AGENTIC-ASK',
+        plan: { tools: [], reason: 'test' },
+        toolResults: [],
+    }));
 
     const wa = new StudioWhatsAppService(
         {
@@ -170,14 +190,27 @@ function makeSim(opts?: SimOpts) {
         } as any,
         supabase as any,
         {
-            sendText: wahaSend,
+            providerId: 'hermes',
             defaultSession: 'default',
+            sendText: transportSend,
+            sendButtons: vi.fn(async () => ({ success: false })),
+            sendList: vi.fn(async () => ({ success: false })),
             phoneToChatId: (p: string) => `${p}@c.us`,
             downloadMedia: vi.fn(async () => null),
+            ping: vi.fn(async () => ({ ok: true })),
+        } as any,
+        {
+            getSessionStatus: vi.fn(),
+            getAuthQr: vi.fn(),
+            startSession: vi.fn(),
+            logoutSession: vi.fn(),
+            syncSession: vi.fn(),
+            restartSession: vi.fn(),
         } as any,
         {
             getNotebook: vi.fn(async () => ({
                 id: NOTEBOOK,
+                name: 'Toko Sim',
                 context_config: {
                     ...DEFAULT_STUDIO_UMKM_CONTEXT,
                     umkm_mode: umkmMode,
@@ -186,6 +219,7 @@ function makeSim(opts?: SimOpts) {
             })),
             chat: studioChat,
             appendStudioMessage: vi.fn(),
+            getRecentConversationLines: vi.fn(async () => []),
         } as any,
         {
             getPublishedFlowForNotebook,
@@ -197,6 +231,9 @@ function makeSim(opts?: SimOpts) {
                 raw && typeof raw === 'object' ? { ...(raw as object) } : {},
         } as any,
         umkm,
+        {
+            answer: agenticAnswer,
+        } as any,
     );
 
     const chat = (message: string, phone = PHONE) =>
@@ -228,12 +265,13 @@ function makeSim(opts?: SimOpts) {
         core,
         createItem,
         createStockMovement,
-        wahaSend,
+        transportSend,
         studioChat,
         sessions,
         startGuidedSession,
         guidedChatTurn,
         getPublishedFlowForNotebook,
+        agenticAnswer,
         configRow,
     };
 }
@@ -283,17 +321,45 @@ describe('PO — simulasi WA: validasi & path core', () => {
         expect(studioChat).toHaveBeenCalled();
     });
 
-    it('V6: ask intent (handleMessage null) → fallback RAG', async () => {
-        const { chat, studioChat } = makeSim();
-        // "tanya" → ask → handleMessage returns null → RAG
+    it('V6: ask intent (handleMessage null) → agentic ask, bukan RAG', async () => {
+        const { chat, studioChat, agenticAnswer } = makeSim();
         const r = await chat('tanya');
-        expect(r.path).toBe('rag');
-        expect(studioChat).toHaveBeenCalled();
-        expect(r.answer).toBe('RAG-FALLBACK');
+        expect(r.path).toBe('umkm');
+        expect(studioChat).not.toHaveBeenCalled();
+        expect(agenticAnswer).toHaveBeenCalled();
+        expect(r.answer).toBe('AGENTIC-ASK');
+    });
+
+    it('Friday-night: umkm_mode wins even if use_guided_flow=true', async () => {
+        const { chat, startGuidedSession } = makeSim({
+            umkmMode: true,
+            useGuidedFlow: true,
+        });
+        const r = await chat('jual 1 bakso');
+        expect(r.path).toBe('umkm');
+        expect(startGuidedSession).not.toHaveBeenCalled();
+        expect(r.answer).toMatch(/Konfirmasi|Bakso/i);
+    });
+
+    it('handleMessage throw → apology', async () => {
+        const { chat, umkm } = makeSim();
+        vi.spyOn(umkm, 'handleMessage').mockRejectedValueOnce(new Error('boom'));
+        const r = await chat('jual 1 bakso');
+        expect(r.answer).toBe(UMKM_INBOUND_APOLOGY);
+        expect(r.answer).toMatch(/sibuk/i);
+    });
+
+    it('agentic ask throw → apology', async () => {
+        const { chat, agenticAnswer } = makeSim();
+        agenticAnswer.mockRejectedValueOnce(new Error('timeout'));
+        const r = await chat('tanya');
+        expect(r.path).toBe('umkm');
+        expect(r.answer).toBe(UMKM_INBOUND_APOLOGY);
     });
 
     it('V7: guided flow ON + no published flow → RAG via guided branch', async () => {
         const { chat, studioChat, getPublishedFlowForNotebook } = makeSim({
+            umkmMode: false,
             useGuidedFlow: true,
             publishedFlow: null,
         });
@@ -306,6 +372,7 @@ describe('PO — simulasi WA: validasi & path core', () => {
 
     it('V8: guided flow ON + published → start + turn', async () => {
         const { chat, startGuidedSession, guidedChatTurn } = makeSim({
+            umkmMode: false,
             useGuidedFlow: true,
             publishedFlow: { id: 'flow-1' },
             convGuide: { guide_flow_id: null, guide_flow_node_id: null },
@@ -320,6 +387,7 @@ describe('PO — simulasi WA: validasi & path core', () => {
 
     it('V9: guided start tidak waiting → hanya intro', async () => {
         const { chat, guidedChatTurn } = makeSim({
+            umkmMode: false,
             useGuidedFlow: true,
             publishedFlow: { id: 'flow-1' },
             guidedStart: {
@@ -336,6 +404,7 @@ describe('PO — simulasi WA: validasi & path core', () => {
 
     it('V10: guided flow mismatch → restart session', async () => {
         const { chat, startGuidedSession } = makeSim({
+            umkmMode: false,
             useGuidedFlow: true,
             publishedFlow: { id: 'flow-new' },
             convGuide: { guide_flow_id: 'flow-old', guide_flow_node_id: 'n1' },
@@ -361,12 +430,18 @@ describe('PO — simulasi WA: validasi & path core', () => {
         expect(r.answer).toMatch(/tercatat|WA-/i);
     });
 
-    it('V13: RAG/chat answer kosong → string kosong (umkm ask + non-umkm)', async () => {
+    it('V13: agentic kosong → bantuan UMKM, bukan RAG', async () => {
         const a = makeSim();
-        a.studioChat.mockResolvedValueOnce({ answer: '', conversationId: 'c' });
+        a.agenticAnswer.mockResolvedValueOnce({
+            answer: '',
+            plan: { tools: [], reason: 'test' },
+            toolResults: [],
+        });
         const r1 = await a.chat('tanya');
-        expect(r1.path).toBe('rag');
-        expect(r1.answer).toBe('');
+        expect(r1.path).toBe('umkm');
+        expect(r1.answer).toMatch(/Bisa\. Mau catat|jual 2 indomie/i);
+        expect(a.studioChat).not.toHaveBeenCalled();
+        expect(a.agenticAnswer).toHaveBeenCalled();
 
         const b = makeSim({ umkmMode: false });
         b.studioChat.mockResolvedValueOnce({ answer: '', conversationId: 'c' });
@@ -375,8 +450,17 @@ describe('PO — simulasi WA: validasi & path core', () => {
         expect(r2.answer).toBe('');
     });
 
+    it('UMKM unknown never falls through to RAG', async () => {
+        const { chat, studioChat } = makeSim();
+        const r = await chat('asdfghxyz123');
+        expect(r.path).toBe('umkm');
+        expect(r.answer).toMatch(/Belum kebaca/i);
+        expect(studioChat).not.toHaveBeenCalled();
+    });
+
     it('V14: guided empty replies → "..." ; flowEnded restart', async () => {
         const empty = makeSim({
+            umkmMode: false,
             useGuidedFlow: true,
             publishedFlow: { id: 'flow-1' },
             guidedStart: {
@@ -392,6 +476,7 @@ describe('PO — simulasi WA: validasi & path core', () => {
         expect(r.answer).toMatch(/Hi/);
 
         const ended = makeSim({
+            umkmMode: false,
             useGuidedFlow: true,
             publishedFlow: { id: 'flow-1' },
             convGuide: { guide_flow_id: 'flow-1', guide_flow_node_id: null },
@@ -428,6 +513,7 @@ describe('PO — simulasi WA: validasi & path core', () => {
 
     it('V16: guided no published flow + empty RAG answer', async () => {
         const { chat, studioChat } = makeSim({
+            umkmMode: false,
             useGuidedFlow: true,
             publishedFlow: null,
         });
@@ -556,13 +642,13 @@ describe('PO — simulasi WA: apple-to-apple & isolasi', () => {
         expect(direct).toMatch(/Konfirmasi penjualan/i);
     });
 
-    it('A2: tidak pernah memanggil WAHA sendText', async () => {
-        const { chat, wahaSend } = makeSim();
+    it('A2: tidak pernah memanggil transport sendText', async () => {
+        const { chat, transportSend } = makeSim();
         await chat('jual 1 bakso');
         await chat('ya');
         await chat('cek stok semua');
         await chat('bantuan');
-        expect(wahaSend).not.toHaveBeenCalled();
+        expect(transportSend).not.toHaveBeenCalled();
     });
 
     it('A3: session sticky + phone isolasi', async () => {
@@ -573,5 +659,24 @@ describe('PO — simulasi WA: apple-to-apple & isolasi', () => {
         const b1 = await chat('jual', '6281111000002');
         expect(b1.conversationId).not.toBe(a1.conversationId);
         expect(b1.chatId).toContain('6281111000002');
+    });
+
+    it('A4: resetSimSession clears sticky sale wizard so next command is top-level', async () => {
+        const { wa, chat, sessions } = makeSim();
+        const phone = '6281111000099';
+        const start = await chat('5', phone);
+        expect(start.answer).toMatch(/Barang apa yang dijual|Siap catat penjualan/i);
+
+        const stuck = await chat('cek stok', phone);
+        expect(stuck.answer).toMatch(/Cek stok yang mana|Cek Stok|stok/i);
+
+        const reset = await wa.resetSimSession({ tenantId: TENANT, phone });
+        expect(reset.ok).toBe(true);
+        expect(reset.chatId).toBe(`sim:${TENANT}:${phone}`);
+        expect(sessions.has(reset.chatId)).toBe(false);
+
+        const after = await chat('cek stok', phone);
+        expect(after.answer).toMatch(/Cek stok yang mana|Cek Stok|stok/i);
+        expect(after.answer).not.toMatch(/Harga .* berapa/i);
     });
 });

@@ -1,0 +1,32 @@
+%% System L10: model stack — which LLM/STT does which job (eng/ops)
+%% Sales-facing flows stay on L0*; this chart is cost/lock reference
+flowchart TB
+  subgraph WA[Owner WhatsApp]
+    T[Teks]
+    V[Voice note]
+    P[Foto]
+  end
+
+  subgraph Hermes[Hermes agent — G22]
+    STT[STT: Whisper base lokal<br/>language=id]
+    VIS[Vision aux: qwen/qwen3-vl-30b-a3b-instruct<br/>OpenRouter — MoE self-host later]
+    MAIN[Main LLM: z-ai/glm-5.3-flash<br/>OpenRouter — tools + SOUL]
+    TOOLS[kasir-tools]
+  end
+
+  subgraph Nest[Nest middleware]
+    CONS[kasir_consult HTTP]
+    EMB[Embed: gemini-embedding-001]
+    SYN[Synthesize: qwen/qwen3.7-flash<br/>OpenRouter — KASIR_CONSULT_SYNTH_*]
+    NB[(Notebook kurikulum chunks)]
+  end
+
+  T --> MAIN
+  V --> STT --> MAIN
+  P --> VIS --> MAIN
+  MAIN --> TOOLS
+  MAIN -->|tanya / konsultasi| CONS
+  CONS --> EMB --> NB
+  NB --> SYN
+  SYN --> MAIN
+  TOOLS --> DB[(Supabase ledger)]

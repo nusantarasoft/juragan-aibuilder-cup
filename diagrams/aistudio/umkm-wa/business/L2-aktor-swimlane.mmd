@@ -1,0 +1,21 @@
+flowchart TB
+  subgraph Owner["Owner WhatsApp"]
+    O1[Chat nomor NS] --> O2{Allowlist?}
+    O2 -->|Tidak| O3[Hint DAFTAR]
+    O3 --> O4[DAFTAR - nama - YA]
+    O4 --> O5[Tunggu max 24 jam]
+    O2 -->|Ya| O6[Kasir AIDLC]
+    O5 --> O7{Putusan admin}
+    O7 -->|Approve| O8[Tunggu 5 detik / STATUS]
+    O8 --> O6
+    O7 -->|Tolak| O9[DAFTAR lagi OK]
+    O9 --> O4
+  end
+  subgraph Admin["Admin CMS"]
+    A1[Antrian pending] --> A2{Layak?}
+    A2 -->|Ya| A3[Approve 1x]
+    A2 -->|Tidak| A4[Tolak]
+  end
+  O4 -.-> A1
+  A3 -.-> O8
+  A4 -.-> O9

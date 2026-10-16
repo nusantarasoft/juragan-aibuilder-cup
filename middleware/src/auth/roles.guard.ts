@@ -20,9 +20,14 @@ export class RolesGuard implements CanActivate {
             return true;
         }
 
-        const ctx = GqlExecutionContext.create(context);
-        const gqlCtx = ctx.getContext<{ req?: { user?: { role?: string } } }>();
-        const user = gqlCtx?.req ? gqlCtx.req.user : undefined;
+        let user: { role?: string } | undefined;
+        if (context.getType() === 'http') {
+            user = context.switchToHttp().getRequest<{ user?: { role?: string } }>()?.user;
+        } else {
+            const ctx = GqlExecutionContext.create(context);
+            const gqlCtx = ctx.getContext<{ req?: { user?: { role?: string } } }>();
+            user = gqlCtx?.req ? gqlCtx.req.user : undefined;
+        }
 
         if (!user || !user.role) {
             throw new UnauthorizedException('Authentication required for this operation');
