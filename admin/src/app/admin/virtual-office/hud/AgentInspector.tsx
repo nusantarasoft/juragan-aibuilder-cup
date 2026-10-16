@@ -36,6 +36,7 @@ import { RosterKindBadge } from "@/components/agentic-os/ui/RosterKindBadge";
 import { timeAgo } from "@/components/agentic-os/ui/kit";
 import { AgentBadge, GLASS, ModuleChip, ProgressBar, StatusPill, StepList, cx, elapsed, formatTokens, useNow } from "./shared";
 import { AgentSettingsPanel } from "@/components/tenant-agents/AgentSettingsPanel";
+import { isKasirOfficeAgent } from "@/components/agentic-os/lib/firstEmployee";
 import { useAuthStore } from "@/store/useAuthStore";
 import Link from "next/link";
 
@@ -179,6 +180,7 @@ export function AgentInspector() {
 
     if (!agent) return null;
 
+    const isKasir = isKasirOfficeAgent(agent.id);
     const meta = STATUS_META[agent.status];
     const zone = ZONE_BY_ID[agent.zone];
     const where = agent.location === "meeting" ? "War Room" : agent.location === "lounge" ? "Lounge" : zone.name;
@@ -295,7 +297,7 @@ export function AgentInspector() {
                     </div>
                 )}
 
-                {agent.rosterKind === "live" && (
+                {isKasir && agent.rosterKind === "live" && (
                     <div className="rounded-xl border border-emerald-400/25 bg-emerald-500/[0.07] p-3 text-[11px] text-slate-200">
                         {agent.liveUnavailable ? (
                             <p className="font-medium text-amber-200">{agent.liveUnavailable}</p>
@@ -322,15 +324,18 @@ export function AgentInspector() {
                         ) : (
                             <p className="text-amber-200">data tidak tersedia</p>
                         )}
+                        <Link href="/admin/connect-wa" className="mt-2 inline-block text-[10px] font-semibold text-indigo-300 hover:text-indigo-200">
+                            Hubungkan / kelola WhatsApp →
+                        </Link>
                     </div>
                 )}
 
                 {/* Agentic OS */}
                 <div className="flex items-center gap-1.5 rounded-xl border border-indigo-400/20 bg-indigo-500/[0.07] p-2">
                     <div className="min-w-0 flex-1 text-[11px] leading-tight text-slate-300">
-                        {agent.rosterKind === "live" ? (
-                            <span className="text-emerald-200/90">Recruited from AI Studio — real UMKM Kasir metrics (read-only)</span>
-                        ) : dataMode === "live" ? (
+                        {isKasir && agent.rosterKind === "live" ? (
+                            <span className="text-emerald-200/90">Kasir UMKM · metrik WA live (read-only)</span>
+                        ) : agent.rosterKind === "live" || dataMode === "live" ? (
                             <>
                                 <span className="font-semibold text-white">{agent.queued ?? 0}</span> queued ·{" "}
                                 <span className={cx("font-semibold", agent.review ? "text-purple-300" : "text-white")}>{agent.review ?? 0}</span> to review

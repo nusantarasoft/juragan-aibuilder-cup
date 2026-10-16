@@ -31,7 +31,7 @@ Rule: one DOING task at Cursor at a time (plus deploy). Gate: scope → PR → Q
 - [DONE] F3-6 **Sales** (CRM + news) recruitable SKU — merged [#64](https://github.com/nusantarasoft/nusantarasoft-3/pull/64) @ `1f06645`; design [docs/design/f3-6-sales-recruit.md](design/f3-6-sales-recruit.md); ops [docs/ops/f3-6-recruit-flow.md](ops/f3-6-recruit-flow.md); QA PASS 2026-10-16 (`.gstack/qa-reports/qa-f3-6-sales-recruit-2026-10-16.md`); screenshots `/cursor/stores/self/media/f3-6-sales-*.png`
 - [DONE] F3-7 **DevOps** recruitable SKU — merged [#65](https://github.com/nusantarasoft/nusantarasoft-3/pull/65) @ `f7dbd2b`; design [docs/design/f3-7-devops-recruit.md](design/f3-7-devops-recruit.md); ops [docs/ops/f3-7-recruit-flow.md](ops/f3-7-recruit-flow.md); QA PASS 2026-10-16 (`.gstack/qa-reports/qa-f3-7-devops-recruit-2026-10-16.md`)
 - [DONE] F3-8 **Security** recruitable SKU — merged [#66](https://github.com/nusantarasoft/nusantarasoft-3/pull/66) @ `ad7286f`; design [docs/design/f3-8-security-recruit.md](design/f3-8-security-recruit.md); ops [docs/ops/f3-8-recruit-flow.md](ops/f3-8-recruit-flow.md); QA PASS 2026-10-16 (`.gstack/qa-reports/qa-f3-8-security-recruit-2026-10-16.md`)
-- [DOING] F3-9 **Facilities** (BMS / DCIM / SCADA) recruitable SKU — PR `cursor/f3-9-facilities-recruit-1b01`; design [docs/design/f3-9-facilities-recruit.md](design/f3-9-facilities-recruit.md); ops [docs/ops/f3-9-recruit-flow.md](ops/f3-9-recruit-flow.md); QA PASS 2026-10-16 (`.gstack/qa-reports/qa-f3-9-facilities-recruit-2026-10-16.md`); mark **DONE** after merge
+- [DONE] F3-9 **Facilities** (BMS / DCIM / SCADA) recruitable SKU — merged [#67](https://github.com/nusantarasoft/nusantarasoft-3/pull/67) @ `3191c40`; design [docs/design/f3-9-facilities-recruit.md](design/f3-9-facilities-recruit.md); ops [docs/ops/f3-9-recruit-flow.md](ops/f3-9-recruit-flow.md); QA PASS 2026-10-16 (`.gstack/qa-reports/qa-f3-9-facilities-recruit-2026-10-16.md`)
 
 **F3 recruit queue lock (Akbar 2026-10-16):** All seven Agent Studio wedge SKUs live on `/admin/recruit` (+ Kasir). CS WhatsApp + Stok/pembukuan remain **Segera hadir**.
 
@@ -44,6 +44,9 @@ Rule: one DOING task at Cursor at a time (plus deploy). Gate: scope → PR → Q
 
 ## Discovered
 (append here)
+- [TODO] D-16 (UI-wave-1 @ `35614ab`) Re-run full Wave 1 browser audit on live stack (recruit, VO drawer, AOS task queue, AI Studio hubs) — Cloud Agent VM had no Docker; use `admin/tests/e2e/ui-wave-1-recruit-deeplinks.spec.ts` + existing f2/f3 fullstack specs after deploy
+- [TODO] D-17 (UI-wave-1) Add sidebar entry **Hubungkan WhatsApp** (`/admin/connect-wa`) for `tenant_owner` under AI Studio — menu currently hides UMKM admin only; connect wizard is VO/recruit path only
+- [DONE] D-18 (UI-wave-1) VO inspector before/after — `.gstack/qa-reports/screenshots/ui-wave-1-vo-inspector-*-after.png` (Playwright on live stack, PR #70)
 - [DONE] D-1 (audit #31) Wire VO Live mode to osAgentSource; mockAgentSource only in explicit demo mode  → F1-2
 - [DONE] D-2 (audit #31) Fix misleading "Demo" badge on real DB agents in Agentic OS → F1-4
 - [DONE] D-3 (audit #31) AI Studio Web Crawler / Knowledge Graph / Agent Builder: honest Live/Demo labels; P2-1…P2-3 backends shipped for crawler, KG, Agent Builder workflows

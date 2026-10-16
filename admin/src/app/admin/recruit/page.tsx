@@ -12,6 +12,11 @@ import {
 } from "@/lib/recruitApi";
 import { useAuthStore } from "@/store/useAuthStore";
 import { AosError } from "@/components/agentic-os/lib/api";
+import { RECRUIT_POST_SUCCESS_LINKS } from "@/lib/recruitPostSuccessLinks";
+
+const POST_SUCCESS_BY_TEMPLATE = Object.fromEntries(
+    Object.values(RECRUIT_POST_SUCCESS_LINKS).map((e) => [e.templateId, { href: e.href, label: e.label }]),
+);
 
 const KASIR_ID = "umkm-kasir";
 const SERVICE_DESK_ID = "service-desk";
@@ -184,54 +189,26 @@ export default function RecruitPage() {
                                                 <Sparkles className="h-3.5 w-3.5" />
                                                 Aktif di kantor virtual
                                             </span>
-                                            {item.id === KASIR_ID ? (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => router.push("/admin/connect-wa")}
-                                                    className="text-xs font-semibold text-indigo-300 underline"
-                                                >
-                                                    Hubungkan WhatsApp →
-                                                </button>
-                                            ) : item.id === SERVICE_DESK_ID ? (
-                                                <Link href="/admin/itsm/tickets" className="text-xs font-semibold text-indigo-300 underline">
-                                                    Buka antrian tiket →
-                                                </Link>
-                                            ) : item.id === FINANCE_ID ? (
-                                                <Link
-                                                    href="/admin/accounting/dashboard"
-                                                    className="text-xs font-semibold text-indigo-300 underline"
-                                                >
-                                                    Buka akuntansi →
-                                                </Link>
-                                            ) : item.id === SALES_ID ? (
-                                                <Link
-                                                    href="/admin/crm/dashboard"
-                                                    className="text-xs font-semibold text-indigo-300 underline"
-                                                >
-                                                    Buka CRM →
-                                                </Link>
-                                            ) : item.id === DEVOPS_ID ? (
-                                                <Link
-                                                    href="/admin/devops/pipelines"
-                                                    className="text-xs font-semibold text-indigo-300 underline"
-                                                >
-                                                    Buka pipeline →
-                                                </Link>
-                                            ) : item.id === SECURITY_ID ? (
-                                                <Link
-                                                    href="/admin/security/pentest"
-                                                    className="text-xs font-semibold text-indigo-300 underline"
-                                                >
-                                                    Buka assessment keamanan →
-                                                </Link>
-                                            ) : item.id === FACILITIES_ID ? (
-                                                <Link
-                                                    href="/admin/bms/energy"
-                                                    className="text-xs font-semibold text-indigo-300 underline"
-                                                >
-                                                    Buka telemetri BMS →
-                                                </Link>
-                                            ) : null}
+                                            {(() => {
+                                                const link = POST_SUCCESS_BY_TEMPLATE[item.id];
+                                                if (!link) return null;
+                                                if (item.id === KASIR_ID) {
+                                                    return (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => router.push(link.href)}
+                                                            className="text-xs font-semibold text-indigo-300 underline"
+                                                        >
+                                                            {link.label}
+                                                        </button>
+                                                    );
+                                                }
+                                                return (
+                                                    <Link href={link.href} className="text-xs font-semibold text-indigo-300 underline">
+                                                        {link.label}
+                                                    </Link>
+                                                );
+                                            })()}
                                         </div>
                                     ) : null}
                                 </div>

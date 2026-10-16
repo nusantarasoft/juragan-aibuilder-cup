@@ -52,7 +52,7 @@ export function buildKasirAgent(snap: OsKasirLiveSnapshot): Agent {
                       progress: 0.35,
                       startedAt: snap.lastActivityAt ? new Date(snap.lastActivityAt).getTime() : Date.now(),
                       moduleId: "ai-studio",
-                      route: "/admin/ai-studio/umkm",
+                      route: "/admin/connect-wa",
                       steps: ["Terima chat WA", "Catat transaksi", "Update stok"],
                   }
                 : undefined,

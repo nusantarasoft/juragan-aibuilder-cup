@@ -6,6 +6,15 @@ import type { AgentRosterKind, OsAgent } from "./types";
 
 export const KASIR_EMPLOYEE_SLUG = "umkm-kasir";
 
+/** Virtual Office roster id/slug for the Kasir wedge (live metrics + connect-wa deep links). */
+export function isKasirOfficeAgent(agentId?: string | null, slug?: string | null): boolean {
+    const id = agentId ?? "";
+    const sl = slug ?? "";
+    if (id === KASIR_EMPLOYEE_SLUG || id.startsWith(`${KASIR_EMPLOYEE_SLUG}-`)) return true;
+    if (sl === KASIR_EMPLOYEE_SLUG || sl.startsWith(`${KASIR_EMPLOYEE_SLUG}-`)) return true;
+    return false;
+}
+
 export function rosterKindForAgent(
     _agentId: string,
     _slug?: string,
