@@ -43,6 +43,47 @@ describe('StudioWebCrawlerService', () => {
         expect(jobs[0].config.seedUrls).toEqual(['https://example.com']);
     });
 
+    it('stops running job for tenant', async () => {
+        from.mockReturnValueOnce({
+            select: () => ({
+                eq: () => ({
+                    maybeSingle: async () => ({
+                        data: { id: 'j1', tenant_id: 't1', status: 'running', name: 'X', config: {}, progress: 10 },
+                        error: null,
+                    }),
+                }),
+            }),
+        });
+        from.mockReturnValueOnce({
+            update: () => ({
+                eq: async () => ({ error: null }),
+            }),
+        });
+        from.mockReturnValueOnce({
+            select: () => ({
+                eq: () => ({
+                    maybeSingle: async () => ({
+                        data: {
+                            id: 'j1',
+                            tenant_id: 't1',
+                            status: 'paused',
+                            name: 'X',
+                            config: {},
+                            progress: 10,
+                            pages_found: 0,
+                            pages_scraped: 0,
+                            errors: 0,
+                            documents_generated: 0,
+                        },
+                        error: null,
+                    }),
+                }),
+            }),
+        });
+        const job = await svc.stopJob('t1', 'j1');
+        expect(job.status).toBe('paused');
+    });
+
     it('rejects delete for wrong tenant', async () => {
         from.mockReturnValueOnce({
             select: () => ({

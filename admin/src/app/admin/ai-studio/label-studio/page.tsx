@@ -101,7 +101,16 @@ export default function LabelStudioPage() {
             subTitle={<DecryptedText text="Data annotation projects, task progress & labeling analytics" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}
             extra={[
                 modeTag,
-                <Button key="o" icon={<LinkOutlined />} type="primary" onClick={() => window.open(openUrl, '_blank')}>Open Label Studio</Button>,
+                <Button
+                    key="o"
+                    icon={<LinkOutlined />}
+                    type="primary"
+                    disabled={isDemo || !dashboard?.configured}
+                    title={isDemo ? 'Turn off UI demo mode in Agentic OS Settings to open the live Label Studio URL' : dashboard?.configured ? undefined : 'Label Studio is not configured on the server'}
+                    onClick={() => !isDemo && dashboard?.configured && window.open(openUrl, '_blank')}
+                >
+                    Open Label Studio
+                </Button>,
                 <Button key="r" icon={<ReloadOutlined />} onClick={() => (isDemo ? undefined : loadLive())} loading={loading && !isDemo} disabled={isDemo} />,
             ]}
         >

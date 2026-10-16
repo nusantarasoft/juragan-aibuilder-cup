@@ -35,7 +35,7 @@ export default function GitLabPage() {
     const passedPipelines = PIPELINES.filter(p => p.status === 'passed').length;
 
     return (
-        <CMSLayout title={<AuroraText colors={[themeColor, '#fc6d26', '#e24329']}>GitLab</AuroraText>} subTitle={<DecryptedText text="Repository management, CI/CD pipelines & container registry" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="o" icon={<LinkOutlined />} type="primary" onClick={() => window.open('http://localhost:8929', '_blank')}>Open GitLab</Button>, <Button key="r" icon={<ReloadOutlined />} />]}>
+        <CMSLayout title={<AuroraText colors={[themeColor, '#fc6d26', '#e24329']}>GitLab</AuroraText>} subTitle={<DecryptedText text="Repository management, CI/CD pipelines & container registry" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="o" icon={<LinkOutlined />} type="primary" onClick={() => window.open('http://localhost:8929', '_blank')}>Open GitLab</Button>, <Button key="r" icon={<ReloadOutlined />} onClick={() => window.location.reload()} title="Refresh page" />]}>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <Row gutter={[12, 12]}>
                     {[{ t: 'Repositories', v: REPOS.length, c: '#3b82f6', i: <CodeOutlined /> }, { t: 'Pipelines Passed', v: `${passedPipelines}/${PIPELINES.length}`, c: '#10b981', i: <CheckCircleOutlined /> }, { t: 'Registry Images', v: IMAGES.length, c: '#8b5cf6', i: <CloudServerOutlined /> }, { t: 'Total Branches', v: REPOS.reduce((s, r) => s + r.branches, 0), c: '#f59e0b', i: <BranchesOutlined /> }].map((s, i) => (

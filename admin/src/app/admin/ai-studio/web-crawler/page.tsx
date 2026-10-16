@@ -76,6 +76,17 @@ export default function WebCrawlerPage() {
         fetchJobs();
     };
 
+    const handleStop = async (id: string) => {
+        try {
+            await webCrawlerService.stopJob(id);
+            message.success('Crawl job stopped');
+            fetchJobs();
+        } catch {
+            message.error('Could not stop job — it may have already finished.');
+            fetchJobs();
+        }
+    };
+
     const renderStatusTag = (status: string) => {
         switch(status) {
             case 'completed': return <Tag color="success" icon={<CheckCircleOutlined />}>Completed</Tag>;
@@ -128,7 +139,11 @@ export default function WebCrawlerPage() {
             key: 'actions',
             render: (_: any, record: CrawlJob) => (
                 <Space>
-                    {record.status === 'running' && <Button size="small" danger icon={<StopOutlined />}>Stop</Button>}
+                    {(record.status === 'running' || record.status === 'pending') && (
+                        <Popconfirm title="Stop this crawl job?" onConfirm={() => handleStop(record.id)}>
+                            <Button size="small" danger icon={<StopOutlined />}>Stop</Button>
+                        </Popconfirm>
+                    )}
                     <Popconfirm title="Delete job?" onConfirm={() => handleDelete(record.id)}>
                         <Button size="small" type="text" danger icon={<DeleteOutlined />} />
                     </Popconfirm>

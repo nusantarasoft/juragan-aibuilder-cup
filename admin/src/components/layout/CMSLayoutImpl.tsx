@@ -70,6 +70,7 @@ import menuConfig from "@/config/menuConfig";
 import GlitchText from "@/components/react-bits/GlitchText";
 import { usePreferencesStore, hexToRgb } from "@/store/usePreferencesStore";
 import { useAuthStore } from "@/store/useAuthStore";
+import { filterMenuTreeForAppRole } from "@/lib/tenantOwnerMenu";
 import NotificationBell from "@/components/common/NotificationBell";
 import LanguageSwitcher from "@/components/layout/LanguageSwitcher";
 import LiveCursors from "@/components/common/LiveCursors";
@@ -305,6 +306,10 @@ const BREADCRUMB_LABELS: Record<string, string> = {
     "agent-builder": "Agent Builder",
     "knowledge-graph": "Knowledge Graph",
     "label-studio": "Label Studio",
+    "connect-wa": "Hubungkan WhatsApp",
+    "my-agents": "Karyawan AI saya",
+    usage: "Pemakaian",
+    recruit: "Rekrut karyawan",
     "guide-flows": "Guide Flows",
     settings: "Settings",
     playground: "Playground",
@@ -1094,18 +1099,7 @@ export default function CMSLayoutImpl({
                                 });
                             };
                             const stripTenantPlatformOnly = (items: any[]): any[] =>
-                                items
-                                    .filter((item) => {
-                                        if (appRole !== "tenant_owner") return true;
-                                        if (item.path === "/admin/ai-studio/umkm") return false;
-                                        return true;
-                                    })
-                                    .map((item) => {
-                                        const next = { ...item };
-                                        if (next.children) next.children = stripTenantPlatformOnly(next.children);
-                                        if (next.routes) next.routes = stripTenantPlatformOnly(next.routes);
-                                        return next;
-                                    });
+                                filterMenuTreeForAppRole(items, appRole);
 
                             return stripTenantPlatformOnly(
                                 attachIcons(menuData).filter(

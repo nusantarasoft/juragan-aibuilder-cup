@@ -1200,6 +1200,30 @@ const menuConfig = {
                         isLeaf: true,
                     },
                     {
+                        path: "/admin/recruit",
+                        name: "Rekrut karyawan",
+                        icon: <UsergroupAddOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/connect-wa",
+                        name: "Hubungkan WhatsApp",
+                        icon: <MessageOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/my-agents",
+                        name: "Karyawan AI saya",
+                        icon: <TeamOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/usage",
+                        name: "Pemakaian",
+                        icon: <LineChartOutlined />,
+                        isLeaf: true,
+                    },
+                    {
                         path: "/admin/ai-studio/web-crawler",
                         name: "Web Crawler",
                         icon: <GlobalOutlined />,

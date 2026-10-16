@@ -44,8 +44,10 @@ Rule: one DOING task at Cursor at a time (plus deploy). Gate: scope → PR → Q
 
 ## Discovered
 (append here)
-- [TODO] D-16 (UI-wave-1 @ `35614ab`) Re-run full Wave 1 browser audit on live stack (recruit, VO drawer, AOS task queue, AI Studio hubs) — Cloud Agent VM had no Docker; use `admin/tests/e2e/ui-wave-1-recruit-deeplinks.spec.ts` + existing f2/f3 fullstack specs after deploy
-- [TODO] D-17 (UI-wave-1) Add sidebar entry **Hubungkan WhatsApp** (`/admin/connect-wa`) for `tenant_owner` under AI Studio — menu currently hides UMKM admin only; connect wizard is VO/recruit path only
+- [DONE] D-16 (UI-wave-2 @ `dc8fdd4`) Full Wave 1+2 browser audit on live stack — `.gstack/qa-reports/qa-ui-wave-2-admin-buttons-2026-10-16.md`; Wave 1 specs + `ui-wave-2-admin-buttons.spec.ts`
+- [DONE] D-17 (UI-wave-2) Sidebar **Hubungkan WhatsApp** + wedge links under AI Studio for `tenant_owner` — `menuConfig.tsx`, `tenantOwnerMenu.ts`
+- [TODO] D-19 (UI-wave-2) Remaining embed dashboards (datasets MinIO/Nessie/etc.) still use decorative Refresh icons — wire or remove in a follow-up
+- [TODO] D-20 (UI-wave-2) BMS dashboard still renders hardcoded demo charts when API empty — banner added; prefer real API wiring or empty state
 - [DONE] D-18 (UI-wave-1) VO inspector before/after — `.gstack/qa-reports/screenshots/ui-wave-1-vo-inspector-*-after.png` (Playwright on live stack, PR #70)
 - [DONE] D-1 (audit #31) Wire VO Live mode to osAgentSource; mockAgentSource only in explicit demo mode  → F1-2
 - [DONE] D-2 (audit #31) Fix misleading "Demo" badge on real DB agents in Agentic OS → F1-4

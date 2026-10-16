@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { assertNoSupabaseError } from './studio-supabase.util';
 import type { StudioWebCrawlJob } from './studio-web-crawler.types';
@@ -67,6 +67,25 @@ export class StudioWebCrawlerService {
         const { error } = await this.db().from('studio_web_crawl_jobs').delete().eq('id', jobId);
         assertNoSupabaseError(error);
         return true;
+    }
+
+    /** Stop a pending or running job (worker ignores non-running rows). */
+    async stopJob(tenantId: string, jobId: string): Promise<StudioWebCrawlJob> {
+        const existing = await this.getJobRow(jobId);
+        if (String(existing.tenant_id) !== tenantId) {
+            throw new ForbiddenException('You do not have access to this crawl job');
+        }
+        const status = String(existing.status);
+        if (status !== 'pending' && status !== 'running') {
+            throw new BadRequestException('Only pending or running crawl jobs can be stopped');
+        }
+        const finished = new Date().toISOString();
+        await this.patchJob(jobId, {
+            status: 'paused',
+            finished_at: finished,
+            error_message: status === 'running' ? 'Stopped by user' : null,
+        });
+        return rowToJob(await this.getJobRow(jobId));
     }
 
     async getJobRow(jobId: string): Promise<Row> {

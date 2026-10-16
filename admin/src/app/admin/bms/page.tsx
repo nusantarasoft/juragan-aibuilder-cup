@@ -5,7 +5,7 @@ import CMSLayout from "@/components/layout/CMSLayout";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import DecryptedText from "@/components/react-bits/DecryptedText";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
-import { theme, Row, Col, Card, Statistic, Badge, Space, Typography, Table, Progress, Button } from "antd";
+import { theme, Row, Col, Card, Statistic, Badge, Space, Typography, Table, Progress, Button, Alert } from "antd";
 import { 
     HomeOutlined, FireOutlined, ThunderboltOutlined, ExperimentOutlined, 
     DashboardOutlined, SwapOutlined, BulbOutlined, KeyOutlined, AlertOutlined
@@ -36,6 +36,8 @@ export default function BmsDashboard() {
 
     const [realSystems, setRealSystems] = useState<BmsSystem[]>([]);
     const [realAlarms, setRealAlarms] = useState<BmsAlarm[]>([]);
+    const [liveDataLoaded, setLiveDataLoaded] = useState(false);
+    const usingSampleData = liveDataLoaded && realSystems.length === 0 && realAlarms.length === 0;
 
     useEffect(() => {
         const fetchData = async () => {
@@ -48,6 +50,8 @@ export default function BmsDashboard() {
                 if (alarmsData && alarmsData.length > 0) setRealAlarms(alarmsData);
             } catch (err) {
                 console.warn("Backend not available, using demo data for BMS Dashboard.");
+            } finally {
+                setLiveDataLoaded(true);
             }
         };
         fetchData();
@@ -96,6 +100,16 @@ export default function BmsDashboard() {
             subTitle={<DecryptedText text="Facility Building Operations" speed={60} />}
         >
             <style>{dashAnimStyle}</style>
+
+            {usingSampleData && (
+                <Alert
+                    type="info"
+                    showIcon
+                    message="Sample facility data"
+                    description="Charts and alarms below are illustrative until BMS integrations return live systems from the middleware API. Sub-routes under Facilities still open normally."
+                    style={{ marginBottom: 16 }}
+                />
+            )}
 
             <div style={{ position: 'relative' }}>
                 <div style={{ position: 'absolute', top: -16, right: 16, zIndex: 10 }}>

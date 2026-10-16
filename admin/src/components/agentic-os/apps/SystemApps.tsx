@@ -146,7 +146,11 @@ export function Overview({ onOpen }: { onOpen: (app: string, params?: Record<str
                         <div className="min-w-0 flex-1">
                             <div className="flex flex-wrap items-center gap-2">
                                 <span className="text-[14px] font-semibold text-white">{kasirLive.name}</span>
-                                <RosterKindBadge kind="live" />
+                                <RosterKindBadge
+                                    kind={rosterKindForAgent("kasir-live", kasirLive.slug, {
+                                        uiDemoMode: settings?.uiDemoMode,
+                                    })}
+                                />
                                 <Chip color="#38bdf8">AI Studio</Chip>
                             </div>
                             <p className="mt-1 text-[12px] text-slate-300">{formatKasirMetricLine(kasirLive)}</p>
@@ -154,9 +158,17 @@ export function Overview({ onOpen }: { onOpen: (app: string, params?: Record<str
                                 Task queue is persisted in Postgres and advances via the middleware worker. Roster agents show Live unless explicit UI demo mode is on.
                             </p>
                         </div>
-                        <Button size="sm" onClick={() => onOpen("studio")}>
-                            Agent roster
-                        </Button>
+                        <div className="flex shrink-0 flex-col gap-1.5">
+                            <Button size="sm" onClick={() => onOpen("studio")}>
+                                Agent roster
+                            </Button>
+                            <a href="/admin/connect-wa" className="rounded-lg border border-white/10 px-2.5 py-1.5 text-center text-[11px] font-semibold text-emerald-200 hover:bg-white/5">
+                                Hubungkan WhatsApp
+                            </a>
+                            <a href="/admin/usage" className="rounded-lg border border-white/10 px-2.5 py-1.5 text-center text-[11px] font-semibold text-sky-200 hover:bg-white/5">
+                                Pemakaian
+                            </a>
+                        </div>
                     </div>
                 </Section>
             )}
@@ -289,6 +301,14 @@ export function OsSettingsApp() {
                 </div>
             </Section>
             <div className="grid gap-3 md:grid-cols-2">
+                <Section title="UI honesty (AI Studio)" icon={Sparkles}>
+                    <Toggle
+                        checked={d.uiDemoMode}
+                        onChange={(v) => set("uiDemoMode", v)}
+                        label="UI demo mode"
+                        hint="When on, Knowledge Graph and Label Studio show sample data with Demo badges (F1-4)."
+                    />
+                </Section>
                 <Section title="Autopilot (task queue)" icon={Sparkles}>
                     <Toggle checked={d.autopilot} onChange={(v) => set("autopilot", v)} label="Autopilot" hint="Idle agents pick playbooks from their modules" />
                     <Field label="Review cap per agent" hint="Stop autopilot when this many tasks wait for review">
@@ -335,6 +355,7 @@ export function OsSettingsApp() {
                                 monthlyTokenBudget: d.monthlyTokenBudget,
                                 rollingWindowMinutes: d.rollingWindowMinutes,
                                 rollingWindowCeiling: d.rollingWindowCeiling,
+                                uiDemoMode: d.uiDemoMode,
                             }),
                         );
                         if (out) setD(out);
