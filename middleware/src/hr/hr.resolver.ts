@@ -36,6 +36,16 @@ import GraphQLJSON from 'graphql-type-json';
     @Field() updatedAt: string;
 }
 
+@ObjectType() class HrLeavePersonRef {
+    @Field({ nullable: true }) firstName?: string;
+    @Field({ nullable: true }) lastName?: string;
+}
+
+@ObjectType() class HrLeaveTypeRef {
+    @Field({ nullable: true }) name?: string;
+    @Field({ nullable: true }) color?: string;
+}
+
 @ObjectType() class HrEmployee {
     @Field(() => ID) id: string;
     @Field() tenantId: string;
@@ -71,6 +81,13 @@ import GraphQLJSON from 'graphql-type-json';
     @Field(() => GraphQLJSON, { nullable: true }) emergencyContact?: any;
     @Field(() => GraphQLJSON, { nullable: true }) tags?: any;
     @Field(() => GraphQLJSON, { nullable: true }) customFields?: any;
+    @Field({ nullable: true }) position?: string;
+    @Field({ nullable: true }) positionName?: string;
+    @Field({ nullable: true }) employeeType?: string;
+    @Field({ nullable: true }) status?: string;
+    @Field({ nullable: true }) joinDate?: string;
+    @Field(() => Float, { nullable: true }) salary?: number;
+    @Field({ nullable: true }) profilePicture?: string;
     @Field() createdAt: string;
     @Field() updatedAt: string;
 }
@@ -111,6 +128,9 @@ import GraphQLJSON from 'graphql-type-json';
     @Field() startDate: string;
     @Field() endDate: string;
     @Field(() => Int) days: number;
+    @Field(() => Int, { nullable: true }) totalDays?: number;
+    @Field(() => HrLeavePersonRef, { nullable: true }) employee?: HrLeavePersonRef;
+    @Field(() => HrLeaveTypeRef, { nullable: true }) leaveType?: HrLeaveTypeRef;
     @Field({ nullable: true }) reason?: string;
     @Field() status: string;
     @Field({ nullable: true }) approvedBy?: string;
@@ -230,6 +250,19 @@ import GraphQLJSON from 'graphql-type-json';
     @Field(() => Int) newHiresThisMonth: number;
     @Field(() => Int) contractCount: number;
     @Field(() => Int) fullTimeCount: number;
+    @Field(() => Float, { nullable: true }) avgTenure?: number;
+    @Field(() => Float, { nullable: true }) turnoverRate?: number;
+    @Field(() => GraphQLJSON, { nullable: true }) departmentBreakdown?: any;
+    @Field(() => GraphQLJSON, { nullable: true }) genderDistribution?: any;
+    @Field(() => Float, { nullable: true }) avgAge?: number;
+    @Field(() => Int, { nullable: true }) openPositions?: number;
+    @Field(() => GraphQLJSON, { nullable: true }) upcomingBirthdays?: any;
+    @Field(() => Int, { nullable: true }) totalLeaveToday?: number;
+    @Field(() => Float, { nullable: true }) attendanceRateThisMonth?: number;
+    @Field(() => Float, { nullable: true }) trainingCompletion?: number;
+    @Field(() => Float, { nullable: true }) totalPayrollThisMonth?: number;
+    @Field(() => GraphQLJSON, { nullable: true }) probationEnding?: any;
+    @Field(() => Float, { nullable: true }) performanceAvg?: number;
 }
 
 @ObjectType() class HrLeaveBalance {
@@ -351,6 +384,9 @@ function mapEmployee(r: any): HrEmployee {
         salaryCurrency: r.salary_currency, bankName: r.bank_name, bankAccount: r.bank_account,
         address: r.address, emergencyContact: r.emergency_contact,
         tags: r.tags, customFields: r.custom_fields,
+        position: r.hr_positions?.title, positionName: r.hr_positions?.title,
+        employeeType: r.employment_type, status: r.employment_status,
+        joinDate: r.hire_date, salary: r.base_salary, profilePicture: r.avatar_url,
         createdAt: r.created_at, updatedAt: r.updated_at,
     };
 }
@@ -365,7 +401,18 @@ function mapPosition(r: any): HrPosition {
 
 function mapLeaveRequest(r: any): HrLeaveRequest {
     const emp = r.hr_employees;
-    return { id: r.id, employeeId: r.employee_id, employeeName: emp ? `${emp.first_name} ${emp.last_name}` : null, employeeNumber: emp?.employee_number, leaveTypeId: r.leave_type_id, leaveTypeName: r.hr_leave_types?.name, leaveTypeColor: r.hr_leave_types?.color, startDate: r.start_date, endDate: r.end_date, days: r.days, reason: r.reason, status: r.status, approvedBy: r.approved_by, approvedAt: r.approved_at, rejectionReason: r.rejection_reason, createdAt: r.created_at };
+    const lt = r.hr_leave_types;
+    return {
+        id: r.id, employeeId: r.employee_id,
+        employeeName: emp ? `${emp.first_name} ${emp.last_name}` : null,
+        employeeNumber: emp?.employee_number,
+        employee: emp ? { firstName: emp.first_name, lastName: emp.last_name } : undefined,
+        leaveTypeId: r.leave_type_id, leaveTypeName: lt?.name, leaveTypeColor: lt?.color,
+        leaveType: lt ? { name: lt.name, color: lt.color } : undefined,
+        startDate: r.start_date, endDate: r.end_date, days: r.days, totalDays: r.days,
+        reason: r.reason, status: r.status, approvedBy: r.approved_by, approvedAt: r.approved_at,
+        rejectionReason: r.rejection_reason, createdAt: r.created_at,
+    };
 }
 
 function mapAttendance(r: any): HrAttendance {
@@ -395,7 +442,25 @@ function mapTraining(r: any): HrTraining {
 export class HrResolver {
     constructor(private hrService: HrService) { }
 
-    @Query(() => HrDashboardStats) async hrDashboardStats(@Args('tenantId') tenantId: string) { return this.hrService.getDashboardStats(tenantId); }
+    @Query(() => HrDashboardStats) async hrDashboardStats(@Args('tenantId') tenantId: string) {
+        const base = await this.hrService.getDashboardStats(tenantId);
+        return {
+            ...base,
+            avgTenure: 0,
+            turnoverRate: 0,
+            departmentBreakdown: [],
+            genderDistribution: { male: base.maleCount, female: base.femaleCount },
+            avgAge: 0,
+            openPositions: base.openJobPostings,
+            upcomingBirthdays: [],
+            totalLeaveToday: 0,
+            attendanceRateThisMonth: 0,
+            trainingCompletion: 0,
+            totalPayrollThisMonth: base.totalPayroll,
+            probationEnding: [],
+            performanceAvg: 0,
+        };
+    }
 
     // Employees
     @Query(() => [HrEmployee]) async hrEmployees(@Args('tenantId') tenantId: string, @Args('departmentId', { nullable: true }) departmentId?: string, @Args('status', { nullable: true }) status?: string, @Args('type', { nullable: true }) type?: string, @Args('search', { nullable: true }) search?: string) { return (await this.hrService.getEmployees(tenantId, { departmentId, status, type, search })).map(mapEmployee); }

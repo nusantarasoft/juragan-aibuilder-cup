@@ -7,6 +7,7 @@ Design: [docs/design/f2-3-tenant-wa-connection.md](../design/f2-3-tenant-wa-conn
 - **One shared NS WhatsApp** (Hermes/kasir). Tenants do **not** pair QR.
 - **Platform admin** pairs Hermes at `/admin/ai-studio/ai-gateway` (unchanged).
 - Tenant owner: `/admin/connect-wa` — phone → OTP (WA; **mock in QA**) → staff whitelist (max 5) → **Aktifkan**.
+- Sidebar (tenant owner): **AI Studio → Hubungkan WhatsApp** (also **Rekrut karyawan**, **Karyawan AI saya**, **Pemakaian**); hidden from platform admin menu.
 - **WA terhubung** = owner OTP verified + **Aktifkan** + notebook → lifts F2-2 outbound gate.
 - `tenant_owner` hitting `/admin/ai-studio/umkm` is **redirected** to connect wizard (D8).
 

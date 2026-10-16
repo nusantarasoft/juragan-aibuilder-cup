@@ -90,6 +90,14 @@ const DELETE_MUTATION = `
   }
 `;
 
+const STOP_MUTATION = `
+  mutation StopStudioWebCrawlJob($tenantId: String, $id: String!) {
+    stopStudioWebCrawlJob(tenantId: $tenantId, id: $id) {
+      id name status config progress pagesFound pagesScraped errors documentsGenerated startTime endTime
+    }
+  }
+`;
+
 export const webCrawlerService = {
     dataMode: WEB_CRAWLER_DATA_MODE,
 
@@ -111,5 +119,12 @@ export const webCrawlerService = {
         await graphql<{ deleteStudioWebCrawlJob: boolean }>(DELETE_MUTATION, {
             variables: { tenantId, id: jobId },
         });
+    },
+
+    async stopJob(jobId: string, tenantId: string = DEFAULT_TENANT_ID): Promise<CrawlJob> {
+        const data = await graphql<{ stopStudioWebCrawlJob: GqlJob }>(STOP_MUTATION, {
+            variables: { tenantId, id: jobId },
+        });
+        return mapJob(data.stopStudioWebCrawlJob);
     },
 };

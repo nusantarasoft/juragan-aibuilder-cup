@@ -96,7 +96,7 @@ export default function DepartmentsPage() {
         setLoading(true);
         Promise.all([gql(DEPT_Q, { t: DEFAULT_TENANT_ID }), gql(EMP_Q, { t: DEFAULT_TENANT_ID })])
             .then(([d, e]) => { setDepartments(d.hrDepartments || []); setEmployees(e.hrEmployees || []); })
-            .catch(console.error).finally(() => setLoading(false));
+            .catch(() => undefined).finally(() => setLoading(false));
     };
     useEffect(() => { load(); }, []);
 

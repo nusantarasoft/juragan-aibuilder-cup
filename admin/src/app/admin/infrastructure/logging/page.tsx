@@ -40,7 +40,7 @@ export default function LoggingPage() {
     const errors = RECENT_LOGS.filter(l => l.level === 'ERROR').length;
 
     return (
-        <CMSLayout title={<AuroraText colors={[themeColor, '#f3b61f', '#10b981']}>Log Explorer</AuroraText>} subTitle={<DecryptedText text="Loki log streams, search & live tail" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="o" icon={<LinkOutlined />} onClick={() => window.open('http://localhost:3004/explore', '_blank')}>Open in Grafana</Button>, <Button key="r" icon={<ReloadOutlined />} />]}>
+        <CMSLayout title={<AuroraText colors={[themeColor, '#f3b61f', '#10b981']}>Log Explorer</AuroraText>} subTitle={<DecryptedText text="Loki log streams, search & live tail" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="o" icon={<LinkOutlined />} onClick={() => window.open('http://localhost:3004/explore', '_blank')}>Open in Grafana</Button>, <Button key="r" icon={<ReloadOutlined />} onClick={() => window.location.reload()} title="Refresh page" />]}>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <Row gutter={[12, 12]}>
                     {[{ t: 'Log Streams', v: STREAMS.length, c: '#3b82f6', i: <CloudServerOutlined /> }, { t: 'Total Lines (1h)', v: totalLines.toLocaleString(), c: '#8b5cf6', i: <DatabaseOutlined /> }, { t: 'Errors', v: errors, c: errors > 0 ? '#ef4444' : '#10b981', i: <AlertOutlined /> }, { t: 'Retention', v: '30 days', c: '#06b6d4', i: <ClockCircleOutlined /> }].map((s, i) => (

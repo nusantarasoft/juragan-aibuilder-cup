@@ -44,7 +44,7 @@ export default function GrafanaPage() {
     return (
         <CMSLayout title={<AuroraText colors={[themeColor, '#f3b61f', '#e6522c']}>Grafana Monitoring</AuroraText>} subTitle={<DecryptedText text="Dashboard management, datasource health & alert rules" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[
             <Button key="open" icon={<LinkOutlined />} type="primary" onClick={() => window.open('http://localhost:3004', '_blank')}>Open Grafana</Button>,
-            <Button key="r" icon={<ReloadOutlined />} />
+            <Button key="r" icon={<ReloadOutlined />} onClick={() => window.location.reload()} title="Refresh page" />
         ]}>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <Row gutter={[12, 12]}>

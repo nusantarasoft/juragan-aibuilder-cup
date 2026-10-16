@@ -54,7 +54,7 @@ export default function AuditLogsPage() {
 
     return (
         <CMSLayout title={<AuroraText colors={[themeColor, '#3b82f6', '#8b5cf6']}>Audit Logs</AuroraText>} subTitle={<DecryptedText text="Searchable audit trail across all modules" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}
-            extra={[<Button key="r" icon={<ReloadOutlined />} />,
+            extra={[<Button key="r" icon={<ReloadOutlined />} onClick={() => window.location.reload()} title="Refresh page" />,
                 <RbacGuard key="exp" requiredRole="manager"><Tooltip title="Excel"><Button icon={<FileExcelOutlined />} size="small" onClick={() => exportToExcel({ fileName: 'audit_logs', title: 'Audit Logs', columns: [{ header: 'User', key: 'user' }, { header: 'Action', key: 'action' }, { header: 'Module', key: 'module' }, { header: 'Details', key: 'details' }, { header: 'IP', key: 'ip' }, { header: 'Severity', key: 'severity' }, { header: 'Time', key: 'createdAt' }], data: filtered })} /></Tooltip>
                     <Tooltip title="PDF"><Button icon={<FilePdfOutlined />} size="small" onClick={() => exportToPdf({ fileName: 'audit_logs', title: 'Audit Logs', columns: [{ header: 'User', key: 'user' }, { header: 'Action', key: 'action' }, { header: 'Module', key: 'module' }, { header: 'Details', key: 'details' }, { header: 'Severity', key: 'severity' }, { header: 'Time', key: 'createdAt' }], data: filtered })} /></Tooltip></RbacGuard>]}>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>

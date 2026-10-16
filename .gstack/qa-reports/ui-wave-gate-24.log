@@ -1,0 +1,36 @@
+
+Running 24 tests using 1 worker
+
+[1A[2K(node:640711) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:640711) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[1/24] [chromium] › tests/e2e/d9-deck-fullstack.spec.ts:44:9 › D-9 Command Deck + Live/Demo — full stack (live GraphQL) › Command Deck views + Live badge
+[1A[2K[2/24] [chromium] › tests/e2e/d9-deck-fullstack.spec.ts:64:9 › D-9 Command Deck + Live/Demo — full stack (live GraphQL) › Virtual Office Live then Demo
+[1A[2K[3/24] [chromium] › tests/e2e/f2-2-recruit-fullstack.spec.ts:26:9 › F2-2 recruit (live stack) › register → recruit Kasir → VO roster
+[1A[2K[4/24] [chromium] › tests/e2e/f2-2-recruit-fullstack.spec.ts:74:9 › F2-2 recruit (live stack) › unauthenticated recruit catalog rejected
+[1A[2K[5/24] [chromium] › tests/e2e/f3-1-service-desk-recruit.spec.ts:24:9 › F3-1 Service Desk recruit (live stack) › register → Kasir + Service Desk on recruit catalog and VO
+[1A[2K[6/24] [chromium] › tests/e2e/f3-1-service-desk-recruit.spec.ts:74:9 › F3-1 Service Desk recruit (live stack) › unauthenticated recruit status rejected
+[1A[2K[7/24] [chromium] › tests/e2e/ui-wave-1-recruit-deeplinks.spec.ts:12:9 › UI wave 1 — recruit post-success links › recruit page loads catalog and coming-soon SKUs
+[1A[2K[8/24] [chromium] › tests/e2e/ui-wave-1-recruit-deeplinks.spec.ts:20:9 › UI wave 1 — recruit post-success links › documented module hrefs are under /admin
+[1A[2K[9/24] [chromium] › tests/e2e/ui-wave-1-vo-inspector.spec.ts:10:9 › UI wave 1 — VO agent inspector (after) › Service Desk shows queue copy; Kasir shows WA metrics + connect link
+[1A[2K[10/24] [chromium] › tests/e2e/ui-wave-2-admin-buttons.spec.ts:7:9 › UI wave 2 — admin buttons & honesty › Agentic OS Settings exposes UI demo mode toggle
+[1A[2K[11/24] [chromium] › tests/e2e/ui-wave-2-admin-buttons.spec.ts:13:9 › UI wave 2 — admin buttons & honesty › Label Studio Open is disabled while UI demo mode is on
+[1A[2K[12/24] [chromium] › tests/e2e/ui-wave-2-admin-buttons.spec.ts:24:9 › UI wave 2 — admin buttons & honesty › DevOps GitLab refresh button is wired
+[1A[2K[13/24] [chromium] › tests/e2e/ui-wave-2-admin-buttons.spec.ts:31:9 › UI wave 2 — admin buttons & honesty › connect-wa wizard loads primary CTA copy
+[1A[2K[14/24] [chromium] › tests/e2e/ui-wave-2-admin-buttons.spec.ts:37:9 › UI wave 2 — admin buttons & honesty › BMS dashboard shows live or sample honesty banner
+[1A[2K[15/24] [chromium] › tests/e2e/ui-wave-2-admin-buttons.spec.ts:45:9 › UI wave 2 — admin buttons & honesty › Web Crawler jobs table exposes Stop for queued/running rows
+[1A[2K[16/24] [chromium] › tests/e2e/ui-wave-2-admin-buttons.spec.ts:56:9 › UI wave 2 — admin buttons & honesty › screenshot — AOS Settings UI demo toggle (after)
+[1A[2K[17/24] [chromium] › tests/e2e/ui-wave-2-admin-buttons.spec.ts:66:9 › UI wave 2 — admin buttons & honesty › screenshot — BMS honesty banner (after)
+[1A[2K[18/24] [chromium] › tests/e2e/ui-wave-3-admin-buttons.spec.ts:7:9 › UI wave 3 — admin buttons & honesty › dataset embed MinIO refresh is wired
+[1A[2K[19/24] [chromium] › tests/e2e/ui-wave-3-admin-buttons.spec.ts:14:9 › UI wave 3 — admin buttons & honesty › BMS shows live or sample honesty banner
+[1A[2K[20/24] [chromium] › tests/e2e/ui-wave-3-admin-buttons.spec.ts:26:9 › UI wave 3 — admin buttons & honesty › SCADA overview refresh loads honesty banner
+[1A[2K[21/24] [chromium] › tests/e2e/ui-wave-3-admin-buttons.spec.ts:35:9 › UI wave 3 — admin buttons & honesty › SCADA trends export CSV button responds
+[1A[2K[22/24] [chromium] › tests/e2e/ui-wave-4-admin-buttons.spec.ts:7:9 › UI wave 4 — metrics & historian honesty › platform metrics shows Demo tag and empty state without Prometheus
+[1A[2K[23/24] [chromium] › tests/e2e/ui-wave-4-admin-buttons.spec.ts:18:9 › UI wave 4 — metrics & historian honesty › SCADA trends shows live or sample historian banner
+[1A[2K[24/24] [chromium] › tests/e2e/ui-wave-4-admin-buttons.spec.ts:28:9 › UI wave 4 — metrics & historian honesty › BMS energy shows sample data banner
+[1A[2K  24 passed (1.7m)

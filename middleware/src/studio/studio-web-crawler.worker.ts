@@ -67,6 +67,9 @@ export class StudioWebCrawlerWorker {
 
     private async advance(job: Record<string, unknown>): Promise<void> {
         const id = String(job.id);
+        const fresh = await this.svc.getJobRow(id);
+        if (String(fresh.status) !== 'running') return;
+
         const config = (job.config ?? {}) as CrawlConfig;
         const rps = Math.min(20, Math.max(1, Number(config.rps ?? 5)));
         const step = Math.max(2, Math.floor(rps / 2));

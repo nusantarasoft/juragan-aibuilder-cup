@@ -1,4 +1,4 @@
-import { Resolver, Query } from '@nestjs/graphql';
+import { Resolver, Query, Args } from '@nestjs/graphql';
 import { ObjectType, Field, Int, Float } from '@nestjs/graphql';
 import { InfrastructureService } from './infrastructure.service';
 
@@ -58,7 +58,7 @@ export class InfrastructureResolver {
     constructor(private readonly infraService: InfrastructureService) {}
 
     @Query(() => SystemInfo, { name: 'systemInfo' })
-    async getSystemInfo(): Promise<SystemInfo> {
+    async getSystemInfo(@Args('tenantId', { nullable: true }) _tenantId?: string): Promise<SystemInfo> {
         return this.infraService.getSystemInfo() as any;
     }
 

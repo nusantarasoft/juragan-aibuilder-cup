@@ -25,7 +25,7 @@ export default function InstalledIntegrationsPage() {
     const totalErrors = INSTALLED.reduce((s, i) => s + i.errors, 0);
 
     return (
-        <CMSLayout title={<AuroraText colors={[themeColor, '#10b981', '#8b5cf6']}>Installed Integrations</AuroraText>} subTitle={<DecryptedText text="Monitor active connections, sync status & error rates" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="r" icon={<ReloadOutlined />} />]}>
+        <CMSLayout title={<AuroraText colors={[themeColor, '#10b981', '#8b5cf6']}>Installed Integrations</AuroraText>} subTitle={<DecryptedText text="Monitor active connections, sync status & error rates" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="r" icon={<ReloadOutlined />} onClick={() => window.location.reload()} title="Refresh page" />]}>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <Row gutter={[12, 12]}>
                     {[{ t: 'Installed', v: INSTALLED.length, c: '#3b82f6', i: <ApiOutlined /> }, { t: 'Connected', v: INSTALLED.filter(i => i.status === 'connected').length, c: '#10b981', i: <CheckCircleOutlined /> }, { t: 'Total Requests', v: totalRequests.toLocaleString(), c: '#8b5cf6', i: <SyncOutlined /> }, { t: 'Errors', v: totalErrors, c: totalErrors > 50 ? '#ef4444' : '#f59e0b', i: <WarningOutlined /> }].map((s, i) => (

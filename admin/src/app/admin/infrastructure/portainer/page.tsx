@@ -38,7 +38,7 @@ export default function PortainerPage() {
     const totalSize = IMAGES.reduce((s, i) => s + parseFloat(i.size), 0);
 
     return (
-        <CMSLayout title={<AuroraText colors={[themeColor, '#13bee4', '#10b981']}>Portainer</AuroraText>} subTitle={<DecryptedText text="Container management, stacks, images & volumes" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="o" icon={<LinkOutlined />} type="primary" onClick={() => window.open('http://localhost:9090', '_blank')}>Open Portainer</Button>, <Button key="r" icon={<ReloadOutlined />} />]}>
+        <CMSLayout title={<AuroraText colors={[themeColor, '#13bee4', '#10b981']}>Portainer</AuroraText>} subTitle={<DecryptedText text="Container management, stacks, images & volumes" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="o" icon={<LinkOutlined />} type="primary" onClick={() => window.open('http://localhost:9090', '_blank')}>Open Portainer</Button>, <Button key="r" icon={<ReloadOutlined />} onClick={() => window.location.reload()} title="Refresh page" />]}>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <Row gutter={[12, 12]}>
                     {[{ t: 'Endpoints', v: ENDPOINTS.length, c: '#3b82f6', i: <CloudServerOutlined /> }, { t: 'Containers', v: ENDPOINTS[0].containers, c: '#10b981', i: <DeploymentUnitOutlined /> }, { t: 'Images', v: totalImages, c: '#8b5cf6', i: <ContainerOutlined /> }, { t: 'Volumes', v: VOLUMES.length, c: '#f59e0b', i: <HddOutlined /> }].map((s, i) => (

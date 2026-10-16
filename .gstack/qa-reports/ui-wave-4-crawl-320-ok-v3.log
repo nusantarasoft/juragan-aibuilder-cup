@@ -1,0 +1,20 @@
+
+Running 1 test using 1 worker
+
+[1A[2K(node:586393) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:586393) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[1/1] [chromium] › tests/e2e/ui-wave-4-admin-route-crawl.spec.ts:22:5 › crawl menuConfig + VO routes — console + primary buttons
+[1A[2K  Slow test file: [chromium] › tests/e2e/ui-wave-4-admin-route-crawl.spec.ts (18.9m)
+  Consider running tests from slow files in parallel. See: https://playwright.dev/docs/test-parallel
+  1 passed (18.9m)
+
+To open last HTML report run:
+
+  npx playwright show-report
+

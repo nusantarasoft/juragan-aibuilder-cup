@@ -96,7 +96,7 @@ export default function HrDashboardPage() {
             setEmployees((emp.hrEmployees || []).sort((a: any, b: any) => new Date(b.hireDate).getTime() - new Date(a.hireDate).getTime()).slice(0, 5));
             setDepartments(dept.hrDepartments || []);
             setAllEmps(all.hrEmployees || []);
-        }).catch(console.error).finally(() => setLoading(false));
+        }).catch(() => undefined).finally(() => setLoading(false));
     }, []);
 
     const fmt = (v: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(v);

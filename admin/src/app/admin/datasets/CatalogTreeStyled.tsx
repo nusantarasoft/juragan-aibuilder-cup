@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Tree, Input, Button, Card, Space, ConfigProvider, theme, message, Tag, Dropdown, Modal } from 'antd';
 import type { TreeProps, MenuProps } from 'antd';
 import {
@@ -50,9 +50,14 @@ export default function CatalogTree({ onSelect, onCreateSpace, onCreateVDS, onAd
     const [loading, setLoading] = useState(false);
     const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
     const { token } = theme.useToken();
+    const mountedRef = useRef(true);
 
     useEffect(() => {
+        mountedRef.current = true;
         loadData();
+        return () => {
+            mountedRef.current = false;
+        };
     }, [refreshTrigger]);
 
     const loadData = async () => {
@@ -62,6 +67,7 @@ export default function CatalogTree({ onSelect, onCreateSpace, onCreateVDS, onAd
                 dremioService.getCatalog(),
                 dremioService.getSources()
             ]);
+            if (!mountedRef.current) return;
 
             const groups: typeof treeGroups = {
                 spaces: [],
@@ -117,11 +123,12 @@ export default function CatalogTree({ onSelect, onCreateSpace, onCreateVDS, onAd
             });
 
             setTreeGroups(groups);
-        } catch (error) {
-            console.error("Failed to load catalog tree:", error);
-            message.error("Failed to load catalog");
+        } catch {
+            if (!mountedRef.current) return;
+            setTreeGroups({ spaces: [], lakehouse: [], storage: [], databases: [] });
+            message.warning("Catalog unavailable (Dremio not connected)");
         } finally {
-            setLoading(false);
+            if (mountedRef.current) setLoading(false);
         }
     };
 

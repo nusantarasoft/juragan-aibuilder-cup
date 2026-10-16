@@ -108,7 +108,7 @@ export default function EmployeesPage() {
         Promise.all([
             gql(EMP_QUERY, { t: DEFAULT_TENANT_ID, search: search || undefined, dept: deptFilter, status: statusFilter }),
             gql(DEPT_QUERY, { t: DEFAULT_TENANT_ID }),
-        ]).then(([e, d]) => { setEmployees(e.hrEmployees || []); setDepartments(d.hrDepartments || []); }).catch(console.error).finally(() => setLoading(false));
+        ]).then(([e, d]) => { setEmployees(e.hrEmployees || []); setDepartments(d.hrDepartments || []); }).catch(() => undefined).finally(() => setLoading(false));
     };
 
     useEffect(() => { load(); }, [search, deptFilter, statusFilter]);

@@ -172,7 +172,7 @@ export default function AuditTrailPage() {
     const circumference = 2 * Math.PI * 54;
 
     return (
-        <CMSLayout title={<AuroraText colors={[themeColor, '#3b82f6', '#10b981']}>Audit Trail & Compliance</AuroraText>} subTitle={<DecryptedText text="Enterprise security audit logging & compliance dashboard" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="csv" icon={<CloudDownloadOutlined />} size="small" onClick={exportCsv}>Export CSV</Button>, <Button key="r" icon={<ReloadOutlined />} />]}>
+        <CMSLayout title={<AuroraText colors={[themeColor, '#3b82f6', '#10b981']}>Audit Trail & Compliance</AuroraText>} subTitle={<DecryptedText text="Enterprise security audit logging & compliance dashboard" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="csv" icon={<CloudDownloadOutlined />} size="small" onClick={exportCsv}>Export CSV</Button>, <Button key="r" icon={<ReloadOutlined />} onClick={() => window.location.reload()} title="Refresh page" />]}>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 {/* 1. Compliance Score Banner */}
                 <Card size="small" style={{ ...glass, borderTop: `3px solid ${scoreColor}` }}>

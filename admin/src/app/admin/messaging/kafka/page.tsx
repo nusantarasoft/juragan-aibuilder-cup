@@ -31,7 +31,7 @@ export default function KafkaPage() {
     const totalLag = CONSUMERS.reduce((s, c) => s + c.lag, 0);
 
     return (
-        <CMSLayout title={<AuroraText colors={[themeColor, '#231f20', '#06b6d4']}>Apache Kafka</AuroraText>} subTitle={<DecryptedText text="Topic browser, consumer groups & partition lag monitoring" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="o" icon={<LinkOutlined />} type="primary" onClick={() => window.open('http://localhost:8093', '_blank')}>Open Kafka UI</Button>, <Button key="r" icon={<ReloadOutlined />} />]}>
+        <CMSLayout title={<AuroraText colors={[themeColor, '#231f20', '#06b6d4']}>Apache Kafka</AuroraText>} subTitle={<DecryptedText text="Topic browser, consumer groups & partition lag monitoring" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="o" icon={<LinkOutlined />} type="primary" onClick={() => window.open('http://localhost:8093', '_blank')}>Open Kafka UI</Button>, <Button key="r" icon={<ReloadOutlined />} onClick={() => window.location.reload()} title="Refresh page" />]}>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <Row gutter={[12, 12]}>
                     {[{ t: 'Topics', v: TOPICS.length, c: '#3b82f6', i: <DatabaseOutlined /> }, { t: 'Total Messages', v: (totalMessages / 1000).toFixed(0) + 'k', c: '#10b981', i: <ThunderboltOutlined /> }, { t: 'Consumer Groups', v: CONSUMERS.length, c: '#8b5cf6', i: <TeamOutlined /> }, { t: 'Total Lag', v: totalLag, c: totalLag > 100 ? '#f59e0b' : '#10b981', i: <AlertOutlined /> }].map((s, i) => (

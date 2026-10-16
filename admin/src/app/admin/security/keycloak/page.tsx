@@ -30,7 +30,7 @@ export default function KeycloakPage() {
     const totalSessions = REALMS.reduce((s, r) => s + r.sessions, 0);
 
     return (
-        <CMSLayout title={<AuroraText colors={[themeColor, '#ef4444', '#8b5cf6']}>Keycloak SSO</AuroraText>} subTitle={<DecryptedText text="Identity management, SSO sessions & client applications" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="o" icon={<LinkOutlined />} type="primary" onClick={() => window.open('http://localhost:8180', '_blank')}>Open Keycloak</Button>, <Button key="r" icon={<ReloadOutlined />} />]}>
+        <CMSLayout title={<AuroraText colors={[themeColor, '#ef4444', '#8b5cf6']}>Keycloak SSO</AuroraText>} subTitle={<DecryptedText text="Identity management, SSO sessions & client applications" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="o" icon={<LinkOutlined />} type="primary" onClick={() => window.open('http://localhost:8180', '_blank')}>Open Keycloak</Button>, <Button key="r" icon={<ReloadOutlined />} onClick={() => window.location.reload()} title="Refresh page" />]}>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <Row gutter={[12, 12]}>
                     {[{ t: 'Total Users', v: totalUsers, c: '#3b82f6', i: <UserOutlined /> }, { t: 'Active Sessions', v: totalSessions, c: '#10b981', i: <CheckCircleOutlined /> }, { t: 'Client Apps', v: CLIENTS.length, c: '#8b5cf6', i: <SettingOutlined /> }, { t: 'Realms', v: REALMS.length, c: '#f59e0b', i: <GlobalOutlined /> }].map((s, i) => (

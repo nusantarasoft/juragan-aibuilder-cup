@@ -5,7 +5,7 @@ import CMSLayout from "@/components/layout/CMSLayout";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import DecryptedText from "@/components/react-bits/DecryptedText";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
-import { theme, Card, Table, Button, Space, Typography, Tag, Row, Col, Statistic, Progress } from "antd";
+import { theme, Card, Table, Typography, Tag, Row, Col, Statistic, Alert } from "antd";
 import { PoweroffOutlined, DollarOutlined, GlobalOutlined } from "@ant-design/icons";
 import { motion } from "framer-motion";
 
@@ -35,6 +35,13 @@ export default function BmsEnergy() {
             title={<AuroraText>Energy & Sustainability</AuroraText>}
             subTitle={<DecryptedText text="Sub-metering, Costing, and Carbon Tracking" speed={60} />}
         >
+            <Alert
+                type="info"
+                showIcon
+                message="Sample energy data"
+                description="Sub-meter tables below are illustrative until BMS energy meters and bms_energy_readings are wired for this tenant."
+                style={{ marginBottom: 16 }}
+            />
             <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
                 <Col xs={24} md={8}>
                     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>

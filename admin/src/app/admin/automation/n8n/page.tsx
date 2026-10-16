@@ -28,7 +28,7 @@ const EXECUTIONS = [
 export default function N8nPage() {
     const { themeColor } = usePreferencesStore();
     return (
-        <CMSLayout title={<AuroraText colors={[themeColor, '#ff6d5a', '#10b981']}>n8n Workflows</AuroraText>} subTitle={<DecryptedText text="Visual workflow automation — triggers, executions & credentials" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="o" icon={<LinkOutlined />} type="primary" onClick={() => window.open('http://localhost:5678', '_blank')}>Open n8n</Button>, <Button key="r" icon={<ReloadOutlined />} />]}>
+        <CMSLayout title={<AuroraText colors={[themeColor, '#ff6d5a', '#10b981']}>n8n Workflows</AuroraText>} subTitle={<DecryptedText text="Visual workflow automation — triggers, executions & credentials" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="o" icon={<LinkOutlined />} type="primary" onClick={() => window.open('http://localhost:5678', '_blank')}>Open n8n</Button>, <Button key="r" icon={<ReloadOutlined />} onClick={() => window.location.reload()} title="Refresh page" />]}>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <Row gutter={[12, 12]}>
                     {[{ t: 'Active Workflows', v: 12, c: '#3b82f6', i: <RobotOutlined /> }, { t: 'Executions Today', v: 234, c: '#10b981', i: <ThunderboltOutlined /> }, { t: 'Success Rate', v: '97.2%', c: '#8b5cf6', i: <CheckCircleOutlined /> }, { t: 'Credentials', v: 8, c: '#f59e0b', i: <SafetyCertificateOutlined /> }].map((s, i) => (

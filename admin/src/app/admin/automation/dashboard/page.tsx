@@ -36,7 +36,7 @@ export default function AutomationDashboardPage() {
     const passedJobs = JENKINS_JOBS.filter(j => j.status === 'success').length;
 
     return (
-        <CMSLayout title={<AuroraText colors={[themeColor, '#ff6d5a', '#10b981']}>Workflow Automation</AuroraText>} subTitle={<DecryptedText text="n8n workflows, Jenkins pipelines & AWX playbooks" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="r" icon={<ReloadOutlined />} />]}>
+        <CMSLayout title={<AuroraText colors={[themeColor, '#ff6d5a', '#10b981']}>Workflow Automation</AuroraText>} subTitle={<DecryptedText text="n8n workflows, Jenkins pipelines & AWX playbooks" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="r" icon={<ReloadOutlined />} onClick={() => window.location.reload()} title="Refresh page" />]}>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <Row gutter={[12, 12]}>
                     {[{ t: 'Active Workflows', v: activeWorkflows, c: '#10b981', i: <PlayCircleOutlined /> }, { t: 'Total Executions', v: totalExecs.toLocaleString(), c: '#3b82f6', i: <ThunderboltOutlined /> }, { t: 'Jenkins Jobs', v: `${passedJobs}/${JENKINS_JOBS.length}`, c: '#8b5cf6', i: <RocketOutlined /> }, { t: 'AWX Playbooks', v: AWX_PLAYBOOKS.length, c: '#f59e0b', i: <ToolOutlined /> }].map((s, i) => (

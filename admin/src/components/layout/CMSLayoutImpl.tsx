@@ -70,6 +70,7 @@ import menuConfig from "@/config/menuConfig";
 import GlitchText from "@/components/react-bits/GlitchText";
 import { usePreferencesStore, hexToRgb } from "@/store/usePreferencesStore";
 import { useAuthStore } from "@/store/useAuthStore";
+import { filterMenuTreeForAppRole } from "@/lib/tenantOwnerMenu";
 import NotificationBell from "@/components/common/NotificationBell";
 import LanguageSwitcher from "@/components/layout/LanguageSwitcher";
 import LiveCursors from "@/components/common/LiveCursors";
@@ -305,6 +306,10 @@ const BREADCRUMB_LABELS: Record<string, string> = {
     "agent-builder": "Agent Builder",
     "knowledge-graph": "Knowledge Graph",
     "label-studio": "Label Studio",
+    "connect-wa": "Hubungkan WhatsApp",
+    "my-agents": "Karyawan AI saya",
+    usage: "Pemakaian",
+    recruit: "Rekrut karyawan",
     "guide-flows": "Guide Flows",
     settings: "Settings",
     playground: "Playground",
@@ -460,38 +465,23 @@ export default function CMSLayoutImpl({
         return keys;
     });
 
-    // Starrring logic
-    const GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_URL || "http://127.0.0.1:4001/graphql";
+    const authUserId = useAuthStore((s) => s.user?.id);
 
     const fetchStars = React.useCallback(async () => {
+        if (!authUserId) return;
         try {
-            const response = await fetch(GRAPHQL_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    query: `
-                        query GetUserStars($userId: String!) {
-                            userStars(userId: $userId) {
-                                id
-                                path
-                                name
-                                icon
-                            }
-                        }
-                    `,
-                    variables: { userId: "current-user-id" },
-                }),
-            });
-            
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            const result = await response.json();
-            if (result.data?.userStars) {
-                setStarred(result.data.userStars);
-            }
-        } catch (e) {
-            console.error("Failed to fetch stars", e);
+            const { gql } = await import('@/lib/graphql');
+            const result = await gql<{ userStars: { id: string; path: string; name: string; icon?: string }[] }>(
+                `query GetUserStars($userId: String!) {
+                    userStars(userId: $userId) { id path name icon }
+                }`,
+                { userId: authUserId },
+            );
+            if (result.userStars) setStarred(result.userStars);
+        } catch {
+            /* stars are optional chrome */
         }
-    }, [setStarred]);
+    }, [authUserId, setStarred]);
 
     React.useEffect(() => {
         if (typeof window !== "undefined") {
@@ -503,37 +493,25 @@ export default function CMSLayoutImpl({
         const menuItem = findMenuItemByPath(menuConfig.route.routes, pathname);
         const name = (typeof title === 'string' ? title : menuItem?.name) || "Untitled Page";
         
+        if (!authUserId) {
+            message.warning("Sign in to save favorites");
+            return;
+        }
         try {
             const isStarredNow = starredItems.some(i => i.path === pathname);
-            const response = await fetch(GRAPHQL_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    query: `
-                        mutation ToggleStar($userId: String!, $input: ToggleStarInput!) {
-                            toggleStar(userId: $userId, input: $input) {
-                                id
-                                path
-                                name
-                                icon
-                            }
-                        }
-                    `,
-                    variables: {
-                        userId: "current-user-id",
-                        input: {
-                            path: pathname,
-                            name: name,
-                        }
-                    }
-                }),
-            });
-            
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            
+            const { gql } = await import('@/lib/graphql');
+            await gql(
+                `mutation ToggleStar($userId: String!, $input: ToggleStarInput!) {
+                    toggleStar(userId: $userId, input: $input) { id path name icon }
+                }`,
+                {
+                    userId: authUserId,
+                    input: { path: pathname, name },
+                },
+            );
             await fetchStars();
             message.success(isStarredNow ? "Removed from favorites" : "Added to favorites");
-        } catch (e) {
+        } catch {
             message.error("Failed to update favorite");
         }
     };
@@ -1094,18 +1072,7 @@ export default function CMSLayoutImpl({
                                 });
                             };
                             const stripTenantPlatformOnly = (items: any[]): any[] =>
-                                items
-                                    .filter((item) => {
-                                        if (appRole !== "tenant_owner") return true;
-                                        if (item.path === "/admin/ai-studio/umkm") return false;
-                                        return true;
-                                    })
-                                    .map((item) => {
-                                        const next = { ...item };
-                                        if (next.children) next.children = stripTenantPlatformOnly(next.children);
-                                        if (next.routes) next.routes = stripTenantPlatformOnly(next.routes);
-                                        return next;
-                                    });
+                                filterMenuTreeForAppRole(items, appRole);
 
                             return stripTenantPlatformOnly(
                                 attachIcons(menuData).filter(

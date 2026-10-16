@@ -44,4 +44,14 @@ export class StudioWebCrawlerResolver {
         const t = tenantForRead(ctx, tenantId);
         return this.svc.deleteJob(t, id);
     }
+
+    @Mutation(() => StudioWebCrawlJob, { name: 'stopStudioWebCrawlJob' })
+    stopStudioWebCrawlJob(
+        @Context() ctx: Ctx,
+        @Args('id') id: string,
+        @Args('tenantId', optStr) tenantId?: string,
+    ) {
+        const t = tenantForRead(ctx, tenantId);
+        return this.svc.stopJob(t, id);
+    }
 }

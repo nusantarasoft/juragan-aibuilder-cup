@@ -26,6 +26,12 @@ export class UserType {
     @Field(() => String, { nullable: true })
     fullName?: string;
 
+    @Field(() => String, { nullable: true })
+    name?: string;
+
+    @Field(() => String, { nullable: true })
+    profileId?: string;
+
     @Field(() => String)
     role: string;
 
@@ -76,8 +82,13 @@ export class UsersResolver {
     constructor(private usersService: UsersService) {}
 
     @Query(() => [UserType])
-    async users(): Promise<UserType[]> {
-        return this.usersService.findAll();
+    async users(@Args('tenantId', { nullable: true }) _tenantId?: string): Promise<UserType[]> {
+        const rows = await this.usersService.findAll();
+        return rows.map((u) => ({
+            ...u,
+            name: u.fullName || u.email,
+            profileId: (u as any).profileId ?? '',
+        }));
     }
 
     @Query(() => UserType, { nullable: true })

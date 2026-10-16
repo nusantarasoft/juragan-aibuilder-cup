@@ -311,8 +311,7 @@ export async function saveLayout(objects: PlacedObject[], layoutId?: string, war
         // Cache locally for fast reload
         try { localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(objects)); } catch { /* ignore */ }
         return result.id;
-    } catch (err) {
-        console.error('Failed to save layout to backend, caching locally:', err);
+    } catch {
         try { localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(objects)); } catch { /* ignore */ }
         return null;
     }
@@ -332,8 +331,8 @@ export async function loadLayout(warehouseId?: string): Promise<{ objects: Place
             const first = layouts[0];
             return { objects: first.objects, layoutId: first.id };
         }
-    } catch (err) {
-        console.error('Failed to load from backend, trying local cache:', err);
+    } catch {
+        /* backend optional — fall through to local cache */
     }
     // Fallback: try local cache
     try {
@@ -377,8 +376,7 @@ export async function listLayouts(): Promise<SavedLayout[]> {
             rackCount: l.rackCount,
             objects: l.objects,
         }));
-    } catch (err) {
-        console.error('Failed to list layouts:', err);
+    } catch {
         return [];
     }
 }

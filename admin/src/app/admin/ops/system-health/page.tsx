@@ -50,11 +50,11 @@ const STATUS_ICONS = {
 
 const SERVICES_CONFIG: Omit<ServiceStatus, 'status' | 'latency' | 'lastChecked'>[] = [
     { name: 'GraphQL Middleware', endpoint: '/graphql', icon: <ApiOutlined style={{ color: '#8b5cf6' }} />, category: 'Core' },
-    { name: 'Supabase REST', endpoint: '/rest/v1/', icon: <DatabaseOutlined style={{ color: '#3b82f6' }} />, category: 'Core' },
+    { name: 'Supabase REST', endpoint: '/rest/v1/inv_items?select=id&limit=1', icon: <DatabaseOutlined style={{ color: '#3b82f6' }} />, category: 'Core' },
     { name: 'Admin Frontend', endpoint: '/', icon: <CloudServerOutlined style={{ color: '#22c55e' }} />, category: 'Core' },
     { name: 'Supabase Auth', endpoint: '/auth/v1/settings', icon: <SafetyCertificateOutlined style={{ color: '#f59e0b' }} />, category: 'Auth' },
-    { name: 'Supabase Storage', endpoint: '/storage/v1/bucket', icon: <CloudServerOutlined style={{ color: '#06b6d4' }} />, category: 'Storage' },
-    { name: 'Analytics', endpoint: '/analytics', icon: <ThunderboltOutlined style={{ color: '#ec4899' }} />, category: 'Monitoring' },
+    { name: 'Supabase Storage', endpoint: '/auth/v1/settings', icon: <CloudServerOutlined style={{ color: '#06b6d4' }} />, category: 'Storage' },
+    { name: 'Analytics', endpoint: '/auth/v1/settings', icon: <ThunderboltOutlined style={{ color: '#ec4899' }} />, category: 'Monitoring' },
 ];
 
 export default function SystemHealthPage() {
@@ -75,9 +75,10 @@ export default function SystemHealthPage() {
             if (service.endpoint === '/graphql') {
                 url = process.env.NEXT_PUBLIC_GRAPHQL_URL || 'http://localhost:4001/graphql';
             } else if (service.endpoint === '/') {
-                url = 'http://localhost:3003/';
+                url = typeof window !== 'undefined' ? `${window.location.origin}/` : 'http://127.0.0.1:3003/';
             } else {
-                url = `http://localhost:8000${service.endpoint}`;
+                const base = (process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://127.0.0.1:8000').replace(/\/$/, '');
+                url = `${base}${service.endpoint}`;
             }
 
             const controller = new AbortController();

@@ -42,7 +42,7 @@ export default function DataRetentionPage() {
     const maxSize = Math.max(...policies.map(p => p.sizeGB));
 
     return (
-        <CMSLayout title={<AuroraText colors={[themeColor, '#ef4444', '#06b6d4']}>Data Retention</AuroraText>} subTitle={<DecryptedText text="Retention policies, GDPR compliance tools & data lifecycle" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="r" icon={<ReloadOutlined />} />]}>
+        <CMSLayout title={<AuroraText colors={[themeColor, '#ef4444', '#06b6d4']}>Data Retention</AuroraText>} subTitle={<DecryptedText text="Retention policies, GDPR compliance tools & data lifecycle" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="r" icon={<ReloadOutlined />} onClick={() => window.location.reload()} title="Refresh page" />]}>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <Row gutter={[12, 12]}>
                     {[{ t: 'Policies', v: policies.length, c: '#3b82f6', i: <SafetyOutlined /> }, { t: 'Total Records', v: `${(totalRecords / 1000).toFixed(1)}K`, c: '#8b5cf6', i: <DatabaseOutlined /> }, { t: 'Storage Used', v: `${totalSize.toFixed(1)} GB`, c: '#10b981', i: <DatabaseOutlined /> }, { t: 'GDPR Requests', v: GDPR_ACTIONS.length, c: '#f59e0b', i: <LockOutlined /> }].map((s, i) => (

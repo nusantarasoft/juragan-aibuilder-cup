@@ -30,7 +30,7 @@ export default function MattermostPage() {
     const totalPosts = TEAMS.reduce((s, t) => s + t.posts, 0);
 
     return (
-        <CMSLayout title={<AuroraText colors={[themeColor, '#0058cc', '#10b981']}>Mattermost</AuroraText>} subTitle={<DecryptedText text="Team messaging, channel management & collaboration analytics" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="o" icon={<LinkOutlined />} type="primary" onClick={() => window.open('http://localhost:8065', '_blank')}>Open Mattermost</Button>, <Button key="r" icon={<ReloadOutlined />} />]}>
+        <CMSLayout title={<AuroraText colors={[themeColor, '#0058cc', '#10b981']}>Mattermost</AuroraText>} subTitle={<DecryptedText text="Team messaging, channel management & collaboration analytics" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="o" icon={<LinkOutlined />} type="primary" onClick={() => window.open('http://localhost:8065', '_blank')}>Open Mattermost</Button>, <Button key="r" icon={<ReloadOutlined />} onClick={() => window.location.reload()} title="Refresh page" />]}>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <Row gutter={[12, 12]}>
                     {[{ t: 'Teams', v: TEAMS.length, c: '#3b82f6', i: <TeamOutlined /> }, { t: 'Total Members', v: totalMembers, c: '#10b981', i: <CheckCircleOutlined /> }, { t: 'Channels', v: CHANNELS.length, c: '#8b5cf6', i: <MessageOutlined /> }, { t: 'Posts (30d)', v: totalPosts.toLocaleString(), c: '#f59e0b', i: <BarChartOutlined /> }].map((s, i) => (

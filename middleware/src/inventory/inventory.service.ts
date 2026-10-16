@@ -2087,6 +2087,16 @@ IMPORTANT: Return ONLY valid JSON.`;
         return data;
     }
 
+    async getEcomOrderItemsForTenant(tenantId: string) {
+        const { data: orders, error: oErr } = await this.db.from('ecom_orders').select('id').eq('tenant_id', tenantId);
+        if (oErr) throw oErr;
+        const orderIds = (orders || []).map((o: { id: string }) => o.id);
+        if (!orderIds.length) return [];
+        const { data, error } = await this.db.from('ecom_order_items').select('*').in('order_id', orderIds).order('created_at');
+        if (error) throw error;
+        return data || [];
+    }
+
     async addEcomOrderItem(orderId: string, input: {
         itemId?: string; itemName: string; itemSku?: string;
         fulfillmentType?: string; fulfillmentRef?: string;

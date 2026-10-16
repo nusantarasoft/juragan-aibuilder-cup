@@ -33,7 +33,7 @@ export default function VaultPage() {
     const totalEngines = ENGINES.length;
 
     return (
-        <CMSLayout title={<AuroraText colors={[themeColor, '#f59e0b', '#10b981']}>HashiCorp Vault</AuroraText>} subTitle={<DecryptedText text="Secret engines, key-value store & access policies" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="o" icon={<LinkOutlined />} type="primary" onClick={() => window.open('http://localhost:8200', '_blank')}>Open Vault</Button>, <Button key="r" icon={<ReloadOutlined />} />]}>
+        <CMSLayout title={<AuroraText colors={[themeColor, '#f59e0b', '#10b981']}>HashiCorp Vault</AuroraText>} subTitle={<DecryptedText text="Secret engines, key-value store & access policies" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="o" icon={<LinkOutlined />} type="primary" onClick={() => window.open('http://localhost:8200', '_blank')}>Open Vault</Button>, <Button key="r" icon={<ReloadOutlined />} onClick={() => window.location.reload()} title="Refresh page" />]}>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <Row gutter={[12, 12]}>
                     {[{ t: 'Seal Status', v: 'Unsealed', c: '#10b981', i: <CheckCircleOutlined /> }, { t: 'Secret Engines', v: totalEngines, c: '#3b82f6', i: <KeyOutlined /> }, { t: 'Stored Secrets', v: totalSecrets, c: '#8b5cf6', i: <LockOutlined /> }, { t: 'Policies', v: POLICIES.length, c: '#f59e0b', i: <SafetyCertificateOutlined /> }].map((s, i) => (

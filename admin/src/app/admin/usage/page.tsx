@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { MessageCircle, ListTodo, Bot } from "lucide-react";
-import { StudioLiveBanner, StudioLiveModeTag } from "@/components/ai-studio/StudioDemoBanner";
+import { StudioDemoModeTag, StudioLiveBanner, StudioLiveModeTag } from "@/components/ai-studio/StudioDemoBanner";
 import { fetchTenantUsageMetrics, type TenantUsageMetrics } from "@/lib/usageMetricsApi";
 import { AosError } from "@/components/agentic-os/lib/api";
 
@@ -41,6 +41,12 @@ export default function UsageMetricsPage() {
     }, [reload]);
 
     const fmt = (n: number | null | undefined) => (n === null || n === undefined ? "—" : n.toLocaleString("id-ID"));
+    const modeTag =
+        !loading && metrics && !metrics.available ? (
+            <StudioDemoModeTag key="mode" />
+        ) : (
+            <StudioLiveModeTag key="mode" />
+        );
 
     return (
         <div className="mx-auto max-w-4xl px-4 py-8">
@@ -49,7 +55,7 @@ export default function UsageMetricsPage() {
                     <p className="text-sm font-medium text-indigo-400">Fase 3 · Pemakaian</p>
                     <h1 className="mt-1 flex flex-wrap items-center gap-2 text-2xl font-bold text-white">
                         Ringkasan pemakaian toko
-                        <StudioLiveModeTag />
+                        {modeTag}
                     </h1>
                     <p className="mt-2 max-w-xl text-sm text-slate-400">
                         Agregat dari antrian tugas AOS, aktivitas WhatsApp Kasir, crawler, builder, dan knowledge graph —
@@ -73,10 +79,16 @@ export default function UsageMetricsPage() {
                 </label>
             </header>
 
-            <StudioLiveBanner
-                title="Data Live"
-                detail="Angka dihitung langsung dari Postgres (tugas, sesi WA, pesan, job crawler, workflow builder, chunk KG)."
-            />
+            {metrics && !metrics.available ? (
+                <div className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+                    {metrics.unavailableReason ?? "Data pemakaian belum tersedia untuk tenant ini — badge Demo sampai agregat Postgres siap."}
+                </div>
+            ) : (
+                <StudioLiveBanner
+                    title="Data Live"
+                    detail="Angka dihitung langsung dari Postgres (tugas, sesi WA, pesan, job crawler, workflow builder, chunk KG)."
+                />
+            )}
 
             {error && (
                 <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{error}</div>

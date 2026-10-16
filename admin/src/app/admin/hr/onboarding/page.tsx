@@ -102,7 +102,7 @@ export default function OnboardingPage() {
                 return diff <= 180;
             }).sort((a: any, b: any) => dayjs(b.hireDate).diff(dayjs(a.hireDate)));
             setEmployees(recent);
-        }).catch(console.error).finally(() => setLoading(false));
+        }).catch(() => undefined).finally(() => setLoading(false));
     }, []);
 
     const completedCount = employees.filter(e => getEmployeeProgress(e.hireDate) === 6).length;

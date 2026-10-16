@@ -30,7 +30,7 @@ export default function DockerRegistryPage() {
     const totalPulls = REPOS.reduce((s, r) => s + r.pulls, 0);
 
     return (
-        <CMSLayout title={<AuroraText colors={[themeColor, '#0db7ed', '#384d54']}>Docker Registry</AuroraText>} subTitle={<DecryptedText text="Container image repository — tags, layers & storage" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="o" icon={<LinkOutlined />} type="primary" onClick={() => window.open('http://localhost:5000', '_blank')}>Open Registry</Button>, <Button key="r" icon={<ReloadOutlined />} />]}>
+        <CMSLayout title={<AuroraText colors={[themeColor, '#0db7ed', '#384d54']}>Docker Registry</AuroraText>} subTitle={<DecryptedText text="Container image repository — tags, layers & storage" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="o" icon={<LinkOutlined />} type="primary" onClick={() => window.open('http://localhost:5000', '_blank')}>Open Registry</Button>, <Button key="r" icon={<ReloadOutlined />} onClick={() => window.location.reload()} title="Refresh page" />]}>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <Row gutter={[12, 12]}>
                     {[{ t: 'Repositories', v: REPOS.length, c: '#3b82f6', i: <DatabaseOutlined /> }, { t: 'Tags', v: IMAGES.length, c: '#10b981', i: <TagsOutlined /> }, { t: 'Total Size', v: '2.5 GB', c: '#8b5cf6', i: <HddOutlined /> }, { t: 'Pulls (24h)', v: totalPulls, c: '#f59e0b', i: <CloudDownloadOutlined /> }].map((s, i) => (
