@@ -16,7 +16,7 @@ Design reference: [docs/design/f2-1-tenant-onboarding.md](../design/f2-1-tenant-
 |---|--------|----------------|
 | 1 | Code on target branch | `master` includes `e6424f2` (F2-1) |
 | 2 | DB migrations applied | `20261015120000_f2_1_tenant_onboarding.sql` (and prior) applied on prod Postgres |
-| 3 | Middleware env — captcha | See §2; **`nsoft3-middleware` must start** (fail-closed on bad config) |
+| 3 | Middleware env — captcha | See §2; **`nsoft3-middleware` must start** (forbidden bypass flags fail-closed; missing provider secrets soft-start until configured) |
 | 4 | Auth env — real email | See §3; **`ENABLE_EMAIL_AUTOCONFIRM=false`** |
 | 5 | SMTP delivers | Confirmation email received at a real inbox (not Mailpit/fake only) |
 | 6 | Admin `/register` | Turnstile widget renders when `mode=turnstile` + site key present |
@@ -25,9 +25,9 @@ Design reference: [docs/design/f2-1-tenant-onboarding.md](../design/f2-1-tenant-
 
 ---
 
-## 2. Captcha — middleware production `.env` (startup fail-closed)
+## 2. Captcha — middleware production `.env`
 
-On boot, `CaptchaService.onModuleInit()` calls `assertOnboardingProductionConfig()` when `NODE_ENV=production`. **Missing or forbidden values prevent middleware from starting.**
+On boot, `CaptchaService.onModuleInit()` calls `assertOnboardingProductionBootConfig()` when `NODE_ENV=production`. **Forbidden bypass values prevent middleware from starting.** Missing `TURNSTILE_SECRET_KEY` / `HCAPTCHA_SECRET` allows boot but `/register` stays closed until configured (see [release-f2-prod-readiness.md](release-f2-prod-readiness.md) §2.1).
 
 ### Required (pick one provider)
 

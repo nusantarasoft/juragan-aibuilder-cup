@@ -2,29 +2,38 @@ import {
     BadRequestException,
     ForbiddenException,
     Injectable,
+    Logger,
     OnModuleInit,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import {
-    assertOnboardingProductionConfig,
+    assertOnboardingProductionBootConfig,
     isCaptchaDisabled,
     isDevCaptchaAllowed,
+    isOnboardingCaptchaProviderConfigured,
     isProductionNode,
 } from './onboarding-env';
 
 @Injectable()
 export class CaptchaService implements OnModuleInit {
+    private readonly logger = new Logger(CaptchaService.name);
+
     constructor(private readonly config: ConfigService) {}
 
     onModuleInit(): void {
-        assertOnboardingProductionConfig(this.config);
-        if (isProductionNode(this.config)) {
-            const secret = (this.config.get('ONBOARDING_CAPTCHA_SECRET') ?? '').toString().trim();
-            if (secret === 'f2-1-dev-captcha') {
-                throw new Error('ONBOARDING_CAPTCHA_SECRET must not use the dev default in production');
-            }
+        assertOnboardingProductionBootConfig(this.config);
+        if (isProductionNode(this.config) && !isOnboardingCaptchaProviderConfigured(this.config)) {
+            this.logger.warn(
+                'F2-1 onboarding captcha is NOT configured (missing TURNSTILE_SECRET_KEY and HCAPTCHA_SECRET). ' +
+                    'Middleware will start, but registerTenant and captcha verification will reject requests until secrets are set.',
+            );
         }
+    }
+
+    isProviderConfigured(): boolean {
+        if (!isProductionNode(this.config)) return true;
+        return isOnboardingCaptchaProviderConfigured(this.config);
     }
 
     private captchaSecret(): string {
@@ -53,9 +62,12 @@ export class CaptchaService implements OnModuleInit {
             .trim();
     }
 
-    providerMode(): 'turnstile' | 'hcaptcha' | 'dev' | 'disabled' {
+    providerMode(): 'turnstile' | 'hcaptcha' | 'dev' | 'disabled' | 'unavailable' {
         if (isCaptchaDisabled(this.config)) return 'disabled';
         if (isProductionNode(this.config)) {
+            if (!isOnboardingCaptchaProviderConfigured(this.config)) {
+                return 'unavailable';
+            }
             if ((this.config.get('TURNSTILE_SECRET_KEY') ?? '').toString().trim()) {
                 return 'turnstile';
             }
@@ -74,6 +86,9 @@ export class CaptchaService implements OnModuleInit {
                 throw new BadRequestException('Captcha verification required');
             }
             return;
+        }
+        if (isProductionNode(this.config) && !isOnboardingCaptchaProviderConfigured(this.config)) {
+            throw new BadRequestException('Onboarding captcha is not configured');
         }
         const raw = (token ?? '').trim();
         if (!raw) throw new BadRequestException('Captcha verification required');

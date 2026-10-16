@@ -1,7 +1,7 @@
 import { ConfigService } from '@nestjs/config';
 import { ServiceUnavailableException } from '@nestjs/common';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { assertWaOtpProductionConfig } from './onboarding-env';
+import { assertWaOtpProductionBootConfig } from './onboarding-env';
 import { WaOtpService, resetWaOtpForTests } from './wa-otp.service';
 import type { WaOtpOutboundService } from './wa-otp-outbound.service';
 
@@ -23,16 +23,24 @@ describe('WaOtpService', () => {
 
     it('blocks production startup when WA_OTP_MOCK=true', () => {
         expect(() =>
-            assertWaOtpProductionConfig(
+            assertWaOtpProductionBootConfig(
                 configMap({ NODE_ENV: 'production', WA_OTP_MOCK: 'true', WA_OTP_SECRET: 'prod-secret' }),
             ),
         ).toThrow(/WA_OTP_MOCK must not be set in production/);
     });
 
-    it('blocks production startup when WA_OTP_SECRET missing', () => {
+    it('allows production boot when WA_OTP_SECRET missing', () => {
         expect(() =>
-            assertWaOtpProductionConfig(configMap({ NODE_ENV: 'production', WA_OTP_SECRET: '' })),
-        ).toThrow(/WA_OTP_SECRET must be set/);
+            assertWaOtpProductionBootConfig(configMap({ NODE_ENV: 'production', WA_OTP_SECRET: '' })),
+        ).not.toThrow();
+    });
+
+    it('rejects OTP request in production when WA_OTP_SECRET missing', async () => {
+        const outbound = outboundMock();
+        const otp = new WaOtpService(configMap({ NODE_ENV: 'production' }), outbound);
+        otp.onModuleInit();
+        await expect(otp.requestOtp(STORE, PHONE, '1.1.1.1')).rejects.toThrow(/WA OTP is not configured/);
+        expect(outbound.sendOwnerOtp).not.toHaveBeenCalled();
     });
 
     it('production ignores mock flag — no mockCode even if WA_OTP_MOCK set in config getter', async () => {
@@ -70,8 +78,8 @@ describe('WaOtpService', () => {
         expect(outbound.sendOwnerOtp).toHaveBeenCalledOnce();
     });
 
-    it('onModuleInit enforces production secret', () => {
+    it('onModuleInit succeeds in production without WA_OTP_SECRET', () => {
         const otp = new WaOtpService(configMap({ NODE_ENV: 'production' }), outboundMock());
-        expect(() => otp.onModuleInit()).toThrow(/WA_OTP_SECRET/);
+        expect(() => otp.onModuleInit()).not.toThrow();
     });
 });

@@ -1,7 +1,7 @@
 # F2 release — Production readiness (F2-1 + F2-2 + F2-3)
 
 **Status:** Ops runbook · **Backlog:** F2-1 / F2-2 / F2-3 · **Owner:** PO-NS3  
-**Updated:** 2026-10-15  
+**Updated:** 2026-10-16  
 **Scope:** Single pre-deploy / post-migrate checklist for tenant self-serve onboarding, Kasir recruit, and shared-inbox WA connect. **Do not deploy** until Akbar approves and this checklist is green.
 
 **Code gate:** `master` at or after **`d0ec587`** (F2-3 [#48](https://github.com/nusantarasoft/nusantarasoft-3/pull/48)), which includes F2-2 @ `144a8ad` ([#46](https://github.com/nusantarasoft/nusantarasoft-3/pull/46)) and F2-1 @ `e6424f2` ([#42](https://github.com/nusantarasoft/nusantarasoft-3/pull/42)).
@@ -20,7 +20,7 @@ Deploy gate (separate approval): [docs/deploy-master-production.md](../deploy-ma
 |---|--------|----------------|
 | 1 | Code on target branch | `master` ≥ `d0ec587` (F2-1 + F2-2 + F2-3) |
 | 2 | DB migrations | All files in §3 applied on prod Postgres (in order) |
-| 3 | Middleware env | Captcha + WA OTP (§2) — **`nsoft3-middleware` must start** (fail-closed) |
+| 3 | Middleware env | **`nsoft3-middleware` must start** in production even if captcha / WA OTP secrets are not set yet (soft boot + loud log); `/register` and F2-3 OTP stay closed until §2 secrets are configured |
 | 4 | Auth env | Real SMTP; **`ENABLE_EMAIL_AUTOCONFIRM=false`** (§2) |
 | 5 | Hermes / shared WA | Platform admin: shared inbox paired at `/admin/ai-studio/ai-gateway` (tenants do **not** QR-pair) |
 | 6 | Legacy Klontong | Post-migrate alias + store rows (§4) |
@@ -30,12 +30,12 @@ Deploy gate (separate approval): [docs/deploy-master-production.md](../deploy-ma
 
 ## 2. Environment variables
 
-### 2.1 Middleware — onboarding captcha (F2-1, startup fail-closed)
+### 2.1 Middleware — onboarding captcha (F2-1)
 
-`CaptchaService.onModuleInit()` → `assertOnboardingProductionConfig()` when `NODE_ENV=production`.
+`CaptchaService.onModuleInit()` → `assertOnboardingProductionBootConfig()` when `NODE_ENV=production`: **forbidden bypass flags still block boot**; **missing** `TURNSTILE_SECRET_KEY` / `HCAPTCHA_SECRET` logs a warning and leaves captcha **unavailable** (`onboardingCaptchaConfig.mode=unavailable`; `registerTenant` returns captcha-not-configured).
 
-| Variable | Required in prod | Notes |
-|----------|------------------|--------|
+| Variable | Required for self-serve `/register` | Notes |
+|----------|-------------------------------------|--------|
 | `TURNSTILE_SECRET_KEY` **or** `HCAPTCHA_SECRET` | At least one non-empty | Server-side verify for `/register` |
 | `TURNSTILE_SITE_KEY` or `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | If using Turnstile widget | Exposed via GraphQL `onboardingCaptchaConfig.siteKey` |
 | `ONBOARDING_RATE_LIMIT_MAX` | Optional (default `5`) | Per IP / window |
@@ -49,13 +49,13 @@ Reference: `middleware/src/onboarding/onboarding-env.ts`, `middleware/.env.local
 
 Full tables: [f2-1-prod-readiness.md §2](f2-1-prod-readiness.md).
 
-### 2.2 Middleware — WA owner OTP (F2-3, startup fail-closed)
+### 2.2 Middleware — WA owner OTP (F2-3)
 
-`WaOtpService.onModuleInit()` → `assertWaOtpProductionConfig()` when `NODE_ENV=production`.
+`WaOtpService.onModuleInit()` → `assertWaOtpProductionBootConfig()` when `NODE_ENV=production`: **`WA_OTP_MOCK` still blocks boot**; **missing** `WA_OTP_SECRET` logs a warning and OTP mutations return **WA OTP is not configured**.
 
-| Variable | Production | Notes |
-|----------|------------|--------|
-| `WA_OTP_SECRET` | **Required** (non-empty, not `f2-3-dev-wa-otp`) | HMAC pepper for pending OTP hashes |
+| Variable | Required for F2-3 connect flow | Notes |
+|----------|--------------------------------|--------|
+| `WA_OTP_SECRET` | Non-empty, not `f2-3-dev-wa-otp` | HMAC pepper for pending OTP hashes |
 | `WA_OTP_MOCK` | **Must be unset / false** | QA only — returns `mockCode`, skips Hermes |
 
 Production OTP is sent **to owner phone only** via shared Hermes line (`WaOtpOutboundService`).

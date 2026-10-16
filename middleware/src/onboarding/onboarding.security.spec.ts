@@ -32,7 +32,19 @@ describe('F2-1 onboarding security', () => {
                 ONBOARDING_CAPTCHA_SECRET: 'f2-1-dev-captcha',
             }),
         );
-        expect(() => captcha.onModuleInit()).toThrow(/ONBOARDING_CAPTCHA_SECRET/);
+        expect(() => captcha.onModuleInit()).toThrow(/dev default/);
+    });
+
+    it('production boot succeeds without captcha provider secrets', () => {
+        const captcha = new CaptchaService(configMap({ NODE_ENV: 'production' }));
+        expect(() => captcha.onModuleInit()).not.toThrow();
+        expect(captcha.providerMode()).toBe('unavailable');
+    });
+
+    it('register captcha verify fails clearly when provider not configured', async () => {
+        const captcha = new CaptchaService(configMap({ NODE_ENV: 'production' }));
+        captcha.onModuleInit();
+        await expect(captcha.verifyAsync('any-token')).rejects.toThrow(/not configured/);
     });
 
     it('getTrustedClientIp uses req.ip not raw X-Forwarded-For', () => {

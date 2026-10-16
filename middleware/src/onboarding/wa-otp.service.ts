@@ -9,7 +9,12 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { createHash, randomInt } from 'crypto';
 import { checkOnboardingRateLimit, resetOnboardingRateLimitsForTests } from './onboarding-rate-limit';
-import { assertWaOtpProductionConfig, isProductionNode } from './onboarding-env';
+import {
+    assertWaOtpProductionBootConfig,
+    DEV_WA_OTP_SECRET,
+    isProductionNode,
+    isWaOtpSecretConfigured,
+} from './onboarding-env';
 import { WaOtpOutboundService } from './wa-otp-outbound.service';
 
 type PendingOtp = {
@@ -19,8 +24,6 @@ type PendingOtp = {
 };
 
 const pending = new Map<string, PendingOtp>();
-
-const DEV_OTP_SECRET = 'f2-3-dev-wa-otp';
 
 export type WaOtpRequestResult = {
     delivery: 'mock' | 'wa';
@@ -49,7 +52,19 @@ export class WaOtpService implements OnModuleInit {
     ) {}
 
     onModuleInit(): void {
-        assertWaOtpProductionConfig(this.config);
+        assertWaOtpProductionBootConfig(this.config);
+        if (isProductionNode(this.config) && !isWaOtpSecretConfigured(this.config)) {
+            this.logger.warn(
+                'F2-3 WA owner OTP is NOT configured (missing WA_OTP_SECRET). ' +
+                    'Middleware will start, but requestOwnerWaOtp / verifyOwnerWaOtp will reject until WA_OTP_SECRET is set.',
+            );
+        }
+    }
+
+    private assertWaOtpAvailable(): void {
+        if (isProductionNode(this.config) && !isWaOtpSecretConfigured(this.config)) {
+            throw new ServiceUnavailableException('WA OTP is not configured');
+        }
     }
 
     isMockMode(): boolean {
@@ -66,7 +81,7 @@ export class WaOtpService implements OnModuleInit {
         if (isProductionNode(this.config)) {
             return secret;
         }
-        return secret || DEV_OTP_SECRET;
+        return secret || DEV_WA_OTP_SECRET;
     }
 
     assertRateLimit(storeId: string, phone: string, clientIp: string): void {
@@ -97,6 +112,7 @@ export class WaOtpService implements OnModuleInit {
 
     /** Issue OTP; in production sends via shared NS WA (Hermes) to owner phone only. */
     async requestOtp(storeId: string, phone: string, clientIp: string): Promise<WaOtpRequestResult> {
+        this.assertWaOtpAvailable();
         this.assertRateLimit(storeId, phone, clientIp);
         const code = String(randomInt(100000, 999999));
         const key = `${storeId}:${phone}`;
@@ -122,6 +138,7 @@ export class WaOtpService implements OnModuleInit {
     }
 
     verifyOtp(storeId: string, phone: string, codeRaw: string): void {
+        this.assertWaOtpAvailable();
         this.assertVerifyRateLimit(storeId, phone);
         const code = codeRaw.trim();
         if (!/^\d{6}$/.test(code)) {
