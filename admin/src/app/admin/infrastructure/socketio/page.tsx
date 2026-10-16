@@ -35,7 +35,7 @@ export default function SocketIOPage() {
     const totalEvents = NAMESPACES.reduce((s, n) => s + n.events, 0);
 
     return (
-        <CMSLayout title={<AuroraText colors={[themeColor, '#010101', '#10b981']}>Socket.IO</AuroraText>} subTitle={<DecryptedText text="Realtime communication — clients, rooms & events" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="o" icon={<LinkOutlined />} onClick={() => window.open('http://localhost:8088', '_blank')}>Open Admin UI</Button>, <Button key="r" icon={<ReloadOutlined />} />]}>
+        <CMSLayout title={<AuroraText colors={[themeColor, '#010101', '#10b981']}>Socket.IO</AuroraText>} subTitle={<DecryptedText text="Realtime communication — clients, rooms & events" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="o" icon={<LinkOutlined />} onClick={() => window.open('http://localhost:8088', '_blank')}>Open Admin UI</Button>, <Button key="r" icon={<ReloadOutlined />} onClick={() => window.location.reload()} title="Refresh page" />]}>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <Row gutter={[12, 12]}>
                     {[{ t: 'Namespaces', v: NAMESPACES.length, c: '#3b82f6', i: <NodeIndexOutlined /> }, { t: 'Connections', v: totalConn, c: '#10b981', i: <WifiOutlined /> }, { t: 'Rooms', v: ROOMS.length, c: '#8b5cf6', i: <TeamOutlined /> }, { t: 'Events (1h)', v: totalEvents.toLocaleString(), c: '#f59e0b', i: <ThunderboltOutlined /> }].map((s, i) => (

@@ -84,7 +84,7 @@ export default function PlatformMetricsPage() {
         <CMSLayout 
             title={<AuroraText colors={[themeColor, '#10b981', '#3b82f6']}>Platform Metrics</AuroraText>} 
             subTitle={<DecryptedText text="Real-time analytics, latency, and SLO tracking" animateOn="view" speed={40} maxIterations={15} />} 
-            extra={[<Button key="r" icon={<ReloadOutlined />} type="primary" shape="circle" style={{ background: themeColor, border: 'none' }} />]}
+            extra={[<Button key="r" icon={<ReloadOutlined />} type="primary" shape="circle" style={{ background: themeColor, border: 'none' }} onClick={() => window.location.reload()} title="Refresh page" />]}
         >
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: 24, paddingBottom: 24 }}>
                 

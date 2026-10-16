@@ -44,7 +44,7 @@ export default function PaymentsPage() {
     const maxMethodRev = Math.max(...METHOD_BREAKDOWN.map(m => m.revenue));
 
     return (
-        <CMSLayout title={<AuroraText colors={[themeColor, '#10b981', '#f59e0b']}>Payment Gateway</AuroraText>} subTitle={<DecryptedText text="Payment provider configuration & transaction monitoring" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="r" icon={<ReloadOutlined />} />]}>
+        <CMSLayout title={<AuroraText colors={[themeColor, '#10b981', '#f59e0b']}>Payment Gateway</AuroraText>} subTitle={<DecryptedText text="Payment provider configuration & transaction monitoring" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="r" icon={<ReloadOutlined />} onClick={() => window.location.reload()} title="Refresh page" />]}>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <Row gutter={[12, 12]}>
                     {[{ t: 'Total Transactions', v: totalTx, c: '#3b82f6', i: <ShoppingCartOutlined /> }, { t: 'Total Revenue', v: fmt(totalRev), c: '#10b981', i: <DollarOutlined /> }, { t: 'Active Gateways', v: GATEWAYS.filter(g => g.status === 'active').length, c: '#8b5cf6', i: <CreditCardOutlined /> }, { t: 'Avg Success Rate', v: `${(GATEWAYS.filter(g => g.txCount > 0).reduce((s, g) => s + g.successRate, 0) / Math.max(GATEWAYS.filter(g => g.txCount > 0).length, 1)).toFixed(1)}%`, c: '#06b6d4', i: <ThunderboltOutlined /> }].map((s, i) => (

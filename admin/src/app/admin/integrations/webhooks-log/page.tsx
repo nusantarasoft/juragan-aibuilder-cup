@@ -28,7 +28,7 @@ export default function WebhooksLogPage() {
     const failed = EVENTS.filter(e => e.status === 'failed').length;
 
     return (
-        <CMSLayout title={<AuroraText colors={[themeColor, '#f59e0b', '#ef4444']}>Webhook Event Log</AuroraText>} subTitle={<DecryptedText text="Inbound & outbound webhook events — delivery status & payload viewer" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="r" icon={<ReloadOutlined />} />]}>
+        <CMSLayout title={<AuroraText colors={[themeColor, '#f59e0b', '#ef4444']}>Webhook Event Log</AuroraText>} subTitle={<DecryptedText text="Inbound & outbound webhook events — delivery status & payload viewer" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="r" icon={<ReloadOutlined />} onClick={() => window.location.reload()} title="Refresh page" />]}>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <Row gutter={[12, 12]}>
                     {[{ t: 'Total Events', v: EVENTS.length, c: '#3b82f6', i: <ApiOutlined /> }, { t: 'Delivered', v: delivered, c: '#10b981', i: <CheckCircleOutlined /> }, { t: 'Failed', v: failed, c: '#ef4444', i: <CloseCircleOutlined /> }, { t: 'Inbound', v: EVENTS.filter(e => e.direction === 'inbound').length, c: '#8b5cf6', i: <InboxOutlined /> }].map((s, i) => (

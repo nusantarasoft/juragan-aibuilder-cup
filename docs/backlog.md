@@ -46,8 +46,10 @@ Rule: one DOING task at Cursor at a time (plus deploy). Gate: scope → PR → Q
 (append here)
 - [DONE] D-16 (UI-wave-2 @ `dc8fdd4`) Full Wave 1+2 browser audit on live stack — `.gstack/qa-reports/qa-ui-wave-2-admin-buttons-2026-10-16.md`; Wave 1 specs + `ui-wave-2-admin-buttons.spec.ts`
 - [DONE] D-17 (UI-wave-2) Sidebar **Hubungkan WhatsApp** + wedge links under AI Studio for `tenant_owner` — `menuConfig.tsx`, `tenantOwnerMenu.ts`
-- [TODO] D-19 (UI-wave-2) Remaining embed dashboards (datasets MinIO/Nessie/etc.) still use decorative Refresh icons — wire or remove in a follow-up
-- [TODO] D-20 (UI-wave-2) BMS dashboard still renders hardcoded demo charts when API empty — banner added; prefer real API wiring or empty state
+- [DONE] D-19 (UI-wave-3 @ `5ebe69c`) Embed dashboards Refresh icons wired (`window.location.reload` + title) across datasets, infra, automation, collaboration, audit, tenants, messaging — `.gstack/qa-reports/qa-ui-wave-3-admin-buttons-2026-10-16.md`
+- [DONE] D-20 (UI-wave-3) BMS prefers live API systems/alarms; empty charts when no telemetry; sample banner only when tenant has no BMS rows — seed `20261016000000_bms_scada_qa_tenant_seed.sql`
+- [TODO] D-21 (UI-wave-3) Platform Metrics (`/admin/analytics/metrics`) still shows static SLO/demo endpoint table — needs Prometheus/Loki wiring or explicit Demo tag
+- [TODO] D-22 (UI-wave-3) SCADA/BMS environment trend charts still sample when historian not connected — honesty banners added; live charts follow telemetry API
 - [DONE] D-18 (UI-wave-1) VO inspector before/after — `.gstack/qa-reports/screenshots/ui-wave-1-vo-inspector-*-after.png` (Playwright on live stack, PR #70)
 - [DONE] D-1 (audit #31) Wire VO Live mode to osAgentSource; mockAgentSource only in explicit demo mode  → F1-2
 - [DONE] D-2 (audit #31) Fix misleading "Demo" badge on real DB agents in Agentic OS → F1-4

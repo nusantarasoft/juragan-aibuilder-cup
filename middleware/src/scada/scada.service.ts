@@ -32,8 +32,32 @@ export class ScadaService {
     }
 
     async getActiveAlarms(tenantId: string) {
-        const { data, error } = await this.db.from('scada_alarm_events').select('*').eq('tenant_id', tenantId).eq('status', 'active').order('created_at', { ascending: false });
-        if (error) throw error;
-        return data;
+        const { data: defs, error: defErr } = await this.db
+            .from('scada_alarm_definitions')
+            .select('id, tag_id, name, priority, alarm_type')
+            .eq('tenant_id', tenantId);
+        if (defErr) throw defErr;
+        if (!defs?.length) return [];
+
+        const defById = new Map(defs.map((d) => [d.id, d]));
+        const { data: events, error: evErr } = await this.db
+            .from('scada_alarm_events')
+            .select('*')
+            .in('alarm_id', defs.map((d) => d.id))
+            .is('cleared_at', null)
+            .order('triggered_at', { ascending: false });
+        if (evErr) throw evErr;
+
+        return (events ?? []).map((ev) => {
+            const def = defById.get(ev.alarm_id);
+            return {
+                ...ev,
+                tag_id: def?.tag_id,
+                severity: def?.priority ?? 'medium',
+                message: def?.name ?? def?.alarm_type ?? 'SCADA alarm',
+                status: ev.acknowledged_at ? 'acknowledged' : 'active',
+                created_at: ev.triggered_at,
+            };
+        });
     }
 }

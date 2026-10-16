@@ -33,7 +33,7 @@ export default function NextcloudPage() {
     const activeApps = APPS.filter(a => a.enabled).length;
 
     return (
-        <CMSLayout title={<AuroraText colors={[themeColor, '#0082c9', '#10b981']}>Nextcloud</AuroraText>} subTitle={<DecryptedText text="File sharing, storage quotas & app management" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="o" icon={<LinkOutlined />} type="primary" onClick={() => window.open('http://localhost:8090', '_blank')}>Open Nextcloud</Button>, <Button key="r" icon={<ReloadOutlined />} />]}>
+        <CMSLayout title={<AuroraText colors={[themeColor, '#0082c9', '#10b981']}>Nextcloud</AuroraText>} subTitle={<DecryptedText text="File sharing, storage quotas & app management" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="o" icon={<LinkOutlined />} type="primary" onClick={() => window.open('http://localhost:8090', '_blank')}>Open Nextcloud</Button>, <Button key="r" icon={<ReloadOutlined />} onClick={() => window.location.reload()} title="Refresh page" />]}>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <Row gutter={[12, 12]}>
                     {[{ t: 'Users', v: USERS.length, c: '#3b82f6', i: <UserOutlined /> }, { t: 'Storage Used', v: `${totalUsed.toFixed(1)} GB`, c: '#8b5cf6', i: <HddOutlined /> }, { t: 'Total Quota', v: `${totalQuota} GB`, c: '#10b981', i: <CloudOutlined /> }, { t: 'Active Apps', v: `${activeApps}/${APPS.length}`, c: '#f59e0b', i: <AppstoreOutlined /> }].map((s, i) => (

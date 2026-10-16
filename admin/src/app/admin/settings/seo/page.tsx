@@ -34,7 +34,7 @@ export default function SEOSettingsPage() {
     const { themeColor } = usePreferencesStore();
 
     return (
-        <CMSLayout title={<AuroraText colors={[themeColor, '#10b981', '#f59e0b']}>SEO Configuration</AuroraText>} subTitle={<DecryptedText text="Meta tags, sitemaps, social sharing & crawl directives" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="r" icon={<ReloadOutlined />} />]}>
+        <CMSLayout title={<AuroraText colors={[themeColor, '#10b981', '#f59e0b']}>SEO Configuration</AuroraText>} subTitle={<DecryptedText text="Meta tags, sitemaps, social sharing & crawl directives" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="r" icon={<ReloadOutlined />} onClick={() => window.location.reload()} title="Refresh page" />]}>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <Row gutter={[12, 12]}>
                     {[{ t: 'Indexed Pages', v: 1284, c: '#3b82f6', i: <FileSearchOutlined /> }, { t: 'Meta Coverage', v: '94%', c: '#10b981', i: <CheckCircleOutlined /> }, { t: 'Sitemap URLs', v: 387, c: '#8b5cf6', i: <GlobalOutlined /> }, { t: 'Open Graph Score', v: '88/100', c: '#f59e0b', i: <ShareAltOutlined /> }].map((s, i) => (

@@ -96,7 +96,7 @@ export default function ApiGatewayPage() {
     ];
 
     return (
-        <CMSLayout title={<AuroraText colors={[themeColor, '#06b6d4', '#3b82f6']}>API Gateway</AuroraText>} subTitle={<DecryptedText text="Kong gateway routes, services, plugins & health monitoring" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="r" icon={<ReloadOutlined />} />]}>
+        <CMSLayout title={<AuroraText colors={[themeColor, '#06b6d4', '#3b82f6']}>API Gateway</AuroraText>} subTitle={<DecryptedText text="Kong gateway routes, services, plugins & health monitoring" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="r" icon={<ReloadOutlined />} onClick={() => window.location.reload()} title="Refresh page" />]}>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <Row gutter={[12, 12]}>
                     {[{ t: 'Routes', v: ROUTES.length, c: '#3b82f6', i: <GlobalOutlined /> }, { t: 'Services', v: SERVICES.length, c: '#8b5cf6', i: <CloudServerOutlined /> }, { t: 'Healthy', v: healthyServices, c: '#10b981', i: <CheckCircleOutlined /> }, { t: 'Total RPS', v: `${(totalRps / 1000).toFixed(1)}K`, c: '#f59e0b', i: <ThunderboltOutlined /> }, { t: 'Avg Latency', v: `${avgLatency}ms`, c: '#06b6d4', i: <ClockCircleOutlined /> }, { t: 'Plugins', v: PLUGINS.length, c: '#ec4899', i: <SafetyOutlined /> }].map((s, i) => (

@@ -23,6 +23,7 @@ export default function ScadaTrends() {
 
     const [isIncidentModalOpen, setIsIncidentModalOpen] = useState(false);
     const [isGenerating, setIsGenerating] = useState(false);
+    const [autoRefresh, setAutoRefresh] = useState(false);
 
     const glassStyle = {
         background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.65)',
@@ -41,6 +42,19 @@ export default function ScadaTrends() {
             tag3: 60 + Math.random() * 5
         };
     });
+
+    const exportTrendCsv = () => {
+        const header = 'time,tag1,tag2,tag3\n';
+        const rows = trendData.map((r) => `${r.time},${r.tag1},${r.tag2},${r.tag3}`).join('\n');
+        const blob = new Blob([header + rows], { type: 'text/csv;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `scada-trends-${Date.now()}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+        message.success('Trend CSV exported (sample series)');
+    };
 
     const dispatchToITSM = () => {
         setIsGenerating(true);
@@ -73,8 +87,19 @@ export default function ScadaTrends() {
                         ]} />
                     </Space>
                     <Space>
-                        <Button icon={<ReloadOutlined />}>Auto Refresh</Button>
-                        <Button icon={<DownloadOutlined />}>Export CSV</Button>
+                        <Button
+                            type={autoRefresh ? 'primary' : 'default'}
+                            icon={<ReloadOutlined spin={autoRefresh} />}
+                            onClick={() => {
+                                setAutoRefresh((v) => {
+                                    message.info(!v ? 'Auto refresh on (visual sample — wire historian for live tags)' : 'Auto refresh off');
+                                    return !v;
+                                });
+                            }}
+                        >
+                            Auto Refresh
+                        </Button>
+                        <Button icon={<DownloadOutlined />} onClick={exportTrendCsv}>Export CSV</Button>
                         <Button type="primary" danger icon={<BugOutlined />} onClick={() => setIsIncidentModalOpen(true)}>Create ITSM Incident</Button>
                     </Space>
                 </div>

@@ -26,7 +26,7 @@ export default function TenantsDashboardPage() {
     const totalStorage = TENANTS.reduce((s, t) => s + t.storage, 0);
 
     return (
-        <CMSLayout title={<AuroraText colors={[themeColor, '#8b5cf6', '#10b981']}>Multi-Tenancy</AuroraText>} subTitle={<DecryptedText text="Tenant management, quotas, feature flags & usage analytics" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="r" icon={<ReloadOutlined />} />]}>
+        <CMSLayout title={<AuroraText colors={[themeColor, '#8b5cf6', '#10b981']}>Multi-Tenancy</AuroraText>} subTitle={<DecryptedText text="Tenant management, quotas, feature flags & usage analytics" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="r" icon={<ReloadOutlined />} onClick={() => window.location.reload()} title="Refresh page" />]}>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <BentoGrid className="max-w-full">
                     <BentoGridItem

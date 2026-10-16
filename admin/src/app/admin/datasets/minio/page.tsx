@@ -37,7 +37,7 @@ export default function MinIOPage() {
     const totalSize = BUCKETS.reduce((s, b) => s + parseFloat(b.size), 0);
 
     return (
-        <CMSLayout title={<AuroraText colors={[themeColor, '#c72c48', '#10b981']}>MinIO Storage</AuroraText>} subTitle={<DecryptedText text="Object storage — buckets, usage, versioning & policies" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="o" icon={<LinkOutlined />} type="primary" onClick={() => window.open('http://localhost:9001', '_blank')}>Open Console</Button>, <Button key="r" icon={<ReloadOutlined />} />]}>
+        <CMSLayout title={<AuroraText colors={[themeColor, '#c72c48', '#10b981']}>MinIO Storage</AuroraText>} subTitle={<DecryptedText text="Object storage — buckets, usage, versioning & policies" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="o" icon={<LinkOutlined />} type="primary" onClick={() => window.open('http://localhost:9001', '_blank')}>Open Console</Button>, <Button key="r" icon={<ReloadOutlined />} onClick={() => window.location.reload()} title="Refresh page" />]}>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <Row gutter={[12, 12]}>
                     {[{ t: 'Buckets', v: BUCKETS.length, c: '#3b82f6', i: <FolderOutlined /> }, { t: 'Objects', v: totalObjects.toLocaleString(), c: '#10b981', i: <CloudOutlined /> }, { t: 'Total Size', v: `${totalSize.toFixed(1)} GB`, c: '#8b5cf6', i: <HddOutlined /> }, { t: 'Policies', v: POLICIES.length, c: '#f59e0b', i: <SafetyCertificateOutlined /> }].map((s, i) => (

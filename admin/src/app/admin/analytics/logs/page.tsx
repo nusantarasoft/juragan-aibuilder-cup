@@ -42,7 +42,7 @@ export default function LogAnalyticsPage() {
     const errorRate = ((LOG_LEVELS.find(l => l.level === 'ERROR')?.count || 0) / totalLogs * 100).toFixed(2);
 
     return (
-        <CMSLayout title={<AuroraText colors={[themeColor, '#ef4444', '#f59e0b']}>Log Analytics</AuroraText>} subTitle={<DecryptedText text="Centralized log intelligence — error trends, service heatmap & top issues" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="r" icon={<ReloadOutlined />} />]}>
+        <CMSLayout title={<AuroraText colors={[themeColor, '#ef4444', '#f59e0b']}>Log Analytics</AuroraText>} subTitle={<DecryptedText text="Centralized log intelligence — error trends, service heatmap & top issues" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="r" icon={<ReloadOutlined />} onClick={() => window.location.reload()} title="Refresh page" />]}>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <Row gutter={[12, 12]}>
                     {[{ t: 'Total Logs (24h)', v: `${(totalLogs / 1000).toFixed(0)}K`, c: '#3b82f6', i: <FileSearchOutlined /> }, { t: 'Error Rate', v: `${errorRate}%`, c: '#ef4444', i: <WarningOutlined /> }, { t: 'Warnings', v: `${(34200 / 1000).toFixed(1)}K`, c: '#f59e0b', i: <AlertOutlined /> }, { t: 'Avg Response', v: '142ms', c: '#10b981', i: <ClockCircleOutlined /> }].map((s, i) => (

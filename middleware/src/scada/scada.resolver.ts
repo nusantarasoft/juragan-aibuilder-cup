@@ -36,7 +36,7 @@ const mapSource = (row: any) => ({
 });
 
 const mapTag = (row: any) => ({
-    id: row.id, sourceId: row.source_id, name: row.name, dataType: row.data_type, unit: row.unit
+    id: row.id, sourceId: row.source_id, name: row.name, dataType: row.data_type, unit: row.unit ?? row.engineering_unit
 });
 
 const mapEvent = (row: any) => ({

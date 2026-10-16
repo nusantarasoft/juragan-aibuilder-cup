@@ -26,7 +26,7 @@ const MATRIX: Record<string, boolean[]> = {
 export default function TenantConfigPage() {
     const { themeColor } = usePreferencesStore();
     return (
-        <CMSLayout title={<AuroraText colors={[themeColor, '#8b5cf6', '#10b981']}>Tenant Configuration</AuroraText>} subTitle={<DecryptedText text="Tenant isolation settings, branding & feature provisioning" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="r" icon={<ReloadOutlined />} />]}>
+        <CMSLayout title={<AuroraText colors={[themeColor, '#8b5cf6', '#10b981']}>Tenant Configuration</AuroraText>} subTitle={<DecryptedText text="Tenant isolation settings, branding & feature provisioning" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="r" icon={<ReloadOutlined />} onClick={() => window.location.reload()} title="Refresh page" />]}>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <Row gutter={[12, 12]}>
                     {[{ t: 'Active Tenants', v: TENANTS.length, c: '#3b82f6', i: <CloudServerOutlined /> }, { t: 'Modules Licensed', v: 12, c: '#10b981', i: <AppstoreOutlined /> }, { t: 'Custom Domains', v: 2, c: '#8b5cf6', i: <GlobalOutlined /> }, { t: 'API Keys', v: 6, c: '#f59e0b', i: <KeyOutlined /> }].map((s, i) => (

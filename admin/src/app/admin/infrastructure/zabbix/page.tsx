@@ -34,7 +34,7 @@ export default function ZabbixPage() {
     const problems = TRIGGERS.filter(t => t.status === 'PROBLEM').length;
 
     return (
-        <CMSLayout title={<AuroraText colors={[themeColor, '#d40000', '#f59e0b']}>Zabbix Monitoring</AuroraText>} subTitle={<DecryptedText text="Infrastructure monitoring, triggers & performance metrics" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="o" icon={<LinkOutlined />} type="primary" onClick={() => window.open('http://localhost:8086', '_blank')}>Open Zabbix</Button>, <Button key="r" icon={<ReloadOutlined />} />]}>
+        <CMSLayout title={<AuroraText colors={[themeColor, '#d40000', '#f59e0b']}>Zabbix Monitoring</AuroraText>} subTitle={<DecryptedText text="Infrastructure monitoring, triggers & performance metrics" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="o" icon={<LinkOutlined />} type="primary" onClick={() => window.open('http://localhost:8086', '_blank')}>Open Zabbix</Button>, <Button key="r" icon={<ReloadOutlined />} onClick={() => window.location.reload()} title="Refresh page" />]}>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <Row gutter={[12, 12]}>
                     {[{ t: 'Hosts', v: HOSTS.length, c: '#3b82f6', i: <CloudServerOutlined /> }, { t: 'Problems', v: problems, c: problems > 0 ? '#ef4444' : '#10b981', i: <AlertOutlined /> }, { t: 'Triggers', v: TRIGGERS.length, c: '#8b5cf6', i: <MonitorOutlined /> }, { t: 'Items', v: ITEMS.length, c: '#f59e0b', i: <CheckCircleOutlined /> }].map((s, i) => (

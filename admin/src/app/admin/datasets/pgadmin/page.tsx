@@ -28,7 +28,7 @@ export default function PgAdminPage() {
     const totalSize = '3.5 GB';
     const totalConns = DATABASES.reduce((s, d) => s + d.connections, 0);
     return (
-        <CMSLayout title={<AuroraText colors={[themeColor, '#336791', '#10b981']}>pgAdmin</AuroraText>} subTitle={<DecryptedText text="Database management — servers, queries & performance" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="o" icon={<LinkOutlined />} type="primary" onClick={() => window.open('http://localhost:8888', '_blank')}>Open pgAdmin</Button>, <Button key="r" icon={<ReloadOutlined />} />]}>
+        <CMSLayout title={<AuroraText colors={[themeColor, '#336791', '#10b981']}>pgAdmin</AuroraText>} subTitle={<DecryptedText text="Database management — servers, queries & performance" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="o" icon={<LinkOutlined />} type="primary" onClick={() => window.open('http://localhost:8888', '_blank')}>Open pgAdmin</Button>, <Button key="r" icon={<ReloadOutlined />} onClick={() => window.location.reload()} title="Refresh page" />]}>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <Row gutter={[12, 12]}>
                     {[{ t: 'Servers', v: 1, c: '#3b82f6', i: <CloudServerOutlined /> }, { t: 'Databases', v: DATABASES.length, c: '#10b981', i: <DatabaseOutlined /> }, { t: 'Connections', v: totalConns, c: '#8b5cf6', i: <ThunderboltOutlined /> }, { t: 'Queries/sec', v: 45, c: '#f59e0b', i: <BarChartOutlined /> }].map((s, i) => (

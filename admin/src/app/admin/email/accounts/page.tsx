@@ -25,7 +25,7 @@ export default function EmailAccountsPage() {
     const totalUsed = ACCOUNTS.reduce((s, a) => s + a.used, 0);
     const totalAliases = ACCOUNTS.reduce((s, a) => s + a.aliases.length, 0);
     return (
-        <CMSLayout title={<AuroraText colors={[themeColor, '#3b82f6', '#10b981']}>Email Accounts</AuroraText>} subTitle={<DecryptedText text="User mailboxes, aliases & quota management" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="a" icon={<PlusOutlined />} type="primary">Add Account</Button>, <Button key="r" icon={<ReloadOutlined />} />]}>
+        <CMSLayout title={<AuroraText colors={[themeColor, '#3b82f6', '#10b981']}>Email Accounts</AuroraText>} subTitle={<DecryptedText text="User mailboxes, aliases & quota management" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="a" icon={<PlusOutlined />} type="primary">Add Account</Button>, <Button key="r" icon={<ReloadOutlined />} onClick={() => window.location.reload()} title="Refresh page" />]}>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <Row gutter={[12, 12]}>
                     {[{ t: 'Accounts', v: ACCOUNTS.length, c: '#3b82f6', i: <UserOutlined /> }, { t: 'Aliases', v: totalAliases, c: '#10b981', i: <MailOutlined /> }, { t: 'Total Quota', v: `${(totalQuota / 1024).toFixed(0)} GB`, c: '#8b5cf6', i: <HddOutlined /> }, { t: 'Used', v: `${(totalUsed / 1024).toFixed(1)} GB`, c: '#f59e0b', i: <HddOutlined /> }].map((s, i) => (

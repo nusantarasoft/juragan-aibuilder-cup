@@ -227,7 +227,7 @@ export default function QueueMonitorPage() {
                     sequential
                 />
             }
-            extra={[<Button key="r" icon={<ReloadOutlined />} />]}
+            extra={[<Button key="r" icon={<ReloadOutlined />} onClick={() => window.location.reload()} title="Refresh page" />]}
         >
             {/* ─── 1. Platform Tabs ──────────────────── */}
             <motion.div

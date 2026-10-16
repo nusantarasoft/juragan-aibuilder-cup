@@ -34,10 +34,12 @@ test.describe('UI wave 2 — admin buttons & honesty', () => {
         await expect(page.getByText(/WhatsApp|Hubungkan/i).first()).toBeVisible({ timeout: 30_000 });
     });
 
-    test('BMS dashboard shows sample-data banner when API empty', async ({ page }) => {
+    test('BMS dashboard shows live or sample honesty banner', async ({ page }) => {
         await loginAsAdmin(page);
         await page.goto('/admin/bms', { waitUntil: 'domcontentloaded' });
-        await expect(page.getByText('Sample facility data')).toBeVisible({ timeout: 30_000 });
+        const live = page.getByText('Live facility data');
+        const sample = page.getByText('Sample facility data');
+        await expect(live.or(sample)).toBeVisible({ timeout: 30_000 });
     });
 
     test('Web Crawler jobs table exposes Stop for queued/running rows', async ({ page }) => {
@@ -61,10 +63,10 @@ test.describe('UI wave 2 — admin buttons & honesty', () => {
         }
     });
 
-    test('screenshot — BMS sample banner (after)', async ({ page }) => {
+    test('screenshot — BMS honesty banner (after)', async ({ page }) => {
         await loginAsAdmin(page);
         await page.goto('/admin/bms', { waitUntil: 'domcontentloaded' });
-        await expect(page.getByText('Sample facility data')).toBeVisible({ timeout: 30_000 });
+        await expect(page.getByText('Live facility data').or(page.getByText('Sample facility data'))).toBeVisible({ timeout: 30_000 });
         const mediaDir = process.env.UI_WAVE2_MEDIA_DIR;
         if (mediaDir) {
             await page.screenshot({ path: `${mediaDir}/ui-wave-2-bms-sample-banner-after.png`, fullPage: true });

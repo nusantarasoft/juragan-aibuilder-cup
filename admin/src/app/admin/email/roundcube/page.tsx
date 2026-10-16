@@ -27,7 +27,7 @@ const SESSIONS = [
 export default function RoundcubePage() {
     const { themeColor } = usePreferencesStore();
     return (
-        <CMSLayout title={<AuroraText colors={[themeColor, '#00acff', '#10b981']}>Roundcube Webmail</AuroraText>} subTitle={<DecryptedText text="Webmail client — mailboxes, sessions & plugin management" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="o" icon={<LinkOutlined />} type="primary" onClick={() => window.open('http://localhost:8082', '_blank')}>Open Roundcube</Button>, <Button key="r" icon={<ReloadOutlined />} />]}>
+        <CMSLayout title={<AuroraText colors={[themeColor, '#00acff', '#10b981']}>Roundcube Webmail</AuroraText>} subTitle={<DecryptedText text="Webmail client — mailboxes, sessions & plugin management" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="o" icon={<LinkOutlined />} type="primary" onClick={() => window.open('http://localhost:8082', '_blank')}>Open Roundcube</Button>, <Button key="r" icon={<ReloadOutlined />} onClick={() => window.location.reload()} title="Refresh page" />]}>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <Row gutter={[12, 12]}>
                     {[{ t: 'Mailboxes', v: MAILBOXES.length, c: '#3b82f6', i: <MailOutlined /> }, { t: 'Active Sessions', v: SESSIONS.length, c: '#10b981', i: <UserOutlined /> }, { t: 'Plugins', v: 12, c: '#8b5cf6', i: <AppstoreOutlined /> }, { t: 'Storage Used', v: '1.2 GB', c: '#f59e0b', i: <CloudServerOutlined /> }].map((s, i) => (

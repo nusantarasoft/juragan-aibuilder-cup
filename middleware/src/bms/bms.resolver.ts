@@ -59,7 +59,10 @@ const mapEquipment = (row: any) => ({
 
 const mapAlarm = (row: any) => ({
     id: row.id, tenantId: row.tenant_id, systemId: row.system_id, equipmentId: row.equipment_id,
-    severity: row.severity, message: row.message, status: row.status, createdAt: row.created_at
+    severity: row.severity ?? row.priority ?? 'medium',
+    message: row.message ?? row.alarm_type ?? row.condition ?? 'BMS alarm',
+    status: row.status ?? (row.is_enabled === false ? 'disabled' : 'active'),
+    createdAt: row.created_at,
 });
 
 @Resolver()

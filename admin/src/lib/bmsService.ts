@@ -1,5 +1,6 @@
+import { DEFAULT_TENANT_ID } from '@/lib/graphql';
+
 const GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_URL || 'http://127.0.0.1:4001/graphql';
-const DEFAULT_TENANT_ID = '00000000-0000-0000-0000-000000000010';
 
 export interface BmsSystem {
     id: string;

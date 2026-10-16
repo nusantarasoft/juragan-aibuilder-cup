@@ -29,7 +29,7 @@ export default function EmailDashboardPage() {
     const totalUsed = ACCOUNTS.reduce((s, a) => s + a.used, 0);
 
     return (
-        <CMSLayout title={<AuroraText colors={[themeColor, '#06b6d4', '#10b981']}>Email Server</AuroraText>} subTitle={<DecryptedText text="Domain management, accounts, mail queue & security" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="r" icon={<ReloadOutlined />} />]}>
+        <CMSLayout title={<AuroraText colors={[themeColor, '#06b6d4', '#10b981']}>Email Server</AuroraText>} subTitle={<DecryptedText text="Domain management, accounts, mail queue & security" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="r" icon={<ReloadOutlined />} onClick={() => window.location.reload()} title="Refresh page" />]}>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <Row gutter={[12, 12]}>
                     {[{ t: 'Domains', v: DOMAINS.length, c: '#3b82f6', i: <CloudServerOutlined /> }, { t: 'Accounts', v: ACCOUNTS.length, c: '#10b981', i: <UserOutlined /> }, { t: 'Mail Queue', v: QUEUE.filter(q => q.status === 'queued').length, c: '#f59e0b', i: <InboxOutlined /> }, { t: 'Storage', v: `${totalUsed.toFixed(1)} GB`, c: '#8b5cf6', i: <MailOutlined /> }].map((s, i) => (
