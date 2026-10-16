@@ -13,6 +13,7 @@ import {
     ListTodo,
     MessageSquare,
     Monitor,
+    MousePointer2,
     Pause,
     Play,
     Power,
@@ -22,19 +23,18 @@ import {
     Sparkles,
     Target,
     Users,
-    X,
     Zap,
     type LucideIcon,
 } from "lucide-react";
 import { useOsUi } from "@/components/agentic-os/registry";
-import { STATUS_META, ZONE_BY_ID } from "../lib/floorplan";
+import { STATUS_META, ZONES, ZONE_BY_ID } from "../lib/floorplan";
 import { MODULES, sessionUrl } from "../lib/modules";
 import { useOfficeStore } from "../lib/store";
 import type { Agent, AgentCommand } from "../lib/types";
 import { ActivityList } from "./AgentRoster";
 import { RosterKindBadge } from "@/components/agentic-os/ui/RosterKindBadge";
 import { timeAgo } from "@/components/agentic-os/ui/kit";
-import { AgentBadge, GLASS, ModuleChip, ProgressBar, StatusPill, StepList, cx, elapsed, formatTokens, useNow } from "./shared";
+import { AgentBadge, ModuleChip, ORANGE, OfficeSidePanel, ProgressBar, Section, StatusPill, StepList, cx, elapsed, formatTokens, useNow } from "./shared";
 
 function actionsFor(agent: Agent): { cmd: AgentCommand; label: string; icon: LucideIcon; tone?: "danger" | "primary" }[] {
     const list: { cmd: AgentCommand; label: string; icon: LucideIcon; tone?: "danger" | "primary" }[] = [];
@@ -63,12 +63,12 @@ function actionsFor(agent: Agent): { cmd: AgentCommand; label: string; icon: Luc
 
 function StatTile({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: string }) {
     return (
-        <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
-            <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-slate-400">
+        <div className="border border-white/10 bg-white/[0.02] px-2.5 py-1.5 font-mono">
+            <div className="flex items-center gap-1.5 text-[9px] uppercase tracking-wider text-slate-400">
                 <Icon className="h-3 w-3" />
                 {label}
             </div>
-            <div className="mt-0.5 text-sm font-semibold tabular-nums text-white">{value}</div>
+            <div className="mt-0.5 text-[13px] font-semibold tabular-nums text-white">{value}</div>
         </div>
     );
 }
@@ -93,15 +93,15 @@ function Chat({ agent }: { agent: Agent }) {
     };
 
     return (
-        <div className="flex min-h-0 flex-1 flex-col">
-            <div className="flex-1 space-y-2 overflow-y-auto px-3 py-2">
+        <div className="flex flex-col font-mono">
+            <div className="max-h-56 space-y-2 overflow-y-auto py-1">
                 {!list.length && (
-                    <div className="flex flex-col items-center gap-2 py-6 text-center">
-                        <MessageSquare className="h-6 w-6 text-slate-600" />
-                        <p className="text-xs text-slate-500">
-                            Talk to {agent.name} directly.
+                    <div className="flex flex-col items-center gap-1.5 py-4 text-center">
+                        <MessageSquare className="h-5 w-5 text-slate-500" />
+                        <p className="text-[11px] text-slate-500">
+                            Direct channel to {agent.name}.
                             <br />
-                            Try “what's your status?”
+                            Try &ldquo;what&apos;s your status?&rdquo;
                         </p>
                     </div>
                 )}
@@ -114,8 +114,10 @@ function Chat({ agent }: { agent: Agent }) {
                         <div key={m.id} className={cx("flex", m.from === "user" ? "justify-end" : "justify-start")}>
                             <div
                                 className={cx(
-                                    "max-w-[85%] rounded-2xl px-3 py-1.5 text-[12px] leading-snug",
-                                    m.from === "user" ? "rounded-br-md bg-indigo-500 text-white" : "rounded-bl-md border border-white/10 bg-white/5 text-slate-200",
+                                    "max-w-[88%] border px-2.5 py-1.5 text-[11px] leading-snug",
+                                    m.from === "user"
+                                        ? "border-orange-400/50 bg-orange-500/15 text-orange-100"
+                                        : "border-white/10 bg-white/[0.03] text-slate-200",
                                 )}
                             >
                                 {m.text}
@@ -125,7 +127,7 @@ function Chat({ agent }: { agent: Agent }) {
                 )}
                 {waiting && (
                     <div className="flex justify-start">
-                        <div className="flex gap-1 rounded-2xl rounded-bl-md border border-white/10 bg-white/5 px-3 py-2.5">
+                        <div className="flex gap-1 border border-white/10 bg-white/[0.03] px-3 py-2">
                             {[0, 150, 300].map((d) => (
                                 <span key={d} className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-400" style={{ animationDelay: `${d}ms` }} />
                             ))}
@@ -134,21 +136,21 @@ function Chat({ agent }: { agent: Agent }) {
                 )}
                 <div ref={endRef} />
             </div>
-            <form onSubmit={submit} className="flex items-center gap-2 border-t border-white/10 p-2">
+            <form onSubmit={submit} className="mt-2 flex items-center gap-1.5 border-t border-white/10 pt-2">
                 <input
                     value={text}
                     onChange={(e) => setText(e.target.value)}
                     onKeyDown={(e) => e.stopPropagation()}
-                    placeholder={`Message ${agent.name}…`}
-                    className="flex-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white placeholder:text-slate-500 focus:border-indigo-400/60 focus:outline-none"
+                    placeholder={`message ${agent.name.toLowerCase()}…`}
+                    className="flex-1 border border-white/15 bg-white/[0.02] px-2.5 py-1.5 text-[11px] text-white placeholder:text-slate-500 focus:border-orange-400/60 focus:outline-none"
                 />
                 <button
                     type="submit"
                     disabled={!text.trim()}
-                    className="flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-500 text-white transition hover:bg-indigo-400 disabled:opacity-40"
+                    className="flex h-7 w-7 items-center justify-center border border-orange-400/60 bg-orange-500/15 text-orange-200 transition hover:bg-orange-500/25 disabled:opacity-35"
                     aria-label="Send"
                 >
-                    <Send className="h-3.5 w-3.5" />
+                    <Send className="h-3 w-3" />
                 </button>
             </form>
         </div>
@@ -157,14 +159,16 @@ function Chat({ agent }: { agent: Agent }) {
 
 export function AgentInspector() {
     const router = useRouter();
-    const { agent, activity, dataMode, select, command, openScreen } = useOfficeStore(
+    const { agents, agent, activity, dataMode, select, command, openScreen, focusOnZone } = useOfficeStore(
         useShallow((s) => ({
+            agents: s.agents,
             agent: s.agents.find((a) => a.id === s.selectedId),
             activity: s.activity,
             dataMode: s.dataMode,
             select: s.select,
             command: s.command,
             openScreen: s.openScreen,
+            focusOnZone: s.focusOnZone,
         })),
     );
     const launchOs = useOsUi((s) => s.launch);
@@ -172,237 +176,290 @@ export function AgentInspector() {
     const now = useNow(1000);
     const agentActivity = useMemo(() => (agent ? activity.filter((e) => e.agentId === agent.id).slice(0, 30) : []), [activity, agent]);
 
-    if (!agent) return null;
+    if (!agent) {
+        const activeTasks = agents.filter((a) => a.task && (a.status === "working" || a.status === "thinking"));
+        return (
+            <OfficeSidePanel
+                id="right"
+                title="Floor · Telemetry"
+                summary={`${activeTasks.length} active tasks · ${ZONES.length} zones`}
+                accent="#38bdf8"
+                defaultSide="pinned-right"
+                defaultW={300}
+            >
+                <Section
+                    title="Floor zones"
+                    right={
+                        <button type="button" onClick={() => launchOs("overview")} className="text-[9px] uppercase tracking-wider text-slate-400 hover:text-white">
+                            deck ▶
+                        </button>
+                    }
+                >
+                    <div className="space-y-1.5">
+                        {ZONES.map((z) => {
+                            const zAgents = agents.filter((a) => a.zone === z.id);
+                            const zBusy = zAgents.filter((a) => a.status === "working" || a.status === "thinking").length;
+                            return (
+                                <button
+                                    key={z.id}
+                                    type="button"
+                                    onClick={() => focusOnZone(z.id)}
+                                    className="flex w-full items-center justify-between border border-white/10 bg-white/[0.02] px-2.5 py-1.5 text-left transition hover:border-white/25 hover:bg-white/[0.04]"
+                                >
+                                    <span className="flex items-center gap-2">
+                                        <span className="h-2 w-2 rounded-full" style={{ background: z.color }} />
+                                        <span className="text-[11px] font-semibold text-white">{z.name}</span>
+                                    </span>
+                                    <span className="text-[10px] text-slate-400">
+                                        {zBusy}/{zAgents.length} active
+                                    </span>
+                                </button>
+                            );
+                        })}
+                    </div>
+                </Section>
+
+                <Section title={`Active floor tasks (${activeTasks.length})`}>
+                    {activeTasks.length === 0 ? (
+                        <div className="text-[11px] text-slate-500">No tasks currently running on the floor.</div>
+                    ) : (
+                        <div className="space-y-2">
+                            {activeTasks.map((a) => (
+                                <button
+                                    key={a.id}
+                                    type="button"
+                                    onClick={() => select(a.id)}
+                                    className="block w-full border border-white/10 bg-white/[0.02] p-2 text-left transition hover:border-white/25"
+                                >
+                                    <div className="flex items-center justify-between gap-2 text-[11px]">
+                                        <span className="font-semibold text-white">{a.name}</span>
+                                        <ModuleChip moduleId={a.task!.moduleId} />
+                                    </div>
+                                    <div className="mt-1 truncate text-[11px] text-slate-300">{a.task!.title}</div>
+                                    <div className="mt-1.5 flex items-center gap-2">
+                                        <ProgressBar value={a.task!.progress} color={STATUS_META[a.status].color} />
+                                        <span className="text-[9.5px] tabular-nums text-slate-400">{Math.round(a.task!.progress * 100)}%</span>
+                                    </div>
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </Section>
+
+                <Section title="3D navigation & keys" className="border-b-0">
+                    <div className="space-y-1.5 text-[10.5px] leading-relaxed text-slate-400">
+                        <div className="flex items-center gap-1.5 text-slate-200">
+                            <MousePointer2 className="h-3 w-3" color={ORANGE} />
+                            <span>Click any agent or desk monitor</span>
+                        </div>
+                        <div>· Drag to orbit · Right-drag to pan · Wheel zoom</div>
+                        <div>· Keys: [1] Overview · [2] Top · [F] Follow</div>
+                        <div>· Keys: [L] Labels · [N] Day/Night · [/] Delegate</div>
+                    </div>
+                </Section>
+            </OfficeSidePanel>
+        );
+    }
 
     const meta = STATUS_META[agent.status];
     const zone = ZONE_BY_ID[agent.zone];
     const where = agent.location === "meeting" ? "War Room" : agent.location === "lounge" ? "Lounge" : zone.name;
 
     return (
-        <aside
-            key={agent.id}
-            className={cx(
-                GLASS,
-                "pointer-events-auto absolute bottom-4 right-4 top-24 flex w-[360px] flex-col overflow-hidden rounded-2xl animate-in fade-in slide-in-from-right-4 duration-300",
-            )}
+        <OfficeSidePanel
+            id="right"
+            title={`Agent · ${agent.name}`}
+            summary={`${meta.label} · ${where}`}
+            accent={agent.color}
+            defaultSide="pinned-right"
+            defaultW={320}
+            onClose={() => select(null)}
         >
-            {/* Header */}
-            <div className="relative border-b border-white/10 p-4">
-                <div
-                    className="pointer-events-none absolute inset-0 opacity-60"
-                    style={{ background: `radial-gradient(120% 80% at 0% 0%, ${agent.color}33, transparent 60%)` }}
-                />
-                <div className="relative flex items-start gap-3">
-                    <AgentBadge agent={agent} size={48} />
+            <Section
+                title="Identity & status"
+                right={
+                    <button type="button" onClick={() => select(null)} className="text-[9px] uppercase tracking-wider text-slate-400 hover:text-white">
+                        all floor ▶
+                    </button>
+                }
+            >
+                <div className="flex items-start gap-3">
+                    <AgentBadge agent={agent} size={42} />
                     <div className="min-w-0 flex-1">
-                        <div className="truncate text-base font-semibold text-white">{agent.name}</div>
-                        <div className="truncate text-xs text-slate-400">{agent.role}</div>
-                        <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                        <div className="truncate text-[14px] font-semibold text-white">{agent.name}</div>
+                        <div className="truncate text-[11px] text-slate-400">{agent.role}</div>
+                        <div className="mt-1.5 flex flex-wrap items-center gap-1">
                             {agent.rosterKind && <RosterKindBadge kind={agent.rosterKind} />}
                             <StatusPill status={agent.status} />
-                            <span className="inline-flex items-center gap-1 rounded-full border border-white/10 px-2 py-0.5 text-[10px] text-slate-300">
-                                <Cpu className="h-3 w-3" />
+                            <span className="inline-flex items-center gap-1 border border-white/15 px-1.5 py-0.5 text-[9.5px] text-slate-300">
+                                <Cpu className="h-2.5 w-2.5" />
                                 {agent.model}
                             </span>
                         </div>
                     </div>
+                </div>
+                <div className="mt-2 text-[10.5px] text-slate-400">
+                    {meta.description} · <span className="text-slate-200">{where}</span>
+                </div>
+            </Section>
+
+            <Section
+                title="Current task"
+                right={agent.task ? <span className="text-[9.5px] tabular-nums text-slate-400">{elapsed(agent.task.startedAt, now)}</span> : undefined}
+            >
+                {agent.task ? (
+                    <>
+                        <div className="mb-1.5 flex items-center gap-1.5">
+                            <ModuleChip moduleId={agent.task.moduleId} />
+                            <span className="truncate text-[10px] text-slate-500">{agent.task.route}</span>
+                        </div>
+                        <div className="mb-2 text-[12px] font-medium leading-snug text-white">{agent.task.title}</div>
+                        <div className="mb-2 flex items-center gap-2">
+                            <ProgressBar value={agent.task.progress} color={MODULES[agent.task.moduleId].color} />
+                            <span className="w-9 text-right text-[10.5px] tabular-nums text-slate-300">{Math.round(agent.task.progress * 100)}%</span>
+                        </div>
+                        <StepList task={agent.task} status={agent.status} dense />
+                    </>
+                ) : (
+                    <div className="text-[11px] text-slate-500">No active task — delegate one from the bottom command dock.</div>
+                )}
+                <div className="mt-3 grid grid-cols-2 gap-1.5">
                     <button
                         type="button"
-                        onClick={() => select(null)}
-                        className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 hover:bg-white/10 hover:text-white"
-                        aria-label="Close"
+                        onClick={() => openScreen(agent.id)}
+                        className="inline-flex items-center justify-center gap-1.5 border border-orange-400/50 bg-orange-500/15 px-2 py-1 text-[10.5px] text-orange-100 transition hover:border-orange-300 hover:text-white"
                     >
-                        <X className="h-4 w-4" />
+                        <Monitor className="h-3 w-3" />
+                        watch screen
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => router.push(sessionUrl(agent.task?.route ?? MODULES[agent.modules[0]].route, agent.id))}
+                        className="inline-flex items-center justify-center gap-1.5 border border-white/15 px-2 py-1 text-[10.5px] text-slate-200 transition hover:border-white/35 hover:text-white"
+                    >
+                        <ExternalLink className="h-3 w-3" />
+                        open module
                     </button>
                 </div>
-                <div className="relative mt-3 text-[11px] text-slate-400">
-                    {meta.description} · <span className="text-slate-300">{where}</span>
-                </div>
-            </div>
+            </Section>
 
-            <div className="max-h-[58%] shrink-0 space-y-3 overflow-y-auto border-b border-white/10 p-4">
-                {/* Current task */}
-                <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                    <div className="mb-1 flex items-center justify-between text-[10px] uppercase tracking-wider text-slate-400">
-                        <span className="flex items-center gap-1.5">
-                            <Target className="h-3 w-3" />
-                            Current task
-                        </span>
-                        {agent.task && <span className="tabular-nums normal-case tracking-normal">{elapsed(agent.task.startedAt, now)}</span>}
-                    </div>
-                    {agent.task ? (
-                        <>
-                            <div className="mb-1.5 flex items-center gap-1.5">
-                                <ModuleChip moduleId={agent.task.moduleId} />
-                                <span className="truncate font-mono text-[10px] text-slate-500">{agent.task.route}</span>
-                            </div>
-                            <div className="mb-2 text-[13px] font-medium leading-snug text-white">{agent.task.title}</div>
-                            <div className="mb-2.5 flex items-center gap-2">
-                                <ProgressBar value={agent.task.progress} color={MODULES[agent.task.moduleId].color} />
-                                <span className="w-9 text-right text-[11px] tabular-nums text-slate-300">{Math.round(agent.task.progress * 100)}%</span>
-                            </div>
-                            <StepList task={agent.task} status={agent.status} dense />
-                        </>
+            {agent.rosterKind === "live" && (
+                <Section title="Live UMKM Kasir telemetry">
+                    {agent.liveUnavailable ? (
+                        <p className="text-[11px] text-amber-300">{agent.liveUnavailable}</p>
+                    ) : agent.liveMetrics ? (
+                        <ul className="space-y-1 text-[11px]">
+                            <li>
+                                <span className="text-slate-400">WA chats today:</span> <span className="font-semibold text-white">{agent.liveMetrics.waChatsToday}</span>
+                            </li>
+                            <li>
+                                <span className="text-slate-400">Transactions:</span> <span className="font-semibold text-white">{agent.liveMetrics.transactionsToday}</span>
+                            </li>
+                            <li>
+                                <span className="text-slate-400">Hermes WA:</span> <span className="font-semibold text-white">{agent.liveMetrics.waOnline ? "online" : "offline"}</span>
+                            </li>
+                            {agent.liveMetrics.lastActivityAt && (
+                                <li className="text-slate-400">Last activity {timeAgo(agent.liveMetrics.lastActivityAt, now)}</li>
+                            )}
+                        </ul>
                     ) : (
-                        <div className="text-xs text-slate-500">No active task — delegate one from the command bar.</div>
+                        <p className="text-[11px] text-amber-300">Telemetry unavailable</p>
                     )}
-                    <div className="mt-3 grid grid-cols-2 gap-1.5">
-                        <button
-                            type="button"
-                            onClick={() => openScreen(agent.id)}
-                            className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-indigo-500 px-2 py-1.5 text-[11px] font-semibold text-white transition hover:bg-indigo-400"
-                        >
-                            <Monitor className="h-3.5 w-3.5" />
-                            Watch screen
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => router.push(sessionUrl(agent.task?.route ?? MODULES[agent.modules[0]].route, agent.id))}
-                            className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-white/10 px-2 py-1.5 text-[11px] font-semibold text-slate-200 transition hover:bg-white/10"
-                        >
-                            <ExternalLink className="h-3.5 w-3.5" />
-                            Open module
-                        </button>
-                    </div>
-                </div>
+                </Section>
+            )}
 
-                {agent.rosterKind === "live" && (
-                    <div className="rounded-xl border border-emerald-400/25 bg-emerald-500/[0.07] p-3 text-[11px] text-slate-200">
-                        {agent.liveUnavailable ? (
-                            <p className="font-medium text-amber-200">{agent.liveUnavailable}</p>
-                        ) : agent.liveMetrics ? (
-                            <ul className="space-y-1">
-                                <li>
-                                    <span className="text-slate-400">Chat WA hari ini:</span>{" "}
-                                    <span className="font-semibold text-white">{agent.liveMetrics.waChatsToday}</span>
-                                </li>
-                                <li>
-                                    <span className="text-slate-400">Transaksi tercatat:</span>{" "}
-                                    <span className="font-semibold text-white">{agent.liveMetrics.transactionsToday}</span>
-                                </li>
-                                <li>
-                                    <span className="text-slate-400">Hermes WA:</span>{" "}
-                                    <span className="font-semibold text-white">{agent.liveMetrics.waOnline ? "terhubung" : "offline"}</span>
-                                </li>
-                                {agent.liveMetrics.lastActivityAt && (
-                                    <li className="text-slate-400">
-                                        Aktivitas terakhir {timeAgo(agent.liveMetrics.lastActivityAt, now)}
-                                    </li>
-                                )}
-                            </ul>
-                        ) : (
-                            <p className="text-amber-200">data tidak tersedia</p>
-                        )}
-                    </div>
-                )}
-
-                {/* Agentic OS */}
-                <div className="flex items-center gap-1.5 rounded-xl border border-indigo-400/20 bg-indigo-500/[0.07] p-2">
-                    <div className="min-w-0 flex-1 text-[11px] leading-tight text-slate-300">
-                        {agent.rosterKind === "live" ? (
-                            <span className="text-emerald-200/90">Recruited from AI Studio — real UMKM Kasir metrics (read-only)</span>
-                        ) : dataMode === "live" ? (
+            <Section title="Agentic OS & metrics">
+                <div className="mb-2 flex items-center justify-between gap-2 border border-white/10 bg-white/[0.02] p-2 text-[10.5px]">
+                    <div className="min-w-0 flex-1 text-slate-300">
+                        {dataMode === "live" ? (
                             <>
-                                <span className="font-semibold text-white">{agent.queued ?? 0}</span> queued ·{" "}
-                                <span className={cx("font-semibold", agent.review ? "text-purple-300" : "text-white")}>{agent.review ?? 0}</span> to review
+                                <span className="text-white">{agent.queued ?? 0}</span> queued · <span className="text-white">{agent.review ?? 0}</span> review
                             </>
                         ) : (
-                            <span className="text-slate-400">Demo agent — simulated task progress</span>
+                            <span className="text-slate-400">Simulated runtime</span>
                         )}
                     </div>
                     <button
                         type="button"
                         onClick={() => launchOs("studio", agent.dbId ? { agentId: agent.dbId } : {})}
-                        className="inline-flex items-center gap-1 rounded-lg bg-indigo-500/80 px-2 py-1 text-[11px] font-semibold text-white hover:bg-indigo-500"
+                        className="inline-flex items-center gap-1 border border-orange-400/50 bg-orange-500/10 px-2 py-0.5 text-[10px] text-orange-200 hover:border-orange-300 hover:text-white"
                     >
-                        <SlidersHorizontal className="h-3 w-3" /> Customize
+                        <SlidersHorizontal className="h-2.5 w-2.5" /> studio
                     </button>
                     <button
                         type="button"
                         onClick={() => launchOs("tasks", agent.dbId ? { agentId: agent.dbId } : {})}
-                        className="inline-flex items-center gap-1 rounded-lg border border-white/10 px-2 py-1 text-[11px] font-semibold text-slate-200 hover:bg-white/10"
+                        className="inline-flex items-center gap-1 border border-white/15 px-2 py-0.5 text-[10px] text-slate-200 hover:border-white/35 hover:text-white"
                     >
-                        <ListTodo className="h-3 w-3" /> Tasks
+                        <ListTodo className="h-2.5 w-2.5" /> tasks
                     </button>
                 </div>
 
-                {/* Stats */}
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 gap-1.5">
                     <StatTile icon={Zap} label="Tasks done" value={`${agent.stats.tasksCompleted}`} />
                     <StatTile icon={Sparkles} label="Success" value={`${Math.round(agent.stats.successRate * 100)}%`} />
-                    <StatTile icon={Gauge} label="Avg latency" value={`${(agent.stats.avgLatencyMs / 1000).toFixed(1)}s`} />
-                    <StatTile icon={Activity} label="Tokens today" value={formatTokens(agent.stats.tokensToday)} />
+                    <StatTile icon={Gauge} label="Latency" value={`${(agent.stats.avgLatencyMs / 1000).toFixed(1)}s`} />
+                    <StatTile icon={Activity} label="Tokens" value={formatTokens(agent.stats.tokensToday)} />
                 </div>
 
-                {/* Modules the agent operates in */}
-                <div>
-                    <div className="mb-1 text-[10px] uppercase tracking-wider text-slate-400">Works in</div>
+                <div className="mt-2.5">
+                    <div className="mb-1 text-[9px] uppercase tracking-wider text-slate-500">Modules & skills</div>
                     <div className="flex flex-wrap gap-1">
                         {agent.modules.map((m) => (
                             <ModuleChip key={m} moduleId={m} onClick={() => router.push(sessionUrl(MODULES[m].route, agent.id))} />
                         ))}
+                        {agent.skills.map((s) => (
+                            <span key={s} className="border border-white/10 bg-white/[0.02] px-1.5 py-0.5 text-[9.5px] text-slate-300">
+                                {s}
+                            </span>
+                        ))}
                     </div>
                 </div>
 
-                {/* Skills */}
-                <div className="flex flex-wrap gap-1">
-                    {agent.skills.map((s) => (
-                        <span key={s} className="rounded-md border border-white/10 bg-white/5 px-1.5 py-0.5 text-[10px] text-slate-300">
-                            {s}
-                        </span>
-                    ))}
-                </div>
-
-                {/* Actions */}
-                <div className="flex flex-wrap gap-1.5">
+                <div className="mt-2.5 flex flex-wrap gap-1">
                     {actionsFor(agent).map(({ cmd, label, icon: Icon, tone }) => (
                         <button
                             key={cmd}
                             type="button"
                             onClick={() => command(agent.id, cmd)}
                             className={cx(
-                                "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold transition",
-                                tone === "primary" && "border-indigo-400/40 bg-indigo-500/20 text-indigo-100 hover:bg-indigo-500/30",
-                                tone === "danger" && "border-red-400/20 text-red-300 hover:bg-red-500/15",
-                                !tone && "border-white/10 text-slate-200 hover:bg-white/10",
+                                "inline-flex items-center gap-1 border px-2 py-1 text-[10px] transition",
+                                tone === "primary" && "border-orange-400/50 bg-orange-500/15 text-orange-200 hover:border-orange-300 hover:text-white",
+                                tone === "danger" && "border-red-400/30 text-red-300 hover:bg-red-500/15",
+                                !tone && "border-white/15 text-slate-200 hover:border-white/35 hover:text-white",
                             )}
                         >
-                            <Icon className="h-3.5 w-3.5" />
+                            <Icon className="h-3 w-3" />
                             {label}
                         </button>
                     ))}
                 </div>
-            </div>
+            </Section>
 
-            {/* Tabs */}
-            <div className="flex items-center gap-1 px-3 pt-2">
-                {(
-                    [
-                        { id: "chat", label: "Chat", icon: MessageSquare },
-                        { id: "activity", label: "Activity", icon: Activity },
-                    ] as const
-                ).map((t) => (
-                    <button
-                        key={t.id}
-                        type="button"
-                        onClick={() => setTab(t.id)}
-                        className={cx(
-                            "flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition",
-                            tab === t.id ? "bg-white/10 text-white" : "text-slate-400 hover:text-white",
-                        )}
-                    >
-                        <t.icon className="h-3.5 w-3.5" />
-                        {t.label}
-                    </button>
-                ))}
-            </div>
-            {tab === "chat" ? (
-                <Chat agent={agent} />
-            ) : (
-                <div className="flex-1 overflow-y-auto p-2">
-                    <ActivityList entries={agentActivity} />
-                </div>
-            )}
-        </aside>
+            <Section
+                title={
+                    <div className="flex items-center gap-3">
+                        {(
+                            [
+                                { id: "chat", label: "CHAT" },
+                                { id: "activity", label: `LOG (${agentActivity.length})` },
+                            ] as const
+                        ).map((t) => (
+                            <button
+                                key={t.id}
+                                type="button"
+                                onClick={() => setTab(t.id)}
+                                className={cx("transition", tab === t.id ? "text-white underline underline-offset-4" : "text-slate-500 hover:text-slate-300")}
+                            >
+                                {t.label}
+                            </button>
+                        ))}
+                    </div>
+                }
+                className="flex-1 border-b-0"
+            >
+                {tab === "chat" ? <Chat agent={agent} /> : <ActivityList entries={agentActivity} />}
+            </Section>
+        </OfficeSidePanel>
     );
 }

@@ -85,13 +85,18 @@ function ZoneTile({ zone, lighting, count }: { zone: Zone; lighting: Lighting; c
                 <button
                     type="button"
                     onClick={() => focusOnZone(zone.id)}
-                    className="pointer-events-auto -translate-y-full cursor-pointer select-none whitespace-nowrap rounded-md border px-2 py-1 text-left shadow-md backdrop-blur-md transition hover:scale-105"
-                    style={{ borderColor: `${zone.color}66`, background: lighting === "night" ? "rgba(2,6,23,0.65)" : "rgba(255,255,255,0.75)" }}
+                    className="pointer-events-auto -translate-y-full cursor-pointer select-none whitespace-nowrap border px-2 py-1 text-left font-mono shadow-md backdrop-blur-md transition hover:scale-105"
+                    style={{
+                        borderColor: `${zone.color}66`,
+                        borderLeftColor: zone.color,
+                        borderLeftWidth: 2,
+                        background: lighting === "night" ? "rgba(11,14,19,0.88)" : "rgba(255,255,255,0.92)",
+                    }}
                 >
-                    <div className="text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: zone.color }}>
+                    <div className="text-[9.5px] font-bold uppercase tracking-[0.18em]" style={{ color: zone.color }}>
                         {zone.name}
                     </div>
-                    <div className={`text-[10px] ${lighting === "night" ? "text-slate-400" : "text-slate-500"}`}>
+                    <div className={`text-[9.5px] ${lighting === "night" ? "text-slate-400" : "text-slate-600"}`}>
                         {zone.tagline}
                         {count > 0 ? ` · ${count} agent${count > 1 ? "s" : ""}` : ""}
                     </div>

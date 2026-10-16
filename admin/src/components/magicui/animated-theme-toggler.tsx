@@ -78,6 +78,7 @@ export const AnimatedThemeToggler = ({
   return (
     <button
       ref={buttonRef}
+      type="button"
       onClick={toggleTheme}
       className={cn(
         "inline-flex items-center justify-center rounded-md p-2 transition-colors",
@@ -88,7 +89,7 @@ export const AnimatedThemeToggler = ({
       aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
       {...props}
     >
-      {isDark ? <Sun size={size} /> : <Moon size={size} />}
+      {isDark ? <Sun size={size} className="shrink-0" /> : <Moon size={size} className="shrink-0" />}
     </button>
   )
 }

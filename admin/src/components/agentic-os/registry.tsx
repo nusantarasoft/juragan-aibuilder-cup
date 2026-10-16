@@ -47,7 +47,7 @@ export const APPS: AppDef[] = [
     {
         id: "playbooks", name: "Playbooks", icon: BookOpen, color: "#34d399",
         description: "Reusable task scripts per module",
-        render: () => <Playbooks />,
+        render: (p) => <Playbooks initialPlaybookId={p.playbookId} initialModuleId={p.moduleId} />,
     },
     {
         id: "pulse", name: "Pulse", icon: Timer, color: "#fb923c", layer: "P",

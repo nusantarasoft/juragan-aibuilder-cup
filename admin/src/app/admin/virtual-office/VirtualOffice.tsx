@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
-import { MousePointer2 } from "lucide-react";
+import { Hexagon } from "lucide-react";
 import { ensureOfficeRuntime } from "./lib/runtime";
 import { useOfficeStore } from "./lib/store";
 import { TopBar } from "./hud/TopBar";
@@ -10,72 +10,45 @@ import { AgentRoster } from "./hud/AgentRoster";
 import { AgentInspector } from "./hud/AgentInspector";
 import { AgentScreenView } from "./hud/AgentScreenView";
 import { CommandBar } from "./hud/CommandBar";
-import { GLASS, cx } from "./hud/shared";
+import { ORANGE, cx, useVoLayout } from "./hud/shared";
 import { AgenticOsOverlay } from "@/components/agentic-os/AgenticOsOverlay";
+import { useAosTheme } from "@/components/agentic-os/lib/deckStore";
 
 const OfficeScene = dynamic(() => import("./scene/OfficeScene"), { ssr: false });
-
-function ControlsHint() {
-    const selectedId = useOfficeStore((s) => s.selectedId);
-    if (selectedId) return null;
-    return (
-        <div className={cx(GLASS, "pointer-events-none absolute bottom-4 right-4 hidden rounded-xl px-3 py-2 text-[10px] leading-relaxed text-slate-400 2xl:block")}>
-            <div className="mb-1 flex items-center gap-1.5 font-semibold text-slate-300">
-                <MousePointer2 className="h-3 w-3" /> Controls
-            </div>
-            <div>Drag · orbit &nbsp;|&nbsp; Right-drag · pan &nbsp;|&nbsp; Scroll · zoom</div>
-            <div>Click agent · inspect &nbsp;|&nbsp; Click PC monitor · watch screen &nbsp;|&nbsp; Esc · back</div>
-            <div>1 overview · 2 top · F follow · L labels · N day/night</div>
-        </div>
-    );
-}
 
 function LoadingVeil() {
     const [visible, setVisible] = useState(true);
     useEffect(() => {
-        const t = setTimeout(() => setVisible(false), 900);
+        const t = setTimeout(() => setVisible(false), 850);
         return () => clearTimeout(t);
     }, []);
     return (
         <div
             className={cx(
-                "pointer-events-none absolute inset-0 z-30 flex flex-col items-center justify-center gap-3 bg-[#05070d] transition-opacity duration-700",
+                "pointer-events-none absolute inset-0 z-50 flex flex-col items-center justify-center gap-3 bg-[#0b0e13] font-mono transition-opacity duration-700",
                 visible ? "opacity-100" : "opacity-0",
             )}
         >
-            <div className="h-10 w-10 animate-spin rounded-full border-2 border-indigo-400/30 border-t-indigo-400" />
-            <div className="text-xs tracking-[0.2em] text-slate-400">ENTERING VIRTUAL OFFICE</div>
+            <Hexagon className="h-8 w-8 animate-pulse" color={ORANGE} strokeWidth={2} />
+            <div className="text-[11px] uppercase tracking-[0.28em] text-slate-400">ENTERING VIRTUAL OFFICE · AGENTIC OS</div>
         </div>
     );
 }
 
 export default function VirtualOffice() {
-    const lighting = useOfficeStore(s => s.lighting);
+    const { isDark, setTheme } = useAosTheme();
+    const focus = useVoLayout((s) => s.focus);
+    const dropEdge = useVoLayout((s) => s.dropEdge);
 
-    // Initial load from localstorage
+    // Keep 3D scene lighting synchronized with Agentic OS / Nusantarasoft theme
     useEffect(() => {
-        const savedDarkMode = localStorage.getItem("cms-dark-mode");
-        const isDark = savedDarkMode !== null ? savedDarkMode === "true" : window.matchMedia("(prefers-color-scheme: dark)").matches;
-        if (isDark && useOfficeStore.getState().lighting === "day") {
-            useOfficeStore.setState({ lighting: "night" });
-        } else if (!isDark && useOfficeStore.getState().lighting === "night") {
-            useOfficeStore.setState({ lighting: "day" });
+        const target = isDark ? "night" : "day";
+        if (useOfficeStore.getState().lighting !== target) {
+            useOfficeStore.setState({ lighting: target });
         }
-    }, []);
+    }, [isDark]);
 
-    // Sync state changes to global and tailwind
-    useEffect(() => {
-        const isDark = lighting === "night";
-        localStorage.setItem("cms-dark-mode", String(isDark));
-        if (isDark) {
-            document.documentElement.classList.add('dark');
-        } else {
-            document.documentElement.classList.remove('dark');
-        }
-    }, [lighting]);
-
-    // The runtime (mock today, real backend later — see lib/runtime.ts) lives for the whole tab,
-    // so agents keep working while the user follows them into module pages.
+    // The runtime lives for the whole tab so agents keep working across module navigation.
     useEffect(() => {
         ensureOfficeRuntime();
         useOfficeStore.getState().resetView();
@@ -92,7 +65,6 @@ export default function VirtualOffice() {
             if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || e.metaKey || e.ctrlKey || e.altKey) return;
             const s = useOfficeStore.getState();
             if (s.screenAgentId) {
-                // While watching a screen only Esc is active.
                 if (e.key === "Escape") s.closeScreen();
                 return;
             }
@@ -113,26 +85,46 @@ export default function VirtualOffice() {
                     s.toggleLabels();
                     break;
                 case "n":
-                    s.toggleLighting();
+                    setTheme(s.lighting !== "night");
                     break;
             }
         };
         window.addEventListener("keydown", onKey);
         return () => window.removeEventListener("keydown", onKey);
-    }, []);
+    }, [setTheme]);
 
     return (
-        <div className="fixed inset-0 z-[1000] overflow-hidden bg-[#05070d] font-sans text-slate-100 antialiased">
-            <div className="absolute inset-0">
-                <OfficeScene />
-            </div>
-            <div className="pointer-events-none absolute inset-0 z-20">
-                <TopBar />
-                <AgentRoster />
-                <AgentInspector />
-                <CommandBar />
-                <ControlsHint />
-                <AgentScreenView />
+        <div
+            data-theme={isDark ? "dark" : "light"}
+            className={cx(
+                "aos-root fixed inset-0 z-[1000] flex flex-col overflow-hidden bg-[#0b0e13] font-mono text-slate-100 antialiased",
+                !isDark && "aos-light",
+            )}
+        >
+            {/* Hide outer CMS floating dock while Virtual Office is mounted */}
+            <style>{'div.md\\:flex[style*="translateX(-50%)"]{display:none!important}div:has(> .mac-dock-container){display:none!important}'}</style>
+            <TopBar />
+            <div data-vo-body className="relative flex min-h-0 flex-1 overflow-hidden">
+                {!focus && <AgentRoster />}
+                <main data-testid="vo-main" className="relative order-2 min-w-0 flex-1 overflow-hidden">
+                    <OfficeScene />
+                    <CommandBar />
+                    <AgentScreenView />
+                </main>
+                {!focus && <AgentInspector />}
+                {dropEdge && (
+                    <div
+                        data-testid={`vo-drop-${dropEdge}`}
+                        className={cx(
+                            "pointer-events-none absolute inset-y-0 z-[50] flex w-14 items-center justify-center border-orange-400/80 bg-orange-500/15 backdrop-blur-[1px] transition-opacity",
+                            dropEdge === "left" ? "left-0 border-r-2" : "right-0 border-l-2",
+                        )}
+                    >
+                        <span className="-rotate-90 whitespace-nowrap text-[10px] font-semibold uppercase tracking-[0.25em] text-orange-200">
+                            {dropEdge === "left" ? "Drop to pin left" : "Drop to pin right"}
+                        </span>
+                    </div>
+                )}
             </div>
             <LoadingVeil />
             <AgenticOsOverlay />

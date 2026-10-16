@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { Archive, ArchiveRestore, BookOpen, Copy, Play, Plus, Save, Search } from "lucide-react";
 import { MODULES, type ModuleId } from "@/app/admin/virtual-office/lib/modules";
@@ -41,16 +41,25 @@ const blank = (moduleId: ModuleId = "itsm"): Draft => ({
     enabled: true,
 });
 
-export function Playbooks() {
+export function Playbooks({ initialPlaybookId, initialModuleId }: { initialPlaybookId?: string; initialModuleId?: string } = {}) {
     const { agents, playbooks, includeArchived, setIncludeArchived, run } = useAosStore(
         useShallow((s) => ({ agents: s.agents, playbooks: s.playbooks, includeArchived: s.includeArchived, setIncludeArchived: s.setIncludeArchived, run: s.run })),
     );
-    const [moduleFilter, setModuleFilter] = useState<string>("all");
+    const [moduleFilter, setModuleFilter] = useState<string>(initialModuleId || "all");
     const [query, setQuery] = useState("");
-    const [selected, setSelected] = useState<string | "new" | null>(null);
+    const [selected, setSelected] = useState<string | "new" | null>(initialPlaybookId ?? null);
     const [draft, setDraft] = useState<Draft | null>(null);
     const [busy, setBusy] = useState(false);
     const [testAgent, setTestAgent] = useState("");
+
+    useEffect(() => {
+        if (!initialPlaybookId) return;
+        const found = playbooks.find((p) => p.id === initialPlaybookId);
+        if (found) {
+            setSelected(found.id);
+            setDraft(toDraft(found));
+        }
+    }, [initialPlaybookId, playbooks]);
 
     const list = useMemo(() => {
         const q = query.trim().toLowerCase();

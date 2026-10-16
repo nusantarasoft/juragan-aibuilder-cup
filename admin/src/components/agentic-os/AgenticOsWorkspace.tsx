@@ -36,7 +36,7 @@ export function AgenticOsWorkspace({ initialApp = "overview", initialParams = {}
     }, []);
 
     return (
-        <div className="dark h-[calc(100vh-150px)] min-h-[640px] overflow-hidden border border-white/10 shadow-xl">
+        <div className="h-[calc(100vh-150px)] min-h-[640px] overflow-hidden border border-slate-200 dark:border-white/10 shadow-xl">
             <AgenticOsDesktop
                 initialApp={initialApp}
                 initialParams={initialParams}

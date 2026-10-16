@@ -11,10 +11,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { Command, LayoutDashboard, Maximize2, Minimize2, Minus, Play, Power, Search, ShieldAlert, X, type LucideIcon } from "lucide-react";
+import { AnimatedThemeToggler } from "@/components/magicui/animated-theme-toggler";
 import { useAosStore } from "./lib/store";
 import { usePulseStore } from "./lib/pulseStore";
 import { usePhase3Store } from "./lib/phase3Store";
-import { useDeckUi, type DeckView } from "./lib/deckStore";
+import { useAosTheme, useDeckUi, type DeckView } from "./lib/deckStore";
 import { pulseApi } from "./lib/api";
 import { APPS, APP_BY_ID, useOsUi, type AppId, type AppParams } from "./registry";
 import { CommandDeck } from "./apps/deck/CommandDeck";
@@ -268,7 +269,13 @@ function DockTile({ label, icon: Icon, color, active, open, badge, layer, onClic
     onClick: () => void;
 }) {
     return (
-        <button type="button" onClick={onClick} aria-label={label} className="group relative flex h-9 w-9 items-center justify-center border transition hover:-translate-y-0.5" style={{ borderColor: active ? `${color}aa` : "rgba(255,255,255,0.08)", background: active ? `${color}1f` : "transparent" }}>
+        <button
+            type="button"
+            onClick={onClick}
+            aria-label={label}
+            className={cx("group relative flex h-9 w-9 items-center justify-center border transition hover:-translate-y-0.5", !active && "border-white/10")}
+            style={{ borderColor: active ? `${color}aa` : undefined, background: active ? `${color}1f` : "transparent" }}
+        >
             <span className="pointer-events-none absolute -top-8 whitespace-nowrap border border-white/15 bg-[#0b0e13] px-1.5 py-0.5 text-[9px] uppercase tracking-[0.18em] text-slate-200 opacity-0 transition group-hover:opacity-100">{label}</span>
             <Icon className="h-4 w-4" style={{ color }} />
             {layer && <span className="absolute bottom-0 right-0.5 text-[7px] leading-none text-slate-500">{layer}</span>}
@@ -292,6 +299,7 @@ export function AgenticOsDesktop({ exit, initialApp = "overview", initialParams 
     consumePendingRequest?: boolean;
     className?: string;
 }) {
+    const { isDark, setTheme } = useAosTheme();
     const request = useOsUi((s) => s.request);
     const { stats, settings, status, error } = useAosStore(useShallow((s) => ({ stats: s.stats, settings: s.settings, status: s.status, error: s.error })));
     const [wins, setWins] = useState<Win[]>([]);
@@ -375,11 +383,24 @@ export function AgenticOsDesktop({ exit, initialApp = "overview", initialParams 
             <button type="button" onClick={() => setLauncher(true)} className="flex items-center gap-1.5 border border-white/15 px-2 py-0.5 tracking-normal text-slate-300 hover:border-white/30 hover:text-white">
                 <Search className="h-3 w-3" /> search <kbd className="text-[9px] text-slate-500">Ctrl K</kbd>
             </button>
+            <span data-testid="aos-theme-toggle" title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"} className="inline-flex">
+                <AnimatedThemeToggler
+                    isDark={isDark}
+                    onThemeChange={setTheme}
+                    size={13}
+                    className="!p-0 flex h-[22px] w-[22px] items-center justify-center !rounded-none border border-white/15 text-slate-300 transition hover:border-white/30 hover:text-white"
+                />
+            </span>
         </>
     );
 
     return (
-        <div ref={rootRef} className={cx("relative h-full w-full overflow-hidden bg-[#0b0e13] text-slate-100", className)} onKeyDown={(e) => e.stopPropagation()}>
+        <div
+            ref={rootRef}
+            data-theme={isDark ? "dark" : "light"}
+            className={cx("aos-root relative h-full w-full overflow-hidden bg-[#0b0e13] text-slate-100", !isDark && "aos-light", className)}
+            onKeyDown={(e) => e.stopPropagation()}
+        >
             {/* The CMS layout's bottom widget dock (and the MacDock) would sit on top of the OS dock; hide them while the desktop is mounted. */}
             <style>{'div.md\\:flex[style*="translateX(-50%)"]{display:none!important}div:has(> .mac-dock-container){display:none!important}'}</style>
             {/* Home screen: the overview deck */}
@@ -404,7 +425,7 @@ export function AgenticOsDesktop({ exit, initialApp = "overview", initialParams 
             ))}
 
             {/* Dock */}
-            <div className="absolute bottom-2.5 left-1/2 z-[2000] flex -translate-x-1/2 items-center gap-1.5 border border-white/15 bg-[#0b0e13]/90 px-2 py-1.5 font-mono shadow-[0_20px_60px_-15px_rgba(0,0,0,0.95)] backdrop-blur-xl">
+            <div className="aos-dock absolute bottom-2.5 left-1/2 z-[2000] flex -translate-x-1/2 items-center gap-1.5 border border-white/15 bg-[#0b0e13]/90 px-2 py-1.5 font-mono shadow-[0_20px_60px_-15px_rgba(0,0,0,0.95)] backdrop-blur-xl">
                 <DockTile label="Overview" icon={LayoutDashboard} color={ORANGE} active={!top} open onClick={showDeck} layer="S" />
                 <span className="mx-0.5 h-6 w-px bg-white/10" />
                 {WINDOW_APPS.map((a) => {

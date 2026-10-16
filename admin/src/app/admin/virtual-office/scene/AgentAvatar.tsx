@@ -304,24 +304,27 @@ export const AgentAvatar = memo(function AgentAvatar({ agent, spot, selected, ho
                         onClick={() => select(agent.id)}
                         onPointerEnter={() => hover(agent.id)}
                         onPointerLeave={() => hover(null)}
-                        className="pointer-events-auto flex cursor-pointer select-none flex-col items-center gap-1"
+                        className="pointer-events-auto flex cursor-pointer select-none flex-col items-center gap-1 font-mono"
                     >
                         <div
-                            className={`flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] font-semibold shadow-lg backdrop-blur-md transition-colors ${
-                                selected ? "border-white bg-white text-slate-900" : "border-white/15 bg-slate-950/70 text-white"
+                            className={`flex items-center gap-1.5 whitespace-nowrap border px-2 py-0.5 text-[10.5px] font-semibold shadow-lg backdrop-blur-md transition-colors ${
+                                selected
+                                    ? "border-orange-400/80 bg-[#0b0e13]/95 text-white"
+                                    : "border-white/20 bg-[#0b0e13]/90 text-white"
                             }`}
+                            style={selected ? { borderLeftColor: "#fb923c", borderLeftWidth: 2 } : undefined}
                         >
-                            <span className="relative flex h-2 w-2">
+                            <span className="relative flex h-1.5 w-1.5">
                                 {pulse && (
                                     <span className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-60" style={{ background: statusColor }} />
                                 )}
-                                <span className="relative inline-flex h-2 w-2 rounded-full" style={{ background: statusColor }} />
+                                <span className="relative inline-flex h-1.5 w-1.5 rounded-full" style={{ background: statusColor }} />
                             </span>
                             {agent.name}
                             {mod && (
                                 <span
-                                    className="rounded px-1 py-px text-[9px] font-bold"
-                                    style={{ background: `${mod.color}33`, color: selected ? "#0f172a" : mod.color }}
+                                    className="border px-1 py-px text-[8.5px] uppercase tracking-wider"
+                                    style={{ background: `${mod.color}22`, borderColor: `${mod.color}55`, color: mod.color }}
                                 >
                                     {mod.name}
                                 </span>
@@ -330,7 +333,7 @@ export const AgentAvatar = memo(function AgentAvatar({ agent, spot, selected, ho
                             {status === "error" && <span className="font-bold text-red-500">!</span>}
                         </div>
                         {(selected || hovered) && agent.task && (
-                            <div className="max-w-[240px] truncate rounded-md border border-white/10 bg-slate-950/80 px-2 py-0.5 text-[10px] text-slate-300 backdrop-blur-md">
+                            <div className="max-w-[240px] truncate border border-white/15 bg-[#0b0e13]/92 px-2 py-0.5 text-[9.5px] text-slate-300 backdrop-blur-md">
                                 {agent.task.steps[stepIndex(agent.task.progress, agent.task.steps.length)]} · {pct}%
                             </div>
                         )}
