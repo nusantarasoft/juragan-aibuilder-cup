@@ -120,6 +120,8 @@ LID note: inbound JIDs are often `@lid`. Allowlist phones are expanded via `lid-
 |-----|-----|
 | Admin QR / pair / logout / rebind | `HermesProvider` → `GET/POST /pair/*` on `:8765` |
 | Approve / reject notify to owner | `sendText` → `POST /send` |
+| Super-admin **Percakapan WA** human reply | Nest `studioWaHumanReply` → `sendText` with suffix `\n\n— Admin Nusantarasoft`; persist same text in `studio_wa_messages`. See [`percakapan-wa.md`](./percakapan-wa.md). |
+| Inbound/outbound turn mirror (post-activation) | Hermes `kasir-pipe` → `POST /internal/wa-turn` (best-effort; same key as kasir-consult). **No** backfill from `state.db`. |
 | Buttons / lists | try `POST /send-poll`; caller may fall back to text |
 
 Bridge binds `127.0.0.1:3000` inside the Hermes container. Other containers cannot reach it; kasir-pipe proxies `0.0.0.0:8765` → that loopback.

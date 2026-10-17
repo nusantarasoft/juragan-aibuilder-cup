@@ -1,5 +1,5 @@
 # NS3 Backlog — Superapp "rekrut agen AI seperti karyawan"
-Updated: 2026-10-16. Owner: PO-NS3. Status: TODO / DOING / REVIEW (await Akbar) / DONE / BLOCKED / SKIPPED.
+Updated: 2026-10-17. Owner: PO-NS3. Status: TODO / DOING / REVIEW (await Akbar) / DONE / BLOCKED / SKIPPED.
 Rule: one DOING task at Cursor at a time (plus deploy). Gate: scope → PR → QA (backend + browser, build) → Akbar approve → merge → release → deploy → verify. New findings get appended as NEW items with a source.
 
 ## Fase 0 — Fondasi stabil
@@ -41,6 +41,9 @@ Rule: one DOING task at Cursor at a time (plus deploy). Gate: scope → PR → Q
 - [DONE] P2-3 Visual Agent Builder persisted workflows — PR [#57](https://github.com/nusantarasoft/nusantarasoft-3/pull/57); QA PASS `.gstack/qa-reports/qa-p2-3-agent-builder-2026-10-15.md`; screenshots `/cursor/stores/self/media/p2-3-builder-*.png`; ops [docs/ops/p2-3-agent-builder-persistence.md](ops/p2-3-agent-builder-persistence.md)
 - [DONE] P2-4 Label Studio admin dashboard reads real project stats from Label Studio API — QA PASS `.gstack/qa-reports/qa-p2-4-label-studio-2026-10-15.md`; screenshots `/cursor/stores/self/media/p2-4-label-studio-*.png`
 - [DONE] P2-5 Per-tenant dedicated WhatsApp business number (optional Hermes session per store) — PR [#59](https://github.com/nusantarasoft/nusantarasoft-3/pull/59) `cursor/p2-5-dedicated-wa-c20f`; design [docs/design/p2-5-dedicated-wa.md](design/p2-5-dedicated-wa.md); ops [docs/ops/p2-5-dedicated-wa.md](ops/p2-5-dedicated-wa.md); QA **PASS** (full gate) `.gstack/qa-reports/qa-p2-5-dedicated-wa-2026-10-15.md`; screenshots `/cursor/stores/self/media/p2-5-dedicated-wa-*.png`
+- [DONE] **AI Studio — Percakapan WA** (Akbar TOP) — branch `cursor/aistudio-percakapan-wa-3969`; system [docs/aistudio/umkm-wa/system/percakapan-wa.md](aistudio/umkm-wa/system/percakapan-wa.md)
+  - **Product locks:** (1) balasan manusia admin → suffix `\n\n— Admin Nusantarasoft` on send + DB; (2) riwayat chat **tanpa batas** — no purge/TTL; (3) history **kosong** saat aktivasi — **no** import Hermes `state.db` / legacy WAHA tables.
+  - Scope: `studio_wa_*` tables + RLS service_role; Hermes `POST /internal/wa-turn`; super-admin UI `/admin/ai-studio/percakapan-wa`; Ambil alih / Kembalikan ke AI (+ auto-release 30m idle human); audit human + takeover.
 
 ## Discovered
 (append here)
