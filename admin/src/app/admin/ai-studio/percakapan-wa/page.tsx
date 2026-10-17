@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import CMSLayout from '@/components/layout/CMSLayout';
 import RbacGuard from '@/components/common/RbacGuard';
 import {
@@ -26,6 +26,12 @@ import {
     type StudioWaConversation,
     type StudioWaMessage,
 } from '@/lib/studioWaConversationsApi';
+import {
+    messagesChanged,
+    shouldPollStudioWaInbox,
+    shouldSkipInboxFetch,
+    STUDIO_WA_INBOX_POLL_MS,
+} from '@/lib/studioWaInboxPoll';
 
 const { Text, Title } = Typography;
 
@@ -55,36 +61,74 @@ export default function PercakapanWaPage() {
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
+    const listInFlight = useRef(false);
+    const msgInFlight = useRef(false);
+    const threadScrollRef = useRef<HTMLDivElement | null>(null);
+
     const selected = useMemo(
         () => rows.find((r) => r.id === selectedId) ?? null,
         [rows, selectedId],
     );
 
-    const loadList = useCallback(async () => {
-        setLoading(true);
-        setError(null);
-        try {
-            const list = await fetchStudioWaConversations();
-            setRows(list);
-            if (!selectedId && list[0]) setSelectedId(list[0].id);
-        } catch (e) {
-            setError(e instanceof Error ? e.message : 'Gagal memuat daftar percakapan');
-        } finally {
-            setLoading(false);
-        }
-    }, [selectedId]);
+    const loadList = useCallback(
+        async (opts?: { silent?: boolean }) => {
+            if (shouldSkipInboxFetch(listInFlight.current)) return;
+            listInFlight.current = true;
+            if (!opts?.silent) {
+                setLoading(true);
+                setError(null);
+            }
+            try {
+                const list = await fetchStudioWaConversations();
+                setRows(list);
+                if (!selectedId && list[0]) setSelectedId(list[0].id);
+            } catch (e) {
+                if (!opts?.silent) {
+                    setError(e instanceof Error ? e.message : 'Gagal memuat daftar percakapan');
+                }
+            } finally {
+                listInFlight.current = false;
+                if (!opts?.silent) setLoading(false);
+            }
+        },
+        [selectedId],
+    );
 
-    const loadMessages = useCallback(async (conversationId: string) => {
-        setMsgLoading(true);
-        try {
-            const msgs = await fetchStudioWaMessages(conversationId);
-            setMessages(msgs);
-        } catch (e) {
-            message.error(e instanceof Error ? e.message : 'Gagal memuat thread');
-        } finally {
-            setMsgLoading(false);
-        }
-    }, []);
+    const loadMessages = useCallback(
+        async (conversationId: string, opts?: { silent?: boolean }) => {
+            if (shouldSkipInboxFetch(msgInFlight.current)) return;
+            msgInFlight.current = true;
+            const scrollEl = threadScrollRef.current;
+            const prevScrollTop = scrollEl?.scrollTop ?? 0;
+            const prevScrollHeight = scrollEl?.scrollHeight ?? 0;
+            const stickToBottom =
+                scrollEl != null &&
+                prevScrollHeight - prevScrollTop - scrollEl.clientHeight < 80;
+
+            if (!opts?.silent) setMsgLoading(true);
+            try {
+                const msgs = await fetchStudioWaMessages(conversationId);
+                setMessages((prev) => (messagesChanged(prev, msgs) ? msgs : prev));
+                if (stickToBottom && scrollEl) {
+                    requestAnimationFrame(() => {
+                        scrollEl.scrollTop = scrollEl.scrollHeight;
+                    });
+                } else if (scrollEl) {
+                    requestAnimationFrame(() => {
+                        scrollEl.scrollTop = prevScrollTop;
+                    });
+                }
+            } catch (e) {
+                if (!opts?.silent) {
+                    message.error(e instanceof Error ? e.message : 'Gagal memuat thread');
+                }
+            } finally {
+                msgInFlight.current = false;
+                if (!opts?.silent) setMsgLoading(false);
+            }
+        },
+        [],
+    );
 
     useEffect(() => {
         void loadList();
@@ -94,13 +138,30 @@ export default function PercakapanWaPage() {
         if (selectedId) void loadMessages(selectedId);
     }, [selectedId, loadMessages]);
 
+    useEffect(() => {
+        const tick = () => {
+            if (!shouldPollStudioWaInbox(document.hidden)) return;
+            void loadList({ silent: true });
+            if (selectedId) void loadMessages(selectedId, { silent: true });
+        };
+        const id = window.setInterval(tick, STUDIO_WA_INBOX_POLL_MS);
+        const onVis = () => {
+            if (!document.hidden) tick();
+        };
+        document.addEventListener('visibilitychange', onVis);
+        return () => {
+            window.clearInterval(id);
+            document.removeEventListener('visibilitychange', onVis);
+        };
+    }, [loadList, loadMessages, selectedId]);
+
     const onTakeover = async () => {
         if (!selectedId) return;
         setBusy(true);
         try {
             await studioWaTakeoverStart(selectedId);
             message.success('Percakapan diambil alih');
-            await loadList();
+            await loadList({ silent: true });
             await loadMessages(selectedId);
         } catch (e) {
             message.error(e instanceof Error ? e.message : 'Gagal ambil alih');
@@ -115,7 +176,8 @@ export default function PercakapanWaPage() {
         try {
             await studioWaTakeoverRelease(selectedId);
             message.success('Dikembalikan ke AI');
-            await loadList();
+            await loadList({ silent: true });
+            if (selectedId) await loadMessages(selectedId, { silent: true });
         } catch (e) {
             message.error(e instanceof Error ? e.message : 'Gagal kembalikan ke AI');
         } finally {
@@ -130,7 +192,7 @@ export default function PercakapanWaPage() {
             await studioWaHumanReply(selectedId, reply.trim());
             setReply('');
             message.success('Pesan terkirim');
-            await loadList();
+            await loadList({ silent: true });
             await loadMessages(selectedId);
         } catch (e) {
             message.error(e instanceof Error ? e.message : 'Gagal kirim');
@@ -233,22 +295,35 @@ export default function PercakapanWaPage() {
                     ) : messages.length === 0 ? (
                         <Empty description="Belum ada pesan tercatat" />
                     ) : (
-                        <List
-                            dataSource={messages}
-                            renderItem={(m) => (
-                                <List.Item>
-                                    <Space direction="vertical" style={{ width: '100%' }}>
-                                        <Tag color={m.authorKind === 'human' ? 'gold' : m.authorKind === 'ai' ? 'blue' : 'default'}>
-                                            {authorLabel(m)}
-                                        </Tag>
-                                        <Text style={{ whiteSpace: 'pre-wrap' }}>{m.bodyText}</Text>
-                                        <Text type="secondary" style={{ fontSize: 12 }}>
-                                            {new Date(m.createdAt).toLocaleString('id-ID')}
-                                        </Text>
-                                    </Space>
-                                </List.Item>
-                            )}
-                        />
+                        <div
+                            ref={threadScrollRef}
+                            style={{ maxHeight: 420, overflowY: 'auto', paddingRight: 4 }}
+                        >
+                            <List
+                                dataSource={messages}
+                                renderItem={(m) => (
+                                    <List.Item>
+                                        <Space direction="vertical" style={{ width: '100%' }}>
+                                            <Tag
+                                                color={
+                                                    m.authorKind === 'human'
+                                                        ? 'gold'
+                                                        : m.authorKind === 'ai'
+                                                          ? 'blue'
+                                                          : 'default'
+                                                }
+                                            >
+                                                {authorLabel(m)}
+                                            </Tag>
+                                            <Text style={{ whiteSpace: 'pre-wrap' }}>{m.bodyText}</Text>
+                                            <Text type="secondary" style={{ fontSize: 12 }}>
+                                                {new Date(m.createdAt).toLocaleString('id-ID')}
+                                            </Text>
+                                        </Space>
+                                    </List.Item>
+                                )}
+                            />
+                        </div>
                     )}
 
                     {selected?.takeoverActive ? (

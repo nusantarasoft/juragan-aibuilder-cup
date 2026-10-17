@@ -7,7 +7,7 @@ import { loginAsAdmin } from './helpers/auth';
 /** Host middleware must set `HERMES_BRIDGE_URL=http://127.0.0.1:8765` (see scripts/qa-percakapan-wa-full-gate.sh). */
 const GRAPHQL = process.env.GRAPHQL_URL || 'http://127.0.0.1:4001/graphql';
 const MIDDLEWARE = process.env.MIDDLEWARE_URL || 'http://127.0.0.1:4001';
-const DOCKER = process.env.QA_DOCKER || 'sudo docker';
+const DOCKER = process.env.QA_DOCKER || 'docker';
 const PG = process.env.PG_CONTAINER || 'postgres';
 const DB = process.env.POSTGRES_DB || 'nusantarasoft';
 const REPO = path.resolve(__dirname, '../../..');
@@ -123,13 +123,19 @@ test.describe('Percakapan WA — super admin inbox', () => {
             timeout: 30_000,
         });
         await page.getByText('6289990000001', { exact: true }).first().click();
-        await expect(page.getByText('AI').first()).toBeVisible();
+        await expect(page.getByText('AI', { exact: true }).first()).toBeVisible();
         await expect(page.getByText('Stok Indomie goreng')).toBeVisible();
 
         await page.getByRole('button', { name: 'Ambil alih' }).click();
         await expect(page.getByRole('button', { name: 'Kembalikan ke AI' })).toBeVisible({
             timeout: 15_000,
         });
+
+        const inboundDuringTakeover = `Inbound QA poll ${Date.now()}`;
+        execSync(
+            `${DOCKER} exec -i ${PG} psql -U postgres -d ${DB} -v ON_ERROR_STOP=1 -c "INSERT INTO public.studio_wa_messages (conversation_id, tenant_id, author_kind, body_text) VALUES ('${CONV_ID}', '00000000-0000-0000-0000-000000000010', 'owner', '${inboundDuringTakeover}'); UPDATE public.studio_wa_conversations SET last_message_preview = '${inboundDuringTakeover}', last_message_at = now() WHERE id = '${CONV_ID}';"`,
+        );
+        await expect(page.getByText(inboundDuringTakeover)).toBeVisible({ timeout: 15_000 });
 
         const reply = `Balasan QA ${Date.now()}`;
         await page.getByPlaceholder('Balas pemilik toko').fill(reply);

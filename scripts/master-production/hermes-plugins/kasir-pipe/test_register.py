@@ -488,5 +488,86 @@ class TransformLlmOutputEgressTest(unittest.TestCase):
         self.assertIsNone(out)
 
 
+class TransformLlmOutputWaTurnTest(unittest.TestCase):
+    """Percakapan WA: mirror AI turns to /internal/wa-turn."""
+
+    @classmethod
+    def setUpClass(cls):
+        pkg_name = "kasir_pipe_waturn_testpkg"
+        if pkg_name not in sys.modules:
+            pkg = type(sys)(pkg_name)
+            pkg.__path__ = [str(ROOT)]
+            pkg.__package__ = pkg_name
+            sys.modules[pkg_name] = pkg
+        init_spec = importlib.util.spec_from_file_location(
+            f"{pkg_name}.__init__",
+            ROOT / "__init__.py",
+            submodule_search_locations=[str(ROOT)],
+        )
+        assert init_spec and init_spec.loader
+        cls.pipe = importlib.util.module_from_spec(init_spec)
+        cls.pipe.__package__ = pkg_name
+        sys.modules[f"{pkg_name}.__init__"] = cls.pipe
+        sys.modules[f"{pkg_name}.register"] = mod
+        init_spec.loader.exec_module(cls.pipe)
+        wa_spec = importlib.util.spec_from_file_location(f"{pkg_name}.wa_sync", ROOT / "wa_sync.py")
+        assert wa_spec and wa_spec.loader
+        cls.wa_sync = importlib.util.module_from_spec(wa_spec)
+        cls.wa_sync.__package__ = pkg_name
+        sys.modules[f"{pkg_name}.wa_sync"] = cls.wa_sync
+        wa_spec.loader.exec_module(cls.wa_sync)
+
+    def test_records_ai_turn_from_event(self):
+        event = mock.Mock()
+        chat = "6282222222222@s.whatsapp.net"
+        with mock.patch.object(self.pipe, "_resolve_sender_phone", return_value="6282222222222"), mock.patch.object(
+            self.pipe, "_chat_id", return_value=chat
+        ), mock.patch.object(self.wa_sync, "handoff_active", return_value=False), mock.patch.object(
+            self.wa_sync, "record_turn_async"
+        ) as record:
+            out = self.pipe._on_transform_llm_output(
+                response_text="Stok OK.",
+                platform="whatsapp",
+                event=event,
+            )
+        self.assertIsNone(out)
+        record.assert_called_once_with(
+            phone="6282222222222",
+            chat_id=chat,
+            author_kind="ai",
+            body_text="Stok OK.",
+        )
+
+    def test_records_ai_turn_from_chat_id_kwarg(self):
+        with mock.patch.object(self.wa_sync, "handoff_active", return_value=False), mock.patch.object(
+            self.wa_sync, "record_turn_async"
+        ) as record:
+            out = self.pipe._on_transform_llm_output(
+                response_text="Halo.",
+                platform="whatsapp",
+                chat_id="6283333333333@s.whatsapp.net",
+            )
+        self.assertIsNone(out)
+        record.assert_called_once_with(
+            phone="6283333333333",
+            chat_id="6283333333333@s.whatsapp.net",
+            author_kind="ai",
+            body_text="Halo.",
+        )
+
+    def test_takeover_blocks_ai_turn_and_reply(self):
+        with mock.patch.object(
+            self.pipe, "_resolve_transform_wa_context", return_value=("6284444444444", "6284444444444@s.whatsapp.net")
+        ), mock.patch.object(self.wa_sync, "handoff_active", return_value=True), mock.patch.object(
+            self.wa_sync, "record_turn_async"
+        ) as record:
+            out = self.pipe._on_transform_llm_output(
+                response_text="Should not send",
+                platform="whatsapp",
+            )
+        self.assertEqual(out, "")
+        record.assert_not_called()
+
+
 if __name__ == "__main__":
     unittest.main()

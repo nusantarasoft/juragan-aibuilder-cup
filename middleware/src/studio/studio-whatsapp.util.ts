@@ -86,6 +86,41 @@ export function collectUmkmOwnerPhones(config: StudioWhatsAppConfigLookup): stri
     return [...new Set(phones)];
 }
 
+/** D-40: count distinct owner/staff WA numbers on one store config. */
+export function countUmkmWaPhones(config: {
+    business_phone?: string | null;
+    allowlist_phones?: string[] | null;
+}): number {
+    return collectUmkmOwnerPhones(config).length;
+}
+
+/** Hermes + middleware shared allowlist: match sender on resolved config row. */
+export function isSenderOnUmkmWaConfig(
+    config: StudioWhatsAppConfigLookup,
+    phoneRaw: string,
+): boolean {
+    return collectUmkmOwnerPhones(config).some((p) => phonesMatch(p, phoneRaw));
+}
+
+/** Collapse to a single owner phone on business_phone (allowlist cleared). */
+export function normalizeSingleUmkmWaConfigPhones(
+    businessPhone?: string | null,
+    allowlistPhones?: string[] | null,
+): { businessPhone: string | null; allowlistPhones: string[] } {
+    const phones = collectUmkmOwnerPhones({
+        business_phone: businessPhone,
+        allowlist_phones: allowlistPhones,
+    });
+    if (!phones.length) {
+        const bp = businessPhone ? normalizePhoneDigits(businessPhone) : '';
+        return {
+            businessPhone: bp.length >= 8 ? bp : null,
+            allowlistPhones: [],
+        };
+    }
+    return { businessPhone: phones[0], allowlistPhones: [] };
+}
+
 /**
  * Shared inbox: route inbound message to UMKM by sender phone (pemilik/staff).
  * Returns null if ambiguous or no match.

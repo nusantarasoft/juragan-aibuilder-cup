@@ -41,6 +41,7 @@ Owner WA inbound
 
 Super admin /admin/ai-studio/percakapan-wa
   → GraphQL studioWa* (super_admin only)
+  → Poll list + open thread every ~5s while tab visible (pause when hidden)
   → Ambil alih → takeover_active + takeover_until (+30m per human reply)
   → Human reply → sendText(suffixed) + wa-turn human + audit_logs
 
@@ -49,6 +50,8 @@ kasir_consult + phone during takeover
 ```
 
 Internal auth: header `x-kasir-consult-key` (same as kasir-consult).
+
+**Whitelist source of truth:** Hermes (`kasir-pipe`) and Nest `POST /internal/wa-turn` both resolve senders via `studio_whatsapp_config` (`business_phone` + `allowlist_phones`). Saves sync `tenant_wa_whitelist` for F2 onboarding. **D-40:** one owner number per store — see [docs/backlog.md](../../../../docs/backlog.md) D-40.
 
 Diagram: [L12-percakapan-wa.svg](../../../../diagrams/aistudio/umkm-wa/system/L12-percakapan-wa.svg)
 
@@ -70,5 +73,6 @@ Do **not** commit or copy live `state.db`, `config.yaml`, `channel_directory.jso
 - Menu: **AI Studio → Percakapan WA** (`/admin/ai-studio/percakapan-wa`)
 - Indonesian copy; empty state: **Belum ada percakapan WA**
 - Thread labels: **AI** / **Manusia** (+ admin name on human rows)
+- Auto-refresh ~5s (visible tab) so inbound owner messages appear during takeover without manual reload
 
 Access: **super_admin** only (server-enforced on every query/mutation).

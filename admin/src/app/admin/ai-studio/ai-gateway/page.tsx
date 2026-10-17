@@ -4,6 +4,7 @@ import React, { Suspense, useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import CMSLayout from '@/components/layout/CMSLayout';
+import { normalizeSingleStoreWaPhone, validateSingleStoreWaPhone } from '@/lib/studioWaPhone';
 import {
     Card,
     Row,
@@ -119,7 +120,10 @@ function WhatsAppGatewayPageContent() {
                     tenantId: cfg.tenant_id,
                     notebookId: cfg.notebook_id,
                     enabled: cfg.enabled,
-                    allowlistPhones: cfg.allowlist_phones || [],
+                    ownerWaPhone:
+                        cfg.business_phone ||
+                        (cfg.allowlist_phones && cfg.allowlist_phones[0]) ||
+                        '',
                     useGuidedFlow: cfg.use_guided_flow,
                     sessionName: cfg?.session_name ?? '',
                     businessPhone: cfg.business_phone || '',
@@ -258,20 +262,23 @@ function WhatsAppGatewayPageContent() {
 
     const handleSave = async () => {
         const values = await form.validateFields();
-        if (allowlistRequired && values.enabled && (!values.allowlistPhones || values.allowlistPhones.length === 0)) {
-            message.error('Allowlist nomor wajib diisi saat WhatsApp diaktifkan.');
+        if (allowlistRequired && values.enabled && !normalizeSingleStoreWaPhone(values.ownerWaPhone)) {
+            message.error('Nomor pemilik toko wajib diisi saat WhatsApp diaktifkan.');
             return;
         }
         setSaving(true);
         try {
+            const ownerPhone = values.ownerWaPhone
+                ? validateSingleStoreWaPhone(values.ownerWaPhone)
+                : null;
             await studioService.updateWhatsAppConfig({
                 tenantId: values.tenantId || activeTenant,
                 notebookId: values.notebookId || null,
                 enabled: values.enabled,
-                allowlistPhones: values.allowlistPhones || [],
+                allowlistPhones: [],
                 useGuidedFlow: values.useGuidedFlow,
                 sessionName: 'default',
-                businessPhone: values.businessPhone?.replace(/\D/g, '') || null,
+                businessPhone: ownerPhone,
                 label: values.label || null,
             });
             message.success('Konfigurasi WhatsApp disimpan');
@@ -444,16 +451,11 @@ function WhatsAppGatewayPageContent() {
                                 </Form.Item>
 
                                 <Form.Item
-                                    name="allowlistPhones"
-                                    label="Daftar Nomor Pelanggan (Allowlist)"
-                                    tooltip="AI hanya akan membalas pesan dari nomor-nomor ini. Jika kosong, akan membalas SEMUA orang (tidak disarankan jika token AI terbatas)."
+                                    name="ownerWaPhone"
+                                    label="Nomor WhatsApp pemilik toko"
+                                    tooltip="Satu nomor per toko (D-40). AI hanya membalas pesan dari nomor ini."
                                 >
-                                    <Select
-                                        mode="tags"
-                                        placeholder="Ketik nomor lalu Enter (misal: 62812...)"
-                                        tokenSeparators={[',', ' ']}
-                                        style={{ width: '100%' }}
-                                    />
+                                    <Input placeholder="6288123456789" />
                                 </Form.Item>
 
                                 <Row gutter={16} align="middle">

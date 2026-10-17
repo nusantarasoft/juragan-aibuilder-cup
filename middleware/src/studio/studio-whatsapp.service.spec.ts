@@ -275,6 +275,34 @@ describe('StudioWhatsAppService unit (Hermes session + security)', () => {
         ).rejects.toThrow(/sudah terdaftar/i);
     });
 
+    it('D-40 rejects more than one owner phone on a store', async () => {
+        const from = vi.fn(() => ({
+            select: () => ({
+                eq: () => ({
+                    maybeSingle: async () => ({
+                        data: {
+                            tenant_id: 'default',
+                            enabled: false,
+                            business_phone: '6281111111111',
+                            allowlist_phones: [],
+                        },
+                        error: null,
+                    }),
+                }),
+                then: (resolve: (v: unknown) => void) => resolve({ data: [], error: null }),
+            }),
+        }));
+        const { svc } = makeService({
+            supabase: { getAdminClient: () => ({ from }) },
+        });
+        await expect(
+            svc.updateConfig({
+                businessPhone: '6281111111111',
+                allowlistPhones: ['6282222222222'],
+            }),
+        ).rejects.toThrow(/D-40/i);
+    });
+
     it('resolveConfigForWebhook matches owner phone and single-tenant fallback', async () => {
         const rows = [
             {
