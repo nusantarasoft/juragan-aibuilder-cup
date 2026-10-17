@@ -15,11 +15,21 @@ export class PmService {
         return this.supabaseService.getAdminClient();
     }
 
+    /** PostgREST embed for PM assignee/owner/reporter (tenant_users → individuals). */
+    private static readonly TU_PERSON =
+        'id, individuals!tenant_users_individual_id_fkey(first_name, last_name, avatar_url, email)';
+
+    private static readonly PROJECT_SELECT =
+        `*, owner:tenant_users!pm_projects_owner_id_fkey(${PmService.TU_PERSON})`;
+
+    private static readonly TASK_SELECT =
+        `*, assignee:tenant_users!pm_tasks_assignee_id_fkey(${PmService.TU_PERSON}), reporter:tenant_users!pm_tasks_reporter_id_fkey(${PmService.TU_PERSON})`;
+
     // ─── PROJECTS ────────────────────────────────────────────
 
     async getProjects(tenantId: string, filters?: { status?: string; search?: string }) {
         let query = this.db.from('pm_projects')
-            .select('*')
+            .select(PmService.PROJECT_SELECT)
             .eq('tenant_id', tenantId);
 
         if (filters?.status) query = query.eq('status', filters.status);
@@ -35,7 +45,7 @@ export class PmService {
 
     async getProject(id: string) {
         const { data, error } = await this.db.from('pm_projects')
-            .select('*')
+            .select(PmService.PROJECT_SELECT)
             .eq('id', id).single();
         if (error) {
             this.logger.error(`Error fetching project ${id}:`, error);
@@ -152,7 +162,7 @@ export class PmService {
 
     async getTasks(tenantId: string, filters?: { projectId?: string; sprintId?: string; status?: string; assigneeId?: string }) {
         let query = this.db.from('pm_tasks')
-            .select('*')
+            .select(PmService.TASK_SELECT)
             .eq('tenant_id', tenantId)
             .eq('is_archived', false);
 
@@ -168,10 +178,23 @@ export class PmService {
 
     async getTask(id: string) {
         const { data, error } = await this.db.from('pm_tasks')
-            .select('*')
+            .select(PmService.TASK_SELECT)
             .eq('id', id).single();
         if (error) throw error;
         return data;
+    }
+
+    async getMembers(tenantId: string) {
+        const { data, error } = await this.db.from('tenant_users')
+            .select('id, user_id, roles(name), individuals!tenant_users_individual_id_fkey(first_name, last_name, email)')
+            .eq('tenant_id', tenantId)
+            .eq('is_active', true)
+            .order('created_at', { ascending: false });
+        if (error) {
+            this.logger.error('Error fetching PM members:', error);
+            throw error;
+        }
+        return data ?? [];
     }
 
     async createTask(tenantId: string, input: any) {

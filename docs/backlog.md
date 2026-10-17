@@ -52,15 +52,15 @@ Rule: one DOING task at Cursor at a time (plus deploy). Gate: scope → PR → Q
 - [DONE] D-22 (UI-wave-4) SCADA historian GraphQL + trends live/sample banners; BMS energy sample banner; BMS dashboard charts stay empty until point history wired
 - [DONE] D-23 (UI-wave-4) Full admin menuConfig + VO route crawl Playwright spec + coverage JSON (`.gstack/qa-reports/ui-wave-4-route-coverage.json`)
 - [DONE] D-24 (UI-wave-4) HR `hr_*` schema in `supabase/migrations/20261016170000_hr_module.sql`; GraphQL field aliases on `hr.resolver.ts`
-- [DONE] D-25 (UI-wave-4 PO #74) PM `me` query drops `fullName`; middleware PM lists use plain `select('*')` until tenant_users↔individuals FK lands
+- [DONE] D-25 (UI-wave-4 PO #74) PM `tenant_users`↔`individuals` FK + `pmMembers`/owner/assignee embeds — migration `20261016170300_tenant_users_individual_fk.sql`
 - **Adityo last-seen integrated (`development-adityo`):** `861a6588fe93594528f1079b7e58cc624a6550de` (2026-10-16 13:03 WIB) — VO HUD + Command Deck panels via D-9-style PR on `master` @ Wave 4 #74 tip; deploy docs / `pull-on-server.sh` **not** taken from his branch.
 - [DONE] D-26 (Adityo branch review @ `861a658`) Conflict markers + encoding garbage in `scripts/master-production/pull-on-server.sh` / `docs/deploy-master-production.md` on `development-adityo` — **master deploy-key version kept** in integration PR (no import from his branch).
 - [DONE] D-27 (Adityo branch review @ `861a658`) VO HUD rewrite integrated with Wave 1 honesty preserved (Kasir-only metrics, ID copy, demo labels, connect-wa, tenant settings).
 - [DONE] D-28 (Adityo branch review @ `861a658`) `database_dump_*.sql` **not** imported — remains on `development-adityo` only; tied to **F0-3** branch scrub.
-- [TODO] D-31 (UI-wave-4 PO #74) QA compose omits Supabase Realtime — Playwright narrow ignore for `realtime/v1/websocket` 503 only (`console.ts`)
+- [DONE] D-31 (UI-wave-4 PO #74) QA bootstrap starts Supabase Realtime (`qa-bootstrap-f1-4-stack.sh`, `docker-compose.qa-override.yml`)
 - [DONE] D-32 (UI-wave-4) E-commerce GraphQL aligned (`ecomOrderItems` tenant scope, field aliases); `20261016170200_qa_ecom_inventory_extensions.sql` for offers/discounts/packages/returns + inventory ops tables
 - [DONE] D-33 (UI-wave-4) system-health probes REST/auth endpoints available on QA compose (no storage bucket 401)
-- [TODO] D-34 (UI-wave-4 PO #74) Agentic OS dynamic chunk flake on long crawl — narrow ignore for `Loading chunk … agentic-os`
+- [DONE] D-34 (UI-wave-4 PO #74) Agentic OS page uses static import (no dynamic chunk flake on route crawl)
 - [DONE] D-35 (UI-wave-4) Inventory REST on QA via consolidated migrations; warehouse-map SSR guard for keyboard listeners
 - [DONE] D-36 (UI-wave-4 PO #75) Route crawl 320/320 — Dremio catalog tree + CrmPicker console races; e2e SW unregister; ITSM migration `20261016170100_itsm_itil_v4_tables.sql`; QA report `.gstack/qa-reports/qa-ui-wave-4-crawl-zero-2026-10-16.md`
 - [DONE] D-18 (UI-wave-1) VO inspector before/after — `.gstack/qa-reports/screenshots/ui-wave-1-vo-inspector-*-after.png` (Playwright on live stack, PR #70)
@@ -74,7 +74,7 @@ Rule: one DOING task at Cursor at a time (plus deploy). Gate: scope → PR → Q
 - [DONE] D-8 (deploy status hotfix) Write `logs/.deploy.lock` with state before wrapper spawn; `-Status` treats in-flight state without PID; `deploy.ps1` brief idle retry on first poll — merged `39232b8` (#43)
 - [DONE] D-10 F2-1 security hardening (captcha, rate limit, email verify, WA provision limits) — shipped in #42 @ `e6424f2`; ops [docs/ops/f2-1-prod-readiness.md](ops/f2-1-prod-readiness.md)
 - [DONE] D-9 Integrate Adityo `development-adityo` @ `c1fdc757a489d513395a9df394e1012a75c9d4ed` (2026-10-14 19:02 WIB): deck UI merged to `master` @ `d8e1b16`; QA PASS — `.gstack/qa-reports/qa-d9-adityo-deck-2026-10-15.md`; screenshots `/cursor/stores/self/media/d9-deck-*.png`
-- [TODO] D-11 (F3-3 review @ `a122ab8`) Extend [release-f2-prod-readiness.md](ops/release-f2-prod-readiness.md) §5 functional smoke with **F3-1 Service Desk recruit** and **F3-2 `/admin/usage`** — follow-up doc PR (F3-3-FU-1); pilot blocked on public prod signup until existing Turnstile + SMTP + `WA_OTP` gate green
+- [DONE] D-11 (F3-3 review @ `a122ab8`) Extended [release-f2-prod-readiness.md](ops/release-f2-prod-readiness.md) §5 with F3-1 Service Desk + F3-2 usage smoke (F3-3-FU-1)
 - [TODO] D-12 (F3-3 review @ `a122ab8`) Pilot has no first-class in-app feedback capture — use PO debrief template in [f3-3-pilot.md](design/f3-3-pilot.md) §7 until product adds a form (optional backlog)
 - [TODO] D-13 (F3-3 review @ `a122ab8`) Confirm F2+F3 deploy SHA on prod/staging before pilot — backlog still notes F2 wedge @ `4800eba` awaiting Akbar deploy; pilot target includes F3-1/F3-2 @ `a122ab8` (coordinate with [deploy-master-production.md](deploy-master-production.md))
 - [TODO] D-14 (Akbar 2026-10-16 **all-queue**) Remaining Agent Studio templates queued on `/admin/recruit` as **Segera hadir** until F3-7…F3-9 ship; **Sales** goes live in F3-6 PR

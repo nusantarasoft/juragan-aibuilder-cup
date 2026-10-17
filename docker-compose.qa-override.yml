@@ -28,5 +28,16 @@ services:
         condition: service_started
       rest:
         condition: service_started
+      realtime:
+        condition: service_started
     volumes:
       - ./volumes/api/kong.qa.yml:/home/kong/temp.yml:ro,z
+  realtime:
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "4000:4000"
+    environment:
+      DB_HOST: 172.18.0.1
+      DB_PORT: ${POSTGRES_PORT}
