@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { loginAsAdmin } from './helpers/auth';
 
+/** Host middleware must set `HERMES_BRIDGE_URL=http://127.0.0.1:8765` (see scripts/qa-percakapan-wa-full-gate.sh). */
 const GRAPHQL = process.env.GRAPHQL_URL || 'http://127.0.0.1:4001/graphql';
 const MIDDLEWARE = process.env.MIDDLEWARE_URL || 'http://127.0.0.1:4001';
 const DOCKER = process.env.QA_DOCKER || 'sudo docker';

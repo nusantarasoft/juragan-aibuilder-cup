@@ -756,14 +756,20 @@ export default function CMSLayoutImpl({
         return () => mediaQuery.removeEventListener("change", handleChange);
     }, []);
 
-    // Listen for custom events from CommandPalette quick actions
+    // Listen for custom events from CommandPalette quick actions and Agentic OS theme toggle
     React.useEffect(() => {
         const handleToggleTheme = () => handleDarkModeChange(!darkMode);
+        const handleSetTheme = (e: Event) => {
+            const nextDark = (e as CustomEvent<boolean>).detail;
+            if (typeof nextDark === "boolean") handleDarkModeChange(nextDark);
+        };
         const handleOpenAI = () => setAIStudioVisible(true);
         document.addEventListener("toggle-dark-mode", handleToggleTheme);
+        document.addEventListener("cms-set-dark-mode", handleSetTheme);
         document.addEventListener("open-ai-studio", handleOpenAI);
         return () => {
             document.removeEventListener("toggle-dark-mode", handleToggleTheme);
+            document.removeEventListener("cms-set-dark-mode", handleSetTheme);
             document.removeEventListener("open-ai-studio", handleOpenAI);
         };
     }, [darkMode]);
@@ -817,6 +823,7 @@ export default function CMSLayoutImpl({
         } else {
             document.documentElement.classList.remove("dark");
         }
+        window.dispatchEvent(new CustomEvent("cms-theme-sync", { detail: dark }));
 
         // Re-enable onCollapse after ProLayout re-renders
         setTimeout(() => {
