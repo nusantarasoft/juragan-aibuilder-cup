@@ -2597,10 +2597,26 @@ export class PmResolver {
         return this.pmService.generatePortfolioAnalysis(tenantId);
     }
 
-    /** Backlog UI expects pmMembers; v1 returns empty until tenant_users roster is wired (D-25). */
     @Query(() => [PmMember])
-    async pmMembers(@Args('tenantId') _tenantId: string) {
-        return [];
+    async pmMembers(@Args('tenantId') tenantId: string) {
+        const rows = await this.pmService.getMembers(tenantId);
+        return (rows || []).map((row: any) => {
+            const ind = row.individuals;
+            const uid = row.user_id || row.id;
+            return {
+                id: row.id,
+                userId: uid,
+                role: row.roles?.name || 'member',
+                user: ind
+                    ? {
+                        id: uid,
+                        firstName: ind.first_name || '',
+                        lastName: ind.last_name || '',
+                        email: ind.email || undefined,
+                    }
+                    : undefined,
+            };
+        });
     }
 }
 

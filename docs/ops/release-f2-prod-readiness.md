@@ -167,6 +167,27 @@ E2E: `admin/tests/e2e/f2-2-recruit-fullstack.spec.ts`.
 
 E2E: `admin/tests/e2e/f2-3-connect-wa-fullstack.spec.ts` (use mock OTP in QA only).
 
+### F3-1 — Service Desk recruit (post–F2 wedge)
+
+| Step | Expected |
+|------|----------|
+| `/admin/recruit` as `tenant_owner` | **Service Desk / ITSM** card shows **Rekrut sekarang** (not “Segera hadir”) |
+| One-click recruit | Agent appears on Virtual Office + Agentic OS roster; trial cap still **3** total recruits |
+| `/admin/itsm` or ITSM hub routes | Load without GraphQL 400 (ITSM tables migrated) |
+
+E2E: `admin/tests/e2e/f3-1-service-desk-recruit.spec.ts` (or recruit slice in Wave gate).
+
+### F3-2 — Usage metrics
+
+| Step | Expected |
+|------|----------|
+| `/admin/usage` as `tenant_owner` | Live usage summary per agent (not placeholder/demo table) |
+| After Kasir activity | Counters or rows reflect task/message activity where implemented |
+
+E2E: `admin/tests/e2e/f3-2-usage-fullstack.spec.ts` (or Wave gate f3-2 spec if present).
+
+**Pilot note:** F3-3 still requires Akbar prod deploy at or after F3-1/F3-2 code (`master` ≥ `9635883` for usage; Service Desk per F3-1 merge). Confirm SHA on target env before roster pilot ([f3-3-pilot-runbook.md](f3-3-pilot-runbook.md)).
+
 ---
 
 ## 6. References

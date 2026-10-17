@@ -2,13 +2,11 @@
 
 import React, { Suspense } from "react";
 import Link from "next/link";
-import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { Box, Monitor } from "lucide-react";
 import CMSLayout from "@/components/layout/CMSLayout";
 import type { AppId } from "@/components/agentic-os/registry";
-
-const AgenticOsWorkspace = dynamic(() => import("@/components/agentic-os/AgenticOsWorkspace").then((m) => m.AgenticOsWorkspace), { ssr: false });
+import { AgenticOsWorkspace } from "@/components/agentic-os/AgenticOsWorkspace";
 
 const APP_IDS: AppId[] = ["overview", "studio", "tasks", "playbooks", "governance", "memory", "pulse", "workflows", "brain", "settings"];
 
