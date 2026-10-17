@@ -32,8 +32,10 @@ import {
 import { assertNoSupabaseError } from './studio-supabase.util';
 import {
     collectUmkmOwnerPhones,
+    countUmkmWaPhones,
     extractBusinessPhoneFromPayload,
     normalizePhoneDigits,
+    normalizeSingleUmkmWaConfigPhones,
     phonesMatch,
     resolveInboundWaConfig,
     StudioWhatsAppRateLimiter,
@@ -256,17 +258,32 @@ export class StudioWhatsAppService {
     ): Promise<StudioWhatsAppConfigRow> {
         const enabling = patch.enabled === true;
         const existing = await this.getConfig(tenantId);
-        const ownerPhone =
-            patch.businessPhone !== undefined
-                ? patch.businessPhone
-                : existing?.business_phone;
-        const staffPhones =
-            patch.allowlistPhones !== undefined
-                ? patch.allowlistPhones
-                : existing?.allowlist_phones;
+
+        const mergedForCount = {
+            business_phone:
+                patch.businessPhone !== undefined
+                    ? patch.businessPhone
+                    : existing?.business_phone,
+            allowlist_phones:
+                patch.allowlistPhones !== undefined
+                    ? patch.allowlistPhones
+                    : existing?.allowlist_phones,
+        };
+        if (countUmkmWaPhones(mergedForCount) > 1) {
+            throw new BadRequestException(
+                'Satu toko hanya boleh punya satu nomor WhatsApp pemilik (D-40).',
+            );
+        }
+
+        const normalizedPhones = normalizeSingleUmkmWaConfigPhones(
+            mergedForCount.business_phone,
+            mergedForCount.allowlist_phones,
+        );
+        const canonicalOwnerPhone = normalizedPhones.businessPhone;
+        const canonicalAllowlist = normalizedPhones.allowlistPhones;
 
         if (enabling) {
-            const ownerDigits = ownerPhone ? normalizePhoneDigits(ownerPhone) : '';
+            const ownerDigits = canonicalOwnerPhone || '';
             if (ownerDigits.length < 8) {
                 throw new BadRequestException(
                     'Nomor pemilik UMKM wajib diisi (HP yang dipakai mengirim WA ke nomor admin).',
@@ -274,7 +291,7 @@ export class StudioWhatsAppService {
             }
         }
 
-        await this.assertOwnerPhonesUnique(tenantId, ownerPhone, staffPhones);
+        await this.assertOwnerPhonesUnique(tenantId, canonicalOwnerPhone, canonicalAllowlist);
 
         const row: Record<string, unknown> = {
             tenant_id: tenantId,
@@ -282,18 +299,14 @@ export class StudioWhatsAppService {
         };
         if (patch.notebookId !== undefined) row.notebook_id = patch.notebookId;
         if (patch.enabled !== undefined) row.enabled = patch.enabled;
-        if (patch.allowlistPhones !== undefined) row.allowlist_phones = patch.allowlistPhones;
+        row.allowlist_phones = canonicalAllowlist;
         if (patch.useGuidedFlow !== undefined) row.use_guided_flow = patch.useGuidedFlow;
         if (patch.sessionName !== undefined) {
             row.session_name = patch.sessionName?.trim() || 'default';
         } else if (!existing?.session_name) {
             row.session_name = 'default';
         }
-        if (patch.businessPhone !== undefined) {
-            row.business_phone = patch.businessPhone
-                ? normalizePhoneDigits(patch.businessPhone)
-                : null;
-        }
+        row.business_phone = canonicalOwnerPhone;
         if (patch.label !== undefined) row.label = patch.label;
 
         const { data, error } = await this.admin()
@@ -302,7 +315,43 @@ export class StudioWhatsAppService {
             .select()
             .single();
         assertNoSupabaseError(error, 'Failed to save WhatsApp config');
+        await this.syncTenantWaWhitelistFromConfig(tenantId, canonicalOwnerPhone);
         return data as StudioWhatsAppConfigRow;
+    }
+
+    /** Keep F2 tenant_wa_whitelist aligned with studio_whatsapp_config (D-40 single number). */
+    private async syncTenantWaWhitelistFromConfig(
+        studioSlug: string,
+        ownerPhone: string | null,
+    ): Promise<void> {
+        try {
+            const { data: store } = await this.admin()
+                .from('tenant_stores')
+                .select('id')
+                .eq('studio_slug', studioSlug)
+                .maybeSingle();
+            if (!store?.id) return;
+
+            const storeId = String(store.id);
+            await this.admin().from('tenant_wa_whitelist').delete().eq('store_id', storeId);
+
+            const digits = ownerPhone ? normalizePhoneDigits(ownerPhone) : '';
+            if (digits.length < 8) return;
+
+            await this.admin().from('tenant_wa_whitelist').upsert(
+                {
+                    store_id: storeId,
+                    phone: digits,
+                    is_owner: true,
+                    label: 'Pemilik toko',
+                },
+                { onConflict: 'store_id,phone' },
+            );
+        } catch (err) {
+            this.logger.warn(
+                `sync tenant_wa_whitelist failed for ${studioSlug}: ${(err as Error).message}`,
+            );
+        }
     }
 
     private resolveProvider(_override?: string | null): WhatsAppProviderId {

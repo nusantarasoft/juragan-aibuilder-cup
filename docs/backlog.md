@@ -47,6 +47,7 @@ Rule: one DOING task at Cursor at a time (plus deploy). Gate: scope → PR → Q
 
 ## Discovered
 (append here)
+- [TODO] D-40 (Akbar 2026-10-17) **One store = one WhatsApp owner number** — migration `20261017210000_d40_one_wa_number_per_store.sql` (skips constraints when duplicates exist); middleware + admin single-field; report `scripts/report-wa-duplicate-numbers.sql`. **Decision:** prod duplicate `umkm-warung-klontong-bahagia` (2× `allowlist_phones`) — Akbar picks number to keep before constraint applies.
 - [DONE] D-16 (UI-wave-2 @ `dc8fdd4`) Full Wave 1+2 browser audit on live stack — `.gstack/qa-reports/qa-ui-wave-2-admin-buttons-2026-10-16.md`; Wave 1 specs + `ui-wave-2-admin-buttons.spec.ts`
 - [DONE] D-17 (UI-wave-2) Sidebar **Hubungkan WhatsApp** + wedge links under AI Studio for `tenant_owner` — `menuConfig.tsx`, `tenantOwnerMenu.ts`
 - [DONE] D-19 (UI-wave-3 @ `5ebe69c`) Embed dashboards Refresh icons wired (`window.location.reload` + title) across datasets, infra, automation, collaboration, audit, tenants, messaging — `.gstack/qa-reports/qa-ui-wave-3-admin-buttons-2026-10-16.md`

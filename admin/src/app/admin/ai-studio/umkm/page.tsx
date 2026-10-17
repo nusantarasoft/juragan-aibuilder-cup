@@ -23,6 +23,7 @@ import {
     Tooltip,
     Typography,
 } from 'antd';
+import { validateSingleStoreWaPhone, normalizeSingleStoreWaPhone } from '@/lib/studioWaPhone';
 import {
     PlusOutlined,
     ReloadOutlined,
@@ -298,7 +299,7 @@ export default function UmkmStudioPage() {
             enabled: true,
             useGuidedFlow: false,
             sessionName: 'default',
-            ownerPhones: [],
+            ownerPhone: '',
             createNewNotebook: true,
         });
         setCommands(defaults ? structuredClone(defaults) : emptyCommands());
@@ -318,7 +319,7 @@ export default function UmkmStudioPage() {
             // Match table display: fall back to tenant_id when label is empty
             label: row.label || row.tenant_id || '',
             sessionName: row.session_name ?? '',
-            ownerPhones: collectConfigOwnerPhones(row),
+            ownerPhone: collectConfigOwnerPhones(row)[0] ?? '',
             notebookId: row.notebook_id ?? undefined,
             enabled: row.enabled,
             useGuidedFlow: row.use_guided_flow,
@@ -365,10 +366,7 @@ export default function UmkmStudioPage() {
                 throw new Error('Pilih atau buat notebook');
             }
 
-            const ownerPhones = normalizeOwnerPhones(values.ownerPhones);
-            if (ownerPhones.length === 0) {
-                throw new Error('Minimal satu nomor pemilik toko');
-            }
+            const ownerPhone = validateSingleStoreWaPhone(values.ownerPhone);
 
             const tenantId = values.tenantId as string;
 
@@ -378,9 +376,9 @@ export default function UmkmStudioPage() {
                 notebookId,
                 enabled: values.enabled,
                 useGuidedFlow: false,
-                allowlistPhones: ownerPhones,
+                allowlistPhones: [],
                 sessionName: 'default',
-                businessPhone: ownerPhones[0],
+                businessPhone: ownerPhone,
                 label: values.label || null,
             });
 
@@ -515,17 +513,9 @@ export default function UmkmStudioPage() {
             title: 'Nomor pemilik',
             key: 'owner_phones',
             render: (_: unknown, row: StudioWhatsAppConfig) => {
-                const phones = collectConfigOwnerPhones(row);
-                if (!phones.length) return '—';
-                return (
-                    <Space size={[4, 4]} wrap>
-                        {phones.map((p, i) => (
-                            <Tag key={p} color={i === 0 ? 'green' : 'default'}>
-                                {p}
-                            </Tag>
-                        ))}
-                    </Space>
-                );
+                const phone = collectConfigOwnerPhones(row)[0];
+                if (!phone) return '—';
+                return <Tag color="green">{phone}</Tag>;
             },
         },
         {
@@ -752,26 +742,20 @@ export default function UmkmStudioPage() {
                         <Input />
                     </Form.Item>
                     <Form.Item
-                        name="ownerPhones"
-                        label="Nomor HP pemilik toko"
+                        name="ownerPhone"
+                        label="Nomor WhatsApp pemilik toko"
                         rules={[
                             {
                                 validator: async (_, value) => {
-                                    const phones = normalizeOwnerPhones(value);
-                                    if (phones.length === 0) {
-                                        throw new Error('Minimal satu nomor pemilik');
+                                    if (!normalizeSingleStoreWaPhone(value)) {
+                                        throw new Error('Nomor pemilik wajib (628...)');
                                     }
                                 },
                             },
                         ]}
-                        extra="Boleh lebih dari 1. Ketik 628... lalu Enter."
+                        extra="Satu nomor per toko (D-40). Format 628..."
                     >
-                        <Select
-                            mode="tags"
-                            placeholder="6288123456789 — Enter untuk tambah lagi"
-                            tokenSeparators={[',', ' ', ';']}
-                            open={false}
-                        />
+                        <Input placeholder="6288123456789" />
                     </Form.Item>
 
                     {!editing ? (
