@@ -103,6 +103,16 @@ class ConsultTests(unittest.TestCase):
             self.assertIn(b"6281111111111", req.data)
             self.assertEqual(urlopen.call_args.kwargs.get("timeout"), 60)
 
+    def test_human_handoff_empty_no_busy_copy(self) -> None:
+        env = {**self.env, "KASIR_CONSULT": "1"}
+        with mock.patch.dict(os.environ, env, clear=False), mock.patch.object(
+            self.mod.urllib.request,
+            "urlopen",
+            return_value=_FakeResp({"status": "human_handoff", "text": ""}),
+        ):
+            out = self.mod.handle_consult({"question": "tanya modal", "phone": "6281"})
+            self.assertEqual(out, "")
+
     def test_flag_on_nest_off_passthrough(self) -> None:
         env = {**self.env, "KASIR_CONSULT": "1"}
         with mock.patch.dict(os.environ, env, clear=False), mock.patch.object(

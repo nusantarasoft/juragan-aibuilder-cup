@@ -1,0 +1,74 @@
+# Percakapan WA — super-admin inbox (AI Studio)
+
+**Audience:** eng + ops · **Pitch:** [`../business/pitch.md`](../business/pitch.md) · **Hermes runtime:** [`hermes-architecture.md`](./hermes-architecture.md)
+
+Nusantarasoft **super admin** can watch WhatsApp threads between store owners (whitelist on the shared NS business number) and Kasir/Pendamping (Hermes), reply as a human, and **Ambil alih** / **Kembalikan ke AI** with a 30-minute idle auto-release on human takeover (not on message retention).
+
+---
+
+## Product locks (Akbar — binding)
+
+| Lock | Decision |
+|------|----------|
+| **Human reply signature** | Every outbound human message from admin is sent and stored as: `{teks admin}` + `\n\n— Admin Nusantarasoft` (exact suffix). Implemented in Nest `formatStudioWaHumanOutboundText` → `HermesProvider.sendText`. |
+| **Retention** | **No limit.** Rows in `studio_wa_messages` / `studio_wa_conversations` are kept indefinitely. **No** purge job, **no** TTL cron on history. |
+| **History start** | Empty at feature activation. **No** backfill from Hermes `state.db` or legacy `studio_conversations` (410 webhook). Only turns recorded after deploy via `POST /internal/wa-turn`. |
+
+---
+
+## Data model
+
+| Table | Purpose |
+|-------|---------|
+| `studio_wa_conversations` | One row per `(tenant_id, owner_phone)` — preview, takeover state, `chat_jid` for outbound |
+| `studio_wa_messages` | Turns: `author_kind` ∈ `owner` \| `ai` \| `human` |
+
+RLS: **service_role only** (no `anon`, no `USING (true)` on authenticated). Admin UI reads via Nest GraphQL (super_admin).
+
+Migration: `supabase/migrations/20261017120000_studio_wa_conversations.sql`
+
+---
+
+## Flow
+
+```
+Owner WA inbound
+  → kasir-pipe (allowlist OK)
+  → POST /internal/wa-turn { author_kind: owner, ... }  (best-effort)
+  → if takeover active: skip agent (no AI send)
+  → else Hermes agent + kasir-tools
+  → transform_llm_output → POST wa-turn { author_kind: ai }
+
+Super admin /admin/ai-studio/percakapan-wa
+  → GraphQL studioWa* (super_admin only)
+  → Ambil alih → takeover_active + takeover_until (+30m per human reply)
+  → Human reply → sendText(suffixed) + wa-turn human + audit_logs
+
+kasir_consult + phone during takeover
+  → POST /internal/kasir-consult → { status: human_handoff, text: '' }
+```
+
+Internal auth: header `x-kasir-consult-key` (same as kasir-consult).
+
+Diagram: [L12-percakapan-wa.svg](../../../../diagrams/aistudio/umkm-wa/system/L12-percakapan-wa.svg)
+
+---
+
+## Hermes deploy (not in this repo deploy)
+
+After middleware migration + Nest image:
+
+1. `python scripts/master-production/deploy-kasir-tools.py` (or full redeploy) to ship updated `kasir-pipe` / `kasir-tools`.
+2. `python scripts/master-production/hermes-kasir-posture.py` (standard posture restore).
+
+Do **not** commit or copy live `state.db`, `config.yaml`, `channel_directory.json`, or session creds.
+
+---
+
+## Admin UI
+
+- Menu: **AI Studio → Percakapan WA** (`/admin/ai-studio/percakapan-wa`)
+- Indonesian copy; empty state: **Belum ada percakapan WA**
+- Thread labels: **AI** / **Manusia** (+ admin name on human rows)
+
+Access: **super_admin** only (server-enforced on every query/mutation).

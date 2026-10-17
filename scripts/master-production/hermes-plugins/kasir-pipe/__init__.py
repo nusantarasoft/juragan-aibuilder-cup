@@ -314,10 +314,42 @@ def _on_pre_gateway_dispatch(event, gateway=None, session_store=None, **kwargs):
                 "reason": "kasir-pipe chat-only: media refused",
             }
         if _sender_allowed(sender):
+            phone = ""
+            try:
+                phone = _resolve_sender_phone(event)
+            except Exception:
+                logger.exception("kasir-pipe: resolve sender phone failed")
+            inbound_text = str(getattr(event, "text", None) or "").strip()
+            if len(phone) >= 8 and inbound_text:
+                try:
+                    from .wa_sync import record_turn_async
+
+                    record_turn_async(
+                        phone=phone,
+                        chat_id=sender,
+                        author_kind="owner",
+                        body_text=inbound_text,
+                    )
+                except Exception:
+                    logger.exception("kasir-pipe: wa-turn owner mirror failed")
+            if len(phone) >= 8:
+                try:
+                    from .wa_sync import handoff_active
+
+                    if handoff_active(phone):
+                        logger.info(
+                            "kasir-pipe: handoff active chat=%s → skip agent",
+                            sender,
+                        )
+                        return {
+                            "action": "skip",
+                            "reason": "kasir-pipe human takeover",
+                        }
+                except Exception:
+                    logger.exception("kasir-pipe: handoff check failed")
             logger.info("kasir-pipe: allowlist ok chat=%s → agent", sender)
             # Stamp identity for kasir-tools (tool hooks often omit chat JID).
             try:
-                phone = _resolve_sender_phone(event)
                 if len(phone) >= 8:
                     _stamp_active_sender(chat_id=sender, phone=phone)
             except Exception:
@@ -638,6 +670,41 @@ def _on_transform_llm_output(
     text = response_text if isinstance(response_text, str) else ""
     if not text.strip():
         return None
+    try:
+        from .wa_sync import handoff_active, record_turn_async
+
+        phone = _resolve_sender_phone(kwargs.get("event")) if kwargs.get("event") else ""
+        if not phone or len(phone) < 8:
+            try:
+                import importlib.util
+                from pathlib import Path
+
+                for path in (
+                    Path(__file__).resolve().parent.parent / "kasir-tools" / "identity.py",
+                    Path("/opt/data/plugins/kasir-tools/identity.py"),
+                ):
+                    if not path.is_file():
+                        continue
+                    spec = importlib.util.spec_from_file_location("kasir_tools_identity", path)
+                    if spec and spec.loader:
+                        mod = importlib.util.module_from_spec(spec)
+                        spec.loader.exec_module(mod)
+                        phone = _digits(str(mod.read_sender() or ""))
+                        break
+            except Exception:
+                phone = ""
+        if len(phone) >= 8:
+            if handoff_active(phone):
+                logger.info("kasir-pipe: transform blocked (handoff) phone=%s", phone)
+                return ""
+            record_turn_async(
+                phone=phone,
+                chat_id=kwargs.get("chat_id") or phone,
+                author_kind="ai",
+                body_text=text,
+            )
+    except Exception:
+        logger.exception("kasir-pipe: wa-turn ai mirror failed")
     plat = str(getattr(platform, "value", platform) or "").lower()
     allowed = _platforms()
     # Kasir Hermes is WhatsApp-first; sanitize when platform is whatsapp or unset.
