@@ -151,12 +151,12 @@ describe('shared inbox routing', () => {
 
     it('collects phones without business_phone and ignores short allowlist entries', () => {
         expect(
-            collectUmkmOwnerPhones({ tenant_id: 't', allowlist_phones: ['123', '6284444444444'] }),
+            collectUmkmOwnerPhones({ allowlist_phones: ['123', '6284444444444'] }),
         ).toEqual(['6284444444444']);
     });
 
     it('collects only the business phone when allowlist is absent', () => {
-        expect(collectUmkmOwnerPhones({ tenant_id: 't', business_phone: '6281111111111' })).toEqual([
+        expect(collectUmkmOwnerPhones({ business_phone: '6281111111111' })).toEqual([
             '6281111111111',
         ]);
     });

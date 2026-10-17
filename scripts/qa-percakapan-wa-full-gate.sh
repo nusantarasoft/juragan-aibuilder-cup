@@ -43,17 +43,23 @@ pkill -f qa-hermes-send-mock.py 2>/dev/null || true
 python3 scripts/qa-hermes-send-mock.py 8765 >/tmp/qa-hermes-mock.log 2>&1 &
 sleep 1
 
-echo "==> middleware build + vitest"
+echo "==> middleware build + typecheck + vitest"
 cd middleware
 npm ci
 npm run build
+if [ -f tsconfig.json ]; then
+  npx tsc --noEmit
+fi
 MW_VITEST=$(npm run test 2>&1 | tee /tmp/mw-vitest.log | tail -1)
 cd ..
 
-echo "==> admin build + vitest"
+echo "==> admin build + typecheck + vitest"
 cd admin
 npm ci
 npm run build
+if [ -f tsconfig.json ]; then
+  npx tsc --noEmit
+fi
 AD_VITEST=$(npm run test 2>&1 | tee /tmp/ad-vitest.log | tail -1)
 cd ..
 
