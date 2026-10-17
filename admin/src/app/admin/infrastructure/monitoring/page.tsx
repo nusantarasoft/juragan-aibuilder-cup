@@ -20,8 +20,8 @@ const { Text } = Typography;
 const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
 const glassDark = { background: 'rgba(12,12,30,0.92)', backdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14 };
 
-const GET_SYSTEM = `query($tenantId: String!) { systemInfo(tenantId: $tenantId) }`;
-const GET_CONTAINERS = `query($tenantId: String!) { dockerContainers(tenantId: $tenantId) }`;
+const GET_SYSTEM = `query($tenantId: String!) { systemInfo(tenantId: $tenantId) { hostname cpuCount runningCount containerCount } }`;
+const GET_CONTAINERS = `query($tenantId: String!) { dockerContainers(tenantId: $tenantId) { id name status state } }`;
 
 /* ═══ Mock data generators ═══ */
 const seed = (i: number) => Math.abs(Math.sin(i * 9301 + 49297) * 233280) % 1;

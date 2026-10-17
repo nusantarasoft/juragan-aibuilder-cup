@@ -93,7 +93,7 @@ export default function ItsmDashboardPage() {
                     supaRest('itsm_continuity_plans', { select: 'id,plan_number,title,plan_type,status,rto_hours,rpo_hours,last_test_result,last_test_date' }),
                     supaRest('itsm_availability_records', { select: 'id,availability_pct,sla_target_pct,uptime_minutes,downtime_minutes,incident_count,period_start,period_end' }),
                     supaRest('itsm_deployments', { select: 'id,deployment_number,title,status,environment,deployment_type,validation_result,actual_start,created_at', order: 'created_at.desc' }),
-                    supaRest('itsm_knowledge_articles', { select: 'id,title,status,category,view_count,helpful_count,created_at' }).catch(() => []),
+                    supaRest('itsm_knowledge_articles', { select: 'id,title,status,category_id,views,helpful_count,created_at' }).catch(() => []),
                     supaRest('itsm_ticket_stakeholders', { select: 'id,ticket_id,stakeholder_name,stakeholder_email,stakeholder_type,role_description,agent_id' }).catch(() => []),
                 ]);
                 setCmdbCount(cis.length);

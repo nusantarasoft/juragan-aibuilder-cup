@@ -83,7 +83,7 @@ export default function RecruitmentPage() {
         setLoading(true);
         Promise.all([gql(JP_Q, { t: DEFAULT_TENANT_ID }), gql(AP_Q, { t: DEFAULT_TENANT_ID, jp: selectedJob })])
             .then(([j, a]) => { setPostings(j.hrJobPostings || []); setApplicants(a.hrApplicants || []); })
-            .catch(console.error).finally(() => setLoading(false));
+            .catch(() => undefined).finally(() => setLoading(false));
     };
     useEffect(() => { load(); }, [selectedJob]);
 

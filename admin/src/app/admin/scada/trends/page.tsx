@@ -1,19 +1,33 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import CMSLayout from "@/components/layout/CMSLayout";
 import { AuroraText } from "@/components/magicui/aurora-text";
 import DecryptedText from "@/components/react-bits/DecryptedText";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
-import { theme, Card, Space, Select, DatePicker, Button, Typography, Row, Col, Modal, Form, Input, message, Tag } from "antd";
+import { theme, Card, Space, Select, DatePicker, Button, Typography, Row, Col, Modal, Form, Input, message, Tag, Alert } from "antd";
 import { LineChartOutlined, DownloadOutlined, ReloadOutlined, WarningOutlined, ThunderboltOutlined, SafetyOutlined, BugOutlined } from "@ant-design/icons";
 import { motion } from "framer-motion";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend, ReferenceLine, AreaChart, Area } from 'recharts';
-import { BentoGrid, BentoGridItem } from "@/components/magicui/bento-grid";
 import { useRouter } from "next/navigation";
+import { scadaService, type ScadaTag } from "@/lib/scadaService";
+import { buildTrendChartRows, scadaTrendsUsingLiveHistory } from "@/lib/scadaTrendsView";
 
 const { RangePicker } = DatePicker;
 const { Text } = Typography;
+
+function sampleTrendData() {
+    return Array.from({ length: 60 }).map((_, i) => {
+        const baseTemp = 22 + Math.sin(i / 5) * 5;
+        const basePressure = 45 + Math.cos(i / 4) * 10;
+        return {
+            time: `10:${i < 10 ? '0' + i : i}`,
+            sampleTemp: baseTemp + (i > 45 ? Math.random() * 8 + 4 : Math.random()),
+            samplePressure: basePressure + Math.random() * 2,
+            sampleSpeed: 60 + Math.random() * 5,
+        };
+    });
+}
 
 export default function ScadaTrends() {
     const { themeColor } = usePreferencesStore();
@@ -23,6 +37,11 @@ export default function ScadaTrends() {
 
     const [isIncidentModalOpen, setIsIncidentModalOpen] = useState(false);
     const [isGenerating, setIsGenerating] = useState(false);
+    const [autoRefresh, setAutoRefresh] = useState(false);
+    const [tags, setTags] = useState<ScadaTag[]>([]);
+    const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
+    const [liveRows, setLiveRows] = useState<ReturnType<typeof buildTrendChartRows>>([]);
+    const [loaded, setLoaded] = useState(false);
 
     const glassStyle = {
         background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.65)',
@@ -31,16 +50,66 @@ export default function ScadaTrends() {
         borderRadius: 16,
     };
 
-    const trendData = Array.from({ length: 60 }).map((_, i) => {
-        const baseTemp = 22 + Math.sin(i / 5) * 5;
-        const basePressure = 45 + Math.cos(i / 4) * 10;
-        return {
-            time: `10:${i < 10 ? '0'+i : i}`,
-            tag1: baseTemp + (i > 45 ? Math.random() * 8 + 4 : Math.random()), // Introduce anomaly spike
-            tag2: basePressure + Math.random() * 2,
-            tag3: 60 + Math.random() * 5
+    const usingLive = scadaTrendsUsingLiveHistory(liveRows.length);
+    const chartData = usingLive ? liveRows : sampleTrendData();
+    const primaryTag = tags[0];
+    const secondaryTag = tags[1];
+
+    const loadHistory = useCallback(async (tagIds: string[]) => {
+        if (!tagIds.length) {
+            setLiveRows([]);
+            return;
+        }
+        const points = await scadaService.getTagValueHistory(tagIds);
+        setLiveRows(buildTrendChartRows(points));
+    }, []);
+
+    useEffect(() => {
+        const boot = async () => {
+            try {
+                const t = await scadaService.getTags();
+                setTags(t);
+                const initial = t.slice(0, 2).map((x) => x.id);
+                setSelectedTagIds(initial);
+                await loadHistory(initial);
+            } catch {
+                setTags([]);
+                setLiveRows([]);
+            } finally {
+                setLoaded(true);
+            }
         };
-    });
+        void boot();
+    }, [loadHistory]);
+
+    useEffect(() => {
+        if (!autoRefresh || !usingLive) return;
+        const id = setInterval(() => void loadHistory(selectedTagIds), 30_000);
+        return () => clearInterval(id);
+    }, [autoRefresh, usingLive, loadHistory, selectedTagIds]);
+
+    const tagOptions = useMemo(
+        () => tags.map((t) => ({ label: t.name, value: t.id })),
+        [tags],
+    );
+
+    const exportTrendCsv = () => {
+        const keys = usingLive
+            ? selectedTagIds
+            : (['sampleTemp', 'samplePressure', 'sampleSpeed'] as const);
+        const header = `time,${keys.join(',')}\n`;
+        const rows = chartData
+            .map((r) => `${r.time},${keys.map((k) => (r as Record<string, string | number>)[k] ?? '').join(',')}`)
+            .join('\n');
+        const blob = new Blob([header + rows], { type: 'text/csv;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `scada-trends-${Date.now()}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+        message.success(usingLive ? 'Trend CSV exported from historian' : 'Trend CSV exported (sample series)');
+    };
 
     const dispatchToITSM = () => {
         setIsGenerating(true);
@@ -55,16 +124,44 @@ export default function ScadaTrends() {
     return (
         <CMSLayout 
             title={<AuroraText>Trend Analysis</AuroraText>}
-            subTitle={<DecryptedText text="Historical Data & AI Anomaly Detection" speed={60} />}
+            subTitle={<DecryptedText text="Historical tag values from Postgres historian (when seeded) or labeled sample charts" speed={60} />}
         >
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+                {loaded && usingLive && (
+                    <Alert
+                        type="success"
+                        showIcon
+                        message="Live historian data"
+                        description="Charts below use scada_tag_values for this tenant via GraphQL."
+                        style={{ marginBottom: 16 }}
+                    />
+                )}
+                {loaded && !usingLive && (
+                    <Alert
+                        type="info"
+                        showIcon
+                        message="Sample trend data"
+                        description="No tag history returned yet — charts are illustrative. Seed scada_tag_values or connect a field historian."
+                        style={{ marginBottom: 16 }}
+                    />
+                )}
+
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16, marginBottom: 24, padding: 16, ...glassStyle }}>
                     <Space wrap>
-                        <Select mode="multiple" placeholder="Select Tags to Trend" defaultValue={['tag1', 'tag2']} style={{ minWidth: 300 }} options={[
-                            { label: 'PLC_01.Temp.Zone3', value: 'tag1' },
-                            { label: 'PMP_CHW_02.Pressure', value: 'tag2' },
-                            { label: 'AHU_04.Fan.Speed', value: 'tag3' },
-                        ]} />
+                        <Select
+                            mode="multiple"
+                            placeholder="Select tags to trend"
+                            value={selectedTagIds}
+                            onChange={(ids) => {
+                                setSelectedTagIds(ids);
+                                void loadHistory(ids);
+                            }}
+                            style={{ minWidth: 300 }}
+                            options={tagOptions.length ? tagOptions : [
+                                { label: 'PLC_01.Temp.Zone3 (sample)', value: 'sampleTemp' },
+                                { label: 'PMP_CHW_02.Pressure (sample)', value: 'samplePressure' },
+                            ]}
+                        />
                         <RangePicker showTime />
                         <Select defaultValue="1m" options={[
                             { label: '1 Min Res', value: '1m' },
@@ -73,51 +170,62 @@ export default function ScadaTrends() {
                         ]} />
                     </Space>
                     <Space>
-                        <Button icon={<ReloadOutlined />}>Auto Refresh</Button>
-                        <Button icon={<DownloadOutlined />}>Export CSV</Button>
+                        <Button
+                            type={autoRefresh ? 'primary' : 'default'}
+                            icon={<ReloadOutlined spin={autoRefresh && usingLive} />}
+                            onClick={() => {
+                                setAutoRefresh((v) => {
+                                    message.info(!v ? (usingLive ? 'Auto refresh on (30s historian poll)' : 'Auto refresh on (sample only — no live historian)') : 'Auto refresh off');
+                                    return !v;
+                                });
+                            }}
+                        >
+                            Auto Refresh
+                        </Button>
+                        <Button icon={<DownloadOutlined />} onClick={exportTrendCsv}>Export CSV</Button>
                         <Button type="primary" danger icon={<BugOutlined />} onClick={() => setIsIncidentModalOpen(true)}>Create ITSM Incident</Button>
                     </Space>
                 </div>
 
                 <Row gutter={[24, 24]}>
                     <Col xs={24} lg={16}>
-                        <Card title={<Space><LineChartOutlined style={{ color: themeColor }} /> Primary Telemetry (Zone 3 Temperature)</Space>} style={glassStyle} bordered={false}>
+                        <Card title={<Space><LineChartOutlined style={{ color: themeColor }} /> Primary telemetry</Space>} style={glassStyle} bordered={false}>
                             <div style={{ height: 350, width: '100%' }}>
                                 <ResponsiveContainer width="100%" height="100%">
-                                    <LineChart data={trendData}>
+                                    <LineChart data={chartData}>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? '#333' : '#ddd'} />
                                         <XAxis dataKey="time" axisLine={false} tickLine={false} tick={{fill: isDark?'#888':'#666'}} minTickGap={30} />
                                         <YAxis axisLine={false} tickLine={false} tick={{fill: isDark?'#888':'#666'}} domain={['auto', 'auto']} />
                                         <RechartsTooltip contentStyle={{ backgroundColor: isDark ? '#1f1f1f' : '#fff', borderRadius: 8, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
                                         <Legend verticalAlign="top" height={36}/>
-                                        
-                                        <ReferenceLine y={29} stroke="#f5222d" strokeDasharray="3 3" label={{ position: 'insideTopLeft', value: 'High Temp Limit (29°C)', fill: '#f5222d', fontSize: 12 }} />
-                                        
-                                        <Line type="monotone" dataKey="tag1" name="PLC_01.Temp.Zone3 (°C)" stroke="#f5222d" strokeWidth={3} dot={false} activeDot={{ r: 8 }} />
+                                        {!usingLive && <ReferenceLine y={29} stroke="#f5222d" strokeDasharray="3 3" />}
+                                        {usingLive && primaryTag ? (
+                                            <Line type="monotone" dataKey={primaryTag.id} name={primaryTag.name} stroke="#f5222d" strokeWidth={3} dot={false} />
+                                        ) : (
+                                            <Line type="monotone" dataKey="sampleTemp" name="PLC_01.Temp.Zone3 (°C) sample" stroke="#f5222d" strokeWidth={3} dot={false} />
+                                        )}
                                     </LineChart>
                                 </ResponsiveContainer>
                             </div>
                         </Card>
 
-                        <Card title={<Space><SafetyOutlined style={{ color: themeColor }} /> Secondary Telemetry (Pressure & Speed)</Space>} style={{ ...glassStyle, marginTop: 24 }} bordered={false}>
+                        <Card title={<Space><SafetyOutlined style={{ color: themeColor }} /> Secondary telemetry</Space>} style={{ ...glassStyle, marginTop: 24 }} bordered={false}>
                             <div style={{ height: 250, width: '100%' }}>
                                 <ResponsiveContainer width="100%" height="100%">
-                                    <AreaChart data={trendData}>
-                                        <defs>
-                                            <linearGradient id="colorPressure" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#1890ff" stopOpacity={0.3}/>
-                                            <stop offset="95%" stopColor="#1890ff" stopOpacity={0}/>
-                                            </linearGradient>
-                                        </defs>
+                                    <AreaChart data={chartData}>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? '#333' : '#ddd'} />
                                         <XAxis dataKey="time" axisLine={false} tickLine={false} tick={{fill: isDark?'#888':'#666'}} minTickGap={30} />
                                         <YAxis yAxisId="left" axisLine={false} tickLine={false} tick={{fill: isDark?'#888':'#666'}} domain={['auto', 'auto']} />
-                                        <YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false} tick={{fill: isDark?'#888':'#666'}} domain={['auto', 'auto']} />
-                                        <RechartsTooltip contentStyle={{ backgroundColor: isDark ? '#1f1f1f' : '#fff', borderRadius: 8, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
+                                        <RechartsTooltip contentStyle={{ backgroundColor: isDark ? '#1f1f1f' : '#fff', borderRadius: 8, border: 'none' }} />
                                         <Legend verticalAlign="top" height={36}/>
-                                        
-                                        <Area yAxisId="left" type="monotone" dataKey="tag2" name="PMP_CHW_02.Pressure (kPa)" stroke="#1890ff" fillOpacity={1} fill="url(#colorPressure)" />
-                                        <Line yAxisId="right" type="step" dataKey="tag3" name="AHU_04.Fan.Speed (%)" stroke="#faad14" strokeWidth={2} dot={false} />
+                                        {usingLive && secondaryTag ? (
+                                            <Area yAxisId="left" type="monotone" dataKey={secondaryTag.id} name={secondaryTag.name} stroke="#1890ff" fill="#1890ff33" />
+                                        ) : (
+                                            <>
+                                                <Area yAxisId="left" type="monotone" dataKey="samplePressure" name="Pressure (sample)" stroke="#1890ff" fill="#1890ff33" />
+                                                <Line yAxisId="left" type="step" dataKey="sampleSpeed" name="Fan speed (sample)" stroke="#faad14" strokeWidth={2} dot={false} />
+                                            </>
+                                        )}
                                     </AreaChart>
                                 </ResponsiveContainer>
                             </div>
@@ -129,17 +237,16 @@ export default function ScadaTrends() {
                             title={<Space><ThunderboltOutlined style={{ color: themeColor }} /> <span>AI Anomaly Detection</span></Space>}
                             style={{ ...glassStyle, height: '100%' }} 
                             bordered={false}
-                            extra={<Tag color="red" icon={<WarningOutlined />}>Spike Detected</Tag>}
+                            extra={!usingLive ? <Tag color="default">Demo narrative</Tag> : <Tag color="red" icon={<WarningOutlined />}>Review alarms</Tag>}
                         >
                             <div style={{ background: isDark ? 'rgba(245,34,45,0.1)' : 'rgba(245,34,45,0.05)', padding: 16, borderRadius: 12, border: `1px solid #f5222d`, marginBottom: 24 }}>
-                                <Text strong style={{ display: 'block', marginBottom: 8, color: '#f5222d' }}>Critical Temperature Deviation</Text>
+                                <Text strong style={{ display: 'block', marginBottom: 8, color: '#f5222d' }}>
+                                    {usingLive ? 'Check correlated tags' : 'Sample anomaly story'}
+                                </Text>
                                 <Typography.Paragraph style={{ margin: 0 }}>
-                                    The AI engine has detected a rapid +6.5°C spike in <strong>PLC_01.Temp.Zone3</strong> starting at 10:45. 
-                                    This deviation exceeds the High Temp Limit (29°C) and correlates with a slight drop in <strong>PMP_CHW_02.Pressure</strong>.
-                                    <br /><br />
-                                    <strong>Probable Cause:</strong> Chilled water valve actuator failure or pump cavitation.
-                                    <br />
-                                    <strong>Recommendation:</strong> Dispatch HVAC technician to Zone 3 and check actuator VLV-301.
+                                    {usingLive
+                                        ? 'Live historian mode: validate spikes against SCADA alarm definitions before dispatching field work.'
+                                        : 'Illustrative AI copy only — not driven by live tag values.'}
                                 </Typography.Paragraph>
                             </div>
 
@@ -151,7 +258,6 @@ export default function ScadaTrends() {
                 </Row>
             </motion.div>
 
-            {/* ITSM Dispatch Modal */}
             <Modal
                 title={<Space><BugOutlined /> Create ITSM Incident</Space>}
                 open={isIncidentModalOpen}
@@ -168,27 +274,6 @@ export default function ScadaTrends() {
                 }}>
                     <Form.Item label="Incident Title" name="title" required>
                         <Input />
-                    </Form.Item>
-                    <Row gutter={16}>
-                        <Col span={12}>
-                            <Form.Item label="Priority" name="priority" required>
-                                <Select>
-                                    <Select.Option value="critical">Critical (P1)</Select.Option>
-                                    <Select.Option value="high">High (P2)</Select.Option>
-                                </Select>
-                            </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                            <Form.Item label="Category" name="category" required>
-                                <Select>
-                                    <Select.Option value="hardware">Hardware / Infrastructure</Select.Option>
-                                    <Select.Option value="network">Network</Select.Option>
-                                </Select>
-                            </Form.Item>
-                        </Col>
-                    </Row>
-                    <Form.Item label="AI Diagnostic Summary" required>
-                        <Input.TextArea rows={4} defaultValue="AI Diagnostic attached:\n\nRapid +6.5°C spike in PLC_01.Temp.Zone3. Limit (29°C) exceeded. Probable Cause: Chilled water valve actuator failure or pump cavitation.\n\nPlease dispatch HVAC technician to Zone 3." />
                     </Form.Item>
                 </Form>
             </Modal>

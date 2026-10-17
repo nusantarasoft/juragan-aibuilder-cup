@@ -54,6 +54,7 @@ import { WhatsAppProviderModule } from './whatsapp/whatsapp-provider.module';
 import { FacilityModule } from './facility/facility.module';
 import { PentestModule } from './pentest/pentest.module';
 import { AgenticOsModule } from './agentic-os/agentic-os.module';
+import { OnboardingModule } from './onboarding/onboarding.module';
 @Module({
     imports: [
         // Environment configuration
@@ -70,6 +71,19 @@ import { AgenticOsModule } from './agentic-os/agentic-os.module';
             driver: ApolloDriver,
             autoSchemaFile: true,
             sortSchema: true,
+            subscriptions: {
+                'graphql-ws': {
+                    onConnect: (ctx: { connectionParams?: Record<string, unknown> }) => {
+                        const raw = ctx.connectionParams?.authorization ?? ctx.connectionParams?.Authorization;
+                        const token = typeof raw === 'string' ? raw : '';
+                        return {
+                            req: {
+                                headers: token ? { authorization: token.startsWith('Bearer ') ? token : `Bearer ${token}` } : {},
+                            },
+                        };
+                    },
+                },
+            },
             playground:
                 process.env.GRAPHQL_PLAYGROUND === 'true' ||
                 (process.env.NODE_ENV !== 'production' &&
@@ -134,6 +148,7 @@ import { AgenticOsModule } from './agentic-os/agentic-os.module';
         PentestModule,
         // Agentic OS (agents, playbooks, task queue, memory, pulse, governance)
         AgenticOsModule,
+        OnboardingModule,
     ],
 })
 export class AppModule { }

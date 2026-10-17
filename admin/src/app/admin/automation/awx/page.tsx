@@ -27,7 +27,7 @@ const HISTORY = [
 export default function AWXPage() {
     const { themeColor } = usePreferencesStore();
     return (
-        <CMSLayout title={<AuroraText colors={[themeColor, '#1d1d1d', '#e74c3c']}>AWX Ansible</AuroraText>} subTitle={<DecryptedText text="Playbook automation — inventories, templates & job history" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="o" icon={<LinkOutlined />} type="primary" onClick={() => window.open('http://localhost:8085', '_blank')}>Open AWX</Button>, <Button key="r" icon={<ReloadOutlined />} />]}>
+        <CMSLayout title={<AuroraText colors={[themeColor, '#1d1d1d', '#e74c3c']}>AWX Ansible</AuroraText>} subTitle={<DecryptedText text="Playbook automation — inventories, templates & job history" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="o" icon={<LinkOutlined />} type="primary" onClick={() => window.open('http://localhost:8085', '_blank')}>Open AWX</Button>, <Button key="r" icon={<ReloadOutlined />} onClick={() => window.location.reload()} title="Refresh page" />]}>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <Row gutter={[12, 12]}>
                     {[{ t: 'Job Templates', v: 6, c: '#3b82f6', i: <CodeOutlined /> }, { t: 'Inventories', v: 3, c: '#10b981', i: <DatabaseOutlined /> }, { t: 'Projects', v: 4, c: '#8b5cf6', i: <CloudServerOutlined /> }, { t: 'Running', v: 1, c: '#f59e0b', i: <RocketOutlined /> }].map((s, i) => (

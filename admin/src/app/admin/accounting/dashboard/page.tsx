@@ -162,7 +162,9 @@ export default function AccountingDashboardPage() {
                     accountingService.getInvoiceSummary(undefined, 'receivable'),
                 ]);
                 setData(dash); setApSummary(ap); setArSummary(ar);
-            } catch (e) { console.error(e); }
+            } catch {
+                /* load failed */
+            }
             finally { setLoading(false); }
         })();
     }, []);

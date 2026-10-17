@@ -6,6 +6,7 @@ import {
     pickTenantConfigBySenderPhone,
     pickSingleTenantFallback,
     pickWhatsAppConfigForWebhook,
+    resolveInboundWaConfig,
     collectUmkmOwnerPhones,
     phonesMatch,
     StudioWhatsAppRateLimiter,
@@ -176,6 +177,34 @@ describe('shared inbox routing', () => {
             { tenant_id: 'umkm-b', enabled: true, notebook_id: 'b' },
         ];
         expect(pickSingleTenantFallback(many)).toBeNull();
+    });
+});
+
+describe('resolveInboundWaConfig (P2-5)', () => {
+    const base = (over: Partial<any>) => ({
+        tenant_id: 'x',
+        enabled: true,
+        notebook_id: 'nb',
+        ...over,
+    });
+
+    it('routes dedicated session by session_name', () => {
+        const configs = [
+            base({ tenant_id: 'a', session_name: 'umkm-store-a' }),
+            base({ tenant_id: 'b', session_name: 'hermes' }),
+        ];
+        expect(resolveInboundWaConfig(configs, 'umkm-store-a', '628111')?.tenant_id).toBe('a');
+    });
+
+    it('routes shared hermes session by sender whitelist', () => {
+        const configs = [
+            base({
+                tenant_id: 'a',
+                session_name: 'hermes',
+                business_phone: '6281111111111',
+            }),
+        ];
+        expect(resolveInboundWaConfig(configs, 'hermes', '6281111111111')?.tenant_id).toBe('a');
     });
 });
 

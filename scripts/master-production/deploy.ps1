@@ -13,10 +13,9 @@
   What it does:
     1. Checks out master-production and merges latest master into it, then
        pushes origin/master-production.
-    2. On the server: git fetch/checkout/reset to master-production
-       (bootstraps a clone if /opt/nusantarasoft-3 is not a git repo yet,
-       while preserving .env.master-production + DB/storage volumes).
-    3. Runs scripts/master-production/redeploy.sh (serial build + up + migrations).
+    2. Uploads stdin-safe pull-on-server logic + triggers one detached server job:
+       Hermes backup, git fetch/reset to target SHA, then redeploy.sh (build + smoke).
+       SSH is only used to upload, start the job, and poll status/tail.
 
   Local git: preflight aborts if the working tree is dirty (lists paths). No reset/clean.
   Sync with origin uses fast-forward only when clean.
@@ -26,6 +25,13 @@
       -SkipPush    merge locally but do not push (server pull will not see new commits)
       -AllowDirty  skip all local git sync; server still deploys origin/master-production
                    (never discards local changes)
+      -Attach      skip local git + pull; tail the in-flight server redeploy log until done
+      -Status      skip local git + pull; print remote redeploy status + exit code if finished
+
+  Server pull + redeploy run as one detached job (setsid/nohup) with logs under
+  /opt/nusantarasoft-3/logs/deploy-YYYYMMDD-HHMMSS.log so Mac sleep / SSH drop
+  does not kill git fetch or docker builds. Re-run with -Attach or -Status to reconnect.
+  Polling uses short SSH capture calls with retries.
 
   Requires: Python 3 with paramiko  (pip install paramiko)
             Server git auth via deploy key (DEPLOY_GIT_URL=git@...) or GITHUB_TOKEN
@@ -33,7 +39,9 @@
 param(
   [switch]$SkipMerge,
   [switch]$SkipPush,
-  [switch]$AllowDirty
+  [switch]$AllowDirty,
+  [switch]$Attach,
+  [switch]$Status
 )
 
 $ErrorActionPreference = "Continue"
@@ -55,10 +63,237 @@ $ssh        = Join-Path $PSScriptRoot "_ssh.py"
 $pullSh     = Join-Path $PSScriptRoot "pull-on-server.sh"
 $remoteDir  = "/opt/nusantarasoft-3"
 $branch     = "master-production"
+$detachedSh = "scripts/master-production/redeploy-detached.sh"
 
 . (Join-Path $PSScriptRoot "_deploy-local-git.ps1")
 
+function Parse-DeployKeyValues {
+  param([string]$Text)
+  $map = @{}
+  foreach ($line in ($Text -split "`n")) {
+    $t = $line.Trim()
+    if ($t -match '^([A-Z_]+)=(.*)$') { $map[$Matches[1]] = $Matches[2] }
+  }
+  return $map
+}
+
+function Invoke-SshCapture {
+  param([Parameter(Mandatory)][string]$RemoteCmd)
+  $prevTimeout = $env:SSH_TIMEOUT
+  $env:SSH_TIMEOUT = "120"
+  $out = & python $ssh capture $RemoteCmd 2>&1
+  $code = $LASTEXITCODE
+  if ($null -ne $prevTimeout) { $env:SSH_TIMEOUT = $prevTimeout }
+  else { Remove-Item Env:SSH_TIMEOUT -ErrorAction SilentlyContinue }
+  return @{ ExitCode = $code; Text = ($out | Out-String) }
+}
+
+function Invoke-SshCaptureWithRetry {
+  param(
+    [Parameter(Mandatory)][string]$RemoteCmd,
+    [int]$MaxAttempts = 5
+  )
+  $last = $null
+  for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
+    $last = Invoke-SshCapture $RemoteCmd
+    if ($last.ExitCode -eq 0 -or $last.ExitCode -eq 2) {
+      return $last
+    }
+    if ($attempt -lt $MaxAttempts) {
+      $delay = [Math]::Min(30, 2 * $attempt)
+      Write-Warning "SSH capture failed (exit $($last.ExitCode)); retry $attempt/$MaxAttempts in ${delay}s"
+      Start-Sleep -Seconds $delay
+    }
+  }
+  return $last
+}
+
+function Invoke-SshPutWithRetry {
+  param(
+    [Parameter(Mandatory)][string]$LocalPath,
+    [Parameter(Mandatory)][string]$RemotePath,
+    [int]$MaxAttempts = 5
+  )
+  for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
+    & python $ssh put $LocalPath $RemotePath
+    if ($LASTEXITCODE -eq 0) { return }
+    if ($attempt -lt $MaxAttempts) {
+      $delay = [Math]::Min(30, 2 * $attempt)
+      Write-Warning "SFTP upload failed; retry $attempt/$MaxAttempts in ${delay}s"
+      Start-Sleep -Seconds $delay
+    }
+  }
+  throw "SFTP upload failed after $MaxAttempts attempts: $LocalPath -> $RemotePath"
+}
+
+function Ensure-RemoteDeployDirs {
+  # SFTP put does not create parent dirs; fresh servers may lack logs/ (PR #29 prod failure).
+  $cmd = "mkdir -p '$remoteDir/logs' '$remoteDir/scripts/master-production'"
+  $r = Invoke-SshCaptureWithRetry $cmd
+  if ($r.ExitCode -ne 0) {
+    Write-Host $r.Text.TrimEnd()
+    throw "failed to ensure deploy directories on server ($remoteDir/logs, scripts/master-production)."
+  }
+}
+
+function Sync-RemoteDeployHelper {
+  Ensure-RemoteDeployDirs
+  $detachedLocal = Join-Path $PSScriptRoot "redeploy-detached.sh"
+  $remoteDetached = "$remoteDir/scripts/master-production/redeploy-detached.sh"
+  Invoke-SshPutWithRetry -LocalPath $detachedLocal -RemotePath $remoteDetached
+}
+
+function Get-RemoteDeployStatus {
+  param(
+    [int]$IdleRetrySeconds = 0
+  )
+  $deadline = (Get-Date).AddSeconds($IdleRetrySeconds)
+  while ($true) {
+    $cmd = "cd $remoteDir && bash $detachedSh status"
+    $r = Invoke-SshCaptureWithRetry $cmd
+    $kv = Parse-DeployKeyValues $r.Text
+    $status = $kv["STATUS"]
+    if ($status -eq "done") { $status = "success" }
+    if ($IdleRetrySeconds -gt 0 -and $status -eq "idle" -and (Get-Date) -lt $deadline) {
+      Start-Sleep -Seconds 1
+      continue
+    }
+    return @{
+      SshExit   = $r.ExitCode
+      Raw       = $r.Text
+      Status    = $status
+      Log       = $kv["LOG"]
+      Pid       = $kv["PID"]
+      Exit      = $kv["EXIT"]
+      Started   = $kv["STARTED"]
+      Sha       = $kv["SHA"]
+    }
+  }
+}
+
+function Write-RemoteDeployTail {
+  param(
+    [string]$LogPath,
+    [ref]$ByteOffset
+  )
+  if (-not $LogPath) { return }
+  $off = [int]$ByteOffset.Value
+  $escaped = $LogPath.Replace("'", "'\''")
+  $cmd = "cd $remoteDir && bash $detachedSh tail-since '$escaped' $off"
+  $r = Invoke-SshCaptureWithRetry $cmd
+  $lines = $r.Text -split "`n"
+  $newOff = $off
+  $bodyLines = @()
+  foreach ($line in $lines) {
+    if ($line -match '^OFFSET=(\d+)$') {
+      $newOff = [int]$Matches[1]
+    } else {
+      $bodyLines += $line
+    }
+  }
+  if ($bodyLines.Count -gt 0) {
+    $chunk = ($bodyLines -join "`n")
+    if ($chunk.Length -gt 0) { Write-Host $chunk }
+  }
+  $ByteOffset.Value = $newOff
+}
+
+function Wait-RemoteDeploy {
+  param([switch]$StatusOnly)
+
+  $offset = 0
+  $pollSec = 10
+  $pollNum = 0
+  while ($true) {
+    $idleRetry = if ($pollNum -eq 0) { 15 } else { 0 }
+    $pollNum++
+    $st = Get-RemoteDeployStatus -IdleRetrySeconds $idleRetry
+    if (-not $StatusOnly) {
+      Write-RemoteDeployTail -LogPath $st.Log -ByteOffset ([ref]$offset)
+    }
+
+    switch ($st.Status) {
+      { $_ -in @("success", "done") } {
+        $ec = 0
+        if ($st.Exit -match '^\d+$') { $ec = [int]$st.Exit }
+        $shaHint = if ($st.Sha) { " sha $($st.Sha.Substring(0, [Math]::Min(12, $st.Sha.Length)))" } else { "" }
+        Write-Host "==> remote redeploy finished (exit $ec)$shaHint log: $($st.Log)" -ForegroundColor $(if ($ec -eq 0) { "Green" } else { "Red" })
+        if ($StatusOnly) {
+          Write-Host $st.Raw.TrimEnd()
+        }
+        if ($ec -ne 0) { exit $ec }
+        return
+      }
+      "failed" {
+        Write-Host $st.Raw.TrimEnd()
+        $ec = 1
+        if ($st.Exit -match '^\d+$') { $ec = [int]$st.Exit }
+        throw "remote redeploy failed (exit $ec). log: $($st.Log)"
+      }
+      "idle" {
+        throw "no remote redeploy in progress (idle). Start a normal deploy.ps1 run first."
+      }
+      "running" {
+        if ($StatusOnly) {
+          Write-Host $st.Raw.TrimEnd()
+          Write-Host "==> redeploy still running (pid $($st.Pid)) log: $($st.Log)" -ForegroundColor Yellow
+          exit 0
+        }
+        Start-Sleep -Seconds $pollSec
+      }
+      default {
+        Write-Host $st.Raw.TrimEnd()
+        throw "unexpected remote deploy status: $($st.Status)"
+      }
+    }
+  }
+}
+
+function Start-RemoteDeployDetached {
+  param(
+    [Parameter(Mandatory)][string]$RemotePullScript,
+    [Parameter(Mandatory)][string]$TargetSha
+  )
+
+  Sync-RemoteDeployHelper
+
+  $escapedPull = $RemotePullScript.Replace("'", "'\''")
+  $escapedSha = $TargetSha.Replace("'", "'\''")
+  $cmd = "cd $remoteDir && bash $detachedSh start '$escapedPull' '$escapedSha'"
+  $r = Invoke-SshCaptureWithRetry $cmd
+  if ($r.ExitCode -eq 2) {
+    Write-Host $r.Text.TrimEnd()
+    throw "concurrent deploy blocked by lock — use -Attach or -Status instead of starting another deploy."
+  }
+  if ($r.ExitCode -ne 0) {
+    Write-Host $r.Text.TrimEnd()
+    throw "failed to start detached deploy on server."
+  }
+  $kv = Parse-DeployKeyValues $r.Text
+  Write-Host "    detached pid=$($kv['PID']) log=$($kv['LOG'])" -ForegroundColor DarkGray
+  Wait-RemoteDeploy
+}
+
 Set-Location $repo
+
+if ($Attach -and $Status) {
+  throw "Use -Attach or -Status, not both."
+}
+
+if ($Attach) {
+  Write-Host "==> attach remote redeploy (log tail until done)" -ForegroundColor Cyan
+  Sync-RemoteDeployHelper
+  Wait-RemoteDeploy
+  Write-Host "==> deploy finished ($branch)." -ForegroundColor Green
+  exit 0
+}
+
+if ($Status) {
+  Write-Host "==> remote redeploy status" -ForegroundColor Cyan
+  Sync-RemoteDeployHelper
+  Wait-RemoteDeploy -StatusOnly
+  exit $LASTEXITCODE
+}
 
 if (-not (Test-Path $pullSh)) {
   throw "Missing $pullSh"
@@ -134,38 +369,48 @@ if (-not $SkipMerge -and -not $skipLocalGit) {
 }
 
 $deployUrl = Get-DeployGitUrl
-Write-Host "==> [2/3] server git pull ($branch)" -ForegroundColor Cyan
+Write-Host "==> [2/3] server git pull + redeploy (detached, SSH-safe)" -ForegroundColor Cyan
 Write-Host "    remote: $(Mask-GitUrl $deployUrl)"
 
+Invoke-Git fetch origin $branch
+$targetSha = (git rev-parse "origin/$branch").Trim()
+if (-not $targetSha) {
+  throw "Could not resolve origin/$branch for deploy target SHA."
+}
+Write-Host "    target SHA: $($targetSha.Substring(0, [Math]::Min(12, $targetSha.Length)))"
+
 $urlEscaped = $deployUrl.Replace("'", "'\''")
+$shaEscaped = $targetSha.Replace("'", "'\''")
 $pullBody = [System.IO.File]::ReadAllText($pullSh) -replace "`r`n", "`n" -replace "`r", "`n"
 # Concatenate so bash `$vars` inside pull-on-server.sh are NOT expanded by PowerShell.
 $header = (
   "set -euo pipefail`n" +
   "export BRANCH='$branch'`n" +
   "export REMOTE_DIR='$remoteDir'`n" +
-  "export DEPLOY_GIT_URL='$urlEscaped'`n`n"
+  "export DEPLOY_GIT_URL='$urlEscaped'`n" +
+  "export TARGET_SHA='$shaEscaped'`n`n"
 )
 $footer = (
   "`n" +
   "CUR=`$(git -C '$remoteDir' rev-parse --abbrev-ref HEAD)`n" +
   "test `"`$CUR`" = '$branch' || { echo `"ERROR: server on `$CUR, expected $branch`" >&2; exit 1; }`n" +
+  "HEAD=`$(git -C '$remoteDir' rev-parse HEAD)`n" +
+  "test `"`$HEAD`" = '$shaEscaped' || { echo `"ERROR: server at `$HEAD, expected $shaEscaped`" >&2; exit 1; }`n" +
   "echo `"server branch OK: `$CUR at `$(git -C '$remoteDir' rev-parse --short HEAD)`"`n"
 )
 $remoteScript = $header + $pullBody + $footer
 
 $pullFile = Join-Path $env:TEMP "nsoft3-pull-on-server.sh"
 [System.IO.File]::WriteAllText($pullFile, ($remoteScript -replace "`r`n", "`n" -replace "`r", "`n"))
-python $ssh script $pullFile
-if ($LASTEXITCODE -ne 0) {
-  throw "server git pull failed (set DEPLOY_GIT_URL=git@... with deploy key, or GITHUB_TOKEN)."
-}
 
-Write-Host "==> [3/3] running redeploy.sh on server (build + up)" -ForegroundColor Cyan
-$env:SSH_TIMEOUT = "3600"
-# Keep the remote command simple (no nested $(...) quoting across PowerShell/SSH).
-$redeployCmd = "cd $remoteDir && bash scripts/master-production/redeploy.sh"
-python $ssh run $redeployCmd
-if ($LASTEXITCODE -ne 0) { throw "redeploy.sh failed." }
+$localTs = Get-Date -Format "yyyyMMdd-HHmmss"
+$remotePull = "$remoteDir/logs/.deploy-pull-$localTs.sh"
+Write-Host "    ensuring server deploy dirs (logs/, scripts/master-production/)"
+Ensure-RemoteDeployDirs
+Write-Host "    uploading pull script -> $remotePull"
+Invoke-SshPutWithRetry -LocalPath $pullFile -RemotePath $remotePull
+
+Write-Host "==> [3/3] trigger detached full deploy on server" -ForegroundColor Cyan
+Start-RemoteDeployDetached -RemotePullScript $remotePull -TargetSha $targetSha
 
 Write-Host "==> deploy finished ($branch)." -ForegroundColor Green

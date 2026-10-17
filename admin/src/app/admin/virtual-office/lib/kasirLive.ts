@@ -52,15 +52,33 @@ export function buildKasirAgent(snap: OsKasirLiveSnapshot): Agent {
                       progress: 0.35,
                       startedAt: snap.lastActivityAt ? new Date(snap.lastActivityAt).getTime() : Date.now(),
                       moduleId: "ai-studio",
-                      route: "/admin/ai-studio/umkm",
+                      route: "/admin/connect-wa",
                       steps: ["Terima chat WA", "Catat transaksi", "Update stok"],
                   }
                 : undefined,
     };
 }
 
-/** Prepend live Kasir and drop any stale Kasir row from the demo roster. */
-export function mergeKasirIntoRoster(agents: Agent[], snap: OsKasirLiveSnapshot): Agent[] {
+/** Prepend live Kasir and drop any stale Kasir row from the roster. */
+export function mergeKasirIntoRoster(
+    agents: Agent[],
+    snap: OsKasirLiveSnapshot,
+    opts?: { tagNonKasirAsDemo?: boolean },
+): Agent[] {
+    const fromAos = agents.find((a) => a.id === KASIR_EMPLOYEE_SLUG);
     const rest = agents.filter((a) => a.id !== KASIR_EMPLOYEE_SLUG);
-    return [buildKasirAgent(snap), ...rest.map((a) => ({ ...a, rosterKind: "demo" as const }))];
+    const tagDemo = opts?.tagNonKasirAsDemo ?? true;
+    const tagged = tagDemo
+        ? rest.map((a) => ({ ...a, rosterKind: "demo" as const }))
+        : rest.map((a) => ({ ...a, rosterKind: a.rosterKind ?? ("live" as const) }));
+    const kasir = buildKasirAgent(snap);
+    if (fromAos?.task) {
+        kasir.task = fromAos.task;
+        if (fromAos.status === "working" || fromAos.status === "thinking") {
+            kasir.status = fromAos.status;
+        } else if (fromAos.task) {
+            kasir.status = "working";
+        }
+    }
+    return [kasir, ...tagged];
 }

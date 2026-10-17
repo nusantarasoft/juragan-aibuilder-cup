@@ -126,7 +126,7 @@ import {
     type UmkmWizard,
 } from './studio-umkm-durable.util';
 import { assertNoSupabaseError } from './studio-supabase.util';
-import { pickTenantConfigBySenderPhone } from './studio-whatsapp.util';
+import { normalizePhoneDigits, pickTenantConfigBySenderPhone } from './studio-whatsapp.util';
 
 const DEFAULT_TENANT = 'default';
 const PENDING_TTL_MS = 15 * 60 * 1000;
@@ -179,6 +179,22 @@ export class StudioUmkmService {
         @Inject(forwardRef(() => StudioUmkmPendampingService))
         private readonly pendamping: StudioUmkmPendampingService,
     ) {}
+
+    private async isSenderOnStoreWhitelist(studioSlug: string, phoneRaw: string): Promise<boolean> {
+        const phone = normalizePhoneDigits(phoneRaw);
+        const { data: store } = await this.admin()
+            .from('tenant_stores')
+            .select('id')
+            .eq('studio_slug', studioSlug)
+            .maybeSingle();
+        if (!store?.id) return false;
+        const { data } = await this.admin()
+            .from('tenant_wa_whitelist')
+            .select('phone')
+            .eq('store_id', store.id);
+        const list = (data ?? []).map((r) => normalizePhoneDigits(String(r.phone)));
+        return list.some((p) => p === phone || p.endsWith(phone) || phone.endsWith(p));
+    }
 
     private admin() {
         return this.supabaseService.getAdminClient();
@@ -2426,6 +2442,8 @@ export class StudioUmkmService {
         assertNoSupabaseError(error, 'Failed to resolve tenant by owner phone');
         const cfg = pickTenantConfigBySenderPhone((data || []) as any, phone);
         if (!cfg?.tenant_id || !cfg.notebook_id) return null;
+        const allowed = await this.isSenderOnStoreWhitelist(String(cfg.tenant_id), phone);
+        if (!allowed) return null;
 
         const { data: notebook, error: nbErr } = await this.admin()
             .from('studio_notebooks')

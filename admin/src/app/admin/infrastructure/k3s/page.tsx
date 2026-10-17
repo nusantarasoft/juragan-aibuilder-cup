@@ -30,7 +30,7 @@ export default function K3sPage() {
     const runningPods = PODS.filter(p => p.status === 'Running').length;
 
     return (
-        <CMSLayout title={<AuroraText colors={[themeColor, '#326ce5', '#10b981']}>K3s Kubernetes</AuroraText>} subTitle={<DecryptedText text="Cluster status, pods, services & node health" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="r" icon={<ReloadOutlined />} />]}>
+        <CMSLayout title={<AuroraText colors={[themeColor, '#326ce5', '#10b981']}>K3s Kubernetes</AuroraText>} subTitle={<DecryptedText text="Cluster status, pods, services & node health" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="r" icon={<ReloadOutlined />} onClick={() => window.location.reload()} title="Refresh page" />]}>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <Row gutter={[12, 12]}>
                     {[{ t: 'Nodes', v: NODES.length, c: '#3b82f6', i: <CloudServerOutlined /> }, { t: 'Pods Running', v: `${runningPods}/${PODS.length}`, c: '#10b981', i: <CheckCircleOutlined /> }, { t: 'Services', v: SERVICES.length, c: '#8b5cf6', i: <AppstoreOutlined /> }, { t: 'Namespaces', v: 2, c: '#f59e0b', i: <ClusterOutlined /> }].map((s, i) => (

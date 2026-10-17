@@ -2,7 +2,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import CMSLayout from '@/components/layout/CMSLayout';
-import { Card, Row, Col, Typography, Statistic, Space, Tag, Button, Table, Badge } from 'antd';
+import { Card, Row, Col, Typography, Statistic, Space, Tag, Button, Table, Badge, message } from 'antd';
 import { MenuOutlined, ApartmentOutlined, FileTextOutlined, AppstoreOutlined, ReloadOutlined, PlusOutlined, OrderedListOutlined } from '@ant-design/icons';
 import { usePreferencesStore } from '@/store/usePreferencesStore';
 import { AuroraText } from '@/components/magicui/aurora-text';
@@ -33,7 +33,7 @@ export default function NavigationSettingsPage() {
     const activeItems = NAV_ITEMS.filter(n => n.status === 'active').length;
 
     return (
-        <CMSLayout title={<AuroraText colors={[themeColor, '#3b82f6', '#10b981']}>Navigation Manager</AuroraText>} subTitle={<DecryptedText text="Menu structure, breadcrumbs & navigation tree management" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="a" icon={<PlusOutlined />} type="primary">Add Item</Button>, <Button key="r" icon={<ReloadOutlined />} />]}>
+        <CMSLayout title={<AuroraText colors={[themeColor, '#3b82f6', '#10b981']}>Navigation Manager</AuroraText>} subTitle={<DecryptedText text="Menu structure, breadcrumbs & navigation tree management" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="a" icon={<PlusOutlined />} type="primary" onClick={() => message.info('Navigation editing is managed in CMS — this view is read-only sample data.')}>Add Item</Button>, <Button key="r" icon={<ReloadOutlined />} onClick={() => window.location.reload()} title="Refresh page" />]}>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <Row gutter={[12, 12]}>
                     {[{ t: 'Menu Items', v: NAV_ITEMS.length, c: '#3b82f6', i: <MenuOutlined /> }, { t: 'Max Depth', v: 3, c: '#8b5cf6', i: <ApartmentOutlined /> }, { t: 'Active Menus', v: MENUS.length, c: '#10b981', i: <AppstoreOutlined /> }, { t: 'Published Pages', v: activeItems, c: '#f59e0b', i: <FileTextOutlined /> }].map((s, i) => (

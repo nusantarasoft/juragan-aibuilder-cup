@@ -27,7 +27,7 @@ const BUILDS = [
 export default function JenkinsPage() {
     const { themeColor } = usePreferencesStore();
     return (
-        <CMSLayout title={<AuroraText colors={[themeColor, '#d33833', '#f59e0b']}>Jenkins CI/CD</AuroraText>} subTitle={<DecryptedText text="Build pipelines, job history & agent management" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="o" icon={<LinkOutlined />} type="primary" onClick={() => window.open('http://localhost:8084', '_blank')}>Open Jenkins</Button>, <Button key="r" icon={<ReloadOutlined />} />]}>
+        <CMSLayout title={<AuroraText colors={[themeColor, '#d33833', '#f59e0b']}>Jenkins CI/CD</AuroraText>} subTitle={<DecryptedText text="Build pipelines, job history & agent management" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="o" icon={<LinkOutlined />} type="primary" onClick={() => window.open('http://localhost:8084', '_blank')}>Open Jenkins</Button>, <Button key="r" icon={<ReloadOutlined />} onClick={() => window.location.reload()} title="Refresh page" />]}>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <Row gutter={[12, 12]}>
                     {[{ t: 'Jobs', v: JOBS.length, c: '#3b82f6', i: <BuildOutlined /> }, { t: 'Builds Today', v: 15, c: '#10b981', i: <PlayCircleOutlined /> }, { t: 'Agents', v: 2, c: '#8b5cf6', i: <CloudServerOutlined /> }, { t: 'Queue', v: 1, c: '#f59e0b', i: <ClockCircleOutlined /> }].map((s, i) => (

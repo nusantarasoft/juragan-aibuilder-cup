@@ -1,5 +1,4 @@
-const GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_URL || 'http://127.0.0.1:4001/graphql';
-const DEFAULT_TENANT_ID = '00000000-0000-0000-0000-000000000010';
+import { DEFAULT_TENANT_ID, gql as graphqlRequest } from '@/lib/graphql';
 
 export interface ScadaDataSource {
     id: string;
@@ -27,16 +26,13 @@ export interface ScadaAlarmEvent {
     createdAt: string;
 }
 
-async function graphqlRequest<T>(query: string, variables?: Record<string, unknown>): Promise<T> {
-    const response = await fetch(GRAPHQL_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query, variables }),
-        cache: 'no-store',
-    });
-    const json = await response.json();
-    if (json.errors) throw new Error(json.errors[0].message);
-    return json.data;
+export interface ScadaTagValuePoint {
+    id: string;
+    tagId: string;
+    timestamp: string;
+    valueNumeric?: number;
+    valueText?: string;
+    quality?: string;
 }
 
 export const scadaService = {
@@ -65,5 +61,21 @@ export const scadaService = {
             }
         `, { tenantId });
         return data.scadaActiveAlarms || [];
-    }
+    },
+
+    async getTagValueHistory(
+        tagIds: string[],
+        tenantId = DEFAULT_TENANT_ID,
+        limit = 120,
+    ): Promise<ScadaTagValuePoint[]> {
+        if (!tagIds.length) return [];
+        const data = await graphqlRequest<{ scadaTagValueHistory: ScadaTagValuePoint[] }>(`
+            query($tenantId: String!, $tagIds: [String!]!, $limit: Int) {
+                scadaTagValueHistory(tenantId: $tenantId, tagIds: $tagIds, limit: $limit) {
+                    id tagId timestamp valueNumeric valueText quality
+                }
+            }
+        `, { tenantId, tagIds, limit });
+        return data.scadaTagValueHistory || [];
+    },
 };

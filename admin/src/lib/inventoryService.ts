@@ -2,20 +2,7 @@
  * Inventory Service - All operations via GraphQL Middleware
  */
 
-const GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_URL || 'http://127.0.0.1:4001/graphql';
-const DEFAULT_TENANT_ID = '00000000-0000-0000-0000-000000000010';
-
-async function graphqlRequest<T>(query: string, variables?: Record<string, unknown>): Promise<T> {
-    const response = await fetch(GRAPHQL_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query, variables }),
-        cache: 'no-store',
-    });
-    const json = await response.json();
-    if (json.errors) throw new Error(json.errors[0].message);
-    return json.data;
-}
+import { DEFAULT_TENANT_ID, gql as graphqlRequest } from '@/lib/graphql';
 
 // ─── Types ───────────────────────────────────────────────
 

@@ -79,7 +79,7 @@ export default function PositionsPage() {
         setLoading(true);
         Promise.all([gql(POS_Q, { t: DEFAULT_TENANT_ID }), gql(DEPT_Q, { t: DEFAULT_TENANT_ID })])
             .then(([p, d]) => { setPositions(p.hrPositions || []); setDepartments(d.hrDepartments || []); })
-            .catch(console.error).finally(() => setLoading(false));
+            .catch(() => undefined).finally(() => setLoading(false));
     };
     useEffect(() => { load(); }, []);
 

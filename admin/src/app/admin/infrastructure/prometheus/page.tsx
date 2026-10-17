@@ -34,7 +34,7 @@ export default function PrometheusPage() {
     const firing = RULES.filter(r => r.state === 'firing').length;
 
     return (
-        <CMSLayout title={<AuroraText colors={[themeColor, '#e6522c', '#f59e0b']}>Prometheus</AuroraText>} subTitle={<DecryptedText text="Metrics collection, target health & alerting rules" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="o" icon={<LinkOutlined />} type="primary" onClick={() => window.open('http://localhost:9091', '_blank')}>Open Prometheus</Button>, <Button key="r" icon={<ReloadOutlined />} />]}>
+        <CMSLayout title={<AuroraText colors={[themeColor, '#e6522c', '#f59e0b']}>Prometheus</AuroraText>} subTitle={<DecryptedText text="Metrics collection, target health & alerting rules" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="o" icon={<LinkOutlined />} type="primary" onClick={() => window.open('http://localhost:9091', '_blank')}>Open Prometheus</Button>, <Button key="r" icon={<ReloadOutlined />} onClick={() => window.location.reload()} title="Refresh page" />]}>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <Row gutter={[12, 12]}>
                     {[{ t: 'Targets Up', v: up, c: '#10b981', i: <CheckCircleOutlined /> }, { t: 'Targets Down', v: down, c: down > 0 ? '#ef4444' : '#10b981', i: <CloseCircleOutlined /> }, { t: 'Firing Rules', v: firing, c: firing > 0 ? '#ef4444' : '#10b981', i: <AlertOutlined /> }, { t: 'Active Series', v: '18,432', c: '#8b5cf6', i: <ThunderboltOutlined /> }].map((s, i) => (

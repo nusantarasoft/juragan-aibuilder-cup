@@ -31,7 +31,7 @@ export default function RabbitMQPage() {
     const totalConsumers = QUEUES.reduce((s, q) => s + q.consumers, 0);
 
     return (
-        <CMSLayout title={<AuroraText colors={[themeColor, '#ff6600', '#10b981']}>RabbitMQ</AuroraText>} subTitle={<DecryptedText text="Queue browser, exchange topology & message rates" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="o" icon={<LinkOutlined />} type="primary" onClick={() => window.open('http://localhost:15672', '_blank')}>Open RabbitMQ</Button>, <Button key="r" icon={<ReloadOutlined />} />]}>
+        <CMSLayout title={<AuroraText colors={[themeColor, '#ff6600', '#10b981']}>RabbitMQ</AuroraText>} subTitle={<DecryptedText text="Queue browser, exchange topology & message rates" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="o" icon={<LinkOutlined />} type="primary" onClick={() => window.open('http://localhost:15672', '_blank')}>Open RabbitMQ</Button>, <Button key="r" icon={<ReloadOutlined />} onClick={() => window.location.reload()} title="Refresh page" />]}>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <Row gutter={[12, 12]}>
                     {[{ t: 'Queues', v: QUEUES.length, c: '#3b82f6', i: <InboxOutlined /> }, { t: 'Messages Ready', v: totalMessages, c: totalMessages > 50 ? '#f59e0b' : '#10b981', i: <DatabaseOutlined /> }, { t: 'Consumers', v: totalConsumers, c: '#8b5cf6', i: <CheckCircleOutlined /> }, { t: 'Exchanges', v: EXCHANGES.length, c: '#f59e0b', i: <ShareAltOutlined /> }].map((s, i) => (

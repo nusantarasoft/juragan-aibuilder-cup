@@ -34,7 +34,7 @@ export default function HasuraPage() {
     const totalRows = TABLES.reduce((s, t) => s + t.rows, 0);
 
     return (
-        <CMSLayout title={<AuroraText colors={[themeColor, '#1eb4d4', '#3b82f6']}>Hasura GraphQL</AuroraText>} subTitle={<DecryptedText text="Table explorer, actions, event triggers & permissions" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="o" icon={<LinkOutlined />} type="primary" onClick={() => window.open('http://localhost:8094', '_blank')}>Open Console</Button>, <Button key="r" icon={<ReloadOutlined />} />]}>
+        <CMSLayout title={<AuroraText colors={[themeColor, '#1eb4d4', '#3b82f6']}>Hasura GraphQL</AuroraText>} subTitle={<DecryptedText text="Table explorer, actions, event triggers & permissions" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="o" icon={<LinkOutlined />} type="primary" onClick={() => window.open('http://localhost:8094', '_blank')}>Open Console</Button>, <Button key="r" icon={<ReloadOutlined />} onClick={() => window.location.reload()} title="Refresh page" />]}>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <Row gutter={[12, 12]}>
                     {[{ t: 'Tracked Tables', v: trackedTables, c: '#3b82f6', i: <TableOutlined /> }, { t: 'Total Rows', v: totalRows.toLocaleString(), c: '#10b981', i: <DatabaseOutlined /> }, { t: 'Actions', v: ACTIONS.length, c: '#8b5cf6', i: <ThunderboltOutlined /> }, { t: 'Event Triggers', v: EVENTS.length, c: '#f59e0b', i: <ApiOutlined /> }].map((s, i) => (

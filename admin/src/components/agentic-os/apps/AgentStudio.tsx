@@ -7,6 +7,8 @@ import { MODULES, type ModuleId } from "@/app/admin/virtual-office/lib/modules";
 import { ZONE_BY_ID } from "@/app/admin/virtual-office/lib/floorplan";
 import type { ZoneId } from "@/app/admin/virtual-office/lib/types";
 import { AGENT_TEMPLATES, TIER_META, slugify, type AgentTemplate } from "../lib/catalog";
+import { useAuthStore } from "@/store/useAuthStore";
+import Link from "next/link";
 import { fetchKasirLiveSnapshot } from "../lib/api";
 import { formatKasirMetricLine, KASIR_EMPLOYEE_SLUG, rosterKindForAgent } from "../lib/firstEmployee";
 import { useAosStore } from "../lib/store";
@@ -46,10 +48,11 @@ function draftFromTemplate(t: AgentTemplate): AgentDraft {
 }
 
 export function AgentStudio({ initialAgentId, onOpenTasks }: { initialAgentId?: string; onOpenTasks?: (agentId: string) => void }) {
-    const { agents, tasks, includeArchived, setIncludeArchived } = useAosStore(
+    const { agents, tasks, settings, includeArchived, setIncludeArchived } = useAosStore(
         useShallow((s) => ({
             agents: s.agents,
             tasks: s.tasks,
+            settings: s.settings,
             includeArchived: s.includeArchived,
             setIncludeArchived: s.setIncludeArchived,
         })),
@@ -63,6 +66,9 @@ export function AgentStudio({ initialAgentId, onOpenTasks }: { initialAgentId?: 
     const [query, setQuery] = useState("");
     const [zone, setZone] = useState<string>("all");
     const [kasirLive, setKasirLive] = useState<OsKasirLiveSnapshot | null>(null);
+    const appRole = useAuthStore((s) => s.user?.role);
+    const hideEnterpriseTemplates = appRole === "tenant_owner";
+    const visibleTemplates = hideEnterpriseTemplates ? [] : AGENT_TEMPLATES;
 
     useEffect(() => {
         let alive = true;
@@ -142,7 +148,16 @@ export function AgentStudio({ initialAgentId, onOpenTasks }: { initialAgentId?: 
                                 className="w-full bg-transparent text-[12px] text-white placeholder:text-slate-500 focus:outline-none"
                             />
                         </label>
-                        <Button variant="primary" icon={Plus} onClick={() => setShowTemplates((v) => !v)} title="New agent" />
+                        {hideEnterpriseTemplates ? (
+                            <Link
+                                href="/admin/recruit"
+                                className="inline-flex h-8 items-center rounded-lg bg-indigo-500 px-2.5 text-[11px] font-semibold text-white hover:bg-indigo-400"
+                            >
+                                Rekrut
+                            </Link>
+                        ) : (
+                            <Button variant="primary" icon={Plus} onClick={() => setShowTemplates((v) => !v)} title="New agent" />
+                        )}
                     </div>
                     <div className="flex flex-wrap gap-1">
                         {["all", "engineering", "research", "operations"].map((z) => (
@@ -154,10 +169,10 @@ export function AgentStudio({ initialAgentId, onOpenTasks }: { initialAgentId?: 
                     <Toggle checked={includeArchived} onChange={setIncludeArchived} label="Show archived" />
                 </div>
 
-                {showTemplates && (
+                {showTemplates && !hideEnterpriseTemplates && (
                     <div className="space-y-1 border-b border-white/10 bg-indigo-500/[0.06] p-2">
                         <div className="px-1 pb-1 text-[10px] font-bold uppercase tracking-wider text-indigo-200">Start from a template</div>
-                        {AGENT_TEMPLATES.map((t) => (
+                        {visibleTemplates.map((t) => (
                             <button key={t.id} type="button" onClick={() => startCreate(t)} className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left hover:bg-white/10">
                                 <AgentDot color={t.color} name={t.role} size={24} />
                                 <span className="min-w-0 flex-1">
@@ -189,7 +204,7 @@ export function AgentStudio({ initialAgentId, onOpenTasks }: { initialAgentId?: 
                     )}
                     {visible.map((a) => {
                         const open = openCount(a.id);
-                        const kind = rosterKindForAgent(a.id, a.slug);
+                        const kind = rosterKindForAgent(a.id, a.slug, { uiDemoMode: settings?.uiDemoMode });
                         return (
                             <button
                                 key={a.id}
@@ -239,9 +254,18 @@ export function AgentStudio({ initialAgentId, onOpenTasks }: { initialAgentId?: 
                         title={agents.length ? "Select an agent to customize" : "No agents yet"}
                         hint="Change persona, model, desk, modules, permissions, tools, guardrails and budget. Every save is versioned and can be restored."
                         action={
-                            <Button variant="primary" icon={Plus} onClick={() => setShowTemplates(true)}>
-                                New agent
-                            </Button>
+                            hideEnterpriseTemplates ? (
+                                <Link
+                                    href="/admin/recruit"
+                                    className="inline-flex items-center gap-2 rounded-lg bg-indigo-500 px-3 py-1.5 text-sm font-semibold text-white"
+                                >
+                                    Rekrut karyawan
+                                </Link>
+                            ) : (
+                                <Button variant="primary" icon={Plus} onClick={() => setShowTemplates(true)}>
+                                    New agent
+                                </Button>
+                            )
                         }
                     />
                 )}

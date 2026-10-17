@@ -18,10 +18,18 @@ import signal
 import subprocess
 import threading
 import time
+from contextvars import ContextVar
 from pathlib import Path
 from typing import Any, Optional
 
 logger = logging.getLogger("hermes.plugins.kasir-pipe.pair")
+
+_active_session: ContextVar[Optional[str]] = ContextVar("kasir_pair_session", default=None)
+
+
+def set_active_session(session: Optional[str]) -> None:
+    """Scope pair/* handlers to a dedicated session dir (P2-5)."""
+    _active_session.set((session or "").strip() or None)
 
 _lock = threading.Lock()
 _pair_proc: Optional[subprocess.Popen] = None
@@ -36,6 +44,11 @@ def _hermes_home() -> Path:
 
 
 def _session_dir() -> Path:
+    dedicated = _active_session.get()
+    if dedicated and dedicated not in ("hermes", "default"):
+        safe = "".join(ch if ch.isalnum() or ch in "-_" else "-" for ch in dedicated).strip("-")
+        if safe:
+            return _hermes_home() / "platforms" / "whatsapp" / "sessions" / safe
     return Path(
         os.environ.get("WHATSAPP_SESSION_DIR")
         or str(_hermes_home() / "platforms" / "whatsapp" / "session")

@@ -61,7 +61,7 @@ Business ladder: [`diagrams/aistudio/umkm-wa/business/`](../../../../diagrams/ai
 | **studio_whatsapp_config** | Enabled tenants + `business_phone` ∪ `allowlist_phones` + notebook. |
 | **studio_umkm_registrations** | DAFTAR drafts/pending (wizard). |
 
-Shared **one** business WhatsApp number (not one Hermes profile per tenant). Tenants are separated by owner phone on the allowlist.
+**Default (F2-3):** shared **one** NS business WhatsApp number; tenant isolation = owner/staff on `tenant_wa_whitelist`. **Optional (P2-5):** per-store dedicated session (`tenant_stores.wa_inbox_mode=dedicated`, Hermes pair `?session=umkm-{slug}`) — shared remains default; see [docs/design/p2-5-dedicated-wa.md](../../../design/p2-5-dedicated-wa.md).
 
 ---
 
@@ -142,6 +142,7 @@ Agent replies to allowlisted chats go through the Hermes gateway. Last-mile deny
 | `KASIR_CONSULT` | hermes **and** middleware | Compose default `0` (“belum aktif”); prod soft GA **`1`**. Allow `kasir_consult` → Nest RAG. Flip both sides together |
 | `KASIR_CONSULT_URL` | hermes | Default `http://middleware:4001/internal/kasir-consult` |
 | `KASIR_CONSULT_KEY` | hermes + middleware | Shared secret → header `X-Kasir-Consult-Key` (fail-closed if unset) |
+| *(side effect)* | middleware | Each kasir-consult hop mirrors a **redacted** task into Agentic OS (`source: kasir_wa`) for VO/AOS — async; queue errors logged only |
 | `KASIR_CONSULT_NOTEBOOK_ID` | middleware only | Studio notebook with ingested UKM PDF (prod: `48aee243-…`, 376 chunks) |
 | `KASIR_CONSULT_INJECT_METRICS` | middleware only | Default `0`. When `1`, Nest may append a short today-report snapshot into synthesize (labeled *dari kasir toko kamu*) if Hermes forwards `phone` — **never** into retrieve / ledger RAG |
 | `KASIR_CONSULT_CITE_PAGES` | middleware only | Default `0`. When `1`, replies may append `hlm. N` from chunk `-- N of M --` markers |

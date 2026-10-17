@@ -45,6 +45,7 @@ describe('ROLE_LABELS', () => {
     it('provides human-readable labels for CMS roles', () => {
         expect(ROLE_LABELS.super_admin).toBe('Super Admin');
         expect(ROLE_LABELS.admin).toBe('Administrator');
-        expect(Object.keys(ROLE_LABELS)).toEqual(['super_admin', 'admin']);
+        expect(ROLE_LABELS.tenant_owner).toBe('Pemilik toko');
+        expect(Object.keys(ROLE_LABELS)).toEqual(['super_admin', 'admin', 'tenant_owner']);
     });
 });

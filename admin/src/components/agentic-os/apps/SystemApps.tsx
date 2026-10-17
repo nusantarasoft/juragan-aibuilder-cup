@@ -5,7 +5,7 @@ import { useShallow } from "zustand/react/shallow";
 import { Activity, AlertTriangle, Bot, CalendarClock, CircleCheck, Coins, Gauge, ListTodo, Play, Power, ShieldAlert, Sparkles, Timer } from "lucide-react";
 import { MODULES, type ModuleId } from "@/app/admin/virtual-office/lib/modules";
 import { aosApi, fetchAudit, fetchKasirLiveSnapshot } from "../lib/api";
-import { formatKasirMetricLine } from "../lib/firstEmployee";
+import { formatKasirMetricLine, rosterKindForAgent } from "../lib/firstEmployee";
 import { startPulsePolling, usePulseStore } from "../lib/pulseStore";
 import { agentById, useAosStore } from "../lib/store";
 import type { OsAuditEntry } from "../lib/types";
@@ -146,15 +146,29 @@ export function Overview({ onOpen }: { onOpen: (app: string, params?: Record<str
                         <div className="min-w-0 flex-1">
                             <div className="flex flex-wrap items-center gap-2">
                                 <span className="text-[14px] font-semibold text-white">{kasirLive.name}</span>
-                                <RosterKindBadge kind="live" />
+                                <RosterKindBadge
+                                    kind={rosterKindForAgent("kasir-live", kasirLive.slug, {
+                                        uiDemoMode: settings?.uiDemoMode,
+                                    })}
+                                />
                                 <Chip color="#38bdf8">AI Studio</Chip>
                             </div>
                             <p className="mt-1 text-[12px] text-slate-300">{formatKasirMetricLine(kasirLive)}</p>
-                            <p className="mt-1 text-[10px] text-slate-500">Simulated agents below use Demo badges — task queue & workflows are not live yet.</p>
+                            <p className="mt-1 text-[10px] text-slate-500">
+                                Task queue is persisted in Postgres and advances via the middleware worker. Roster agents show Live unless explicit UI demo mode is on.
+                            </p>
                         </div>
-                        <Button size="sm" onClick={() => onOpen("studio")}>
-                            Agent roster
-                        </Button>
+                        <div className="flex shrink-0 flex-col gap-1.5">
+                            <Button size="sm" onClick={() => onOpen("studio")}>
+                                Agent roster
+                            </Button>
+                            <a href="/admin/connect-wa" className="rounded-lg border border-white/10 px-2.5 py-1.5 text-center text-[11px] font-semibold text-emerald-200 hover:bg-white/5">
+                                Hubungkan WhatsApp
+                            </a>
+                            <a href="/admin/usage" className="rounded-lg border border-white/10 px-2.5 py-1.5 text-center text-[11px] font-semibold text-sky-200 hover:bg-white/5">
+                                Pemakaian
+                            </a>
+                        </div>
                     </div>
                 </Section>
             )}
@@ -167,7 +181,7 @@ export function Overview({ onOpen }: { onOpen: (app: string, params?: Record<str
                                 <AgentDot color={a.color} name={a.name} size={24} />
                                 <span className="flex w-28 shrink-0 items-center gap-1 truncate text-[12px] font-semibold text-white">
                                     {a.name}
-                                    <RosterKindBadge kind="demo" />
+                                    <RosterKindBadge kind={rosterKindForAgent(a.id, a.slug, { uiDemoMode: settings?.uiDemoMode, agent: a })} />
                                 </span>
                                 <span className="min-w-0 flex-1 truncate text-[11px] text-slate-400">{running ? running.title : a.status === "active" ? "Idle" : a.status}</span>
                                 {running && (
@@ -287,12 +301,20 @@ export function OsSettingsApp() {
                 </div>
             </Section>
             <div className="grid gap-3 md:grid-cols-2">
-                <Section title="Autopilot (task simulation)" icon={Sparkles}>
+                <Section title="UI honesty (AI Studio)" icon={Sparkles}>
+                    <Toggle
+                        checked={d.uiDemoMode}
+                        onChange={(v) => set("uiDemoMode", v)}
+                        label="UI demo mode"
+                        hint="When on, Knowledge Graph and Label Studio show sample data with Demo badges (F1-4)."
+                    />
+                </Section>
+                <Section title="Autopilot (task queue)" icon={Sparkles}>
                     <Toggle checked={d.autopilot} onChange={(v) => set("autopilot", v)} label="Autopilot" hint="Idle agents pick playbooks from their modules" />
                     <Field label="Review cap per agent" hint="Stop autopilot when this many tasks wait for review">
                         <TextInput type="number" min={0} max={50} value={d.autopilotReviewCap} onChange={(e) => set("autopilotReviewCap", Number(e.target.value))} />
                     </Field>
-                    <Field label="Seconds per step" hint="Simulation speed" className="mt-2">
+                    <Field label="Seconds per step" hint="Middleware worker interval between task steps" className="mt-2">
                         <TextInput type="number" min={3} max={600} value={d.stepSeconds} onChange={(e) => set("stepSeconds", Number(e.target.value))} />
                     </Field>
                 </Section>
@@ -333,6 +355,7 @@ export function OsSettingsApp() {
                                 monthlyTokenBudget: d.monthlyTokenBudget,
                                 rollingWindowMinutes: d.rollingWindowMinutes,
                                 rollingWindowCeiling: d.rollingWindowCeiling,
+                                uiDemoMode: d.uiDemoMode,
                             }),
                         );
                         if (out) setD(out);

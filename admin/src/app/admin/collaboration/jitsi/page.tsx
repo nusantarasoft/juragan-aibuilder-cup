@@ -25,7 +25,7 @@ export default function JitsiPage() {
     const totalParticipants = ROOMS.reduce((s, r) => s + r.participants, 0);
 
     return (
-        <CMSLayout title={<AuroraText colors={[themeColor, '#oebb00', '#3b82f6']}>Jitsi Meet</AuroraText>} subTitle={<DecryptedText text="Video conferencing, active rooms & participant stats" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="o" icon={<LinkOutlined />} type="primary" onClick={() => window.open('https://localhost:8443', '_blank')}>Open Jitsi</Button>, <Button key="r" icon={<ReloadOutlined />} />]}>
+        <CMSLayout title={<AuroraText colors={[themeColor, '#oebb00', '#3b82f6']}>Jitsi Meet</AuroraText>} subTitle={<DecryptedText text="Video conferencing, active rooms & participant stats" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="o" icon={<LinkOutlined />} type="primary" onClick={() => window.open('https://localhost:8443', '_blank')}>Open Jitsi</Button>, <Button key="r" icon={<ReloadOutlined />} onClick={() => window.location.reload()} title="Refresh page" />]}>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <Row gutter={[12, 12]}>
                     {[{ t: 'Active Rooms', v: activeRooms, c: '#10b981', i: <VideoCameraOutlined /> }, { t: 'Participants Now', v: totalParticipants, c: '#3b82f6', i: <TeamOutlined /> }, { t: 'Meetings (30d)', v: STATS.totalMeetings, c: '#8b5cf6', i: <CheckCircleOutlined /> }, { t: 'Avg Duration', v: STATS.avgDuration, c: '#f59e0b', i: <ClockCircleOutlined /> }].map((s, i) => (

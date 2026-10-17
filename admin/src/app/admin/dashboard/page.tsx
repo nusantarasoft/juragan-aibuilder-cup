@@ -161,7 +161,7 @@ export default function DashboardPage() {
                         supaRest('accounting_journal_entries', { select: 'id' }),
                         supaRest('accounting_payables', { select: 'id,amount,status' }),
                         supaRest('accounting_receivables', { select: 'id,amount,status' }),
-                        supaRest('hr_employees', { select: 'id,status' }),
+                        supaRest('hr_employees', { select: 'id,employment_status' }),
                         supaRest('hr_departments', { select: 'id' }),
                         supaRest('hr_leave_requests', { select: 'id,status' }),
                     ]);
@@ -172,7 +172,7 @@ export default function DashboardPage() {
                     const totalAP = payables.filter((p: any) => p.status !== 'paid').reduce((s: number, p: any) => s + (p.amount || 0), 0);
                     const totalAR = receivables.filter((r: any) => r.status !== 'collected').reduce((s: number, r: any) => s + (r.amount || 0), 0);
                     setAccounting({ balance: totalBal, payables: totalAP, receivables: totalAR, journalEntries: journals.length });
-                    const activeEmp = employees.filter((e: any) => e.status === 'active').length;
+                    const activeEmp = employees.filter((e: any) => e.employment_status === 'active').length;
                     const pendingLeave = leaves.filter((l: any) => l.status === 'pending').length;
                     setHrStats({ employees: activeEmp, departments: departments.length, pendingLeave, openPositions: 0 });
                 } catch { /* tables may not exist yet */ }

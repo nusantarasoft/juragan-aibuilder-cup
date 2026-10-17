@@ -86,14 +86,13 @@ export default function SalesAnalyticsPage() {
                 const data = await gql(`
                     query($tenantId: String!) {
                         deals(tenantId: $tenantId) {
-                            id dealName amount probability stage closeDate
+                            id name amount probability stage closeDate
                             priority status lostReason wonReason
-                            createdAt updatedAt
-                            account { companyName }
+                            createdAt updatedAt accountId
                         }
                     }
                 `, { tenantId: DEFAULT_TENANT_ID });
-                setDeals(data.deals || []);
+                setDeals((data.deals || []).map((d: any) => ({ ...d, dealName: d.dealName || d.name })));
             } catch (err: any) { message.error("Failed to load deals: " + err.message); }
             finally { setLoading(false); }
         })();

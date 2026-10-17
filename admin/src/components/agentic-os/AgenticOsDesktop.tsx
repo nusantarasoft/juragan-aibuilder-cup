@@ -19,7 +19,9 @@ import { useAosTheme, useDeckUi, type DeckView } from "./lib/deckStore";
 import { pulseApi } from "./lib/api";
 import { APPS, APP_BY_ID, useOsUi, type AppId, type AppParams } from "./registry";
 import { CommandDeck } from "./apps/deck/CommandDeck";
+import { rosterKindForAgent } from "./lib/firstEmployee";
 import { AgentDot, Toasts, cx } from "./ui/kit";
+import { RosterKindBadge } from "./ui/RosterKindBadge";
 
 interface Win {
     app: AppId;
@@ -363,8 +365,11 @@ export function AgenticOsDesktop({ exit, initialApp = "overview", initialParams 
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [top?.app, top?.nonce]);
 
+    const rosterKind = rosterKindForAgent("", undefined, { uiDemoMode: settings?.uiDemoMode === true });
+
     const toolbar = (
         <>
+            <RosterKindBadge kind={rosterKind} className="tracking-normal" />
             {status === "error" && (
                 <span className="border border-red-400/40 bg-red-500/15 px-2 py-0.5 tracking-normal text-red-200" title={error ?? ""}>
                     backend offline

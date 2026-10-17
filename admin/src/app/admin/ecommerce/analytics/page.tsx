@@ -50,7 +50,7 @@ function filterPrevPeriod<T extends { createdAt: string }>(items: T[], period: P
 const GET_ORDERS = `query($tenantId: String!) { ecomOrders(tenantId: $tenantId) { id orderNumber status totalAmount subtotal tax shippingCost discount paymentMethod paymentStatus customerId shippingAddress fulfillmentType createdAt updatedAt completedAt } }`;
 const GET_ORDER_ITEMS = `query($tenantId: String!) { ecomOrderItems(tenantId: $tenantId) { id orderId itemId itemName quantity unitPrice totalPrice category sku } }`;
 const GET_CUSTOMERS = `query($tenantId: String!) { ecomCustomers(tenantId: $tenantId) { id name email phone customerType totalOrders totalSpent createdAt lastOrderDate } }`;
-const GET_STATS = `query($tenantId: String!) { ecomStats(tenantId: $tenantId) }`;
+const GET_STATS = `query($tenantId: String!) { ecomStats(tenantId: $tenantId) { totalOrders totalRevenue pending totalCustomers avgOrderValue } }`;
 
 export default function SalesAnalyticsPage() {
     const [loading, setLoading] = useState(true);

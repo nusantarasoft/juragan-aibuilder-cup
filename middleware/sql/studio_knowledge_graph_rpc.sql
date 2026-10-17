@@ -1,0 +1,2 @@
+-- Mirror of supabase/migrations/20261015170000_studio_knowledge_graph_rpc.sql
+-- Apply via scripts/master-production/apply-migrations.sh or copy from that migration file.

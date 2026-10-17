@@ -10,7 +10,11 @@ const POLL_MS = 5000;
  * Poll middleware for live Kasir metrics and merge into the office roster.
  * Demo/sim agents are left untouched except for explicit Demo tagging.
  */
-export function startKasirLivePolling(emit: (event: OfficeEvent) => void, getAgents: () => Agent[]) {
+export function startKasirLivePolling(
+    emit: (event: OfficeEvent) => void,
+    getAgents: () => Agent[],
+    opts?: { tagNonKasirAsDemo?: boolean },
+) {
     let last: OsKasirLiveSnapshot | null = null;
 
     const tick = async () => {
@@ -18,7 +22,7 @@ export function startKasirLivePolling(emit: (event: OfficeEvent) => void, getAge
             const snap = await fetchKasirLiveSnapshot();
             last = snap;
             const base = getAgents().filter((a) => a.id !== KASIR_EMPLOYEE_SLUG);
-            emit({ type: "roster", agents: mergeKasirIntoRoster(base, snap) });
+            emit({ type: "roster", agents: mergeKasirIntoRoster(base, snap, opts) });
         } catch {
             const base = getAgents().filter((a) => a.id !== KASIR_EMPLOYEE_SLUG);
             const snap: OsKasirLiveSnapshot = last
@@ -36,7 +40,7 @@ export function startKasirLivePolling(emit: (event: OfficeEvent) => void, getAge
                       lastActivityAt: null,
                       waOnline: null,
                   };
-            emit({ type: "roster", agents: mergeKasirIntoRoster(base, snap) });
+            emit({ type: "roster", agents: mergeKasirIntoRoster(base, snap, opts) });
         }
     };
 

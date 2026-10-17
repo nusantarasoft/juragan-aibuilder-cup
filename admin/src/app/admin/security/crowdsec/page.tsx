@@ -33,7 +33,7 @@ export default function CrowdSecPage() {
     const bans = DECISIONS.filter(d => d.type === 'ban').length;
 
     return (
-        <CMSLayout title={<AuroraText colors={[themeColor, '#ef4444', '#f59e0b']}>CrowdSec</AuroraText>} subTitle={<DecryptedText text="Threat detection, banned IPs & bouncer status" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="o" icon={<LinkOutlined />} onClick={() => window.open('http://localhost:8083', '_blank')}>Open Console</Button>, <Button key="r" icon={<ReloadOutlined />} />]}>
+        <CMSLayout title={<AuroraText colors={[themeColor, '#ef4444', '#f59e0b']}>CrowdSec</AuroraText>} subTitle={<DecryptedText text="Threat detection, banned IPs & bouncer status" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="o" icon={<LinkOutlined />} onClick={() => window.open('http://localhost:8083', '_blank')}>Open Console</Button>, <Button key="r" icon={<ReloadOutlined />} onClick={() => window.location.reload()} title="Refresh page" />]}>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <Row gutter={[12, 12]}>
                     {[{ t: 'Active Bans', v: bans, c: '#ef4444', i: <StopOutlined /> }, { t: 'Decisions', v: DECISIONS.length, c: '#f59e0b', i: <AlertOutlined /> }, { t: 'Bouncers', v: BOUNCERS.length, c: '#10b981', i: <SafetyOutlined /> }, { t: 'Parsed Events', v: PARSERS.reduce((s, p) => s + p.events, 0).toLocaleString(), c: '#3b82f6', i: <GlobalOutlined /> }].map((s, i) => (

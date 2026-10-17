@@ -1,4 +1,4 @@
-import { Resolver, Query, Mutation, Args, ObjectType, Field, ID, InputType, Int } from '@nestjs/graphql';
+import { Resolver, Query, Mutation, Args, ObjectType, Field, ID, InputType, Int, Float } from '@nestjs/graphql';
 import { ItsmService } from './itsm.service';
 
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
@@ -47,11 +47,13 @@ export class ItsmTicket {
     @Field({ nullable: true }) reporterEmail?: string;
     @Field({ nullable: true }) assignedTo?: string;
     @Field({ nullable: true }) assignedGroup?: string;
+    @Field({ nullable: true }) assignedTeam?: string;
     @Field({ nullable: true }) slaPolicyId?: string;
     @Field({ nullable: true }) slaResponseDue?: string;
     @Field({ nullable: true }) slaResolutionDue?: string;
     @Field({ nullable: true }) slaResponseMet?: boolean;
     @Field({ nullable: true }) slaResolutionMet?: boolean;
+    @Field({ nullable: true }) slaBreached?: boolean;
     @Field({ nullable: true }) channel?: string;
     @Field({ nullable: true }) resolutionNotes?: string;
     @Field({ nullable: true }) resolvedAt?: string;
@@ -88,6 +90,16 @@ export class ItsmDashboardStats {
     @Field(() => Int) statusPending: number;
     @Field(() => Int) statusResolved: number;
     @Field(() => Int) statusClosed: number;
+    @Field(() => Int, { nullable: true }) openTickets?: number;
+    @Field(() => Int, { nullable: true }) slaCompliancePct?: number;
+    @Field(() => Int, { nullable: true }) totalBreached?: number;
+    @Field(() => Int, { nullable: true }) totalDueToday?: number;
+    @Field(() => GraphQLJSON, { nullable: true }) byPriority?: any;
+    @Field(() => GraphQLJSON, { nullable: true }) byStatus?: any;
+    @Field(() => Float, { nullable: true }) avgResponseTime?: number;
+    @Field(() => Float, { nullable: true }) avgResolutionTime?: number;
+    @Field(() => Int, { nullable: true }) resolvedThisWeek?: number;
+    @Field(() => Float, { nullable: true }) slaComplianceRate?: number;
 }
 
 @ObjectType()
@@ -236,6 +248,9 @@ export class ItsmChange {
     @Field({ nullable: true }) relatedIncidentId?: string;
     @Field({ nullable: true }) relatedProblemId?: string;
     @Field({ nullable: true }) reviewNotes?: string;
+    @Field({ nullable: true }) implementor?: string;
+    @Field({ nullable: true }) approvalStatus?: string;
+    @Field({ nullable: true }) impactAssessment?: string;
     @Field({ nullable: true }) createdAt?: string;
 }
 
@@ -277,33 +292,12 @@ export class ItsmApproval {
 // These modules return raw DB rows via a flexible JSON-serializable type,
 // avoiding the need for dozens of per-module GraphQL types.
 
-import { GraphQLScalarType, Kind } from 'graphql';
-import { Scalar } from '@nestjs/graphql';
-
-const GraphQLJSON = new GraphQLScalarType({
-    name: 'JSON',
-    description: 'The `JSON` scalar type represents JSON values as specified by ECMA-404.',
-    serialize: (value: any) => value,
-    parseValue: (value: any) => value,
-    parseLiteral: (ast: any) => {
-        if (ast.kind === Kind.STRING) { try { return JSON.parse(ast.value); } catch { return ast.value; } }
-        if (ast.kind === Kind.INT) return parseInt(ast.value, 10);
-        if (ast.kind === Kind.FLOAT) return parseFloat(ast.value);
-        if (ast.kind === Kind.BOOLEAN) return ast.value;
-        if (ast.kind === Kind.NULL) return null;
-        if (ast.kind === Kind.OBJECT) {
-            const obj: any = {};
-            ast.fields.forEach((f: any) => { obj[f.name.value] = GraphQLJSON.parseLiteral(f.value, {}); });
-            return obj;
-        }
-        if (ast.kind === Kind.LIST) return ast.values.map((v: any) => GraphQLJSON.parseLiteral(v, {}));
-        return null;
-    },
-});
+import GraphQLJSON from 'graphql-type-json';
 
 @ObjectType()
 export class ItsmGenericRecord {
     @Field(() => ID) id: string;
+    @Field(() => GraphQLJSON, { nullable: true }) data?: any;
     @Field({ nullable: true }) tenant_id?: string;
     @Field({ nullable: true }) name?: string;
     @Field({ nullable: true }) title?: string;
@@ -755,9 +749,12 @@ function mapTicket(row: any): ItsmTicket {
         individualId: row.individual_id, pmStakeholderId: row.pm_stakeholder_id,
         reporterName: row.reporter_name, reporterEmail: row.reporter_email,
         assignedTo: row.assigned_to, assignedGroup: row.assigned_group,
+        assignedTeam: row.assigned_group || row.assigned_team,
         slaPolicyId: row.sla_policy_id, slaResponseDue: row.sla_response_due,
         slaResolutionDue: row.sla_resolution_due, slaResponseMet: row.sla_response_met,
-        slaResolutionMet: row.sla_resolution_met, channel: row.channel,
+        slaResolutionMet: row.sla_resolution_met,
+        slaBreached: row.sla_breached ?? (row.sla_resolution_met === false),
+        channel: row.channel,
         resolutionNotes: row.resolution_notes, resolvedAt: row.resolved_at,
         closedAt: row.closed_at, createdAt: row.created_at, updatedAt: row.updated_at,
     };
@@ -792,7 +789,19 @@ function mapProblem(r: any): ItsmProblem {
 }
 
 function mapChange(r: any): ItsmChange {
-    return { id: r.id, changeNumber: r.change_number, title: r.title, description: r.description, categoryId: r.category_id, changeType: r.change_type, priority: r.priority, riskLevel: r.risk_level, status: r.status, impact: r.impact, implementationPlan: r.implementation_plan, rollbackPlan: r.rollback_plan, testPlan: r.test_plan, scheduledStart: r.scheduled_start, scheduledEnd: r.scheduled_end, actualStart: r.actual_start, actualEnd: r.actual_end, cabRequired: r.cab_required, cabDecision: r.cab_decision, cabNotes: r.cab_notes, cabDate: r.cab_date, requestedBy: r.requested_by, assignedTo: r.assigned_to, assignedGroup: r.assigned_group, relatedIncidentId: r.related_incident_id, relatedProblemId: r.related_problem_id, reviewNotes: r.review_notes, createdAt: r.created_at };
+    return {
+        id: r.id, changeNumber: r.change_number, title: r.title, description: r.description,
+        categoryId: r.category_id, changeType: r.change_type, priority: r.priority, riskLevel: r.risk_level,
+        status: r.status, impact: r.impact, implementationPlan: r.implementation_plan,
+        rollbackPlan: r.rollback_plan, testPlan: r.test_plan, scheduledStart: r.scheduled_start,
+        scheduledEnd: r.scheduled_end, actualStart: r.actual_start, actualEnd: r.actual_end,
+        cabRequired: r.cab_required, cabDecision: r.cab_decision, cabNotes: r.cab_notes, cabDate: r.cab_date,
+        requestedBy: r.requested_by, assignedTo: r.assigned_to, assignedGroup: r.assigned_group,
+        relatedIncidentId: r.related_incident_id, relatedProblemId: r.related_problem_id,
+        reviewNotes: r.review_notes, implementor: r.implementor || r.assigned_to,
+        approvalStatus: r.approval_status || r.cab_decision, impactAssessment: r.impact_assessment || r.impact,
+        createdAt: r.created_at,
+    };
 }
 
 function mapKnowledge(r: any): ItsmKnowledgeArticle {
@@ -926,6 +935,16 @@ export class ItsmResolver {
             statusNew: stats.byStatus.new, statusOpen: stats.byStatus.open,
             statusInProgress: stats.byStatus.in_progress, statusPending: stats.byStatus.pending,
             statusResolved: stats.byStatus.resolved, statusClosed: stats.byStatus.closed,
+            openTickets: stats.totalOpen,
+            slaCompliancePct: stats.slaCompliance,
+            totalBreached: stats.totalSlaBreach,
+            totalDueToday: 0,
+            byPriority: stats.byPriority,
+            byStatus: stats.byStatus,
+            avgResponseTime: stats.avgResolutionHours * 60,
+            avgResolutionTime: stats.avgResolutionHours * 60,
+            resolvedThisWeek: stats.byStatus?.resolved ?? 0,
+            slaComplianceRate: stats.slaCompliance,
         };
     }
 
@@ -1311,7 +1330,8 @@ export class ItsmResolver {
         @Args('role', { nullable: true }) role?: string,
         @Args('search', { nullable: true }) search?: string,
     ) {
-        return this.itsmService.getAgents({ status, team, role, search });
+        const rows = await this.itsmService.getAgents({ status, team, role, search });
+        return rows.map((row: any) => ({ id: row.id, data: row }));
     }
 
     @Mutation(() => ItsmGenericRecord)
@@ -1346,7 +1366,8 @@ export class ItsmResolver {
 
     @Query(() => [ItsmGenericRecord])
     async itsmAgentWorkload() {
-        return this.itsmService.getAgentWorkload();
+        const rows = await this.itsmService.getAgentWorkload();
+        return rows.map((row: any) => ({ id: row.id || row.agent_id || String(Math.random()), data: row }));
     }
 
     // ══════════════════════════════════════════════════════════

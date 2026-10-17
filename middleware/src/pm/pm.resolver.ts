@@ -20,6 +20,22 @@ export class PmUserReference {
 }
 
 @ObjectType()
+class PmMemberUser {
+    @Field() id: string;
+    @Field() firstName: string;
+    @Field() lastName: string;
+    @Field({ nullable: true }) email?: string;
+}
+
+@ObjectType()
+class PmMember {
+    @Field() id: string;
+    @Field() userId: string;
+    @Field(() => PmMemberUser, { nullable: true }) user?: PmMemberUser;
+    @Field() role: string;
+}
+
+@ObjectType()
 export class PmProject {
     @Field(() => ID)
     id: string;
@@ -92,6 +108,12 @@ export class PmProject {
 
     @Field({ nullable: true })
     pmbokEdition?: string;
+
+    @Field(() => [String], { nullable: true })
+    linkedDealIds?: string[];
+
+    @Field(() => [String], { nullable: true })
+    linkedTicketIds?: string[];
 
     @Field()
     createdAt: string;
@@ -1230,6 +1252,8 @@ function mapProject(row: any): PmProject {
         pmbokRiskEnabled: row.pmbok_risk_enabled,
         pmbokProcurementEnabled: row.pmbok_procurement_enabled,
         pmbokStakeholderEnabled: row.pmbok_stakeholder_enabled,
+        linkedDealIds: row.linked_deal_ids || row.custom_fields?.linkedDealIds || [],
+        linkedTicketIds: row.linked_ticket_ids || row.custom_fields?.linkedTicketIds || [],
         createdAt: row.created_at,
         updatedAt: row.updated_at,
     };
@@ -2571,6 +2595,28 @@ export class PmResolver {
     @Query(() => GraphQLJSON)
     async generatePortfolioAnalysis(@Args('tenantId') tenantId: string) {
         return this.pmService.generatePortfolioAnalysis(tenantId);
+    }
+
+    @Query(() => [PmMember])
+    async pmMembers(@Args('tenantId') tenantId: string) {
+        const rows = await this.pmService.getMembers(tenantId);
+        return (rows || []).map((row: any) => {
+            const ind = row.individuals;
+            const uid = row.user_id || row.id;
+            return {
+                id: row.id,
+                userId: uid,
+                role: row.roles?.name || 'member',
+                user: ind
+                    ? {
+                        id: uid,
+                        firstName: ind.first_name || '',
+                        lastName: ind.last_name || '',
+                        email: ind.email || undefined,
+                    }
+                    : undefined,
+            };
+        });
     }
 }
 

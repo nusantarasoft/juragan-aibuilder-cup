@@ -77,6 +77,7 @@ export function TopBar() {
                     <ArrowLeft className="h-3.5 w-3.5" />
                 </IconButton>
 
+<<<<<<< HEAD
                 <div className="flex items-center gap-1.5">
                     <Hexagon className="h-3.5 w-3.5 shrink-0" color={ORANGE} strokeWidth={2.2} />
                     <span className="font-semibold tracking-[0.22em] text-white">VIRTUAL OFFICE</span>
@@ -185,6 +186,138 @@ export function TopBar() {
                     </button>
                 </div>
 
+=======
+                <div className="flex min-w-0 flex-col gap-0.5">
+                    <div className="flex items-center gap-1.5">
+                        <Hexagon className="h-3.5 w-3.5 shrink-0" color={ORANGE} strokeWidth={2.2} />
+                        <span className="font-semibold tracking-[0.22em] text-white">VIRTUAL OFFICE</span>
+                        {dataMode === "live" ? (
+                            <span className="rounded border border-emerald-400/35 bg-emerald-400/10 px-1 py-px text-[9px] font-bold uppercase tracking-wider text-emerald-300">
+                                Live
+                            </span>
+                        ) : (
+                            <span
+                                className="rounded border border-amber-400/30 bg-amber-400/10 px-1 py-px text-[9px] font-bold uppercase tracking-wider text-amber-300"
+                                title={
+                                    dataMode === "demo"
+                                        ? "UI demo mode — simulated agents for training and demos"
+                                        : "Connecting to the Agentic OS…"
+                                }
+                            >
+                                {dataMode === "demo" ? "Demo" : "Connecting"}
+                            </span>
+                        )}
+                    </div>
+                    <span className="hidden truncate text-[9px] tracking-normal text-slate-500 sm:block">
+                        {dataMode === "live"
+                            ? "AI Agent HQ · Live roster & task queue (Agentic OS)"
+                            : dataMode === "demo"
+                              ? "AI Agent HQ · Demo simulation + Live Kasir (AI Studio)"
+                              : "Connecting to Agentic OS…"}
+                    </span>
+                </div>
+
+                <span className="h-3.5 w-px bg-white/10" />
+
+                <span className="flex items-center gap-1.5">
+                    <Dot color={dataMode === "live" ? "#22c55e" : "#f59e0b"} pulse={dataMode === "live"} />
+                    <span className="text-slate-500">FEED</span>·
+                    <span className="text-slate-100">{dataMode === "live" ? "LIVE" : dataMode === "demo" ? "DEMO" : "SYNC"}</span>
+                </span>
+
+                <span className="hidden items-center gap-1.5 md:flex">
+                    <Dot color="#38bdf8" />
+                    <span className="text-slate-500">ONLINE</span>·
+                    <span className="tabular-nums text-slate-100">
+                        {online}/{agents.length}
+                    </span>
+                </span>
+
+                <span className="hidden items-center gap-1.5 lg:flex">
+                    <Dot color="#22c55e" pulse={working > 0} />
+                    <span className="text-slate-500">WORKING</span>·<span className="tabular-nums text-slate-100">{working}</span>
+                </span>
+
+                <span className="hidden items-center gap-1.5 xl:flex">
+                    <Dot color="#a855f7" pulse={thinking > 0} />
+                    <span className="text-slate-500">THINKING</span>·<span className="tabular-nums text-slate-100">{thinking}</span>
+                </span>
+
+                <span className="hidden items-center gap-1.5 xl:flex">
+                    <Dot color="#f59e0b" />
+                    <span className="text-slate-500">MEETING</span>·<span className="tabular-nums text-slate-100">{meeting}</span>
+                </span>
+
+                {issues > 0 && (
+                    <span className="hidden items-center gap-1.5 xl:flex">
+                        <Dot color="#ef4444" pulse />
+                        <span className="text-red-400">ALERT·{issues}</span>
+                    </span>
+                )}
+
+                {review > 0 && (
+                    <span className="hidden items-center gap-1.5 2xl:flex">
+                        <Dot color="#c084fc" />
+                        <span className="text-slate-500">REVIEW</span>·<span className="tabular-nums text-slate-100">{review}</span>
+                    </span>
+                )}
+
+                <span className="hidden items-center gap-1.5 2xl:flex">
+                    <span className="text-slate-500">DONE</span>·<span className="tabular-nums text-slate-100">{done}</span>
+                    <span className="text-slate-500">· TOKENS</span>·<span className="tabular-nums text-slate-100">{formatTokens(tokens)}</span>
+                </span>
+            </div>
+
+            {/* Right: Camera modes + Icon buttons + Layout controls + Agentic OS launch */}
+            <div className="flex shrink-0 items-center gap-1.5">
+                <div className="flex items-center gap-1">
+                    <button
+                        type="button"
+                        title="Overview camera (1)"
+                        onClick={() => setCameraMode("overview")}
+                        className={cx(
+                            "flex h-[22px] items-center gap-1 border px-2 text-[9.5px] tracking-wider transition",
+                            cameraMode === "overview"
+                                ? "border-orange-400/70 bg-orange-500/15 text-orange-200"
+                                : "border-white/15 text-slate-300 hover:border-white/35 hover:text-white",
+                        )}
+                    >
+                        <Box className="h-3 w-3" />
+                        <span className="hidden sm:inline">OVERVIEW</span>
+                    </button>
+                    <button
+                        type="button"
+                        title="Top-down floorplan camera (2)"
+                        onClick={() => setCameraMode("top")}
+                        className={cx(
+                            "flex h-[22px] items-center gap-1 border px-2 text-[9.5px] tracking-wider transition",
+                            cameraMode === "top"
+                                ? "border-orange-400/70 bg-orange-500/15 text-orange-200"
+                                : "border-white/15 text-slate-300 hover:border-white/35 hover:text-white",
+                        )}
+                    >
+                        <LayoutGrid className="h-3 w-3" />
+                        <span className="hidden sm:inline">TOP</span>
+                    </button>
+                    <button
+                        type="button"
+                        title="Follow selected agent (F)"
+                        disabled={!selectedId}
+                        onClick={() => setCameraMode("follow")}
+                        className={cx(
+                            "flex h-[22px] items-center gap-1 border px-2 text-[9.5px] tracking-wider transition",
+                            cameraMode === "follow"
+                                ? "border-orange-400/70 bg-orange-500/15 text-orange-200"
+                                : "border-white/15 text-slate-300 hover:border-white/35 hover:text-white",
+                            !selectedId && "cursor-not-allowed opacity-35 hover:border-white/15",
+                        )}
+                    >
+                        <Crosshair className="h-3 w-3" />
+                        <span className="hidden sm:inline">FOLLOW</span>
+                    </button>
+                </div>
+
+>>>>>>> origin/master
                 <span className="h-3.5 w-px bg-white/10" />
 
                 <IconButton title={showLabels ? "Hide name tags (L)" : "Show name tags (L)"} active={showLabels} onClick={toggleLabels}>

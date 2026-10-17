@@ -84,6 +84,7 @@
     "framer-motion": "^12.40.0",
     "gl-matrix": "^3.4.4",
     "graphql": "^16.13.1",
+    "graphql-ws": "^5.16.0",
     "gsap": "^3.13.0",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.7",

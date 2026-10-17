@@ -31,7 +31,7 @@ import TimeTracker from "../components/TimeTracker";
 const { Text, Title } = Typography;
 
 // ── GraphQL ──────────────────────────────────────────────
-const GET_ME = `query { me { id email fullName role } }`;
+const GET_ME = `query { me { id email role tenantId } }`;
 
 const GET_MY_TASKS = `
   query($tenantId: String!, $assigneeId: String) {
@@ -76,7 +76,7 @@ const PRIORITY_ICON: Record<string, React.ReactNode> = {
     low: <ArrowDownOutlined style={{ color: "#6b7280" }} />,
 };
 
-const DEMO_USER = { id: "demo", email: "demo@nusantarasoft.com", fullName: "Demo User", role: "member" };
+const DEMO_USER = { id: "demo", email: "demo@nusantarasoft.com", role: "member" };
 
 export default function MyWorkPage() {
     const router = useRouter();
@@ -114,7 +114,9 @@ export default function MyWorkPage() {
         try {
             const meData = await gql(GET_ME, {});
             if (meData?.me) currentUser = meData.me;
-        } catch (err: any) { console.error("PM Error", err); }
+        } catch {
+            /* me optional — fall back to demo user */
+        }
         setUser(currentUser);
 
         try {
@@ -124,7 +126,9 @@ export default function MyWorkPage() {
             ]);
             setTasks(taskData.pmTasks || []);
             setProjects(projData.pmProjects || []);
-        } catch (err: any) { console.error("PM Error", err); }
+        } catch {
+            /* empty PM data on QA stack is OK */
+        }
         finally { setLoading(false); }
     }, []);
 
@@ -348,7 +352,7 @@ export default function MyWorkPage() {
         );
     }
 
-    const userName = user?.fullName || user?.email?.split("@")[0] || "there";
+    const userName = user?.email?.split("@")[0] || "there";
 
     return (
         <CMSLayout

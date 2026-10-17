@@ -36,7 +36,7 @@ export default function DremioAdminPage() {
     const { themeColor } = usePreferencesStore();
 
     return (
-        <CMSLayout title={<AuroraText colors={[themeColor, '#47b881', '#1070ca']}>Dremio Lakehouse</AuroraText>} subTitle={<DecryptedText text="Query engine health, job analytics & reflection management" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="o" icon={<LinkOutlined />} type="primary" onClick={() => window.open('http://localhost:9047', '_blank')}>Open Dremio</Button>, <Button key="r" icon={<ReloadOutlined />} />]}>
+        <CMSLayout title={<AuroraText colors={[themeColor, '#47b881', '#1070ca']}>Dremio Lakehouse</AuroraText>} subTitle={<DecryptedText text="Query engine health, job analytics & reflection management" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="o" icon={<LinkOutlined />} type="primary" onClick={() => window.open('http://localhost:9047', '_blank')}>Open Dremio</Button>, <Button key="r" icon={<ReloadOutlined />} onClick={() => window.location.reload()} title="Refresh page" />]}>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <Row gutter={[12, 12]}>
                     {[{ t: 'Active Jobs', v: 12, c: '#3b82f6', i: <ThunderboltOutlined /> }, { t: 'Avg Query Time', v: '1.8s', c: '#10b981', i: <ClockCircleOutlined /> }, { t: 'Reflections', v: 7, c: '#8b5cf6', i: <SyncOutlined /> }, { t: 'Sources', v: SOURCES.length, c: '#f59e0b', i: <DatabaseOutlined /> }].map((s, i) => (

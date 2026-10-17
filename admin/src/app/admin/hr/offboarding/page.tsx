@@ -34,7 +34,7 @@ export default function OffboardingPage() {
             const emps = d.hrEmployees || [];
             const departed = emps.filter((e: any) => e.employmentStatus === 'terminated' || e.employmentStatus === 'resigned' || e.terminationDate);
             setEmployees(departed);
-        }).catch(console.error).finally(() => setLoading(false));
+        }).catch(() => undefined).finally(() => setLoading(false));
     }, []);
 
     const terminated = employees.filter(e => e.employmentStatus === 'terminated').length;

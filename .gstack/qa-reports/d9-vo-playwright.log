@@ -1,0 +1,736 @@
+
+Running 25 tests using 1 worker
+
+[1A[2K(node:29140) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:29140) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[1/25] [chromium] › tests/e2e/d9-deck-fullstack.spec.ts:44:9 › D-9 Command Deck + Live/Demo — full stack (live GraphQL) › Command Deck views + Live badge
+[1A[2K[2/25] [chromium] › tests/e2e/d9-deck-fullstack.spec.ts:64:9 › D-9 Command Deck + Live/Demo — full stack (live GraphQL) › Virtual Office Live then Demo
+[1A[2K[3/25] [chromium] › tests/e2e/f2-2-recruit-fullstack.spec.ts:26:9 › F2-2 recruit (live stack) › register → recruit Kasir → VO roster
+[1A[2K[4/25] [chromium] › tests/e2e/f2-2-recruit-fullstack.spec.ts:74:9 › F2-2 recruit (live stack) › unauthenticated recruit catalog rejected
+[1A[2K[5/25] [chromium] › tests/e2e/f3-1-service-desk-recruit.spec.ts:24:9 › F3-1 Service Desk recruit (live stack) › register → Kasir + Service Desk on recruit catalog and VO
+[1A[2K[6/25] [chromium] › tests/e2e/f3-1-service-desk-recruit.spec.ts:74:9 › F3-1 Service Desk recruit (live stack) › unauthenticated recruit status rejected
+[1A[2K[7/25] [chromium] › tests/e2e/ui-wave-1-recruit-deeplinks.spec.ts:12:9 › UI wave 1 — recruit post-success links › recruit page loads catalog and coming-soon SKUs
+[1A[2K[8/25] [chromium] › tests/e2e/ui-wave-1-recruit-deeplinks.spec.ts:20:9 › UI wave 1 — recruit post-success links › documented module hrefs are under /admin
+[1A[2K[9/25] [chromium] › tests/e2e/ui-wave-1-vo-inspector.spec.ts:10:9 › UI wave 1 — VO agent inspector (after) › Service Desk shows queue copy; Kasir shows WA metrics + connect link
+[1A[2K[10/25] [chromium] › tests/e2e/ui-wave-2-admin-buttons.spec.ts:7:9 › UI wave 2 — admin buttons & honesty › Agentic OS Settings exposes UI demo mode toggle
+[1A[2K[11/25] [chromium] › tests/e2e/ui-wave-2-admin-buttons.spec.ts:13:9 › UI wave 2 — admin buttons & honesty › Label Studio Open is disabled while UI demo mode is on
+[1A[2K[12/25] [chromium] › tests/e2e/ui-wave-2-admin-buttons.spec.ts:24:9 › UI wave 2 — admin buttons & honesty › DevOps GitLab refresh button is wired
+[1A[2K[13/25] [chromium] › tests/e2e/ui-wave-2-admin-buttons.spec.ts:31:9 › UI wave 2 — admin buttons & honesty › connect-wa wizard loads primary CTA copy
+[1A[2K[14/25] [chromium] › tests/e2e/ui-wave-2-admin-buttons.spec.ts:37:9 › UI wave 2 — admin buttons & honesty › BMS dashboard shows live or sample honesty banner
+[1A[2K[15/25] [chromium] › tests/e2e/ui-wave-2-admin-buttons.spec.ts:45:9 › UI wave 2 — admin buttons & honesty › Web Crawler jobs table exposes Stop for queued/running rows
+[1A[2K[16/25] [chromium] › tests/e2e/ui-wave-2-admin-buttons.spec.ts:56:9 › UI wave 2 — admin buttons & honesty › screenshot — AOS Settings UI demo toggle (after)
+[1A[2K[17/25] [chromium] › tests/e2e/ui-wave-2-admin-buttons.spec.ts:66:9 › UI wave 2 — admin buttons & honesty › screenshot — BMS honesty banner (after)
+[1A[2K[18/25] [chromium] › tests/e2e/ui-wave-3-admin-buttons.spec.ts:7:9 › UI wave 3 — admin buttons & honesty › dataset embed MinIO refresh is wired
+[1A[2K[19/25] [chromium] › tests/e2e/ui-wave-3-admin-buttons.spec.ts:14:9 › UI wave 3 — admin buttons & honesty › BMS shows live or sample honesty banner
+[1A[2K[20/25] [chromium] › tests/e2e/ui-wave-3-admin-buttons.spec.ts:26:9 › UI wave 3 — admin buttons & honesty › SCADA overview refresh loads honesty banner
+[1A[2K[21/25] [chromium] › tests/e2e/ui-wave-3-admin-buttons.spec.ts:35:9 › UI wave 3 — admin buttons & honesty › SCADA trends export CSV button responds
+[1A[2K[22/25] [chromium] › tests/e2e/ui-wave-4-admin-buttons.spec.ts:7:9 › UI wave 4 — metrics & historian honesty › platform metrics shows Demo tag and empty state without Prometheus
+[1A[2K[23/25] [chromium] › tests/e2e/ui-wave-4-admin-buttons.spec.ts:18:9 › UI wave 4 — metrics & historian honesty › SCADA trends shows live or sample historian banner
+[1A[2K[24/25] [chromium] › tests/e2e/ui-wave-4-admin-buttons.spec.ts:28:9 › UI wave 4 — metrics & historian honesty › BMS energy shows sample data banner
+[1A[2K[25/25] [chromium] › tests/e2e/ui-wave-4-admin-route-crawl.spec.ts:22:5 › crawl menuConfig + VO routes — console + primary buttons
+[1A[2K  1) [chromium] › tests/e2e/ui-wave-4-admin-route-crawl.spec.ts:22:5 › crawl menuConfig + VO routes — console + primary buttons 
+
+    Error: Route crawl failures: /admin/collaboration/jitsi, /admin/crm/activities, /admin/crm/analytics, /admin/crm/dashboard, /admin/crm/products, /admin/dashboard, /admin/datasets/dremio, /admin/dcim/3d-view, /admin/documents/recent, /admin/documents/shared, /admin/documents/templates, /admin/documents/workflows, /admin/ecommerce, /admin/ecommerce/analytics, /admin/ecommerce/customers, /admin/ecommerce/dashboard, /admin/ecommerce/packages, /admin/ecommerce/products
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mtoEqual[2m([22m[32mexpected[39m[2m) // deep equality[22m
+
+    [32m- Expected  -   1[39m
+    [31m+ Received  + 671[39m
+
+    [32m- Array [][39m
+    [31m+ Array [[39m
+    [31m+   Object {[39m
+    [31m+     "consoleErrors": Array [[39m
+    [31m+       "Each child in a list should have a unique \"key\" prop.%s%s See https://react.dev/link/warning-keys for more information. [39m
+    [31m+[39m
+    [31m+ Check the render method of `ForwardRef`.  It was passed a child from Area.",[39m
+    [31m+     ],[39m
+    [31m+     "httpStatus": 200,[39m
+    [31m+     "note": "[2mexpect([22m[31mreceived[39m[31m[2m).[22mtoEqual[2m([22m[32mexpected[39m[31m[2m) // deep equality[22m[39m
+    [31m+[39m
+    [31m+ [32m- Expected  - 1[39m[31m[39m
+    [31m+ [31m+ Received  + 5[39m[31m[39m
+    [31m+[39m
+    [31m+ [32m- Array [][39m[31m[39m
+    [31m+ [31m+ Array [[39m[31m[39m
+    [31m+ [31m+   \"Each child in a list should have a unique \\\"key\\\" prop.%s%s See https://react.dev/link/warning-keys for more information. [39m[31m[39m
+    [31m+ [31m+[39m[31m[39m
+    [31m+ [31m+ Check the render method of `ForwardRef`.  It was passed a child from Area.\",[39m[31m[39m
+    [31m+ [31m+ ][39m[31m",[39m
+    [31m+     "path": "/admin/collaboration/jitsi",[39m
+    [31m+     "primaryButtonsClicked": 0,[39m
+    [31m+     "status": "error",[39m
+    [31m+   },[39m
+    [31m+   Object {[39m
+    [31m+     "consoleErrors": Array [[39m
+    [31m+       "In HTML, %s cannot be a descendant of <%s>.[39m
+    [31m+ This will cause a hydration error.%s <button> button [39m
+    [31m+[39m
+    [31m+   ...[39m
+    [31m+     <div style={undefined} className=\"ant-pro-pa...\">[39m
+    [31m+       <PageHeader prefixCls={undefined} logo={false} navTheme=\"light\" layout=\"side\" contentWidth=\"Fluid\" ...>[39m
+    [31m+         <Empty>[39m
+    [31m+         <ResizeObserver onResize={function onResize}>[39m
+    [31m+           <SingleObserver onResize={function onResize} ref={null}>[39m
+    [31m+             <DomWrapper ref={{current:null}}>[39m
+    [31m+               <div className=\"ant-page-h...\" style={undefined} ref={{current:null}}>[39m
+    [31m+                 <div>[39m
+    [31m+                 <div className={\"ant-page...\"}>[39m
+    [31m+                   <div>[39m
+    [31m+                   <span className=\"ant-page-h...\">[39m
+    [31m+                     <Space>[39m
+    [31m+                       <div ref={null} className=\"ant-space ...\" style={{}}>[39m
+    [31m+                         <Item>[39m
+    [31m+                         <Item prefix=\"ant-space\" classNames={{}} styles={{}} className=\"ant-space-...\" index={1} ...>[39m
+    [31m+                           <div className=\"ant-space-...\" style={undefined}>[39m
+    [31m+                             <Button type=\"primary\" icon={<PlusOutlined>} onClick={function onClick}>[39m
+    [31m+                               <Wave component=\"Button\" disabled={false}>[39m
+    [31m+ >                               <button[39m
+    [31m+ >                                 onClick={function InternalCompoundedButton.useCallback[handleClick]}[39m
+    [31m+ >                                 type=\"button\"[39m
+    [31m+ >                                 className=\"ant-btn css-var-_r_2_ ant-btn-primary ant-btn-color-primary ant-btn-varia...\"[39m
+    [31m+ >                                 style={undefined}[39m
+    [31m+ >                                 disabled={false}[39m
+    [31m+ >                                 ref={function}[39m
+    [31m+ >                               >[39m
+    [31m+                                   <span>[39m
+    [31m+                                   ...[39m
+    [31m+                                     <Trigger popupClassName=\"ant-toolti...\" prefixCls=\"ant-tooltip\" popup={<Popup>} ...>[39m
+    [31m+                                       <Button icon={<FileExcelOutlined>} size=\"small\" onClick={function onClick} ...>[39m
+    [31m+                                         <Wave component=\"Button\" disabled={false}>[39m
+    [31m+ >                                         <button[39m
+    [31m+ >                                           onClick={function InternalCompoundedButton.useCallback[handleClick]}[39m
+    [31m+ >                                           aria-describedby={undefined}[39m
+    [31m+ >                                           onTouchStart={function}[39m
+    [31m+ >                                           onMouseEnter={function}[39m
+    [31m+ >                                           onPointerEnter={function}[39m
+    [31m+ >                                           onMouseLeave={function}[39m
+    [31m+ >                                           onPointerLeave={function}[39m
+    [31m+ >                                           type=\"button\"[39m
+    [31m+ >                                           className=\"ant-btn css-var-_r_2_ ant-btn-default ant-btn-color-default ant...\"[39m
+    [31m+ >                                           style={undefined}[39m
+    [31m+ >                                           disabled={false}[39m
+    [31m+ >                                           ref={function}[39m
+    [31m+ >                                         >[39m
+    [31m+                         ...[39m
+    [31m+       ...[39m
+    [31m+ ",[39m
+    [31m+       "<%s> cannot contain a nested %s.[39m
+    [31m+ See this log for the ancestor stack trace. button <button>",[39m
+    [31m+       "Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.",[39m
+    [31m+     ],[39m
+    [31m+     "httpStatus": 200,[39m
+    [31m+     "note": "[2mexpect([22m[31mreceived[39m[31m[2m).[22mtoEqual[2m([22m[32mexpected[39m[31m[2m) // deep equality[22m[39m
+    [31m+[39m
+    [31m+ [32m- Expected  -  1[39m[31m[39m
+    [31m+ [31m+ Received  + 56[39m[31m[39m
+    [31m+[39m
+    [31m+ [32m- Array [][39m[31m[39m
+    [31m+ [31m+ Array [[39m[31m[39m
+    [31m+ [31m+   \"In HTML, %s cannot be a descendant of <%s>.[39m[31m[39m
+    [31m+ [31m+ This will cause a hydration error.%s <button> button [39m[31m[39m
+    [31m+ [31m+[39m[31m[39m
+    [31m+ [31m+   ...[39m[31m[39m
+    [31m+ [31m+     <div style={undefined} className=\\\"ant-pro-pa...\\\">[39m[31m[39m
+    [31m+ [31m+       <PageHeader prefixCls={undefined} logo={false} navTheme=\\\"light\\\" layout=\\\"side\\\" contentWidth=\\\"Fluid\\\" ...>[39m[31m[39m
+    [31m+ [31m+         <Empty>[39m[31m[39m
+    [31m+ [31m+         <ResizeObserver onResize={function onResize}>[39m[31m[39m
+    [31m+ [31m+           <SingleObserver onResize={function onResize} ref={null}>[39m[31m[39m
+    [31m+ [31m+             <DomWrapper ref={{current:null}}>[39m[31m[39m
+    [31m+ [31m+               <div className=\\\"ant-page-h...\\\" style={undefined} ref={{current:null}}>[39m[31m[39m
+    [31m+ [31m+                 <div>[39m[31m[39m
+    [31m+ [31m+                 <div className={\\\"ant-page...\\\"}>[39m[31m[39m
+    [31m+ [31m+                   <div>[39m[31m[39m
+    [31m+ [31m+                   <span className=\\\"ant-page-h...\\\">[39m[31m[39m
+    [31m+ [31m+                     <Space>[39m[31m[39m
+    [31m+ [31m+                       <div ref={null} className=\\\"ant-space ...\\\" style={{}}>[39m[31m[39m
+    [31m+ [31m+                         <Item>[39m[31m[39m
+    [31m+ [31m+                         <Item prefix=\\\"ant-space\\\" classNames={{}} styles={{}} className=\\\"ant-space-...\\\" index={1} ...>[39m[31m[39m
+    [31m+ [31m+                           <div className=\\\"ant-space-...\\\" style={undefined}>[39m[31m[39m
+    [31m+ [31m+                             <Button type=\\\"primary\\\" icon={<PlusOutlined>} onClick={function onClick}>[39m[31m[39m
+    [31m+ [31m+                               <Wave component=\\\"Button\\\" disabled={false}>[39m[31m[39m
+    [31m+ [31m+ >                               <button[39m[31m[39m
+    [31m+ [31m+ >                                 onClick={function InternalCompoundedButton.useCallback[handleClick]}[39m[31m[39m
+    [31m+ [31m+ >                                 type=\\\"button\\\"[39m[31m[39m
+    [31m+ [31m+ >                                 className=\\\"ant-btn css-var-_r_2_ ant-btn-primary ant-btn-color-primary ant-btn-varia...\\\"[39m[31m[39m
+    [31m+ [31m+ >                                 style={undefined}[39m[31m[39m
+    [31m+ [31m+ >                                 disabled={false}[39m[31m[39m
+    [31m+ [31m+ >                                 ref={function}[39m[31m[39m
+    [31m+ [31m+ >                               >[39m[31m[39m
+    [31m+ [31m+                                   <span>[39m[31m[39m
+    [31m+ [31m+                                   ...[39m[31m[39m
+    [31m+ [31m+                                     <Trigger popupClassName=\\\"ant-toolti...\\\" prefixCls=\\\"ant-tooltip\\\" popup={<Popup>} ...>[39m[31m[39m
+    [31m+ [31m+                                       <Button icon={<FileExcelOutlined>} size=\\\"small\\\" onClick={function onClick} ...>[39m[31m[39m
+    [31m+ [31m+                                         <Wave component=\\\"Button\\\" disabled={false}>[39m[31m[39m
+    [31m+ [31m+ >                                         <button[39m[31m[39m
+    [31m+ [31m+ >                                           onClick={function InternalCompoundedButton.useCallback[handleClick]}[39m[31m[39m
+    [31m+ [31m+ >                                           aria-describedby={undefined}[39m[31m[39m
+    [31m+ [31m+ >                                           onTouchStart={function}[39m[31m[39m
+    [31m+ [31m+ >                                           onMouseEnter={function}[39m[31m[39m
+    [31m+ [31m+ >                                           onPointerEnter={function}[39m[31m[39m
+    [31m+ [31m+ >                                           onMouseLeave={function}[39m[31m[39m
+    [31m+ [31m+ >                                           onPointerLeave={function}[39m[31m[39m
+    [31m+ [31m+ >                                           type=\\\"button\\\"[39m[31m[39m
+    [31m+ [31m+ >                                           className=\\\"ant-btn css-var-_r_2_ ant-btn-default ant-btn-color-default ant...\\\"[39m[31m[39m
+    [31m+ [31m+ >                                           style={undefined}[39m[31m[39m
+    [31m+ [31m+ >                                           disabled={false}[39m[31m[39m
+    [31m+ [31m+ >                                           ref={function}[39m[31m[39m
+    [31m+ [31m+ >                                         >[39m[31m[39m
+    [31m+ [31m+                         ...[39m[31m[39m
+    [31m+ [31m+       ...[39m[31m[39m
+    [31m+ [31m+ \",[39m[31m[39m
+    [31m+ [31m+   \"<%s> cannot contain a nested %s.[39m[31m[39m
+    [31m+ [31m+ See this log for the ancestor stack trace. button <button>\",[39m[31m[39m
+    [31m+ [31m+ ][39m[31m",[39m
+    [31m+     "path": "/admin/crm/activities",[39m
+    [31m+     "primaryButtonsClicked": 0,[39m
+    [31m+     "status": "error",[39m
+    [31m+   },[39m
+    [31m+   Object {[39m
+    [31m+     "consoleErrors": Array [[39m
+    [31m+       "Warning: [antd: Statistic] `valueStyle` is deprecated. Please use `styles.content` instead.",[39m
+    [31m+       "Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.",[39m
+    [31m+       "Failed to load resource: the server responded with a status of 400 (Bad Request)",[39m
+    [31m+     ],[39m
+    [31m+     "httpStatus": 200,[39m
+    [31m+     "note": "[2mexpect([22m[31mreceived[39m[31m[2m).[22mtoEqual[2m([22m[32mexpected[39m[31m[2m) // deep equality[22m[39m
+    [31m+[39m
+    [31m+ [32m- Expected  - 1[39m[31m[39m
+    [31m+ [31m+ Received  + 3[39m[31m[39m
+    [31m+[39m
+    [31m+ [32m- Array [][39m[31m[39m
+    [31m+ [31m+ Array [[39m[31m[39m
+    [31m+ [31m+   \"Failed to load resource: the server responded with a status of 400 (Bad Request)\",[39m[31m[39m
+    [31m+ [31m+ ][39m[31m",[39m
+    [31m+     "path": "/admin/crm/analytics",[39m
+    [31m+     "primaryButtonsClicked": 0,[39m
+    [31m+     "status": "error",[39m
+    [31m+   },[39m
+    [31m+   Object {[39m
+    [31m+     "consoleErrors": Array [[39m
+    [31m+       "In HTML, %s cannot be a descendant of <%s>.[39m
+    [31m+ This will cause a hydration error.%s <button> button [39m
+    [31m+[39m
+    [31m+   ...[39m
+    [31m+     <div style={undefined} className=\"ant-pro-pa...\">[39m
+    [31m+       <PageHeader prefixCls={undefined} logo={false} navTheme=\"light\" layout=\"side\" contentWidth=\"Fluid\" ...>[39m
+    [31m+         <Empty>[39m
+    [31m+         <ResizeObserver onResize={function onResize}>[39m
+    [31m+           <SingleObserver onResize={function onResize} ref={null}>[39m
+    [31m+             <DomWrapper ref={{current:null}}>[39m
+    [31m+               <div className=\"ant-page-h...\" style={undefined} ref={{current:null}}>[39m
+    [31m+                 <div>[39m
+    [31m+                 <div className={\"ant-page...\"}>[39m
+    [31m+                   <div>[39m
+    [31m+                   <span className=\"ant-page-h...\">[39m
+    [31m+                     <Space>[39m
+    [31m+                       <div ref={null} className=\"ant-space ...\" style={{}}>[39m
+    [31m+                         <Item>[39m
+    [31m+                         <Item prefix=\"ant-space\" classNames={{}} styles={{}} className=\"ant-space-...\" index={1} ...>[39m
+    [31m+                           <div className=\"ant-space-...\" style={undefined}>[39m
+    [31m+                             <Button type=\"primary\" icon={<PlusOutlined>} onClick={function onClick}>[39m
+    [31m+                               <Wave component=\"Button\" disabled={false}>[39m
+    [31m+ >                               <button[39m
+    [31m+ >                                 onClick={function InternalCompoundedButton.useCallback[handleClick]}[39m
+    [31m+ >                                 type=\"button\"[39m
+    [31m+ >                                 className=\"ant-btn css-var-_r_2_ ant-btn-primary ant-btn-color-primary ant-btn-varia...\"[39m
+    [31m+ >                                 style={undefined}[39m
+    [31m+ >                                 disabled={false}[39m
+    [31m+ >                                 ref={function}[39m
+    [31m+ >                               >[39m
+    [31m+                                   <span>[39m
+    [31m+                                   ...[39m
+    [31m+                                     <Trigger popupClassName=\"ant-toolti...\" prefixCls=\"ant-tooltip\" popup={<Popup>} ...>[39m
+    [31m+                                       <Button icon={<FileExcelOutlined>} size=\"small\" onClick={function onClick} ...>[39m
+    [31m+                                         <Wave component=\"Button\" disabled={false}>[39m
+    [31m+ >                                         <button[39m
+    [31m+ >                                           onClick={function InternalCompoundedButton.useCallback[handleClick]}[39m
+    [31m+ >                                           aria-describedby={undefined}[39m
+    [31m+ >                                           onTouchStart={function}[39m
+    [31m+ >                                           onMouseEnter={function}[39m
+    [31m+ >                                           onPointerEnter={function}[39m
+    [31m+ >                                           onMouseLeave={function}[39m
+    [31m+ >                                           onPointerLeave={function}[39m
+    [31m+ >                                           type=\"button\"[39m
+    [31m+ >                                           className=\"ant-btn css-var-_r_2_ ant-btn-default ant-btn-color-default ant...\"[39m
+    [31m+ >                                           style={undefined}[39m
+    [31m+ >                                           disabled={false}[39m
+    [31m+ >                                           ref={function}[39m
+    [31m+ >                                         >[39m
+    [31m+                         ...[39m
+    [31m+       ...[39m
+    [31m+ ",[39m
+    [31m+       "<%s> cannot contain a nested %s.[39m
+    [31m+ See this log for the ancestor stack trace. button <button>",[39m
+    [31m+       "Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.",[39m
+    [31m+     ],[39m
+    [31m+     "httpStatus": 200,[39m
+    [31m+     "note": "[2mexpect([22m[31mreceived[39m[31m[2m).[22mtoEqual[2m([22m[32mexpected[39m[31m[2m) // deep equality[22m[39m
+    [31m+[39m
+    [31m+ [32m- Expected  -  1[39m[31m[39m
+    [31m+ [31m+ Received  + 56[39m[31m[39m
+    [31m+[39m
+    [31m+ [32m- Array [][39m[31m[39m
+    [31m+ [31m+ Array [[39m[31m[39m
+    [31m+ [31m+   \"In HTML, %s cannot be a descendant of <%s>.[39m[31m[39m
+    [31m+ [31m+ This will cause a hydration error.%s <button> button [39m[31m[39m
+    [31m+ [31m+[39m[31m[39m
+    [31m+ [31m+   ...[39m[31m[39m
+    [31m+ [31m+     <div style={undefined} className=\\\"ant-pro-pa...\\\">[39m[31m[39m
+    [31m+ [31m+       <PageHeader prefixCls={undefined} logo={false} navTheme=\\\"light\\\" layout=\\\"side\\\" contentWidth=\\\"Fluid\\\" ...>[39m[31m[39m
+    [31m+ [31m+         <Empty>[39m[31m[39m
+    [31m+ [31m+         <ResizeObserver onResize={function onResize}>[39m[31m[39m
+    [31m+ [31m+           <SingleObserver onResize={function onResize} ref={null}>[39m[31m[39m
+    [31m+ [31m+             <DomWrapper ref={{current:null}}>[39m[31m[39m
+    [31m+ [31m+               <div className=\\\"ant-page-h...\\\" style={undefined} ref={{current:null}}>[39m[31m[39m
+    [31m+ [31m+                 <div>[39m[31m[39m
+    [31m+ [31m+                 <div className={\\\"ant-page...\\\"}>[39m[31m[39m
+    [31m+ [31m+                   <div>[39m[31m[39m
+    [31m+ [31m+                   <span className=\\\"ant-page-h...\\\">[39m[31m[39m
+    [31m+ [31m+                     <Space>[39m[31m[39m
+    [31m+ [31m+                       <div ref={null} className=\\\"ant-space ...\\\" style={{}}>[39m[31m[39m
+    [31m+ [31m+                         <Item>[39m[31m[39m
+    [31m+ [31m+                         <Item prefix=\\\"ant-space\\\" classNames={{}} styles={{}} className=\\\"ant-space-...\\\" index={1} ...>[39m[31m[39m
+    [31m+ [31m+                           <div className=\\\"ant-space-...\\\" style={undefined}>[39m[31m[39m
+    [31m+ [31m+                             <Button type=\\\"primary\\\" icon={<PlusOutlined>} onClick={function onClick}>[39m[31m[39m
+    [31m+ [31m+                               <Wave component=\\\"Button\\\" disabled={false}>[39m[31m[39m
+    [31m+ [31m+ >                               <button[39m[31m[39m
+    [31m+ [31m+ >                                 onClick={function InternalCompoundedButton.useCallback[handleClick]}[39m[31m[39m
+    [31m+ [31m+ >                                 type=\\\"button\\\"[39m[31m[39m
+    [31m+ [31m+ >                                 className=\\\"ant-btn css-var-_r_2_ ant-btn-primary ant-btn-color-primary ant-btn-varia...\\\"[39m[31m[39m
+    [31m+ [31m+ >                                 style={undefined}[39m[31m[39m
+    [31m+ [31m+ >                                 disabled={false}[39m[31m[39m
+    [31m+ [31m+ >                                 ref={function}[39m[31m[39m
+    [31m+ [31m+ >                               >[39m[31m[39m
+    [31m+ [31m+                                   <span>[39m[31m[39m
+    [31m+ [31m+                                   ...[39m[31m[39m
+    [31m+ [31m+                                     <Trigger popupClassName=\\\"ant-toolti...\\\" prefixCls=\\\"ant-tooltip\\\" popup={<Popup>} ...>[39m[31m[39m
+    [31m+ [31m+                                       <Button icon={<FileExcelOutlined>} size=\\\"small\\\" onClick={function onClick} ...>[39m[31m[39m
+    [31m+ [31m+                                         <Wave component=\\\"Button\\\" disabled={false}>[39m[31m[39m
+    [31m+ [31m+ >                                         <button[39m[31m[39m
+    [31m+ [31m+ >                                           onClick={function InternalCompoundedButton.useCallback[handleClick]}[39m[31m[39m
+    [31m+ [31m+ >                                           aria-describedby={undefined}[39m[31m[39m
+    [31m+ [31m+ >                                           onTouchStart={function}[39m[31m[39m
+    [31m+ [31m+ >                                           onMouseEnter={function}[39m[31m[39m
+    [31m+ [31m+ >                                           onPointerEnter={function}[39m[31m[39m
+    [31m+ [31m+ >                                           onMouseLeave={function}[39m[31m[39m
+    [31m+ [31m+ >                                           onPointerLeave={function}[39m[31m[39m
+    [31m+ [31m+ >                                           type=\\\"button\\\"[39m[31m[39m
+    [31m+ [31m+ >                                           className=\\\"ant-btn css-var-_r_2_ ant-btn-default ant-btn-color-default ant...\\\"[39m[31m[39m
+    [31m+ [31m+ >                                           style={undefined}[39m[31m[39m
+    [31m+ [31m+ >                                           disabled={false}[39m[31m[39m
+    [31m+ [31m+ >                                           ref={function}[39m[31m[39m
+    [31m+ [31m+ >                                         >[39m[31m[39m
+    [31m+ [31m+                         ...[39m[31m[39m
+    [31m+ [31m+       ...[39m[31m[39m
+    [31m+ [31m+ \",[39m[31m[39m
+    [31m+ [31m+   \"<%s> cannot contain a nested %s.[39m[31m[39m
+    [31m+ [31m+ See this log for the ancestor stack trace. button <button>\",[39m[31m[39m
+    [31m+ [31m+ ][39m[31m",[39m
+    [31m+     "path": "/admin/crm/dashboard",[39m
+    [31m+     "primaryButtonsClicked": 0,[39m
+    [31m+     "status": "error",[39m
+    [31m+   },[39m
+    [31m+   Object {[39m
+    [31m+     "consoleErrors": Array [[39m
+    [31m+       "Failed to load resource: the server responded with a status of 400 (Bad Request)",[39m
+    [31m+       "Warning: [antd: Statistic] `valueStyle` is deprecated. Please use `styles.content` instead.",[39m
+    [31m+     ],[39m
+    [31m+     "httpStatus": 200,[39m
+    [31m+     "note": "[2mexpect([22m[31mreceived[39m[31m[2m).[22mtoEqual[2m([22m[32mexpected[39m[31m[2m) // deep equality[22m[39m
+    [31m+[39m
+    [31m+ [32m- Expected  - 1[39m[31m[39m
+    [31m+ [31m+ Received  + 3[39m[31m[39m
+    [31m+[39m
+    [31m+ [32m- Array [][39m[31m[39m
+    [31m+ [31m+ Array [[39m[31m[39m
+    [31m+ [31m+   \"Failed to load resource: the server responded with a status of 400 (Bad Request)\",[39m[31m[39m
+    [31m+ [31m+ ][39m[31m",[39m
+    [31m+     "path": "/admin/crm/products",[39m
+    [31m+     "primaryButtonsClicked": 0,[39m
+    [31m+     "status": "error",[39m
+    [31m+   },[39m
+    [31m+   Object {[39m
+    [31m+     "consoleErrors": Array [[39m
+    [31m+       "Failed to load resource: the server responded with a status of 400 (Bad Request)",[39m
+    [31m+     ],[39m
+    [31m+     "httpStatus": 200,[39m
+    [31m+     "note": "[2mexpect([22m[31mreceived[39m[31m[2m).[22mtoEqual[2m([22m[32mexpected[39m[31m[2m) // deep equality[22m[39m
+    [31m+[39m
+    [31m+ [32m- Expected  - 1[39m[31m[39m
+    [31m+ [31m+ Received  + 3[39m[31m[39m
+    [31m+[39m
+    [31m+ [32m- Array [][39m[31m[39m
+    [31m+ [31m+ Array [[39m[31m[39m
+    [31m+ [31m+   \"Failed to load resource: the server responded with a status of 400 (Bad Request)\",[39m[31m[39m
+    [31m+ [31m+ ][39m[31m",[39m
+    [31m+     "path": "/admin/dashboard",[39m
+    [31m+     "primaryButtonsClicked": 0,[39m
+    [31m+     "status": "error",[39m
+    [31m+   },[39m
+    [31m+   Object {[39m
+    [31m+     "consoleErrors": Array [[39m
+    [31m+       "Warning: [antd: Tag] `bordered={false}` is deprecated. Please use `variant=\"filled\"` instead.",[39m
+    [31m+       "Warning: [antd: Input] `bordered` is deprecated. Please use `variant` instead.",[39m
+    [31m+       "Warning: [antd: Select] `dropdownMatchSelectWidth` is deprecated. Please use `popupMatchSelectWidth` instead.",[39m
+    [31m+       "Warning: [antd: Select] `bordered` is deprecated. Please use `variant` instead.",[39m
+    [31m+       "Warning: [antd: Card] `bodyStyle` is deprecated. Please use `styles.body` instead.",[39m
+    [31m+       "Warning: [antd: Statistic] `valueStyle` is deprecated. Please use `styles.content` instead.",[39m
+    [31m+       "Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.",[39m
+    [31m+       "Failed to load catalog tree: Error: Authentication required for this operation[39m
+    [31m+     at graphqlRequest (http://127.0.0.1:3003/_next/static/chunks/src_0f27040c._.js:1433:36)[39m
+    [31m+     at async Object.getCatalog (http://127.0.0.1:3003/_next/static/chunks/src_0f27040c._.js:1439:22)[39m
+    [31m+     at async Promise.all (index 0)[39m
+    [31m+     at async loadData (http://127.0.0.1:3003/_next/static/chunks/src_0f27040c._.js:1923:46)",[39m
+    [31m+       "Warning: [antd: message] Static function can not consume context like dynamic theme. Please use 'App' component instead.",[39m
+    [31m+       "Error: Authentication required for this operation[39m
+    [31m+     at graphqlRequest (http://127.0.0.1:3003/_next/static/chunks/src_0f27040c._.js:1433:36)[39m
+    [31m+     at async Object.getSources (http://127.0.0.1:3003/_next/static/chunks/src_0f27040c._.js:1515:22)",[39m
+    [31m+       "Failed to load catalog children: Error: Authentication required for this operation[39m
+    [31m+     at graphqlRequest (http://127.0.0.1:3003/_next/static/chunks/src_0f27040c._.js:1433:36)[39m
+    [31m+     at async Object.getCatalog (http://127.0.0.1:3003/_next/static/chunks/src_0f27040c._.js:1439:22)[39m
+    [31m+     at async loadChildren (http://127.0.0.1:3003/_next/static/chunks/src_0f27040c._.js:3047:32)",[39m
+    [31m+     ],[39m
+    [31m+     "httpStatus": 200,[39m
+    [31m+     "note": "[2mexpect([22m[31mreceived[39m[31m[2m).[22mtoEqual[2m([22m[32mexpected[39m[31m[2m) // deep equality[22m[39m
+    [31m+[39m
+    [31m+ [32m- Expected  -  1[39m[31m[39m
+    [31m+ [31m+ Received  + 14[39m[31m[39m
+    [31m+[39m
+    [31m+ [32m- Array [][39m[31m[39m
+    [31m+ [31m+ Array [[39m[31m[39m
+    [31m+ [31m+   \"Failed to load catalog tree: Error: Authentication required for this operation[39m[31m[39m
+    [31m+ [31m+     at graphqlRequest (http://127.0.0.1:3003/_next/static/chunks/src_0f27040c._.js:1433:36)[39m[31m[39m
+    [31m+ [31m+     at async Object.getCatalog (http://127.0.0.1:3003/_next/static/chunks/src_0f27040c._.js:1439:22)[39m[31m[39m
+    [31m+ [31m+     at async Promise.all (index 0)[39m[31m[39m
+    [31m+ [31m+     at async loadData (http://127.0.0.1:3003/_next/static/chunks/src_0f27040c._.js:1923:46)\",[39m[31m[39m
+    [31m+ [31m+   \"Error: Authentication required for this operation[39m[31m[39m
+    [31m+ [31m+     at graphqlRequest (http://127.0.0.1:3003/_next/static/chunks/src_0f27040c._.js:1433:36)[39m[31m[39m
+    [31m+ [31m+     at async Object.getSources (http://127.0.0.1:3003/_next/static/chunks/src_0f27040c._.js:1515:22)\",[39m[31m[39m
+    [31m+ [31m+   \"Failed to load catalog children: Error: Authentication required for this operation[39m[31m[39m
+    [31m+ [31m+     at graphqlRequest (http://127.0.0.1:3003/_next/static/chunks/src_0f27040c._.js:1433:36)[39m[31m[39m
+    [31m+ [31m+     at async Object.getCatalog (http://127.0.0.1:3003/_next/static/chunks/src_0f27040c._.js:1439:22)[39m[31m[39m
+    [31m+ [31m+     at async loadChildren (http://127.0.0.1:3003/_next/static/chunks/src_0f27040c._.js:3047:32)\",[39m[31m[39m
+    [31m+ [31m+ ][39m[31m",[39m
+    [31m+     "path": "/admin/datasets/dremio",[39m
+    [31m+     "primaryButtonsClicked": 0,[39m
+    [31m+     "status": "error",[39m
+    [31m+   },[39m
+    [31m+   Object {[39m
+    [31m+     "consoleErrors": Array [[39m
+    [31m+       "Failed to load resource: the server responded with a status of 400 (Bad Request)",[39m
+    [31m+       "Warning: [antd: Card] `bordered` is deprecated. Please use `variant` instead.",[39m
+    [31m+       "Warning: [antd: Progress] `trailColor` is deprecated. Please use `railColor` instead.",[39m
+    [31m+     ],[39m
+    [31m+     "httpStatus": 200,[39m
+    [31m+     "note": "[2mexpect([22m[31mreceived[39m[31m[2m).[22mtoEqual[2m([22m[32mexpected[39m[31m[2m) // deep equality[22m[39m
+    [31m+[39m
+    [31m+ [32m- Expected  - 1[39m[31m[39m
+    [31m+ [31m+ Received  + 3[39m[31m[39m
+    [31m+[39m
+    [31m+ [32m- Array [][39m[31m[39m
+    [31m+ [31m+ Array [[39m[31m[39m
+    [31m+ [31m+   \"Failed to load resource: the server responded with a status of 400 (Bad Request)\",[39m[31m[39m
+    [31m+ [31m+ ][39m[31m",[39m
+    [31m+     "path": "/admin/dcim/3d-view",[39m
+    [31m+     "primaryButtonsClicked": 0,[39m
+    [31m+     "status": "error",[39m
+    [31m+   },[39m
+    [31m+   Object {[39m
+    [31m+     "consoleErrors": Array [[39m
+    [31m+       "Failed to load resource: the server responded with a status of 400 (Bad Request)",[39m
+    [31m+       "Failed to load resource: the server responded with a status of 400 (Bad Request)",[39m
+    [31m+     ],[39m
+    [31m+     "httpStatus": 200,[39m
+    [31m+     "note": "[2mexpect([22m[31mreceived[39m[31m[2m).[22mtoEqual[2m([22m[32mexpected[39m[31m[2m) // deep equality[22m[39m
+    [31m+[39m
+    [31m+ [32m- Expected  - 1[39m[31m[39m
+    [31m+ [31m+ Received  + 4[39m[31m[39m
+    [31m+[39m
+    [31m+ [32m- Array [][39m[31m[39m
+    [31m+ [31m+ Array [[39m[31m[39m
+    [31m+ [31m+   \"Failed to load resource: the server responded with a status of 400 (Bad Request)\",[39m[31m[39m
+    [31m+ [31m+   \"Failed to load resource: the server responded with a status of 400 (Bad Request)\",[39m[31m[39m
+    [31m+ [31m+ ][39m[31m",[39m
+    [31m+     "path": "/admin/documents/recent",[39m
+    [31m+     "primaryButtonsClicked": 0,[39m
+    [31m+     "status": "error",[39m
+    [31m+   },[39m
+    [31m+   Object {[39m
+    [31m+     "consoleErrors": Array [[39m
+    [31m+       "Failed to load resource: the server responded with a status of 400 (Bad Request)",[39m
+    [31m+     ],[39m
+    [31m+     "httpStatus": 200,[39m
+    [31m+     "note": "[2mexpect([22m[31mreceived[39m[31m[2m).[22mtoEqual[2m([22m[32mexpected[39m[31m[2m) // deep equality[22m[39m
+    [31m+[39m
+    [31m+ [32m- Expected  - 1[39m[31m[39m
+    [31m+ [31m+ Received  + 3[39m[31m[39m
+    [31m+[39m
+    [31m+ [32m- Array [][39m[31m[39m
+    [31m+ [31m+ Array [[39m[31m[39m
+    [31m+ [31m+   \"Failed to load resource: the server responded with a status of 400 (Bad Request)\",[39m[31m[39m
+    [31m+ [31m+ ][39m[31m",[39m
+    [31m+     "path": "/admin/documents/shared",[39m
+    [31m+     "primaryButtonsClicked": 0,[39m
+    [31m+     "status": "error",[39m
+    [31m+   },[39m
+    [31m+   Object {[39m
+    [31m+     "consoleErrors": Array [[39m
+    [31m+       "Failed to load resource: the server responded with a status of 400 (Bad Request)",[39m
+    [31m+     ],[39m
+    [31m+     "httpStatus": 200,[39m
+    [31m+     "note": "[2mexpect([22m[31mreceived[39m[31m[2m).[22mtoEqual[2m([22m[32mexpected[39m[31m[2m) // deep equality[22m[39m
+    [31m+[39m
+    [31m+ [32m- Expected  - 1[39m[31m[39m
+    [31m+ [31m+ Received  + 3[39m[31m[39m
+    [31m+[39m
+    [31m+ [32m- Array [][39m[31m[39m
+    [31m+ [31m+ Array [[39m[31m[39m
+    [31m+ [31m+   \"Failed to load resource: the server responded with a status of 400 (Bad Request)\",[39m[31m[39m
+    [31m+ [31m+ ][39m[31m",[39m
+    [31m+     "path": "/admin/documents/templates",[39m
+    [31m+     "primaryButtonsClicked": 0,[39m
+    [31m+     "status": "error",[39m
+    [31m+   },[39m
+    [31m+   Object {[39m
+    [31m+     "consoleErrors": Array [[39m
+    [31m+       "Failed to load resource: the server responded with a status of 400 (Bad Request)",[39m
+    [31m+     ],[39m
+    [31m+     "httpStatus": 200,[39m
+    [31m+     "note": "[2mexpect([22m[31mreceived[39m[31m[2m).[22mtoEqual[2m([22m[32mexpected[39m[31m[2m) // deep equality[22m[39m
+    [31m+[39m
+    [31m+ [32m- Expected  - 1[39m[31m[39m
+    [31m+ [31m+ Received  + 3[39m[31m[39m
+    [31m+[39m
+    [31m+ [32m- Array [][39m[31m[39m
+    [31m+ [31m+ Array [[39m[31m[39m
+    [31m+ [31m+   \"Failed to load resource: the server responded with a status of 400 (Bad Request)\",[39m[31m[39m
+    [31m+ [31m+ ][39m[31m",[39m
+    [31m+     "path": "/admin/documents/workflows",[39m
+    [31m+     "primaryButtonsClicked": 0,[39m
+    [31m+     "status": "error",[39m
+    [31m+   },[39m
+    [31m+   Object {[39m
+    [31m+     "consoleErrors": Array [[39m
+    [31m+       "Failed to load resource: the server responded with a status of 400 (Bad Request)",[39m
+    [31m+       "Failed to load resource: the server responded with a status of 400 (Bad Request)",[39m
+    [31m+     ],[39m
+    [31m+     "httpStatus": 200,[39m
+    [31m+     "note": "[2mexpect([22m[31mreceived[39m[31m[2m).[22mtoEqual[2m([22m[32mexpected[39m[31m[2m) // deep equality[22m[39m
+    [31m+[39m
+    [31m+ [32m- Expected  - 1[39m[31m[39m
+    [31m+ [31m+ Received  + 4[39m[31m[39m
+    [31m+[39m
+    [31m+ [32m- Array [][39m[31m[39m
+    [31m+ [31m+ Array [[39m[31m[39m
+    [31m+ [31m+   \"Failed to load resource: the server responded with a status of 400 (Bad Request)\",[39m[31m[39m
+    [31m+ [31m+   \"Failed to load resource: the server responded with a status of 400 (Bad Request)\",[39m[31m[39m
+    [31m+ [31m+ ][39m[31m",[39m
+    [31m+     "path": "/admin/ecommerce",[39m
+    [31m+     "primaryButtonsClicked": 0,[39m
+    [31m+     "status": "error",[39m
+    [31m+   },[39m
+    [31m+   Object {[39m
+    [31m+     "consoleErrors": Array [],[39m
+    [31m+     "httpStatus": undefined,[39m
+    [31m+     "note": "page.goto: Timeout 45000ms exceeded.[39m
+    [31m+ Call log:[39m
+    [31m+ [2m  - navigating to \"http://127.0.0.1:3003/admin/ecommerce/analytics\", waiting until \"domcontentloaded\"[22m[39m
+    [31m+ ",[39m
+    [31m+     "path": "/admin/ecommerce/analytics",[39m
+    [31m+     "primaryButtonsClicked": 0,[39m
+    [31m+     "status": "error",[39m
+    [31m+   },[39m
+    [31m+   Object {[39m
+    [31m+     "consoleErrors": Array [[39m
+    [31m+       "Failed to load resource: the server responded with a status of 400 (Bad Request)",[39m
+    [31m+     ],[39m
+    [31m+     "httpStatus": 200,[39m
+    [31m+     "note": "[2mexpect([22m[31mreceived[39m[31m[2m).[22mtoEqual[2m([22m[32mexpected[39m[31m[2m) // deep equality[22m[39m
+    [31m+[39m
+    [31m+ [32m- Expected  - 1[39m[31m[39m
+    [31m+ [31m+ Received  + 3[39m[31m[39m
+    [31m+[39m
+    [31m+ [32m- Array [][39m[31m[39m
+    [31m+ [31m+ Array [[39m[31m[39m
+    [31m+ [31m+   \"Failed to load resource: the server responded with a status of 400 (Bad Request)\",[39m[31m[39m
+    [31m+ [31m+ ][39m[31m",[39m
+    [31m+     "path": "/admin/ecommerce/customers",[39m
+    [31m+     "primaryButtonsClicked": 0,[39m
+    [31m+     "status": "error",[39m
+    [31m+   },[39m
+    [31m+   Object {[39m
+    [31m+     "consoleErrors": Array [[39m
+    [31m+       "TypeError: Failed to fetch[39m
+    [31m+     at graphql (http://127.0.0.1:3003/_next/static/chunks/src_269928c8._.js:105:28)[39m
+    [31m+     at gql (http://127.0.0.1:3003/_next/static/chunks/src_09ffbe17._.js:68:154)[39m
+    [31m+     at Object.getEcomCustomers (http://127.0.0.1:3003/_next/static/chunks/src_09ffbe17._.js:1477:160)[39m
+    [31m+     at load (http://127.0.0.1:3003/_next/static/chunks/src_09ffbe17._.js:5525:167)[39m
+    [31m+     at CustomersPage.useEffect (http://127.0.0.1:3003/_next/static/chunks/src_09ffbe17._.js:5517:13)[39m
+    [31m+     at Object.react_stack_bottom_frame (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:14876:22)[39m
+    [31m+     at runWithFiberInDEV (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:965:74)[39m
+    [31m+     at commitHookEffectListMount (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:7266:167)[39m
+    [31m+     at commitHookPassiveMountEffects (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:7301:60)[39m
+    [31m+     at commitPassiveMountOnFiber (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8696:33)[39m
+    [31m+     at recursivelyTraversePassiveMountEffects (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8683:316)[39m
+    [31m+     at commitPassiveMountOnFiber (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8695:17)[39m
+    [31m+     at recursivelyTraversePassiveMountEffects (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8683:316)[39m
+    [31m+     at commitPassiveMountOnFiber (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8695:17)[39m
+    [31m+     at recursivelyTraversePassiveMountEffects (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8683:316)[39m
+    [31m+     at commitPassiveMountOnFiber (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8757:17)[39m
+    [31m+     at recursivelyTraversePassiveMountEffects (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8683:316)[39m
+    [31m+     at commitPassiveMountOnFiber (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8757:17)[39m
+    [31m+     at recursivelyTraversePassiveMountEffects (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8683:316)[39m
+    [31m+     at commitPassiveMountOnFiber (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8695:17)[39m
+    [31m+     at recursivelyTraversePassiveMountEffects (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8683:316)[39m
+    [31m+     at commitPassiveMountOnFiber (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8700:17)[39m
+    [31m+     at recursivelyTraversePassiveMountEffects (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8683:316)[39m
+    [31m+     at commitPassiveMountOnFiber (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8695:17)[39m
+    [31m+     at recursivelyTraversePassiveMountEffects (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8683:316)[39m
+    [31m+     at commitPassiveMountOnFiber (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8695:17)[39m
+    [31m+     at recursivelyTraversePassiveMountEffects (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8683:316)[39m
+    [31m+     at commitPassiveMountOnFiber (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8695:17)[39m
+    [31m+     at recursivelyTraversePassiveMountEffects (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8683:316)[39m
+    [31m+     at commitPassiveMountOnFiber (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8695:17)[39m
+    [31m+     at recursivelyTraversePassiveMountEffects (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8683:316)[39m
+    [31m+     at commitPassiveMountOnFiber (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8700:17)[39m
+    [31m+     at recursivelyTraversePassiveMountEffects (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8683:316)[39m
+    [31m+     at commitPassiveMountOnFiber (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8695:17)[39m
+    [31m+     at recursivelyTraversePassiveMountEffects (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8683:316)[39m
+    [31m+     at commitPassiveMountOnFiber (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8695:17)[39m
+    [31m+     at recursivelyTraversePassiveMountEffects (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8683:316)[39m
+    [31m+     at commitPassiveMountOnFiber (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8757:17)[39m
+    [31m+     at recursivelyTraversePassiveMountEffects (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8683:316)[39m
+    [31m+     at commitPassiveMountOnFiber (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8757:17)[39m
+    [31m+     at recursivelyTraversePassiveMountEffects (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8683:316)[39m
+    [31m+     at commitPassiveMountOnFiber (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8695:17)[39m
+    [31m+     at recursivelyTraversePassiveMountEffects (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8683:316)[39m
+    [31m+     at commitPassiveMountOnFiber (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8695:17)[39m
+    [31m+     at recursivelyTraversePassiveMountEffects (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8683:316)[39m
+    [31m+     at commitPassiveMountOnFiber (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8757:17)[39m
+    [31m+     at recursivelyTraversePassiveMountEffects (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8683:316)[39m
+    [31m+     at commitPassiveMountOnFiber (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8757:17)[39m
+    [31m+     at recursivelyTraversePassiveMountEffects (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8683:316)[39m
+    [31m+     at commitPassiveMountOnFiber (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8757:17)",[39m
+    [31m+     ],[39m
+    [31m+     "httpStatus": 200,[39m
+    [31m+     "note": "[2mexpect([22m[31mreceived[39m[31m[2m).[22mtoEqual[2m([22m[32mexpected[39m[31m[2m) // deep equality[22m[39m
+    [31m+[39m
+    [31m+ [32m- Expected  -  1[39m[31m[39m
+    [31m+ [31m+ Received  + 53[39m[31m[39m
+    [31m+[39m
+    [31m+ [32m- Array [][39m[31m[39m
+    [31m+ [31m+ Array [[39m[31m[39m
+    [31m+ [31m+   \"TypeError: Failed to fetch[39m[31m[39m
+    [31m+ [31m+     at graphql (http://127.0.0.1:3003/_next/static/chunks/src_269928c8._.js:105:28)[39m[31m[39m
+    [31m+ [31m+     at gql (http://127.0.0.1:3003/_next/static/chunks/src_09ffbe17._.js:68:154)[39m[31m[39m
+    [31m+ [31m+     at Object.getEcomCustomers (http://127.0.0.1:3003/_next/static/chunks/src_09ffbe17._.js:1477:160)[39m[31m[39m
+    [31m+ [31m+     at load (http://127.0.0.1:3003/_next/static/chunks/src_09ffbe17._.js:5525:167)[39m[31m[39m
+    [31m+ [31m+     at CustomersPage.useEffect (http://127.0.0.1:3003/_next/static/chunks/src_09ffbe17._.js:5517:13)[39m[31m[39m
+    [31m+ [31m+     at Object.react_stack_bottom_frame (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:14876:22)[39m[31m[39m
+    [31m+ [31m+     at runWithFiberInDEV (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:965:74)[39m[31m[39m
+    [31m+ [31m+     at commitHookEffectListMount (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:7266:167)[39m[31m[39m
+    [31m+ [31m+     at commitHookPassiveMountEffects (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:7301:60)[39m[31m[39m
+    [31m+ [31m+     at commitPassiveMountOnFiber (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8696:33)[39m[31m[39m
+    [31m+ [31m+     at recursivelyTraversePassiveMountEffects (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8683:316)[39m[31m[39m
+    [31m+ [31m+     at commitPassiveMountOnFiber (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8695:17)[39m[31m[39m
+    [31m+ [31m+     at recursivelyTraversePassiveMountEffects (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8683:316)[39m[31m[39m
+    [31m+ [31m+     at commitPassiveMountOnFiber (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8695:17)[39m[31m[39m
+    [31m+ [31m+     at recursivelyTraversePassiveMountEffects (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8683:316)[39m[31m[39m
+    [31m+ [31m+     at commitPassiveMountOnFiber (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8757:17)[39m[31m[39m
+    [31m+ [31m+     at recursivelyTraversePassiveMountEffects (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8683:316)[39m[31m[39m
+    [31m+ [31m+     at commitPassiveMountOnFiber (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8757:17)[39m[31m[39m
+    [31m+ [31m+     at recursivelyTraversePassiveMountEffects (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8683:316)[39m[31m[39m
+    [31m+ [31m+     at commitPassiveMountOnFiber (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8695:17)[39m[31m[39m
+    [31m+ [31m+     at recursivelyTraversePassiveMountEffects (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8683:316)[39m[31m[39m
+    [31m+ [31m+     at commitPassiveMountOnFiber (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8700:17)[39m[31m[39m
+    [31m+ [31m+     at recursivelyTraversePassiveMountEffects (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8683:316)[39m[31m[39m
+    [31m+ [31m+     at commitPassiveMountOnFiber (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8695:17)[39m[31m[39m
+    [31m+ [31m+     at recursivelyTraversePassiveMountEffects (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8683:316)[39m[31m[39m
+    [31m+ [31m+     at commitPassiveMountOnFiber (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8695:17)[39m[31m[39m
+    [31m+ [31m+     at recursivelyTraversePassiveMountEffects (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8683:316)[39m[31m[39m
+    [31m+ [31m+     at commitPassiveMountOnFiber (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8695:17)[39m[31m[39m
+    [31m+ [31m+     at recursivelyTraversePassiveMountEffects (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8683:316)[39m[31m[39m
+    [31m+ [31m+     at commitPassiveMountOnFiber (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8695:17)[39m[31m[39m
+    [31m+ [31m+     at recursivelyTraversePassiveMountEffects (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8683:316)[39m[31m[39m
+    [31m+ [31m+     at commitPassiveMountOnFiber (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8700:17)[39m[31m[39m
+    [31m+ [31m+     at recursivelyTraversePassiveMountEffects (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8683:316)[39m[31m[39m
+    [31m+ [31m+     at commitPassiveMountOnFiber (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8695:17)[39m[31m[39m
+    [31m+ [31m+     at recursivelyTraversePassiveMountEffects (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8683:316)[39m[31m[39m
+    [31m+ [31m+     at commitPassiveMountOnFiber (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8695:17)[39m[31m[39m
+    [31m+ [31m+     at recursivelyTraversePassiveMountEffects (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8683:316)[39m[31m[39m
+    [31m+ [31m+     at commitPassiveMountOnFiber (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8757:17)[39m[31m[39m
+    [31m+ [31m+     at recursivelyTraversePassiveMountEffects (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8683:316)[39m[31m[39m
+    [31m+ [31m+     at commitPassiveMountOnFiber (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8757:17)[39m[31m[39m
+    [31m+ [31m+     at recursivelyTraversePassiveMountEffects (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8683:316)[39m[31m[39m
+    [31m+ [31m+     at commitPassiveMountOnFiber (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8695:17)[39m[31m[39m
+    [31m+ [31m+     at recursivelyTraversePassiveMountEffects (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8683:316)[39m[31m[39m
+    [31m+ [31m+     at commitPassiveMountOnFiber (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8695:17)[39m[31m[39m
+    [31m+ [31m+     at recursivelyTraversePassiveMountEffects (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8683:316)[39m[31m[39m
+    [31m+ [31m+     at commitPassiveMountOnFiber (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8757:17)[39m[31m[39m
+    [31m+ [31m+     at recursivelyTraversePassiveMountEffects (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8683:316)[39m[31m[39m
+    [31m+ [31m+     at commitPassiveMountOnFiber (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8757:17)[39m[31m[39m
+    [31m+ [31m+     at recursivelyTraversePassiveMountEffects (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8683:316)[39m[31m[39m
+    [31m+ [31m+     at commitPassiveMountOnFiber (http://127.0.0.1:3003/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:8757:17)\",[39m[31m[39m
+    [31m+ [31m+ ][39m[31m",[39m
+    [31m+     "path": "/admin/ecommerce/dashboard",[39m
+    [31m+     "primaryButtonsClicked": 0,[39m
+    [31m+     "status": "error",[39m
+    [31m+   },[39m
+    [31m+   Object {[39m
+    [31m+     "consoleErrors": Array [[39m
+    [31m+       "Warning: Instance created by `useForm` is not connected to any Form element. Forget to pass `form` prop?",[39m
+    [31m+     ],[39m
+    [31m+     "httpStatus": 200,[39m
+    [31m+     "note": "[2mexpect([22m[31mreceived[39m[31m[2m).[22mtoEqual[2m([22m[32mexpected[39m[31m[2m) // deep equality[22m[39m
+    [31m+[39m
+    [31m+ [32m- Expected  - 1[39m[31m[39m
+    [31m+ [31m+ Received  + 3[39m[31m[39m
+    [31m+[39m
+    [31m+ [32m- Array [][39m[31m[39m
+    [31m+ [31m+ Array [[39m[31m[39m
+    [31m+ [31m+   \"Warning: Instance created by `useForm` is not connected to any Form element. Forget to pass `form` prop?\",[39m[31m[39m
+    [31m+ [31m+ ][39m[31m",[39m
+    [31m+     "path": "/admin/ecommerce/packages",[39m
+    [31m+     "primaryButtonsClicked": 0,[39m
+    [31m+     "status": "error",[39m
+    [31m+   },[39m
+    [31m+   Object {[39m
+    [31m+     "consoleErrors": Array [[39m
+    [31m+       "Warning: [antd: Statistic] `valueStyle` is deprecated. Please use `styles.content` instead.",[39m
+    [31m+     ],[39m
+    [31m+     "httpStatus": undefined,[39m
+    [31m+     "note": "page.goto: net::ERR_CONNECTION_RESET at http://127.0.0.1:3003/admin/ecommerce/products[39m
+    [31m+ Call log:[39m
+    [31m+ [2m  - navigating to \"http://127.0.0.1:3003/admin/ecommerce/products\", waiting until \"domcontentloaded\"[22m[39m
+    [31m+ ",[39m
+    [31m+     "path": "/admin/ecommerce/products",[39m
+    [31m+     "primaryButtonsClicked": 0,[39m
+    [31m+     "status": "error",[39m
+    [31m+   },[39m
+    [31m+ ][39m
+
+      103 |
+      104 |     const failed = coverage.filter((r) => r.status === 'error');
+    > 105 |     expect(failed, `Route crawl failures: ${failed.map((f) => f.path).join(', ')}`).toEqual([]);
+          |                                                                                     ^
+      106 | });
+      107 |
+        at /workspace/admin/tests/e2e/ui-wave-4-admin-route-crawl.spec.ts:105:85
+
+    Error Context: test-results/ui-wave-4-admin-route-craw-b23e0-s-—-console-primary-buttons-chromium/error-context.md
+
+
+[1A[2K  Slow test file: [chromium] › tests/e2e/ui-wave-4-admin-route-crawl.spec.ts (7.4m)
+  Consider running tests from slow files in parallel. See: https://playwright.dev/docs/test-parallel
+  1 failed
+    [chromium] › tests/e2e/ui-wave-4-admin-route-crawl.spec.ts:22:5 › crawl menuConfig + VO routes — console + primary buttons 
+  24 passed (10.5m)
+
+  Serving HTML report at http://localhost:9323. Press Ctrl+C to quit.

@@ -12,7 +12,14 @@ import { IS_PUBLIC_KEY } from './public.decorator';
 
 type AuthedRequest = {
     headers?: { authorization?: string };
-    user?: { id: string; email?: string; role?: string } | null;
+    user?: {
+        id: string;
+        email?: string;
+        role?: string;
+        tenantId?: string | null;
+        studioSlug?: string | null;
+        emailVerified?: boolean;
+    } | null;
 };
 
 @Injectable()
@@ -66,6 +73,9 @@ export class GlobalAuthGuard implements CanActivate {
                     id: user.id,
                     email: user.email,
                     role: user.role,
+                    tenantId: (user as { tenantId?: string | null }).tenantId ?? null,
+                    studioSlug: (user as { studioSlug?: string | null }).studioSlug ?? null,
+                    emailVerified: Boolean((user as { emailVerified?: boolean }).emailVerified),
                 };
             }
             return true;

@@ -13,7 +13,8 @@ import {
     ClockCircleOutlined, CheckCircleOutlined, SyncOutlined, DatabaseOutlined,
     FileTextOutlined, StopOutlined, DeleteOutlined
 } from "@ant-design/icons";
-import { webCrawlerService, CrawlJob, CrawlJobConfig } from "@/lib/webCrawlerService";
+import { webCrawlerService, CrawlJob, CrawlJobConfig, WEB_CRAWLER_DATA_MODE } from "@/lib/webCrawlerService";
+import { StudioLiveBanner, StudioLiveModeTag } from "@/components/ai-studio/StudioDemoBanner";
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -58,14 +59,8 @@ export default function WebCrawlerPage() {
                 scheduleCron: values.scheduleCron,
             };
             
-            const newJob = await webCrawlerService.createJob(values.jobName || 'Untitled Crawl', config);
-            message.success('Crawl job created and queued!');
-            
-            // Start simulation
-            webCrawlerService.startJobSimulation(newJob.id, (updatedJob) => {
-                setJobs(prev => prev.map(j => j.id === updatedJob.id ? updatedJob : j));
-            });
-            
+            await webCrawlerService.createJob(values.jobName || 'Untitled Crawl', config);
+            message.success('Crawl job created and queued on the server worker.');
             fetchJobs();
             form.resetFields();
         } catch (error) {
@@ -79,6 +74,17 @@ export default function WebCrawlerPage() {
         await webCrawlerService.deleteJob(id);
         message.success('Job deleted');
         fetchJobs();
+    };
+
+    const handleStop = async (id: string) => {
+        try {
+            await webCrawlerService.stopJob(id);
+            message.success('Crawl job stopped');
+            fetchJobs();
+        } catch {
+            message.error('Could not stop job — it may have already finished.');
+            fetchJobs();
+        }
     };
 
     const renderStatusTag = (status: string) => {
@@ -133,7 +139,11 @@ export default function WebCrawlerPage() {
             key: 'actions',
             render: (_: any, record: CrawlJob) => (
                 <Space>
-                    {record.status === 'running' && <Button size="small" danger icon={<StopOutlined />}>Stop</Button>}
+                    {(record.status === 'running' || record.status === 'pending') && (
+                        <Popconfirm title="Stop this crawl job?" onConfirm={() => handleStop(record.id)}>
+                            <Button size="small" danger icon={<StopOutlined />}>Stop</Button>
+                        </Popconfirm>
+                    )}
                     <Popconfirm title="Delete job?" onConfirm={() => handleDelete(record.id)}>
                         <Button size="small" type="text" danger icon={<DeleteOutlined />} />
                     </Popconfirm>
@@ -143,7 +153,15 @@ export default function WebCrawlerPage() {
     ];
 
     return (
-        <CMSLayout title="Web Crawler Studio" subTitle="Ingest website data into your Vector Database">
+        <CMSLayout
+            title="Web Crawler Studio"
+            subTitle="Ingest website data into your Vector Database"
+            extra={[<StudioLiveModeTag key="live" />]}
+        >
+            <StudioLiveBanner
+                title="Web Crawler Studio"
+                detail={`Jobs are stored in Postgres and processed by the middleware worker (${WEB_CRAWLER_DATA_MODE} queue — seed URLs fetched over HTTP; vector ingest is separate).`}
+            />
             <Row gutter={[24, 24]}>
                 
                 {/* CONFIGURATION PANEL */}

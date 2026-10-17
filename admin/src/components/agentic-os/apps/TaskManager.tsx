@@ -390,8 +390,21 @@ export function TaskManager({ initialAgentId }: { initialAgentId?: string }) {
                                 icon={CheckCheck}
                                 onClick={async () => {
                                     if (!window.confirm(`Mark all ${review.length} reviewed tasks as done?`)) return;
-                                    for (const t of review) await aosApi.completeTask(t.id).catch(() => null);
-                                    void run(`${review.length} tasks marked done`, async () => true);
+                                    const ids = review.map((t) => t.id);
+                                    await run(`Marked ${ids.length} tasks done`, async () => {
+                                        let ok = 0;
+                                        for (const id of ids) {
+                                            try {
+                                                await aosApi.completeTask(id);
+                                                ok += 1;
+                                            } catch {
+                                                /* keep going */
+                                            }
+                                        }
+                                        if (ok === 0) throw new Error("No tasks could be marked done");
+                                        if (ok < ids.length) throw new Error(`${ids.length - ok} task(s) failed`);
+                                        return true;
+                                    });
                                 }}
                             >
                                 Approve all in review

@@ -40,7 +40,7 @@ const gradientBorder = (color: string) => ({
 });
 
 interface Deal {
-    id: string; dealName: string; amount: number; probability: number; stage: string;
+    id: string; name: string; dealName?: string; amount: number; probability: number; stage: string;
     closeDate: string; accountId: string; contactId: string; ownerId: string;
     priority: string; status: string; lostReason: string; wonReason: string;
     nextStep: string; notes: string; createdAt: string; updatedAt: string;
@@ -92,8 +92,8 @@ export default function PipelinePage() {
     const loadData = useCallback(async () => {
         setLoading(true);
         try {
-            const data = await gql<{ deals: Deal[] }>(`query($tenantId: String!) { deals(tenantId: $tenantId) { id dealName amount probability stage closeDate accountId contactId ownerId priority status lostReason wonReason nextStep notes createdAt updatedAt account { companyName } contact { firstName lastName } } }`, { tenantId: DEFAULT_TENANT_ID });
-            setDeals(data.deals || []);
+            const data = await gql<{ deals: Deal[] }>(`query($tenantId: String!) { deals(tenantId: $tenantId) { id name amount probability stage closeDate accountId contactId ownerId priority status lostReason wonReason nextStep notes createdAt updatedAt } }`, { tenantId: DEFAULT_TENANT_ID });
+            setDeals((data.deals || []).map((d) => ({ ...d, dealName: d.dealName || d.name })));
         } catch (err: any) { message.error("Failed to load deals: " + err.message); }
         finally { setLoading(false); }
     }, []);

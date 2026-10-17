@@ -176,11 +176,20 @@ export class HermesProvider implements WhatsAppTransport {
         }
     }
 
-    private async bridgeGet(path: string, timeoutMs = 8000): Promise<any> {
+    private withSessionQuery(path: string, session?: string): string {
+        const s = (session ?? '').trim();
+        if (!s || s === this.defaultSession) return path;
+        const sep = path.includes('?') ? '&' : '?';
+        return `${path}${sep}session=${encodeURIComponent(s)}`;
+    }
+
+    private async bridgeGet(path: string, timeoutMs = 8000, session?: string): Promise<any> {
         const ctrl = new AbortController();
         const t = setTimeout(() => ctrl.abort(), timeoutMs);
         try {
-            const res = await fetch(`${this.bridgeUrl}${path}`, { signal: ctrl.signal });
+            const res = await fetch(`${this.bridgeUrl}${this.withSessionQuery(path, session)}`, {
+                signal: ctrl.signal,
+            });
             const text = await res.text();
             try {
                 return JSON.parse(text);
@@ -192,7 +201,7 @@ export class HermesProvider implements WhatsAppTransport {
         }
     }
 
-    async getSessionStatus(): Promise<{
+    async getSessionStatus(session?: string): Promise<{
         name: string;
         status: string;
         connected: boolean;
@@ -202,10 +211,10 @@ export class HermesProvider implements WhatsAppTransport {
         error?: string;
     } | null> {
         try {
-            const data = await this.bridgeGet('/pair/status');
+            const data = await this.bridgeGet('/pair/status', 8000, session);
             if (!data || data.status === undefined) return null;
             return {
-                name: data.name || 'hermes',
+                name: data.name || session || 'hermes',
                 status: String(data.status || 'UNKNOWN').toUpperCase(),
                 connected: Boolean(data.connected),
                 meId: data.meId || undefined,
@@ -219,7 +228,7 @@ export class HermesProvider implements WhatsAppTransport {
         }
     }
 
-    async getAuthQr(): Promise<{
+    async getAuthQr(session?: string): Promise<{
         available: boolean;
         imageBase64: string | null;
         mimetype: string | null;
@@ -228,7 +237,7 @@ export class HermesProvider implements WhatsAppTransport {
         connected?: boolean;
     }> {
         try {
-            const data = await this.bridgeGet('/pair/qr');
+            const data = await this.bridgeGet('/pair/qr', 8000, session);
             return {
                 available: Boolean(data?.available),
                 imageBase64: data?.imageBase64 || null,
@@ -248,12 +257,16 @@ export class HermesProvider implements WhatsAppTransport {
         }
     }
 
-    async startSession(force = false): Promise<{ status: string; connected: boolean; error?: string }> {
+    async startSession(
+        force = false,
+        session?: string,
+    ): Promise<{ status: string; connected: boolean; error?: string }> {
         try {
-            const data = await this.postJson('/pair/start', force ? { force: true } : {});
+            const path = this.withSessionQuery('/pair/start', session);
+            const data = await this.postJson(path, force ? { force: true } : {});
             const body = data.json || {};
             if (body.connected) {
-                await this.postJson('/pair/reload', {});
+                await this.postJson(this.withSessionQuery('/pair/reload', session), {});
             }
             return {
                 status: String(body.status || (data.ok ? 'STARTING' : 'ERROR')),
@@ -266,9 +279,9 @@ export class HermesProvider implements WhatsAppTransport {
     }
 
     /** Wipe old phone session and start a fresh QR for a different number. */
-    async rebindSession(): Promise<{ status: string; connected: boolean; error?: string }> {
+    async rebindSession(session?: string): Promise<{ status: string; connected: boolean; error?: string }> {
         try {
-            const data = await this.postJson('/pair/rebind', {});
+            const data = await this.postJson(this.withSessionQuery('/pair/rebind', session), {});
             const body = data.json || {};
             return {
                 status: String(body.status || 'SCAN_QR_CODE'),
@@ -280,21 +293,21 @@ export class HermesProvider implements WhatsAppTransport {
         }
     }
 
-    async logoutSession(): Promise<{ status: string }> {
+    async logoutSession(session?: string): Promise<{ status: string }> {
         try {
-            const data = await this.postJson('/pair/logout', {});
+            const data = await this.postJson(this.withSessionQuery('/pair/logout', session), {});
             return { status: String(data.json?.status || 'SCAN_QR_CODE') };
         } catch (e: any) {
             return { status: 'ERROR' };
         }
     }
 
-    async syncSession(): Promise<{ status: string; connected: boolean }> {
-        const st = await this.getSessionStatus();
+    async syncSession(session?: string): Promise<{ status: string; connected: boolean }> {
+        const st = await this.getSessionStatus(session);
         if (st?.credsPresent && !st.connected) {
-            await this.postJson('/pair/reload', {});
+            await this.postJson(this.withSessionQuery('/pair/reload', session), {});
             await new Promise((r) => setTimeout(r, 3000));
-            const again = await this.getSessionStatus();
+            const again = await this.getSessionStatus(session);
             return {
                 status: again?.status || 'STARTING',
                 connected: again?.connected ?? false,
@@ -303,8 +316,8 @@ export class HermesProvider implements WhatsAppTransport {
         return { status: st?.status || 'UNKNOWN', connected: st?.connected ?? false };
     }
 
-    async restartSession(): Promise<{ status: string }> {
-        await this.postJson('/pair/reload', {});
+    async restartSession(session?: string): Promise<{ status: string }> {
+        await this.postJson(this.withSessionQuery('/pair/reload', session), {});
         return { status: 'STARTING' };
     }
 

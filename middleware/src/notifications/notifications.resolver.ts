@@ -14,6 +14,7 @@ class NotifChannel {
     @Field() tenantId: string;
     @Field() name: string;
     @Field() channelType: string;
+    @Field({ nullable: true }) type?: string;
     @Field(() => GraphQLJSON, { nullable: true }) config?: any;
     @Field() isActive: boolean;
     @Field() createdAt: string;
@@ -25,6 +26,7 @@ class NotifTemplate {
     @Field() tenantId: string;
     @Field() name: string;
     @Field() channelType: string;
+    @Field({ nullable: true }) channel?: string;
     @Field({ nullable: true }) subject?: string;
     @Field() body: string;
     @Field(() => [String]) variables: string[];
@@ -45,6 +47,8 @@ class NotifRule {
     @Field({ nullable: true }) recipientValue?: string;
     @Field(() => GraphQLJSON, { nullable: true }) conditions?: any;
     @Field() isActive: boolean;
+    @Field({ nullable: true }) channelType?: string;
+    @Field({ nullable: true }) priority?: string;
     @Field({ nullable: true }) channelName?: string;
     @Field({ nullable: true }) templateName?: string;
     @Field() createdAt: string;
@@ -105,14 +109,14 @@ class NotifStats {
 function mapChannel(d: any): NotifChannel {
     return {
         id: d.id, tenantId: d.tenant_id, name: d.name,
-        channelType: d.channel_type, config: d.config,
+        channelType: d.channel_type, type: d.channel_type, config: d.config,
         isActive: d.is_active, createdAt: d.created_at,
     };
 }
 function mapTemplate(d: any): NotifTemplate {
     return {
         id: d.id, tenantId: d.tenant_id, name: d.name,
-        channelType: d.channel_type, subject: d.subject,
+        channelType: d.channel_type, channel: d.channel_type, subject: d.subject,
         body: d.body, variables: d.variables || [],
         isActive: d.is_active, createdAt: d.created_at,
     };
@@ -124,6 +128,8 @@ function mapRule(d: any): NotifRule {
         channelId: d.channel_id, templateId: d.template_id,
         recipientType: d.recipient_type, recipientValue: d.recipient_value,
         conditions: d.conditions, isActive: d.is_active,
+        channelType: d.notification_channels?.channel_type,
+        priority: d.priority ?? 'normal',
         channelName: d.notification_channels?.name,
         templateName: d.notification_templates?.name,
         createdAt: d.created_at,

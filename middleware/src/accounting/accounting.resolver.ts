@@ -16,6 +16,21 @@ import GraphQLJSON from 'graphql-type-json';
 @ObjectType() class AcctInvoice { @Field() id: string; @Field() tenantId: string; @Field() invoiceType: string; @Field() invoiceNumber: string; @Field({ nullable: true }) contactId?: string; @Field({ nullable: true }) contactName?: string; @Field() invoiceDate: string; @Field() dueDate: string; @Field({ nullable: true }) currencyCode?: string; @Field(() => Float) exchangeRate: number; @Field(() => Float) subtotal: number; @Field(() => Float) taxAmount: number; @Field(() => Float) totalAmount: number; @Field(() => Float) amountPaid: number; @Field(() => Float) amountDue: number; @Field({ nullable: true }) reference?: string; @Field({ nullable: true }) notes?: string; @Field({ nullable: true }) accountId?: string; @Field({ nullable: true }) journalId?: string; @Field() status: string; @Field({ nullable: true }) paidAt?: string; @Field({ nullable: true }) createdAt?: string; }
 @ObjectType() class AcctInvoiceLine { @Field() id: string; @Field() invoiceId: string; @Field(() => Int) lineNumber: number; @Field() description: string; @Field({ nullable: true }) accountId?: string; @Field(() => Float) quantity: number; @Field(() => Float) unitPrice: number; @Field(() => Float) amount: number; @Field({ nullable: true }) taxId?: string; @Field(() => Float) taxAmount: number; }
 @ObjectType() class AcctInvoiceSummary { @Field(() => Int) totalInvoices: number; @Field(() => Float) totalOutstanding: number; @Field(() => Float) overdue: number; @Field(() => Float) current: number; @Field(() => Float) aging30: number; @Field(() => Float) aging60: number; @Field(() => Float) aging90: number; @Field(() => Float) aging90plus: number; }
+@ObjectType() class AcctBudget { @Field() id: string; @Field() tenantId: string; @Field() name: string; @Field({ nullable: true }) fiscalPeriodId?: string; @Field() status: string; @Field({ nullable: true }) notes?: string; @Field({ nullable: true }) createdBy?: string; @Field({ nullable: true }) createdAt?: string; }
+@ObjectType() class BudgetVsActualRow { @Field() accountId: string; @Field() accountCode: string; @Field() accountName: string; @Field(() => Float) budgeted: number; @Field(() => Float) actual: number; @Field(() => Float) variance: number; @Field(() => Float) variancePct: number; }
+@ObjectType() class AcctBankAccount { @Field() id: string; @Field() tenantId: string; @Field() name: string; @Field({ nullable: true }) bankName?: string; @Field({ nullable: true }) accountNumber?: string; @Field({ nullable: true }) glAccountId?: string; @Field() currency: string; @Field() status: string; @Field({ nullable: true }) createdAt?: string; }
+@ObjectType() class AcctCashFlowLine { @Field() name: string; @Field(() => Float) amount: number; }
+@ObjectType() class AcctCashFlowSection { @Field(() => [AcctCashFlowLine]) items: AcctCashFlowLine[]; @Field(() => Float) total: number; }
+@ObjectType() class AcctCashFlowStatement { @Field(() => AcctCashFlowSection) operating: AcctCashFlowSection; @Field(() => AcctCashFlowSection) investing: AcctCashFlowSection; @Field(() => AcctCashFlowSection) financing: AcctCashFlowSection; @Field(() => Float) netChange: number; @Field(() => Float) openingCash: number; @Field(() => Float) closingCash: number; }
+
+const EMPTY_CASH_FLOW: AcctCashFlowStatement = {
+    operating: { items: [], total: 0 },
+    investing: { items: [], total: 0 },
+    financing: { items: [], total: 0 },
+    netChange: 0,
+    openingCash: 0,
+    closingCash: 0,
+};
 
 // ─── Input Types ────────────────────────────────────────
 @InputType() class AcctCurrencyInput { @Field() code: string; @Field() name: string; @Field({ nullable: true }) symbol?: string; @Field(() => Int, { nullable: true }) decimalPlaces?: number; @Field({ nullable: true }) isDefault?: boolean; @Field(() => Float, { nullable: true }) exchangeRate?: number; @Field({ nullable: true }) rateDate?: string; @Field({ nullable: true }) status?: string; }
@@ -102,4 +117,10 @@ export class AccountingResolver {
     @Mutation(() => AcctInvoice) async updateAcctInvoiceStatus(@Args('id') id: string, @Args('status') s: string) { return toCamel(await this.svc.updateInvoiceStatus(id, s)); }
     @Mutation(() => AcctInvoice) async recordAcctPayment(@Args('id') id: string, @Args('amount', { type: () => Float }) a: number) { return toCamel(await this.svc.recordPayment(id, a)); }
     @Mutation(() => Boolean) async deleteAcctInvoice(@Args('id') id: string) { return this.svc.deleteInvoice(id); }
+
+    // ─── Budgets / bank / cash flow (v1 stubs — honest empty until acct_* tables wired) ───
+    @Query(() => [AcctBudget]) async acctBudgets(@Args('tenantId') _t: string) { return []; }
+    @Query(() => [BudgetVsActualRow]) async acctBudgetVsActual(@Args('tenantId') _t: string, @Args('budgetId', { nullable: true }) _b?: string) { return []; }
+    @Query(() => [AcctBankAccount]) async acctBankAccounts(@Args('tenantId') _t: string) { return []; }
+    @Query(() => AcctCashFlowStatement) async acctCashFlowStatement(@Args('tenantId') _t: string, @Args('dateFrom', { nullable: true }) _df?: string, @Args('dateTo', { nullable: true }) _dt?: string) { return EMPTY_CASH_FLOW; }
 }

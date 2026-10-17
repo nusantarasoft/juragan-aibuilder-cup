@@ -1,6 +1,6 @@
 # UMKM daftar via WhatsApp + admin approve (ops / produk internal)
 
-Date: 2026-09-12 · Status: **IMPLEMENTED**  
+Date: 2026-09-12 · Status: **IMPLEMENTED** (F2-1: instant trial auto-provision — admin approve optional legacy)  
 Trial / checklist: [register-trial.md](./register-trial.md)  
 Pitch sales/tenant: [../pitch.md](../pitch.md)  
 Sistem: [../../system/hermes-architecture.md](../../system/hermes-architecture.md)
@@ -13,7 +13,7 @@ Dokumen **ops internal** (bukan pintu sales). Sales mulai dari [pitch.md](../pit
 
 Dulu pemilik toko **tidak bisa daftar sendiri**. Admin harus isi form di `/admin/ai-studio/umkm`. Nomor yang belum terdaftar diabaikan bot (tidak ada balasan berguna).
 
-Keputusan produk: owner chat ke nomor bisnis → funnel **DAFTAR** → **admin approve** di CMS → baru aktif sebagai kasir.
+Keputusan produk (2026-10, Akbar): owner chat ke nomor bisnis → funnel **DAFTAR** → **trial instan** (pipeline provisioning sama dengan web `/register`) — tanpa wajib klik admin. Antrian CMS tetap untuk audit; cron/middleware auto-provision baris `pending`.
 
 OTP / bayar: out of scope v1.
 

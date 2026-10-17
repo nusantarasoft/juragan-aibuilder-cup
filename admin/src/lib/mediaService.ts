@@ -282,8 +282,7 @@ export const mediaService = {
                 folder: options?.folder,
             });
             return (data.media || []).map(mapToMediaFile);
-        } catch (error) {
-            console.error("Error fetching media:", error);
+        } catch {
             return [];
         }
     },

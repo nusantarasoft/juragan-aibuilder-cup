@@ -34,7 +34,7 @@ export default function NessieCatalogPage() {
     const { themeColor } = usePreferencesStore();
 
     return (
-        <CMSLayout title={<AuroraText colors={[themeColor, '#10b981', '#3b82f6']}>Nessie Catalog</AuroraText>} subTitle={<DecryptedText text="Transactional data catalog — branches, tables & versioning" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="r" icon={<ReloadOutlined />} />]}>
+        <CMSLayout title={<AuroraText colors={[themeColor, '#10b981', '#3b82f6']}>Nessie Catalog</AuroraText>} subTitle={<DecryptedText text="Transactional data catalog — branches, tables & versioning" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />} extra={[<Button key="r" icon={<ReloadOutlined />} onClick={() => window.location.reload()} title="Refresh page" />]}>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <Row gutter={[12, 12]}>
                     {[{ t: 'Branches', v: BRANCHES.length, c: '#3b82f6', i: <BranchesOutlined /> }, { t: 'Tables', v: CATALOG.filter(c => c.type === 'ICEBERG_TABLE').length, c: '#10b981', i: <TableOutlined /> }, { t: 'Commits', v: BRANCHES.reduce((s, b) => s + b.commits, 0), c: '#8b5cf6', i: <HistoryOutlined /> }, { t: 'Active Tags', v: 5, c: '#f59e0b', i: <TagOutlined /> }].map((s, i) => (

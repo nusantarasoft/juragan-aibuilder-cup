@@ -110,7 +110,7 @@ export default function KnowledgeBasePage() {
         try {
             const data = await gql(GET_ALL_LESSONS, { tenantId: DEFAULT_TENANT_ID });
             setLessons(data.pmAllLessonsLearned || []);
-        } catch (err: any) { console.error("PM Error", err); } finally {
+        } catch { /* optional PM data */ } finally {
             setLoading(false);
         }
     }, []);
@@ -119,7 +119,7 @@ export default function KnowledgeBasePage() {
         try {
             const data = await gql(GET_PROJECTS, { tenantId: DEFAULT_TENANT_ID });
             setProjects(data.pmProjects || []);
-        } catch (err: any) { console.error("PM Error", err); }
+        } catch { /* optional PM data */ }
     }, []);
 
     useEffect(() => { loadData(); }, [loadData]);
@@ -218,7 +218,7 @@ export default function KnowledgeBasePage() {
             setViewingLesson(null);
             setEditing(false);
             loadData();
-        } catch (err: any) { console.error("PM Error", err); 
+        } catch {
             message.error('Failed to delete lesson');
         } finally {
             setSaving(false);
@@ -734,7 +734,7 @@ export default function KnowledgeBasePage() {
                                 try {
                                     if (createStep === 0) await createForm.validateFields(['projectId', 'title']);
                                     setCreateStep(s => s + 1);
-                                } catch (err: any) { console.error("PM Error", err); }
+                                } catch { /* optional PM data */ }
                             }}>Next</Button>
                         ) : (
                             <Button type="primary" icon={<SaveOutlined />} loading={saving} onClick={handleCreate}>Create Lesson</Button>

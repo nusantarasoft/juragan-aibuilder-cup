@@ -64,7 +64,13 @@ function applyUserSession(me: User) {
         two_factor_enabled: false,
         created_at: me.createdAt || new Date().toISOString(),
     };
-    useAuthStore.getState().syncFromAuth(me);
+    useAuthStore.getState().syncFromAuth({
+        id: me.id,
+        email: me.email,
+        fullName: me.fullName,
+        role: me.role,
+        tenantId: (me as { tenantId?: string | null }).tenantId,
+    });
     return { user: me, profile };
 }
 

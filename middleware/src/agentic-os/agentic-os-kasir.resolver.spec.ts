@@ -13,7 +13,16 @@ describe('AgenticOsResolver.aosKasirLiveSnapshot', () => {
                 slug: KASIR_EMPLOYEE_SLUG,
             }),
         };
-        const resolver = new AgenticOsResolver({} as any, {} as any, {} as any, {} as any, kasirLive as any);
+        const resolver = new AgenticOsResolver(
+            {} as any,
+            {} as any,
+            {} as any,
+            {} as any,
+            kasirLive as any,
+            {} as any,
+            {} as any,
+            {} as any,
+        );
 
         expect(() => resolver.aosKasirLiveSnapshot({ req: { user: null } }, undefined)).toThrow(
             UnauthorizedException,

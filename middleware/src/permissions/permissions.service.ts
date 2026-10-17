@@ -249,7 +249,7 @@ export class PermissionsService {
 
     async getTenantUsers(tenantId: string) {
         const { data, error } = await this.db.from('tenant_users')
-            .select('*, profiles(name), roles(name), individuals(first_name, last_name)')
+            .select('*, profiles(name), roles(name), individuals!tenant_users_individual_id_fkey(first_name, last_name)')
             .eq('tenant_id', tenantId).order('created_at', { ascending: false });
         if (error) throw error;
         return data;
@@ -257,7 +257,7 @@ export class PermissionsService {
 
     async getTenantUser(id: string) {
         const { data, error } = await this.db.from('tenant_users')
-            .select('*, profiles(name), roles(name), individuals(first_name, last_name)')
+            .select('*, profiles(name), roles(name), individuals!tenant_users_individual_id_fkey(first_name, last_name)')
             .eq('id', id).single();
         if (error) throw error;
         return data;

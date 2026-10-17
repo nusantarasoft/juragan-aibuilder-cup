@@ -1,4 +1,5 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
+import { AosTaskQueueEvents } from './aos-task-queue.events';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { SupabaseService } from '../supabase/supabase.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -291,6 +292,7 @@ const SETTINGS_FIELDS: readonly FieldSpec[] = [
     ['llmMode', 'llm_mode'],
     ['pulseEnabled', 'pulse_enabled'],
     ['runCostCeilingUsd', 'run_cost_ceiling_usd'],
+    ['uiDemoMode', 'ui_demo_mode'],
 ];
 
 // ── Row mappers ──────────────────────────────────────────────────────────────
@@ -605,6 +607,8 @@ export function mapSettings(r: Row): AosSettings {
         llmMode: str(r.llm_mode) || 'live',
         pulseEnabled: r.pulse_enabled === undefined || r.pulse_enabled === null ? true : !!r.pulse_enabled,
         runCostCeilingUsd: num(r.run_cost_ceiling_usd, 5),
+        uiDemoMode:
+            process.env.AOS_UI_DEMO_MODE === 'true' ? true : r.ui_demo_mode === undefined || r.ui_demo_mode === null ? false : !!r.ui_demo_mode,
     };
 }
 
@@ -619,7 +623,27 @@ export class AgenticOsService {
     constructor(
         private readonly supabase: SupabaseService,
         private readonly notifications: NotificationsService,
+        @Optional() private readonly taskQueueEvents?: AosTaskQueueEvents,
     ) {}
+
+    async notifyTaskQueue(
+        tenantId: string,
+        reason: string,
+        taskId?: string | null,
+        opts?: { includeStats?: boolean },
+    ): Promise<void> {
+        if (!this.taskQueueEvents) return;
+        let task: AosTask | null = null;
+        if (taskId) {
+            const row = must(await this.db.from('aos_tasks').select('*').eq('id', taskId).maybeSingle()) as Row | null;
+            task = row ? mapTask(row) : null;
+        }
+        let stats: AosStats | null = null;
+        if (opts?.includeStats) {
+            stats = await this.getStats(tenantId);
+        }
+        this.taskQueueEvents.publish(tenantId, { reason, task, stats });
+    }
 
     get db(): SupabaseClient {
         return this.supabase.getAdminClient();
@@ -779,6 +803,12 @@ export class AgenticOsService {
         ) as Row;
         await this.insertAgentVersion(updated, version, note, actor);
         return updated;
+    }
+
+    async getTenantSubscriptionPlan(tenantId: string): Promise<string> {
+        const t = tenantOf(tenantId);
+        const { data } = await this.db.from('tenants').select('subscription_plan').eq('id', t).maybeSingle();
+        return ((data as Row | null)?.subscription_plan as string | undefined) ?? 'trial';
     }
 
     async createAgent(tenantId: string | undefined, input: AosAgentInput, actor: AosActor): Promise<AosAgent> {
@@ -1094,7 +1124,9 @@ export class AgenticOsService {
             moduleId: created.module_id,
             route: created.route,
         });
-        return mapTask(created);
+        const out = mapTask(created);
+        void this.notifyTaskQueue(t, 'queued', out.id, { includeStats: true });
+        return out;
     }
 
     async updateTask(id: string, input: AosTaskInput, actor: AosActor): Promise<AosTask> {
@@ -1128,7 +1160,9 @@ export class AgenticOsService {
             route: updated.route,
             diff,
         });
-        return mapTask(updated);
+        const out = mapTask(updated);
+        void this.notifyTaskQueue(row.tenant_id, out.status, out.id, { includeStats: true });
+        return out;
     }
 
     async reorderTasks(ids: string[], actor: AosActor): Promise<boolean> {
@@ -1172,7 +1206,9 @@ export class AgenticOsService {
             moduleId: row.module_id,
             route: row.route,
         });
-        return mapTask(updated);
+        const out = mapTask(updated);
+        void this.notifyTaskQueue(row.tenant_id, 'done', out.id, { includeStats: true });
+        return out;
     }
 
     async cancelTask(id: string, actor: AosActor): Promise<AosTask> {
@@ -1204,7 +1240,9 @@ export class AgenticOsService {
             moduleId: row.module_id,
             route: row.route,
         });
-        return mapTask(updated);
+        const cancelled = mapTask(updated);
+        void this.notifyTaskQueue(row.tenant_id, 'cancelled', cancelled.id, { includeStats: true });
+        return cancelled;
     }
 
     async retryTask(id: string, actor: AosActor): Promise<AosTask> {
@@ -1235,7 +1273,9 @@ export class AgenticOsService {
             moduleId: row.module_id,
             route: row.route,
         });
-        return mapTask(updated);
+        const retried = mapTask(updated);
+        void this.notifyTaskQueue(row.tenant_id, 'queued', retried.id, { includeStats: true });
+        return retried;
     }
 
     async archiveTask(id: string, actor: AosActor): Promise<AosTask> {
@@ -1251,7 +1291,9 @@ export class AgenticOsService {
             moduleId: row.module_id,
             route: row.route,
         });
-        return mapTask(updated);
+        const archived = mapTask(updated);
+        void this.notifyTaskQueue(row.tenant_id, 'updated', archived.id, { includeStats: true });
+        return archived;
     }
 
     // ── Memory: areas ────────────────────────────────────────────────────────
