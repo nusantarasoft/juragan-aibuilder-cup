@@ -8,6 +8,12 @@ export type StudioWhatsAppConfigLookup = {
     notebook_id?: string | null;
 };
 
+/** Phone fields only — enough for owner/staff collection without full tenant row. */
+export type StudioWhatsAppConfigPhones = Pick<
+    StudioWhatsAppConfigLookup,
+    'business_phone' | 'allowlist_phones'
+>;
+
 /** Extract WhatsApp admin account phone from webhook payload (`me`, etc.). */
 export function extractBusinessPhoneFromPayload(payload: Record<string, unknown>): string | null {
     const me = payload.me as Record<string, unknown> | undefined;
@@ -74,7 +80,7 @@ export function phonesMatch(phoneA: string, phoneB: string): boolean {
 }
 
 /** Owner + staff phones registered for one UMKM tenant. */
-export function collectUmkmOwnerPhones(config: StudioWhatsAppConfigLookup): string[] {
+export function collectUmkmOwnerPhones(config: StudioWhatsAppConfigPhones): string[] {
     const phones: string[] = [];
     if (config.business_phone) {
         phones.push(normalizePhoneDigits(config.business_phone));
@@ -87,10 +93,7 @@ export function collectUmkmOwnerPhones(config: StudioWhatsAppConfigLookup): stri
 }
 
 /** D-40: count distinct owner/staff WA numbers on one store config. */
-export function countUmkmWaPhones(config: {
-    business_phone?: string | null;
-    allowlist_phones?: string[] | null;
-}): number {
+export function countUmkmWaPhones(config: StudioWhatsAppConfigPhones): number {
     return collectUmkmOwnerPhones(config).length;
 }
 
