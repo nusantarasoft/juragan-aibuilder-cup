@@ -41,7 +41,7 @@ const STATUS_OPTIONS: { value: StudioMarketingContentStatus | 'all'; label: stri
     { value: 'approved', label: 'Approved' },
     { value: 'rejected', label: 'Rejected' },
     { value: 'unpublished', label: 'Unpublished' },
-    { value: 'all', label: 'Semua' },
+    { value: 'all', label: 'All' },
 ];
 
 const STATUS_COLOR: Record<string, string> = {
@@ -84,7 +84,7 @@ export default function KontenMarketingPage() {
             setRows(list);
             setStores(storeList);
         } catch (e) {
-            message.error(e instanceof Error ? e.message : 'Gagal memuat konten marketing');
+            message.error(e instanceof Error ? e.message : 'Failed to load marketing content');
         } finally {
             setLoading(false);
         }
@@ -101,7 +101,7 @@ export default function KontenMarketingPage() {
             form.setFieldsValue({ caption: item.caption, headline: item.headline });
             setDrawerOpen(true);
         } catch (e) {
-            message.error(e instanceof Error ? e.message : 'Gagal memuat detail');
+            message.error(e instanceof Error ? e.message : 'Failed to load detail');
         }
     };
 
@@ -116,7 +116,7 @@ export default function KontenMarketingPage() {
                 values.headline,
             );
             setSelected(updated);
-            message.success('Caption disimpan');
+            message.success('Caption saved');
             load();
         } catch (e) {
             if (e instanceof Error) message.error(e.message);
@@ -130,11 +130,11 @@ export default function KontenMarketingPage() {
         setBusy(true);
         try {
             await studioService.approveMarketingContent(selected.id);
-            message.success('Konten di-approve — tampil di showcase brochure-gallery');
+            message.success('Content approved — now visible in brochure-gallery showcase');
             setDrawerOpen(false);
             load();
         } catch (e) {
-            message.error(e instanceof Error ? e.message : 'Gagal approve');
+            message.error(e instanceof Error ? e.message : 'Failed to approve');
         } finally {
             setBusy(false);
         }
@@ -145,11 +145,11 @@ export default function KontenMarketingPage() {
         setBusy(true);
         try {
             await studioService.rejectMarketingContent(selected.id);
-            message.success('Konten ditolak');
+            message.success('Content rejected');
             setDrawerOpen(false);
             load();
         } catch (e) {
-            message.error(e instanceof Error ? e.message : 'Gagal tolak');
+            message.error(e instanceof Error ? e.message : 'Failed to reject');
         } finally {
             setBusy(false);
         }
@@ -160,11 +160,11 @@ export default function KontenMarketingPage() {
         setBusy(true);
         try {
             await studioService.unpublishMarketingContent(selected.id);
-            message.success('Konten di-unpublish');
+            message.success('Content unpublished');
             setDrawerOpen(false);
             load();
         } catch (e) {
-            message.error(e instanceof Error ? e.message : 'Gagal unpublish');
+            message.error(e instanceof Error ? e.message : 'Failed to unpublish');
         } finally {
             setBusy(false);
         }
@@ -178,11 +178,11 @@ export default function KontenMarketingPage() {
                 limit: genLimit,
             });
             message.success(
-                `Generate selesai — ${res.created} baru, ${res.skipped} dilewati, ${res.errors} error`,
+                `Generation complete — ${res.created} new, ${res.skipped} skipped, ${res.errors} errors`,
             );
             load();
         } catch (e) {
-            message.error(e instanceof Error ? e.message : 'Generate gagal');
+            message.error(e instanceof Error ? e.message : 'Generation failed');
         } finally {
             setBusy(false);
         }
@@ -191,16 +191,16 @@ export default function KontenMarketingPage() {
     const toggleConsent = async (tenantId: string, consent: boolean) => {
         try {
             await studioService.setMarketingStoreConsent(tenantId, consent);
-            message.success(consent ? 'Consent marketing aktif' : 'Consent marketing nonaktif');
+            message.success(consent ? 'Marketing consent enabled' : 'Marketing consent disabled');
             load();
         } catch (e) {
-            message.error(e instanceof Error ? e.message : 'Gagal ubah consent');
+            message.error(e instanceof Error ? e.message : 'Failed to update consent');
         }
     };
 
     const columns = [
         {
-            title: 'Produk',
+            title: 'Product',
             key: 'product',
             render: (_: unknown, row: StudioMarketingContent) => (
                 <Space direction="vertical" size={0}>
@@ -223,11 +223,11 @@ export default function KontenMarketingPage() {
             width: 140,
         },
         {
-            title: 'Dibuat',
+            title: 'Created',
             dataIndex: 'created_at',
             key: 'created_at',
             width: 180,
-            render: (v: string) => new Date(v).toLocaleString('id-ID'),
+            render: (v: string) => new Date(v).toLocaleString('en-US'),
         },
         {
             title: '',
@@ -247,17 +247,17 @@ export default function KontenMarketingPage() {
             fallback={
                 <Alert
                     type="warning"
-                    message="Konten Marketing hanya untuk super admin Nusantarasoft."
+                    message="Marketing Content is restricted to Nusantarasoft super admins."
                     showIcon
                 />
             }
         >
             <CMSLayout
-                title="Konten Marketing UMKM"
-                subTitle="Generate kartu promo → review → galeri publik (tanpa Instagram)"
+                title="SME Marketing Content"
+                subTitle="Generate promo cards → review → public gallery (without Instagram)"
                 extra={[
-                    <Button key="reload" icon={<ReloadOutlined />} onClick={load} loading={loading}>
-                        Muat ulang
+                    <Button key="reload" icon={<ReloadOutlined />} onClick={load} loading={loading} style={{ borderRadius: 0 }}>
+                        Reload
                     </Button>,
                     <Button
                         key="gen"
@@ -265,38 +265,47 @@ export default function KontenMarketingPage() {
                         icon={<PictureOutlined />}
                         onClick={generateNow}
                         loading={busy}
+                        style={{ borderRadius: 0 }}
                     >
-                        Generate sekarang
+                        Generate now
                     </Button>,
                 ]}
             >
                 <Alert
                     type="info"
                     showIcon
-                    style={{ marginBottom: 16 }}
-                    message="Konten approved muncul di showcase publik (brochure-gallery) — grid, share WA, permalink /b/m-{id}."
+                    style={{ marginBottom: 16, borderRadius: 0 }}
+                    message="Approved content appears on the public showcase (brochure-gallery) — grid, WA share, permalink /b/m-{id}."
                     action={
                         <Button size="small" type="link" href={SHOWCASE_GALLERY_URL} target="_blank">
-                            Buka showcase
+                            Open showcase
                         </Button>
                     }
                 />
-                <Card size="small" title="Generate batch" style={{ marginBottom: 16 }}>
+                <Card
+                    size="small"
+                    title={<span className="font-mono text-xs uppercase tracking-[0.06em]">Generate batch</span>}
+                    style={{ marginBottom: 16, borderRadius: 0, borderTop: '2px solid #fb923c' }}
+                >
                     <Space wrap>
                         <Select
                             allowClear
-                            placeholder="Filter tenant (opsional)"
+                            placeholder="Filter tenant (optional)"
                             style={{ minWidth: 200 }}
                             options={storeOptions.map((t) => ({ value: t, label: t }))}
                             value={genStore}
                             onChange={setGenStore}
                         />
                         <InputNumber min={1} max={50} value={genLimit} onChange={(v) => setGenLimit(v ?? 5)} />
-                        <Text type="secondary">Maks produk per run</Text>
+                        <Text type="secondary">Max products per run</Text>
                     </Space>
                 </Card>
 
-                <Card size="small" title="Consent marketing per warung" style={{ marginBottom: 16 }}>
+                <Card
+                    size="small"
+                    title={<span className="font-mono text-xs uppercase tracking-[0.06em]">Marketing consent per store</span>}
+                    style={{ marginBottom: 16, borderRadius: 0, borderTop: '2px solid #fb923c' }}
+                >
                     <Table
                         size="small"
                         rowKey="tenant_id"
@@ -306,7 +315,7 @@ export default function KontenMarketingPage() {
                             { title: 'Tenant', dataIndex: 'tenant_id', key: 'tenant_id' },
                             { title: 'Label', dataIndex: 'label', key: 'label' },
                             {
-                                title: 'Consent galeri',
+                                title: 'Gallery consent',
                                 key: 'consent',
                                 render: (_: unknown, row: StudioMarketingStore) => (
                                     <Switch
@@ -348,27 +357,28 @@ export default function KontenMarketingPage() {
                     width={560}
                     open={drawerOpen}
                     onClose={() => setDrawerOpen(false)}
-                    title="Review konten marketing"
+                    title="Review marketing content"
                     extra={
                         selected && (
                             <Space>
                                 {selected.status === 'pending' && (
                                     <>
-                                        <Button icon={<CloseOutlined />} onClick={reject} loading={busy}>
-                                            Tolak
+                                        <Button icon={<CloseOutlined />} onClick={reject} loading={busy} style={{ borderRadius: 0 }}>
+                                            Reject
                                         </Button>
                                         <Button
                                             type="primary"
                                             icon={<CheckOutlined />}
                                             onClick={approve}
                                             loading={busy}
+                                            style={{ borderRadius: 0 }}
                                         >
                                             Approve
                                         </Button>
                                     </>
                                 )}
                                 {selected.status === 'approved' && (
-                                    <Button icon={<StopOutlined />} onClick={unpublish} loading={busy}>
+                                    <Button icon={<StopOutlined />} onClick={unpublish} loading={busy} style={{ borderRadius: 0 }}>
                                         Unpublish
                                     </Button>
                                 )}
@@ -381,23 +391,23 @@ export default function KontenMarketingPage() {
                             <img
                                 src={selected.image_public_url}
                                 alt={selected.product_name_snapshot}
-                                style={{ width: '100%', borderRadius: 8, marginBottom: 16 }}
+                                style={{ width: '100%', borderRadius: 0, marginBottom: 16 }}
                             />
                             <Descriptions column={1} size="small" bordered style={{ marginBottom: 16 }}>
                                 <Descriptions.Item label="Status">
-                                    <Tag color={STATUS_COLOR[selected.status]}>{selected.status}</Tag>
+                                    <Tag color={STATUS_COLOR[selected.status]} style={{ borderRadius: 0 }}>{selected.status}</Tag>
                                 </Descriptions.Item>
-                                <Descriptions.Item label="Produk">
+                                <Descriptions.Item label="Product">
                                     {selected.product_name_snapshot}
                                 </Descriptions.Item>
-                                <Descriptions.Item label="Warung">
+                                <Descriptions.Item label="Store">
                                     {selected.store_label_snapshot}
                                 </Descriptions.Item>
                                 {selected.reviewer_id && (
                                     <Descriptions.Item label="Reviewer">
                                         {selected.reviewer_id}
                                         {selected.decided_at
-                                            ? ` · ${new Date(selected.decided_at).toLocaleString('id-ID')}`
+                                            ? ` · ${new Date(selected.decided_at).toLocaleString('en-US')}`
                                             : ''}
                                     </Descriptions.Item>
                                 )}
@@ -409,12 +419,12 @@ export default function KontenMarketingPage() {
                                 <Form.Item name="caption" label="Caption" rules={[{ required: true }]}>
                                     <Input.TextArea rows={5} maxLength={2200} />
                                 </Form.Item>
-                                <Button onClick={saveCaption} loading={busy}>
-                                    Simpan caption
+                                <Button onClick={saveCaption} loading={busy} style={{ borderRadius: 0 }}>
+                                    Save caption
                                 </Button>
                             </Form>
                             <Paragraph type="secondary" style={{ marginTop: 16 }}>
-                                URL gambar publik: <Text code>{selected.image_public_url}</Text>
+                                Public image URL: <Text code>{selected.image_public_url}</Text>
                             </Paragraph>
                         </>
                     )}

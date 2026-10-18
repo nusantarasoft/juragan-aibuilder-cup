@@ -127,12 +127,15 @@ export function CMSLayoutGlobalStyles({ darkMode, vo }: { darkMode: boolean; vo:
                 #cms-pro-layout .ant-page-header {
                     background: ${darkMode ? "rgba(11, 14, 19, 0.92)" : "rgba(255, 255, 255, 0.92)"} !important;
                     border-bottom: 1px solid ${vo.border} !important;
-                    padding: 12px 20px !important;
+                    padding: 6px 12px !important;
                     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+                }
+                #cms-pro-layout .ant-page-header-heading {
+                    margin-block-start: 2px !important;
                 }
                 #cms-pro-layout .ant-page-header-heading-title {
                     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
-                    font-size: 16px !important;
+                    font-size: 14px !important;
                     font-weight: 700 !important;
                     letter-spacing: 0.08em !important;
                     text-transform: uppercase !important;
@@ -140,19 +143,19 @@ export function CMSLayoutGlobalStyles({ darkMode, vo }: { darkMode: boolean; vo:
                 }
                 #cms-pro-layout .ant-page-header-heading-sub-title {
                     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
-                    font-size: 11px !important;
+                    font-size: 10.5px !important;
                     color: ${vo.textMuted} !important;
                 }
                 #cms-pro-layout .ant-breadcrumb {
                     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
-                    font-size: 10px !important;
+                    font-size: 9.5px !important;
                     letter-spacing: 0.12em !important;
                     text-transform: uppercase !important;
                 }
                 #cms-pro-layout .ant-pro-page-container-children-container,
                 #cms-pro-layout .ant-pro-page-container-warp-page-header {
-                    padding-inline: 16px !important;
-                    padding-block: 14px !important;
+                    padding-inline: 8px !important;
+                    padding-block: 8px !important;
                 }
                 #cms-pro-layout .ant-pro-card,
                 #cms-pro-layout .ant-card {
@@ -163,6 +166,14 @@ export function CMSLayoutGlobalStyles({ darkMode, vo }: { darkMode: boolean; vo:
                     backdrop-filter: none !important;
                     -webkit-backdrop-filter: none !important;
                     transform: none !important;
+                }
+                /* Eliminate redundant outer wrapper ProCard padding/border around page children */
+                #cms-pro-layout .ant-pro-page-container-children-container > .ant-pro-card {
+                    background: transparent !important;
+                    border: none !important;
+                }
+                #cms-pro-layout .ant-pro-page-container-children-container > .ant-pro-card > .ant-pro-card-body {
+                    padding: 0px !important;
                 }
                 #cms-pro-layout .ant-card-head,
                 #cms-pro-layout .ant-pro-card-header {
@@ -227,6 +238,56 @@ export function CMSLayoutGlobalStyles({ darkMode, vo }: { darkMode: boolean; vo:
                 /* Align PageContainer title and subtitle by baseline */
                 .ant-page-header-heading-left {
                     align-items: baseline !important;
+                }
+
+                /* ---- Tactical HUD Tooltips & Popconfirm (Dark + Light Mode) ---- */
+                .ant-tooltip {
+                    max-width: 300px !important;
+                }
+                .ant-tooltip .ant-tooltip-inner {
+                    background: ${darkMode ? "#0b0e13" : "#ffffff"} !important;
+                    color: ${vo.text} !important;
+                    border: 1px solid ${vo.borderStrong} !important;
+                    border-left: 2px solid ${vo.accent} !important;
+                    border-radius: 0px !important;
+                    box-shadow: ${darkMode
+                        ? "0 8px 24px rgba(0, 0, 0, 0.72)"
+                        : "0 6px 18px rgba(15, 23, 42, 0.14)"} !important;
+                    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+                    font-size: 10.5px !important;
+                    font-weight: 500 !important;
+                    letter-spacing: 0.04em !important;
+                    line-height: 1.35 !important;
+                    padding: 4px 8px !important;
+                    min-height: 24px !important;
+                }
+                .ant-tooltip .ant-tooltip-arrow::before,
+                .ant-tooltip .ant-tooltip-arrow::after {
+                    background: ${darkMode ? "#0b0e13" : "#ffffff"} !important;
+                    border-color: ${vo.borderStrong} !important;
+                }
+                .ant-popover .ant-popover-inner {
+                    background: ${darkMode ? "#0b0e13" : "#ffffff"} !important;
+                    color: ${vo.text} !important;
+                    border: 1px solid ${vo.borderStrong} !important;
+                    border-top: 2px solid ${vo.accent} !important;
+                    border-radius: 0px !important;
+                    box-shadow: ${darkMode
+                        ? "0 10px 28px rgba(0, 0, 0, 0.75)"
+                        : "0 8px 22px rgba(15, 23, 42, 0.14)"} !important;
+                    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+                }
+                .ant-popover .ant-popover-title,
+                .ant-popconfirm .ant-popconfirm-title,
+                .ant-popconfirm .ant-popconfirm-description {
+                    color: ${vo.text} !important;
+                    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+                    font-size: 11px !important;
+                }
+                .ant-popover .ant-btn {
+                    border-radius: 0px !important;
+                    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+                    font-size: 10.5px !important;
                 }
         `}</style>
     );

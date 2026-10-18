@@ -3,6 +3,8 @@
 import React from "react";
 import { Form, Tag, Typography } from "antd";
 import { CheckCircleOutlined, CloseCircleOutlined } from "@ant-design/icons";
+import { useAdminLayout } from "@/components/layout/CMSLayout";
+import { getVOTheme } from "@/components/layout/voTheme";
 import type { LlmProvider, StudioAiStatus } from "../types";
 import { PROVIDER_LABELS } from "../types";
 
@@ -25,6 +27,8 @@ type Props = {
 };
 
 export default function ActiveProviderSelector({ status }: Props) {
+    const { darkMode } = useAdminLayout();
+    const t = getVOTheme(darkMode);
     const form = Form.useFormInstance();
     const active = Form.useWatch("default_llm_provider") as LlmProvider | undefined;
 
@@ -61,24 +65,25 @@ export default function ActiveProviderSelector({ status }: Props) {
                         }}
                         style={{
                             padding: "12px 14px",
-                            borderRadius: 10,
-                            border: selected ? "2px solid #1677ff" : "1px solid #e5e7eb",
-                            background: selected ? "#eff6ff" : "#ffffff",
+                            borderRadius: 0,
+                            border: selected ? "1px solid #fb923c" : `1px solid ${t.cardBorder}`,
+                            borderTop: selected ? "2px solid #fb923c" : `1px solid ${t.cardBorder}`,
+                            background: selected ? "rgba(251,146,60,0.08)" : t.surfaceBg,
                             cursor: "pointer",
                             minHeight: 96,
                             display: "flex",
                             flexDirection: "column",
                             gap: 8,
-                            boxShadow: selected ? "0 0 0 1px rgba(22,119,255,0.15)" : "none",
                             transition: "border-color 0.15s, background 0.15s",
                         }}
                     >
                         <Text
                             strong
+                            className="font-mono uppercase tracking-[0.04em]"
                             style={{
-                                fontSize: 13,
+                                fontSize: 12,
                                 lineHeight: 1.3,
-                                color: "#111827",
+                                color: selected ? "#fb923c" : t.textPrimary,
                             }}
                         >
                             {SHORT_LABELS[p]}
@@ -86,8 +91,8 @@ export default function ActiveProviderSelector({ status }: Props) {
 
                         <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
                             {selected && (
-                                <Tag color="blue" style={{ margin: 0 }}>
-                                    Aktif
+                                <Tag color="orange" style={{ margin: 0, borderRadius: 0 }}>
+                                    Active
                                 </Tag>
                             )}
                             <Tag
@@ -99,17 +104,17 @@ export default function ActiveProviderSelector({ status }: Props) {
                                         <CloseCircleOutlined />
                                     )
                                 }
-                                style={{ margin: 0 }}
+                                style={{ margin: 0, borderRadius: 0 }}
                             >
-                                {meta?.configured ? "Siap" : "Setup"}
+                                {meta?.configured ? "Ready" : "Setup"}
                             </Tag>
                         </div>
 
                         {meta?.model && (
                             <Text
-                                type="secondary"
                                 ellipsis
-                                style={{ fontSize: 11, lineHeight: 1.3, maxWidth: "100%" }}
+                                className="font-mono"
+                                style={{ fontSize: 11, lineHeight: 1.3, maxWidth: "100%", color: t.textMuted }}
                                 title={meta.model}
                             >
                                 {meta.model}

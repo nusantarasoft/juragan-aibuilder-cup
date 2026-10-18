@@ -49,28 +49,26 @@ import { useStudioUserId } from '../useStudioUserId';
 import WhatsAppSimChatDrawer from './WhatsAppSimChatDrawer';
 
 const { Text, Paragraph } = Typography;
-const glass = {
-    background: 'rgba(255,255,255,0.65)',
-    backdropFilter: 'blur(12px)',
-    border: '1px solid rgba(255,255,255,0.45)',
-    borderRadius: 14,
+const tacticalCard: React.CSSProperties = {
+    borderRadius: 0,
+    borderTop: '2px solid #fb923c',
 };
 
 const INTENT_OPTIONS: { value: UmkmCommandIntent; label: string }[] = [
-    { value: 'ask', label: 'Tanya' },
-    { value: 'menu_hub', label: 'Hub Menu' },
-    { value: 'list_products', label: 'Daftar menu' },
-    { value: 'add_product', label: 'Tambah menu' },
-    { value: 'add_stock', label: 'Tambah stok' },
-    { value: 'check_stock', label: 'Cek stok' },
-    { value: 'purchase_hub', label: 'Hub Belanja' },
-    { value: 'list_purchases', label: 'Daftar belanja' },
-    { value: 'record_purchase', label: 'Tambah belanja' },
-    { value: 'list_sales', label: 'Daftar penjualan' },
-    { value: 'record_sale', label: 'Tambah penjualan' },
-    { value: 'report_hub', label: 'Hub Laporan' },
-    { value: 'sales_report', label: 'Laporan' },
-    { value: 'help', label: 'Bantuan' },
+    { value: 'ask', label: 'Ask' },
+    { value: 'menu_hub', label: 'Menu Hub' },
+    { value: 'list_products', label: 'Menu List' },
+    { value: 'add_product', label: 'Add Menu Item' },
+    { value: 'add_stock', label: 'Add Stock' },
+    { value: 'check_stock', label: 'Check Stock' },
+    { value: 'purchase_hub', label: 'Purchase Hub' },
+    { value: 'list_purchases', label: 'Purchase List' },
+    { value: 'record_purchase', label: 'Record Purchase' },
+    { value: 'list_sales', label: 'Sales List' },
+    { value: 'record_sale', label: 'Record Sale' },
+    { value: 'report_hub', label: 'Report Hub' },
+    { value: 'sales_report', label: 'Sales Report' },
+    { value: 'help', label: 'Help' },
 ];
 
 const KEYWORD_INTENTS: UmkmCommandIntent[] = [
@@ -211,11 +209,11 @@ export default function UmkmStudioPage() {
             } else {
                 setPendingRegs([]);
                 const err = regsResult.error as { message?: string };
-                message.error(err?.message || 'Gagal memuat antrian pending UMKM');
+                message.error(err?.message || 'Failed to load pending SME queue');
             }
         } catch (e: unknown) {
             const err = e as { message?: string };
-            message.error(err.message || 'Gagal memuat data UMKM');
+            message.error(err.message || 'Failed to load SME data');
         } finally {
             setLoading(false);
         }
@@ -225,11 +223,11 @@ export default function UmkmStudioPage() {
         setActingRegId(row.id);
         try {
             await studioService.approveUmkmRegistration(row.id);
-            message.success(`Disetujui: ${row.store_name || row.phone}`);
+            message.success(`Approved: ${row.store_name || row.phone}`);
             await load();
         } catch (e: unknown) {
             const err = e as { message?: string };
-            message.error(err.message || 'Gagal approve');
+            message.error(err.message || 'Failed to approve');
         } finally {
             setActingRegId(null);
         }
@@ -239,11 +237,11 @@ export default function UmkmStudioPage() {
         setActingRegId(row.id);
         try {
             await studioService.rejectUmkmRegistration(row.id);
-            message.success(`Ditolak: ${row.store_name || row.phone}`);
+            message.success(`Rejected: ${row.store_name || row.phone}`);
             await load();
         } catch (e: unknown) {
             const err = e as { message?: string };
-            message.error(err.message || 'Gagal tolak');
+            message.error(err.message || 'Failed to reject');
         } finally {
             setActingRegId(null);
         }
@@ -352,10 +350,10 @@ export default function UmkmStudioPage() {
             let notebookId = values.notebookId as string | undefined;
 
             if (!editing && values.createNewNotebook) {
-                if (!userId) throw new Error('Login dulu untuk membuat notebook');
+                if (!userId) throw new Error('Please sign in first to create a notebook');
                 const nb = await studioService.createNotebook(
                     values.label || values.tenantId,
-                    'UMKM penjualan via WhatsApp',
+                    'SME sales via WhatsApp',
                     userId,
                     'customer',
                 );
@@ -363,7 +361,7 @@ export default function UmkmStudioPage() {
             }
 
             if (!notebookId) {
-                throw new Error('Pilih atau buat notebook');
+                throw new Error('Select or create a notebook');
             }
 
             const ownerPhone = validateSingleStoreWaPhone(values.ownerPhone);
@@ -389,7 +387,7 @@ export default function UmkmStudioPage() {
                 pendampingDirty ? pendampingEnabled : undefined,
             );
 
-            message.success(editing ? 'UMKM diperbarui' : 'UMKM baru ditambahkan');
+            message.success(editing ? 'SME updated' : 'New SME added');
             setCommandsDirty(false);
             setPendampingDirty(false);
             setDrawerOpen(false);
@@ -402,7 +400,7 @@ export default function UmkmStudioPage() {
                     setSimInitialMessage(opts.openSimWith.trim());
                     setSimTarget(row);
                 } else {
-                    message.warning('Simpan OK, tapi Simulasi butuh WA aktif + notebook');
+                    message.warning('Saved successfully, but Simulator requires active WA + notebook');
                 }
             }
             return true;
@@ -412,13 +410,13 @@ export default function UmkmStudioPage() {
                 errorFields?: { errors?: string[]; name?: (string | number)[] }[];
             };
             if (err.errorFields?.length) {
-                const first = err.errorFields[0]?.errors?.[0] || 'Lengkapi field wajib dulu';
+                const first = err.errorFields[0]?.errors?.[0] || 'Please complete required fields first';
                 message.error(first);
                 form.scrollToField(err.errorFields[0]?.name?.[0] as string, {
                     block: 'center',
                 });
             } else {
-                message.error(err.message || 'Gagal menyimpan');
+                message.error(err.message || 'Failed to save');
             }
             return false;
         } finally {
@@ -440,7 +438,7 @@ export default function UmkmStudioPage() {
             setPreviewConfirm(res.confirm);
         } catch (e: unknown) {
             const err = e as { message?: string };
-            message.error(err.message || 'Gagal preview intent');
+            message.error(err.message || 'Failed to preview intent');
             setPreviewIntent(null);
             setPreviewConfirm(null);
         } finally {
@@ -451,28 +449,28 @@ export default function UmkmStudioPage() {
     const handleTryInSim = async () => {
         const sample = previewSample.trim();
         if (!sample) {
-            message.warning('Isi contoh pesan dulu');
+            message.warning('Enter a sample message first');
             return;
         }
         if (commandsDirty) {
-            message.info('Menyimpan dulu supaya Simulasi memakai perintah terbaru…');
+            message.info('Saving first so Simulator uses the latest commands…');
         }
         await handleSave({ openSimWith: sample });
     };
 
     const handleSetupUmkm = async (row: StudioWhatsAppConfig) => {
         if (!row.notebook_id) {
-            message.warning('Set notebook dulu sebelum setup UMKM');
+            message.warning('Set a notebook first before SME setup');
             return;
         }
         setSettingUp(true);
         try {
             await studioService.setupUmkmNotebook(row.notebook_id, row.tenant_id, false);
-            message.success(`Mode UMKM aktif untuk ${row.label || row.tenant_id}`);
+            message.success(`SME mode enabled for ${row.label || row.tenant_id}`);
             await load();
         } catch (e: unknown) {
             const err = e as { message?: string };
-            message.error(err.message || 'Gagal setup UMKM');
+            message.error(err.message || 'Failed to set up SME');
         } finally {
             setSettingUp(false);
         }
@@ -489,33 +487,33 @@ export default function UmkmStudioPage() {
 
     const previewLabel = (() => {
         if (previewConfirm) {
-            return previewConfirm === 'confirm' ? 'Konfirmasi (ya)' : 'Batal';
+            return previewConfirm === 'confirm' ? 'Confirm (yes)' : 'Cancel';
         }
         if (!previewIntent) return null;
-        if (previewIntent === 'unknown') return 'Tidak cocok / unknown';
+        if (previewIntent === 'unknown') return 'No match / unknown';
         return INTENT_LABEL[previewIntent] || previewIntent;
     })();
 
     const columns = [
         {
-            title: 'UMKM',
+            title: 'SME',
             key: 'label',
             render: (_: unknown, row: StudioWhatsAppConfig) => (
-                <Space orientation="vertical" size={0}>
+                <Space direction="vertical" size={0}>
                     <Text strong>{row.label || row.tenant_id}</Text>
-                    <Text type="secondary" style={{ fontSize: 11 }}>
+                    <Text type="secondary" className="font-mono" style={{ fontSize: 11 }}>
                         {row.tenant_id}
                     </Text>
                 </Space>
             ),
         },
         {
-            title: 'Nomor pemilik',
+            title: 'Owner phone',
             key: 'owner_phones',
             render: (_: unknown, row: StudioWhatsAppConfig) => {
                 const phone = collectConfigOwnerPhones(row)[0];
                 if (!phone) return '—';
-                return <Tag color="green">{phone}</Tag>;
+                return <Tag color="green" className="font-mono" style={{ borderRadius: 0 }}>{phone}</Tag>;
             },
         },
         {
@@ -523,18 +521,18 @@ export default function UmkmStudioPage() {
             key: 'status',
             render: (_: unknown, row: StudioWhatsAppConfig) => (
                 <Space>
-                    <Tag color={row.enabled ? 'success' : 'default'}>
-                        {row.enabled ? 'WA aktif' : 'WA off'}
+                    <Tag color={row.enabled ? 'success' : 'default'} style={{ borderRadius: 0 }}>
+                        {row.enabled ? 'WA active' : 'WA off'}
                     </Tag>
                 </Space>
             ),
         },
         {
-            title: 'Aksi',
+            title: 'Actions',
             key: 'actions',
             render: (_: unknown, row: StudioWhatsAppConfig) => (
                 <Space wrap>
-                    <Button size="small" icon={<SettingOutlined />} onClick={() => openEdit(row)}>
+                    <Button size="small" icon={<SettingOutlined />} onClick={() => openEdit(row)} style={{ borderRadius: 0 }}>
                         Edit
                     </Button>
                     <Button
@@ -542,13 +540,14 @@ export default function UmkmStudioPage() {
                         type="primary"
                         loading={settingUp}
                         onClick={() => handleSetupUmkm(row)}
+                        style={{ borderRadius: 0 }}
                     >
-                        Setup UMKM
+                        Setup SME
                     </Button>
                     <Tooltip
                         title={
                             !row.enabled || !row.notebook_id
-                                ? 'Aktifkan WhatsApp dan set notebook dulu'
+                                ? 'Enable WhatsApp and set a notebook first'
                                 : undefined
                         }
                     >
@@ -561,21 +560,22 @@ export default function UmkmStudioPage() {
                                     setSimTarget(row);
                                 }}
                                 disabled={!row.enabled || !row.notebook_id}
+                                style={{ borderRadius: 0 }}
                             >
-                                Simulasi chat
+                                Chat simulator
                             </Button>
                         </span>
                     </Tooltip>
                     <Link href={`/admin/ai-studio/ai-gateway?tenant=${encodeURIComponent(row.tenant_id)}`}>
-                        <Button size="small" icon={<WhatsAppOutlined />}>
+                        <Button size="small" icon={<WhatsAppOutlined />} style={{ borderRadius: 0 }}>
                             WA
                         </Button>
                     </Link>
                     <Link
                         href={`/admin/inventory/items?tenantId=${encodeURIComponent(row.tenant_id)}`}
                     >
-                        <Button size="small" icon={<UnorderedListOutlined />}>
-                            Katalog
+                        <Button size="small" icon={<UnorderedListOutlined />} style={{ borderRadius: 0 }}>
+                            Catalog
                         </Button>
                     </Link>
                 </Space>
@@ -585,58 +585,45 @@ export default function UmkmStudioPage() {
 
     return (
         <CMSLayout
-            title="UMKM Penjualan WA"
-            subTitle="Satu nomor WA admin — tiap UMKM boleh punya beberapa nomor pemilik toko"
+            title="SME WhatsApp Sales"
+            subTitle="Single admin WA number — each SME can have multiple store owner phone numbers"
             extra={[
-                <Button key="add" type="primary" icon={<PlusOutlined />} onClick={openCreate}>
-                    Tambah UMKM
+                <Button key="add" type="primary" icon={<PlusOutlined />} onClick={openCreate} style={{ borderRadius: 0 }}>
+                    Add SME
                 </Button>,
                 <Link key="setup" href="/admin/ai-studio/ai-gateway">
-                    <Button>Setup WhatsApp</Button>
+                    <Button style={{ borderRadius: 0 }}>Setup WhatsApp</Button>
                 </Link>,
-                <Button key="r" icon={<ReloadOutlined />} onClick={load} loading={loading} />,
+                <Button key="r" icon={<ReloadOutlined />} onClick={load} loading={loading} style={{ borderRadius: 0 }} />,
             ].filter(Boolean)}
         >
             <motion.div
-                initial={{ opacity: 0, y: 16 }}
+                initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
-                style={{ display: 'flex', flexDirection: 'column', gap: 16 }}
+                style={{ display: 'flex', flexDirection: 'column', gap: 8 }}
             >
                 <Alert
                     type="info"
                     showIcon
-                    title="Model: satu nomor WA admin (Hermes)"
-                    description={
-                        <ol style={{ margin: '8px 0 0', paddingLeft: 18, fontSize: 12 }}>
-                            <li>
-                                Pair <strong>satu</strong> nomor admin di{' '}
-                                <Link href="/admin/ai-studio/ai-gateway">
-                                    WhatsApp Gateway (Hermes)
-                                </Link>
-                            </li>
-                            <li>
-                                Pemilik bisa daftar sendiri lewat WA: ketik <strong>DAFTAR</strong> → antrean
-                                di bawah → Approve
-                            </li>
-                            <li>
-                                Atau <strong>Tambah UMKM</strong> manual — nomor HP pemilik + perintah WA
-                            </li>
-                            <li>
-                                Uji lewat <strong>Simulasi chat</strong> (tanpa kirim WA live), lalu isi{' '}
-                                <strong>Katalog</strong> per tenant
-                            </li>
-                        </ol>
+                    style={{ borderRadius: 0, padding: '6px 10px' }}
+                    message={
+                        <span className="text-xs">
+                            <strong>SME Flow (1 Hermes Number):</strong>{' '}
+                            1) Pair in <Link href="/admin/ai-studio/ai-gateway">WA Gateway</Link> ·{' '}
+                            2) Send <strong>DAFTAR</strong> via WA → Approve below (or <strong>Add SME</strong> manually) ·{' '}
+                            3) Test in <strong>Chat simulator</strong> · 4) Populate <strong>Catalog</strong>.
+                        </span>
                     }
                 />
 
                 <Card
                     size="small"
-                    style={glass}
+                    style={tacticalCard}
                     title={
                         <Space>
-                            <Text strong>Menunggu approve</Text>
+                            <Text strong className="font-mono text-xs uppercase tracking-[0.06em]">Pending approval</Text>
                             {pendingRegs.length > 0 ? (
-                                <Tag color="orange">{pendingRegs.length}</Tag>
+                                <Tag color="orange" className="font-mono" style={{ borderRadius: 0 }}>{pendingRegs.length}</Tag>
                             ) : null}
                         </Space>
                     }
@@ -646,22 +633,22 @@ export default function UmkmStudioPage() {
                         loading={loading}
                         dataSource={pendingRegs}
                         pagination={false}
-                        locale={{ emptyText: 'Tidak ada antrean DAFTAR dari WhatsApp' }}
+                        locale={{ emptyText: 'No pending DAFTAR queue from WhatsApp' }}
                         columns={[
                             {
-                                title: 'Waktu',
+                                title: 'Time',
                                 dataIndex: 'created_at',
                                 width: 160,
                                 render: (v: string) =>
-                                    v ? new Date(v).toLocaleString('id-ID') : '—',
+                                    v ? new Date(v).toLocaleString('en-US') : '—',
                             },
                             {
-                                title: 'Nomor WA',
+                                title: 'WA Number',
                                 dataIndex: 'phone',
-                                render: (p: string) => <Tag color="green">{p}</Tag>,
+                                render: (p: string) => <Tag color="green" className="font-mono" style={{ borderRadius: 0 }}>{p}</Tag>,
                             },
                             {
-                                title: 'Nama toko',
+                                title: 'Store name',
                                 dataIndex: 'store_name',
                                 render: (n: string | null) => n || '—',
                             },
@@ -677,6 +664,7 @@ export default function UmkmStudioPage() {
                                             icon={<CheckOutlined />}
                                             loading={actingRegId === row.id}
                                             onClick={() => void handleApproveReg(row)}
+                                            style={{ borderRadius: 0 }}
                                         >
                                             Approve
                                         </Button>
@@ -686,8 +674,9 @@ export default function UmkmStudioPage() {
                                             icon={<CloseOutlined />}
                                             loading={actingRegId === row.id}
                                             onClick={() => void handleRejectReg(row)}
+                                            style={{ borderRadius: 0 }}
                                         >
-                                            Tolak
+                                            Reject
                                         </Button>
                                     </Space>
                                 ),
@@ -696,34 +685,34 @@ export default function UmkmStudioPage() {
                     />
                 </Card>
 
-                <Card size="small" style={glass} title={<Text strong>Daftar UMKM</Text>}>
+                <Card size="small" style={tacticalCard} title={<Text strong className="font-mono text-xs uppercase tracking-[0.06em]">SME Directory</Text>}>
                     <Table
                         rowKey="tenant_id"
                         loading={loading}
                         dataSource={configs}
                         columns={columns}
                         pagination={false}
-                        locale={{ emptyText: 'Belum ada UMKM — klik Tambah UMKM' }}
+                        locale={{ emptyText: 'No SMEs yet — click Add SME' }}
                     />
                 </Card>
             </motion.div>
 
             <Drawer
-                title={editing ? 'Edit UMKM' : 'Tambah UMKM baru'}
+                title={editing ? 'Edit SME' : 'Add new SME'}
                 size={560}
                 open={drawerOpen}
                 onClose={() => setDrawerOpen(false)}
                 extra={
                     <Button type="primary" loading={saving} onClick={() => void handleSave()}>
-                        Simpan
+                        Save
                     </Button>
                 }
             >
                 <Form form={form} layout="vertical">
                     <Form.Item
                         name="label"
-                        label="Nama toko"
-                        rules={[{ required: true, message: 'Nama toko wajib' }]}
+                        label="Store name"
+                        rules={[{ required: true, message: 'Store name is required' }]}
                     >
                         <Input
                             placeholder="Warung Bu Ani"
@@ -733,8 +722,8 @@ export default function UmkmStudioPage() {
                     <Form.Item
                         name="tenantId"
                         label="Tenant ID"
-                        rules={[{ required: true, message: 'Tenant ID wajib' }]}
-                        extra="Unik per UMKM. Dipakai untuk isolasi data di database."
+                        rules={[{ required: true, message: 'Tenant ID is required' }]}
+                        extra="Unique per SME. Used for data isolation in the database."
                     >
                         <Input placeholder="umkm-warung-bu-ani" disabled={!!editing} />
                     </Form.Item>
@@ -743,24 +732,24 @@ export default function UmkmStudioPage() {
                     </Form.Item>
                     <Form.Item
                         name="ownerPhone"
-                        label="Nomor WhatsApp pemilik toko"
+                        label="Store owner WhatsApp number"
                         rules={[
                             {
                                 validator: async (_, value) => {
                                     if (!normalizeSingleStoreWaPhone(value)) {
-                                        throw new Error('Nomor pemilik wajib (628...)');
+                                        throw new Error('Owner phone is required (628...)');
                                     }
                                 },
                             },
                         ]}
-                        extra="Satu nomor per toko (D-40). Format 628..."
+                        extra="One number per store (D-40). Format 628..."
                     >
                         <Input placeholder="6288123456789" />
                     </Form.Item>
 
                     {!editing ? (
                         <Form.Item name="createNewNotebook" label="Notebook" valuePropName="checked">
-                            <Switch checkedChildren="Buat notebook baru" unCheckedChildren="Pilih existing" />
+                            <Switch checkedChildren="Create new notebook" unCheckedChildren="Select existing" />
                         </Form.Item>
                     ) : null}
 
@@ -769,11 +758,11 @@ export default function UmkmStudioPage() {
                             editing || !getFieldValue('createNewNotebook') ? (
                                 <Form.Item
                                     name="notebookId"
-                                    label="Notebook AI Studio"
+                                    label="AI Studio Notebook"
                                     rules={[{ required: true }]}
                                 >
                                     <Select
-                                        placeholder="Pilih notebook"
+                                        placeholder="Select notebook"
                                         options={notebooks.map((n) => ({
                                             value: n.id,
                                             label: n.name,
@@ -783,19 +772,19 @@ export default function UmkmStudioPage() {
                                 </Form.Item>
                             ) : (
                                 <Paragraph type="secondary" style={{ fontSize: 12 }}>
-                                    Notebook baru akan dibuat otomatis saat simpan.
+                                    A new notebook will be created automatically upon saving.
                                 </Paragraph>
                             )
                         }
                     </Form.Item>
 
-                    <Form.Item name="enabled" label="Aktifkan WhatsApp" valuePropName="checked">
+                    <Form.Item name="enabled" label="Enable WhatsApp" valuePropName="checked">
                         <Switch />
                     </Form.Item>
 
                     <Form.Item
-                        label="Pendamping bisnis"
-                        extra="Digit *7* + alias pendamping. Matikan untuk kill-switch per toko."
+                        label="Business Advisor"
+                        extra="Digit *7* + advisor aliases. Turn off as a per-store kill-switch."
                     >
                         <Switch
                             checked={pendampingEnabled}
@@ -809,11 +798,11 @@ export default function UmkmStudioPage() {
                     </Form.Item>
 
                     <Divider titlePlacement="start" plain>
-                        Perintah WhatsApp
+                        WhatsApp Commands
                     </Divider>
                     <Paragraph type="secondary" style={{ fontSize: 12, marginTop: -8 }}>
-                        Tambah/hapus angka menu dan kata kunci. Intent aksi tetap (catat, stok, daftar, laporan,
-                        bantuan).
+                        Add/remove menu digits and keywords. Action intents remain fixed (record, stock, list, report,
+                        help).
                     </Paragraph>
 
                     <Space style={{ marginBottom: 8 }} wrap>
@@ -826,12 +815,12 @@ export default function UmkmStudioPage() {
                                     ...prev,
                                     menu: [
                                         ...prev.menu,
-                                        { digit: '', intent: 'help', label: 'Baru' },
+                                        { digit: '', intent: 'help', label: 'New' },
                                     ],
                                 }));
                             }}
                         >
-                            Tambah menu
+                            Add menu item
                         </Button>
                         <Button
                             size="small"
@@ -839,10 +828,10 @@ export default function UmkmStudioPage() {
                                 if (defaults) {
                                     setCommands(structuredClone(defaults));
                                     setCommandsDirty(true);
-                                } else message.warning('Default belum termuat');
+                                } else message.warning('Defaults not loaded yet');
                             }}
                         >
-                            Reset ke default
+                            Reset to default
                         </Button>
                     </Space>
 
@@ -895,7 +884,7 @@ export default function UmkmStudioPage() {
                             <Select
                                 mode="tags"
                                 value={commands.keywords[intent] || []}
-                                placeholder="Ketik lalu Enter"
+                                placeholder="Type then press Enter"
                                 tokenSeparators={[',']}
                                 open={false}
                                 onChange={(tags: string[]) => {
@@ -909,7 +898,7 @@ export default function UmkmStudioPage() {
                         </Form.Item>
                     ))}
 
-                    <Form.Item label="Konfirmasi (ya / 1 / …)" style={{ marginBottom: 10 }}>
+                    <Form.Item label="Confirmation (yes / ya / 1 / …)" style={{ marginBottom: 10 }}>
                         <Select
                             mode="tags"
                             value={commands.confirm}
@@ -922,7 +911,7 @@ export default function UmkmStudioPage() {
                             }}
                         />
                     </Form.Item>
-                    <Form.Item label="Batal (batal / 0 / …)" style={{ marginBottom: 10 }}>
+                    <Form.Item label="Cancel (cancel / batal / 0 / …)" style={{ marginBottom: 10 }}>
                         <Select
                             mode="tags"
                             value={commands.cancel}
@@ -937,16 +926,16 @@ export default function UmkmStudioPage() {
                     </Form.Item>
 
                     <Divider titlePlacement="start" plain>
-                        Preview perintah
+                        Command Preview
                     </Divider>
                     <Paragraph type="secondary" style={{ fontSize: 12, marginTop: -8 }}>
-                        Ketik contoh pesan (atau digit menu) terhadap perintah di atas — prediksi intent
-                        memakai matcher yang sama dengan WhatsApp.
+                        Type a sample message (or menu digit) against the commands above — intent prediction
+                        uses the same matcher as WhatsApp.
                     </Paragraph>
                     <Space.Compact style={{ width: '100%', marginBottom: 8 }}>
                         <Input
                             value={previewSample}
-                            placeholder="contoh: cek stok gula / 5 / jual 2 mie"
+                            placeholder="e.g., cek stok gula / 5 / jual 2 mie"
                             onChange={(e) => {
                                 setPreviewSample(e.target.value);
                                 setPreviewIntent(null);
@@ -955,7 +944,7 @@ export default function UmkmStudioPage() {
                             onPressEnter={() => void runPreview()}
                         />
                         <Button loading={previewing} onClick={() => void runPreview()}>
-                            Cek intent
+                            Check intent
                         </Button>
                     </Space.Compact>
                     {previewLabel != null && (
@@ -977,11 +966,11 @@ export default function UmkmStudioPage() {
                         disabled={!previewSample.trim()}
                         onClick={() => void handleTryInSim()}
                     >
-                        Coba di Simulasi
+                        Try in Simulator
                     </Button>
                     <Paragraph type="secondary" style={{ fontSize: 11, marginTop: 6 }}>
-                        Menyimpan dulu (Simulasi memakai perintah tersimpan), lalu membuka chat dengan
-                        pesan sudah terisi — kirim manual.
+                        Saves first (Simulator uses saved commands), then opens the chat with
+                        the message pre-filled — send manually.
                     </Paragraph>
                 </Form>
             </Drawer>

@@ -26,7 +26,7 @@ export default function OptionalProvidersPanel({ activeProvider, status }: Props
                 type="info"
                 showIcon
                 style={{ marginBottom: 16 }}
-                message="Hanya provider bertanda Aktif yang dipakai oleh semua modul (CRM, ITSM, PM, AI Studio, dll.). Provider lain di bawah opsional — simpan kredensial untuk ganti cepat nanti."
+                message="Only the provider marked Active is used by all modules (CRM, ITSM, PM, AI Studio, etc.). Other providers below are optional — store credentials for quick switching later."
             />
             <Collapse
                 items={inactive.map((p) => ({
@@ -34,7 +34,7 @@ export default function OptionalProvidersPanel({ activeProvider, status }: Props
                     label: (
                         <span>
                             {PROVIDER_LABELS[p]}{" "}
-                            <Text type="secondary">(tidak aktif)</Text>
+                            <Text type="secondary">(inactive)</Text>
                         </span>
                     ),
                     children: (

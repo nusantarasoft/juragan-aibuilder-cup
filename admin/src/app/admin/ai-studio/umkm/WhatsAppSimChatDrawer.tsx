@@ -6,6 +6,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Button, Drawer, Input, Space, Tag, Typography } from 'antd';
 import { ClearOutlined, SendOutlined } from '@ant-design/icons';
+import { useAdminLayout } from '@/components/layout/CMSLayout';
+import { getVOTheme } from '@/components/layout/voTheme';
 import { studioService, type StudioWhatsAppConfig } from '@/lib/studioService';
 
 const { Text, Paragraph } = Typography;
@@ -31,6 +33,8 @@ export default function WhatsAppSimChatDrawer({
     config,
     initialMessage,
 }: Props) {
+    const { darkMode } = useAdminLayout();
+    const t = getVOTheme(darkMode);
     const [phone, setPhone] = useState('6280000000001');
     const [input, setInput] = useState('');
     const [sending, setSending] = useState(false);
@@ -51,10 +55,10 @@ export default function WhatsAppSimChatDrawer({
         if (initialMessage == null) return;
         setInput(initialMessage);
         // Focus composer so Send is one click away (no auto-send).
-        const t = window.setTimeout(() => {
+        const timer = window.setTimeout(() => {
             inputRef.current?.focus?.();
         }, 50);
-        return () => window.clearTimeout(t);
+        return () => window.clearTimeout(timer);
     }, [open, initialMessage]);
 
     const tenantId = config?.tenant_id || '';
@@ -71,7 +75,7 @@ export default function WhatsAppSimChatDrawer({
                 phone: phone.trim() || undefined,
             });
         } catch (e: unknown) {
-            const msg = e instanceof Error ? e.message : 'Gagal reset sesi';
+            const msg = e instanceof Error ? e.message : 'Failed to reset session';
             setError(msg);
         }
     };
@@ -97,12 +101,12 @@ export default function WhatsAppSimChatDrawer({
                 {
                     id: `b-${Date.now()}`,
                     role: 'bot',
-                    text: res.answer || '(kosong)',
+                    text: res.answer || '(empty)',
                     path: res.path,
                 },
             ]);
         } catch (e: unknown) {
-            const msg = e instanceof Error ? e.message : 'Gagal kirim';
+            const msg = e instanceof Error ? e.message : 'Failed to send';
             setError(msg);
             setLines((prev) => [
                 ...prev,
@@ -121,12 +125,12 @@ export default function WhatsAppSimChatDrawer({
         <Drawer
             title={
                 <Space direction="vertical" size={0}>
-                    <Space size={4}>
-                        <Text strong>Simulasi chat WA</Text>
-                        <Tag color="gold">Demo</Tag>
+                    <Space size={6}>
+                        <Text strong className="font-mono text-xs uppercase tracking-[0.06em]">WA Chat Simulator</Text>
+                        <Tag color="gold" style={{ borderRadius: 0 }}>Demo</Tag>
                     </Space>
                     <Text type="secondary" style={{ fontSize: 12, fontWeight: 400 }}>
-                        {label} · pipeline sama inbound WhatsApp (tanpa kirim WA live)
+                        {label} · same pipeline as inbound WhatsApp (without sending live WA)
                     </Text>
                 </Space>
             }
@@ -134,55 +138,106 @@ export default function WhatsAppSimChatDrawer({
             onClose={onClose}
             width={420}
             destroyOnClose={false}
-            styles={{ body: { display: 'flex', flexDirection: 'column', padding: 12, gap: 8 } }}
+            styles={{ body: { display: 'flex', flexDirection: 'column', padding: 10, gap: 6 } }}
             extra={
-                <Button size="small" icon={<ClearOutlined />} onClick={resetChat}>
+                <Button size="small" icon={<ClearOutlined />} onClick={resetChat} style={{ borderRadius: 0 }}>
                     Reset
                 </Button>
             }
         >
-            <Alert
-                type="info"
-                showIcon
-                style={{ marginBottom: 4 }}
-                message={
-                    <span style={{ fontSize: 12 }}>
-                        Mode config:{' '}
-                        <Tag>handleMessage langsung</Tag>
-                        — sama seperti WA live. Reset membersihkan chat + sesi wizard.
+            {/* Top-Docked WA Simulator Command Box */}
+            <div
+                style={{
+                    padding: '6px 8px',
+                    border: `1px solid ${t.cardBorder}`,
+                    borderLeft: '2px solid #25d366',
+                    background: t.cardBg,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 6,
+                }}
+            >
+                <div className="flex items-center justify-between gap-2">
+                    <span className="font-mono text-[10px] uppercase tracking-wider" style={{ color: t.textSecondary }}>
+                        MODE: <Tag className="!m-0 !px-1 !text-[9px]" style={{ borderRadius: 0 }}>Direct handleMessage</Tag>
                     </span>
-                }
-            />
+                    <Input
+                        size="small"
+                        addonBefore={<span className="font-mono text-[10px]">PH</span>}
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        placeholder="628…"
+                        disabled={sending}
+                        style={{ maxWidth: 185 }}
+                    />
+                </div>
 
-            <Space.Compact style={{ width: '100%' }}>
-                <Input
-                    addonBefore="HP sim"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="628…"
-                    disabled={sending}
-                />
-            </Space.Compact>
+                <Space.Compact style={{ width: '100%' }}>
+                    <Input
+                        ref={inputRef}
+                        value={input}
+                        onChange={(e) => setInput(e.target.value)}
+                        placeholder="Type a message as in WhatsApp…"
+                        disabled={sending || !tenantId}
+                        onPressEnter={() => void send()}
+                    />
+                    <Button
+                        type="primary"
+                        icon={<SendOutlined />}
+                        loading={sending}
+                        disabled={!input.trim() || !tenantId}
+                        onClick={() => void send()}
+                        style={{ borderRadius: 0 }}
+                    >
+                        Send
+                    </Button>
+                </Space.Compact>
+
+                <div className="flex flex-wrap items-center gap-1">
+                    {['jual 2 bakso', 'cek stok', 'belanja', 'ya', 'batal'].map((cmd) => (
+                        <button
+                            key={cmd}
+                            type="button"
+                            onClick={() => {
+                                setInput(cmd);
+                                inputRef.current?.focus?.();
+                            }}
+                            className="px-1.5 py-0.5 font-mono text-[10px] border cursor-pointer transition-opacity hover:opacity-100 opacity-80"
+                            style={{
+                                borderColor: t.cardBorder,
+                                background: t.surfaceBg,
+                                color: t.textPrimary,
+                            }}
+                        >
+                            {cmd}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            {error && (
+                <Text type="danger" style={{ fontSize: 12 }}>
+                    {error}
+                </Text>
+            )}
 
             <div
                 style={{
                     flex: 1,
                     minHeight: 280,
-                    maxHeight: 'calc(100vh - 280px)',
                     overflowY: 'auto',
-                    border: '1px solid rgba(0,0,0,0.08)',
-                    borderRadius: 10,
-                    padding: 10,
-                    background: 'rgba(37, 211, 102, 0.06)',
+                    border: `1px solid ${t.cardBorder}`,
+                    borderRadius: 0,
+                    padding: 8,
+                    background: t.surfaceBg,
                     display: 'flex',
                     flexDirection: 'column',
-                    gap: 8,
+                    gap: 6,
                 }}
             >
                 {lines.length === 0 && (
-                    <Paragraph type="secondary" style={{ fontSize: 12, margin: 8 }}>
-                        Coba: <Text code>jual 2 bakso</Text>, <Text code>cek stok</Text>,{' '}
-                        <Text code>belanja</Text>, <Text code>ya</Text> / <Text code>batal</Text>
+                    <Paragraph style={{ fontSize: 12, margin: 6, color: t.textSecondary }}>
+                        Type a message in the box above or click a shortcut button (<Text code>jual 2 bakso</Text>, <Text code>cek stok</Text>) to test the WA pipeline.
                     </Paragraph>
                 )}
                 {lines.map((line) => (
@@ -196,21 +251,24 @@ export default function WhatsAppSimChatDrawer({
                         <div
                             style={{
                                 whiteSpace: 'pre-wrap',
-                                fontSize: 13,
+                                fontSize: 12,
                                 lineHeight: 1.45,
-                                padding: '8px 10px',
-                                borderRadius: 12,
+                                padding: '6px 9px',
+                                borderRadius: 0,
                                 background:
                                     line.role === 'user'
-                                        ? 'rgba(37, 211, 102, 0.35)'
-                                        : 'rgba(255,255,255,0.92)',
-                                border: '1px solid rgba(0,0,0,0.06)',
+                                        ? 'rgba(37, 211, 102, 0.14)'
+                                        : t.cardBg,
+                                color: t.textPrimary,
+                                border: `1px solid ${t.cardBorder}`,
+                                borderRight: line.role === 'user' ? '2px solid #25d366' : undefined,
+                                borderLeft: line.role === 'bot' ? '2px solid #fb923c' : undefined,
                             }}
                         >
                             {line.text}
                         </div>
                         {line.path && (
-                            <Text type="secondary" style={{ fontSize: 10, marginLeft: 4 }}>
+                            <Text className="font-mono" style={{ fontSize: 10, marginLeft: 4, color: t.textMuted }}>
                                 path: {line.path}
                             </Text>
                         )}
@@ -218,32 +276,6 @@ export default function WhatsAppSimChatDrawer({
                 ))}
                 <div ref={bottomRef} />
             </div>
-
-            {error && (
-                <Text type="danger" style={{ fontSize: 12 }}>
-                    {error}
-                </Text>
-            )}
-
-            <Space.Compact style={{ width: '100%' }}>
-                <Input
-                    ref={inputRef}
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    placeholder="Ketik seperti di WhatsApp…"
-                    disabled={sending || !tenantId}
-                    onPressEnter={() => void send()}
-                />
-                <Button
-                    type="primary"
-                    icon={<SendOutlined />}
-                    loading={sending}
-                    disabled={!input.trim() || !tenantId}
-                    onClick={() => void send()}
-                >
-                    Kirim
-                </Button>
-            </Space.Compact>
         </Drawer>
     );
 }

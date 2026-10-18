@@ -17,6 +17,7 @@ import {
     Space,
     Spin,
     Tag,
+    Tooltip,
     Typography,
 } from "antd";
 import {
@@ -62,26 +63,26 @@ type Tile = { type: StudioOutputType; label: string; desc: string; icon: React.R
 
 const TILE_GROUPS: { group: string; tiles: Tile[] }[] = [
     {
-        group: "Laporan",
+        group: "Reports",
         tiles: [
-            { type: "brief", label: "Brief", desc: "Ringkasan otomatis notebook", icon: <ThunderboltOutlined /> },
-            { type: "study_guide", label: "Study Guide", desc: "Panduan belajar + review", icon: <ReadOutlined /> },
-            { type: "briefing_doc", label: "Briefing Doc", desc: "Dokumen briefing eksekutif", icon: <ProfileOutlined /> },
-            { type: "faq", label: "FAQ", desc: "Pertanyaan & jawaban", icon: <FundProjectionScreenOutlined /> },
-            { type: "timeline", label: "Timeline", desc: "Kronologi peristiwa", icon: <FieldTimeOutlined /> },
-            { type: "blog_post", label: "Blog Post", desc: "Artikel naratif", icon: <EditOutlined /> },
-            { type: "report", label: "Custom Report", desc: "Laporan sesuai topik", icon: <FileTextOutlined /> },
+            { type: "brief", label: "Brief", desc: "Auto notebook summary", icon: <ThunderboltOutlined /> },
+            { type: "study_guide", label: "Study Guide", desc: "Study guide + review", icon: <ReadOutlined /> },
+            { type: "briefing_doc", label: "Briefing Doc", desc: "Executive briefing doc", icon: <ProfileOutlined /> },
+            { type: "faq", label: "FAQ", desc: "Questions & answers", icon: <FundProjectionScreenOutlined /> },
+            { type: "timeline", label: "Timeline", desc: "Chronological events", icon: <FieldTimeOutlined /> },
+            { type: "blog_post", label: "Blog Post", desc: "Narrative article", icon: <EditOutlined /> },
+            { type: "report", label: "Custom Report", desc: "Topic-focused report", icon: <FileTextOutlined /> },
         ],
     },
     {
-        group: "Interaktif & Media",
+        group: "Interactive & Media",
         tiles: [
-            { type: "mind_map", label: "Mind Map", desc: "Peta konsep interaktif", icon: <NodeIndexOutlined /> },
-            { type: "quiz", label: "Quiz", desc: "Kuis interaktif dinilai", icon: <QuestionCircleOutlined /> },
-            { type: "flashcards", label: "Flashcards", desc: "Kartu belajar bolak-balik", icon: <IdcardOutlined /> },
-            { type: "audio_script", label: "Audio Overview", desc: "Naskah + pemutar audio", icon: <AudioOutlined /> },
-            { type: "video_overview", label: "Video Overview", desc: "Slide bernarasi otomatis", icon: <VideoCameraOutlined /> },
-            { type: "data_table", label: "Data Table", desc: "Tabel terstruktur", icon: <TableOutlined /> },
+            { type: "mind_map", label: "Mind Map", desc: "Interactive concept map", icon: <NodeIndexOutlined /> },
+            { type: "quiz", label: "Quiz", desc: "Graded interactive quiz", icon: <QuestionCircleOutlined /> },
+            { type: "flashcards", label: "Flashcards", desc: "Two-sided study cards", icon: <IdcardOutlined /> },
+            { type: "audio_script", label: "Audio Overview", desc: "Script + audio player", icon: <AudioOutlined /> },
+            { type: "video_overview", label: "Video Overview", desc: "Narrated slide deck", icon: <VideoCameraOutlined /> },
+            { type: "data_table", label: "Data Table", desc: "Structured data table", icon: <TableOutlined /> },
         ],
     },
 ];
@@ -132,7 +133,7 @@ export default function StudioOutputsPanel({
     const [audioModal, setAudioModal] = useState(false);
     const [audioFocus, setAudioFocus] = useState("");
     const [audioLength, setAudioLength] = useState<"short" | "default" | "long">("default");
-    const [outputLanguage, setOutputLanguage] = useState<string>("id");
+    const [outputLanguage, setOutputLanguage] = useState<string>("en");
 
     const isMindMap = viewOutput?.output_type === "mind_map";
     const isAudioScript = viewOutput?.output_type === "audio_script";
@@ -162,9 +163,12 @@ export default function StudioOutputsPanel({
         query?: string,
         opts?: { audioLength?: "short" | "default" | "long" },
     ) => {
-        if (!notebookId) return;
+        if (!notebookId) {
+            message.warning("Select or create a notebook first.");
+            return;
+        }
         if (!sourcesReady) {
-            message.warning("Tunggu sumber terindeks dulu.");
+            message.warning("Wait for sources to finish indexing first.");
             return;
         }
         setGenerating(type);
@@ -175,11 +179,11 @@ export default function StudioOutputsPanel({
                 audioLength: opts?.audioLength,
                 language: outputLanguage,
             });
-            message.success(`${out.title} dibuat`);
+            message.success(`${out.title} generated`);
             await loadOutputs();
             setViewOutput(out);
         } catch (e: unknown) {
-            message.error(e instanceof Error ? e.message : "Gagal generate");
+            message.error(e instanceof Error ? e.message : "Generation failed");
         } finally {
             setGenerating(null);
             setReportModal(false);
@@ -191,14 +195,14 @@ export default function StudioOutputsPanel({
         try {
             if (key === "copy") {
                 await copyText(output.content);
-                message.success("Konten disalin");
+                message.success("Content copied");
             } else if (key === "md") {
                 downloadMarkdown(output.title, output.content);
             } else if (key === "pdf") {
                 printAsPdf(output.title, output.content);
             }
         } catch (e: unknown) {
-            message.error(e instanceof Error ? e.message : "Gagal mengekspor");
+            message.error(e instanceof Error ? e.message : "Export failed");
         }
     };
 
@@ -211,135 +215,196 @@ export default function StudioOutputsPanel({
                 origin: "output",
                 sourceOutputId: output.id,
             });
-            message.success("Disimpan ke Notes");
+            message.success("Saved to Notes");
             onNoteSaved?.();
         } catch (e: unknown) {
-            message.error(e instanceof Error ? e.message : "Gagal menyimpan ke Notes");
+            message.error(e instanceof Error ? e.message : "Failed to save to Notes");
         }
     };
 
     const handleDelete = async (outputId: string) => {
         try {
             await studioService.deleteOutput(outputId);
-            message.success("Output dihapus");
+            message.success("Output deleted");
             if (viewOutput?.id === outputId) setViewOutput(null);
             await loadOutputs();
         } catch (e: unknown) {
-            message.error(e instanceof Error ? e.message : "Gagal hapus");
+            message.error(e instanceof Error ? e.message : "Delete failed");
         }
     };
 
-    if (!notebookId) {
-        return (
-            <div className="flex items-center justify-center h-full p-4 opacity-60">
-                <Text type="secondary" className="text-xs text-center">Pilih notebook untuk Studio outputs</Text>
-            </div>
-        );
-    }
+    const [activeFilter, setActiveFilter] = useState<"all" | "Reports" | "Interactive & Media" | "library">("all");
+
+    const visibleGroups = TILE_GROUPS.filter(
+        (grp) => activeFilter === "all" || activeFilter === grp.group,
+    );
 
     return (
-        <div className="flex flex-col h-full">
-            <div className="px-3 py-2 border-b border-[rgba(var(--theme-color-rgb,139,92,246),0.12)]">
+        <div className="flex flex-col h-full min-h-0 overflow-hidden">
+            {/* Compact 32px Tactical Header */}
+            <div className="px-2.5 py-1.5 border-b border-white/10 shrink-0">
                 <div className="flex items-center justify-between gap-2">
-                    <div className="min-w-0">
-                        <Title level={5} className="!mb-0 !text-sm">Studio</Title>
-                        <Text type="secondary" className="text-[10px]">Generate artefak dari sumber {notebookName}</Text>
+                    <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="h-1.5 w-1.5 bg-purple-400 shrink-0" />
+                        <Title level={5} className="!mb-0 !text-[11px] font-mono uppercase tracking-[0.14em]">
+                            Studio
+                        </Title>
+                        <span className="font-mono text-[9.5px] text-slate-400 tabular-nums">
+                            [{outputs.length}]
+                        </span>
                     </div>
-                    <Select
-                        size="small"
-                        value={outputLanguage}
-                        onChange={setOutputLanguage}
-                        title="Bahasa output"
-                        style={{ minWidth: 96 }}
-                        popupMatchSelectWidth={false}
-                        options={[
-                            { value: "id", label: "Indonesia" },
-                            { value: "en", label: "English" },
-                            { value: "jv", label: "Jawa" },
-                            { value: "ms", label: "Melayu" },
-                            { value: "ar", label: "العربية" },
-                            { value: "zh", label: "中文" },
-                        ]}
-                    />
+                    <Tooltip title="Output language" placement="bottom">
+                        <Select
+                            size="small"
+                            value={outputLanguage}
+                            onChange={setOutputLanguage}
+                            style={{ minWidth: 88 }}
+                            popupMatchSelectWidth={false}
+                            options={[
+                                { value: "en", label: "English" },
+                                { value: "id", label: "Indonesian" },
+                                { value: "jv", label: "Javanese" },
+                                { value: "ms", label: "Malay" },
+                                { value: "ar", label: "Arabic" },
+                                { value: "zh", label: "Chinese" },
+                            ]}
+                        />
+                    </Tooltip>
                 </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto custom-scrollbar p-3">
-                {TILE_GROUPS.map((grp) => (
-                    <div key={grp.group} className="mb-3">
-                        <Text className="text-[10px] text-gray-400 uppercase tracking-wider block mb-2">{grp.group}</Text>
-                        <Row gutter={[8, 8]}>
-                            {grp.tiles.map((tile) => (
-                                <Col span={12} key={tile.type}>
-                                    <Card
-                                        size="small"
-                                        hoverable
-                                        className="!rounded-lg cursor-pointer h-full"
-                                        onClick={() => {
-                                            if (tile.type === "report") {
-                                                setReportQuery(`Analisis lengkap ${notebookName ?? "notebook"}`);
-                                                setReportModal(true);
-                                            } else if (tile.type === "audio_script") {
-                                                setAudioFocus("");
-                                                setAudioLength("default");
-                                                setAudioModal(true);
-                                            } else {
-                                                void handleGenerate(tile.type);
-                                            }
-                                        }}
-                                    >
-                                        <Spin spinning={generating === tile.type} size="small">
-                                            <div className="flex items-start gap-2">
-                                                <span style={{ color: themeColor, fontSize: 16 }}>{tile.icon}</span>
-                                                <div className="min-w-0">
-                                                    <Text strong className="text-[11px] block">{tile.label}</Text>
-                                                    <Text className="text-[9px] text-gray-400 block leading-tight">{tile.desc}</Text>
-                                                </div>
-                                            </div>
-                                        </Spin>
-                                    </Card>
-                                </Col>
-                            ))}
-                        </Row>
-                    </div>
-                ))}
+            {/* Instant Tactical Filter Bar */}
+            <div className="grid grid-cols-4 gap-1 px-2 py-1 border-b border-white/10 shrink-0 font-mono text-[9px] uppercase">
+                {[
+                    { id: "all", label: "ALL" },
+                    { id: "Reports", label: "REPORTS" },
+                    { id: "Interactive & Media", label: "MEDIA" },
+                    { id: "library", label: `LIB (${outputs.length})` },
+                ].map((tab) => {
+                    const active = activeFilter === tab.id;
+                    return (
+                        <button
+                            key={tab.id}
+                            type="button"
+                            onClick={() => setActiveFilter(tab.id as any)}
+                            className={`py-1 px-1 text-center border transition-colors cursor-pointer truncate ${
+                                active
+                                    ? "border-purple-400/60 bg-purple-500/15 text-purple-300 font-bold"
+                                    : "border-transparent text-slate-400 hover:border-white/10 hover:bg-white/[0.03]"
+                            }`}
+                        >
+                            {tab.label}
+                        </button>
+                    );
+                })}
+            </div>
 
-                <Text className="text-[10px] text-gray-400 uppercase tracking-wider block mt-4 mb-2">Library</Text>
+            <div className="flex-1 overflow-y-auto custom-scrollbar px-2 py-1.5 min-h-0">
+                {activeFilter !== "library" &&
+                    visibleGroups.map((grp) => (
+                        <div key={grp.group} className="mb-2">
+                            <div className="flex items-center justify-between mb-1 px-0.5">
+                                <Text className="font-mono text-[9px] font-semibold text-slate-400 uppercase tracking-[0.14em]">
+                                    {grp.group} //
+                                </Text>
+                                <span className="font-mono text-[9px] text-slate-500 tabular-nums">
+                                    {grp.tiles.length}
+                                </span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-1">
+                                {grp.tiles.map((tile) => {
+                                    const isBusy = generating === tile.type;
+                                    return (
+                                        <button
+                                            key={tile.type}
+                                            type="button"
+                                            disabled={isBusy}
+                                            onClick={() => {
+                                                if (!notebookId) {
+                                                    message.warning("Select or create a notebook first.");
+                                                    return;
+                                                }
+                                                if (tile.type === "report") {
+                                                    setReportQuery(`Comprehensive analysis of ${notebookName ?? "notebook"}`);
+                                                    setReportModal(true);
+                                                } else if (tile.type === "audio_script") {
+                                                    setAudioFocus("");
+                                                    setAudioLength("default");
+                                                    setAudioModal(true);
+                                                } else {
+                                                    void handleGenerate(tile.type);
+                                                }
+                                            }}
+                                            className={`group flex items-center gap-1.5 px-2 py-1.5 text-left border border-white/10 bg-white/[0.02] hover:border-orange-400/50 hover:bg-white/[0.05] transition-colors cursor-pointer ${
+                                                !notebookId ? "opacity-75" : ""
+                                            }`}
+                                            style={{
+                                                borderLeft: `2px solid ${themeColor}`,
+                                            }}
+                                        >
+                                            <span style={{ color: themeColor, fontSize: 13 }} className="shrink-0">
+                                                {isBusy ? <Spin size="small" /> : tile.icon}
+                                            </span>
+                                            <div className="min-w-0 flex-1">
+                                                <Text strong className="text-[10.5px] block truncate leading-tight">
+                                                    {tile.label}
+                                                </Text>
+                                                <Text className="text-[8.5px] text-slate-400 block truncate leading-tight">
+                                                    {tile.desc}
+                                                </Text>
+                                            </div>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    ))}
+
+                <div className="flex items-center justify-between mt-2 mb-1 px-0.5 border-t border-white/[0.06] pt-1.5">
+                    <Text className="font-mono text-[9.5px] font-semibold text-slate-400 uppercase tracking-[0.14em]">
+                        Artifact Library //
+                    </Text>
+                    <span className="font-mono text-[9px] text-slate-500 tabular-nums">
+                        {outputs.length} ITEMS
+                    </span>
+                </div>
                 {loading ? (
-                    <div className="flex justify-center py-4"><Spin size="small" /></div>
+                    <div className="flex justify-center py-3"><Spin size="small" /></div>
                 ) : outputs.length === 0 ? (
-                    <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Belum ada output" className="my-4" />
+                    <div className="px-2 py-3 border border-dashed border-white/10 text-center font-mono text-[9.5px] text-slate-400">
+                        No artifacts yet. Click any generator tile above.
+                    </div>
                 ) : (
-                    <List
-                        size="small"
-                        dataSource={outputs}
-                        renderItem={(item) => (
-                            <List.Item
-                                className="!px-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/40 rounded"
+                    <div className="flex flex-col gap-1">
+                        {outputs.map((item) => (
+                            <div
+                                key={item.id}
                                 onClick={() => setViewOutput(item)}
-                                actions={[
-                                    <Button
-                                        key="del"
-                                        type="text"
-                                        size="small"
-                                        danger
-                                        icon={<DeleteOutlined />}
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            void handleDelete(item.id);
-                                        }}
-                                    />,
-                                ]}
+                                className="group flex items-center justify-between gap-1.5 px-2 py-1.5 cursor-pointer border border-white/[0.06] bg-white/[0.015] hover:border-purple-400/40 hover:bg-white/[0.04] transition-colors"
+                                style={{ borderLeft: "2px solid #a855f7" }}
                             >
-                                <List.Item.Meta
-                                    title={<Text className="text-[11px] truncate block">{item.title}</Text>}
-                                    description={
-                                        <Tag className="text-[9px] m-0">{TYPE_LABEL[item.output_type] ?? item.output_type}</Tag>
-                                    }
+                                <div className="min-w-0 flex-1">
+                                    <Text className="text-[11px] font-medium truncate block leading-snug">
+                                        {item.title}
+                                    </Text>
+                                    <Tag className="font-mono !text-[8.5px] !m-0 !px-1 !py-0 !leading-3.5 !rounded-none uppercase">
+                                        {TYPE_LABEL[item.output_type] ?? item.output_type}
+                                    </Tag>
+                                </div>
+                                <Button
+                                    type="text"
+                                    size="small"
+                                    danger
+                                    className="!h-5 !w-5 !p-0 opacity-0 group-hover:opacity-100"
+                                    icon={<DeleteOutlined style={{ fontSize: 11 }} />}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        void handleDelete(item.id);
+                                    }}
                                 />
-                            </List.Item>
-                        )}
-                    />
+                            </div>
+                        ))}
+                    </div>
                 )}
             </div>
 
@@ -358,13 +423,13 @@ export default function StudioOutputsPanel({
                                 <Button size="small" onClick={() => setMindMapRaw((v) => !v)}>
                                     {mindMapRaw
                                         ? isMindMap
-                                            ? "Lihat diagram"
+                                            ? "View diagram"
                                             : isQuiz
-                                              ? "Mode kuis"
+                                              ? "Quiz mode"
                                               : isFlashcards
-                                                ? "Mode kartu"
-                                                : "Mode video"
-                                        : "Lihat teks"}
+                                                ? "Card mode"
+                                                : "Video mode"
+                                        : "View text"}
                                 </Button>
                             )}
                             <Dropdown
@@ -372,14 +437,14 @@ export default function StudioOutputsPanel({
                                 menu={{
                                     onClick: ({ key }) => void handleExport(key, viewOutput),
                                     items: [
-                                        { key: "copy", icon: <CopyOutlined />, label: "Salin teks" },
-                                        { key: "md", icon: <FileMarkdownOutlined />, label: "Unduh .md" },
-                                        { key: "pdf", icon: <PrinterOutlined />, label: "Cetak / PDF" },
+                                        { key: "copy", icon: <CopyOutlined />, label: "Copy text" },
+                                        { key: "md", icon: <FileMarkdownOutlined />, label: "Download .md" },
+                                        { key: "pdf", icon: <PrinterOutlined />, label: "Print / PDF" },
                                     ],
                                 }}
                             >
                                 <Button size="small" icon={<ExportOutlined />}>
-                                    Ekspor <DownloadOutlined />
+                                    Export <DownloadOutlined />
                                 </Button>
                             </Dropdown>
                             <Button
@@ -387,7 +452,7 @@ export default function StudioOutputsPanel({
                                 icon={<FileAddOutlined />}
                                 onClick={() => void handleSaveOutputToNote(viewOutput)}
                             >
-                                Simpan ke Notes
+                                Save to Notes
                             </Button>
                         </Space>
                     ) : undefined
@@ -401,7 +466,7 @@ export default function StudioOutputsPanel({
                             onNodeAsk={
                                 onAskNode
                                     ? (label) => {
-                                          onAskNode(`Jelaskan lebih detail tentang "${label}" berdasarkan sumber.`);
+                                          onAskNode(`Explain "${label}" in more detail based on the sources.`);
                                           setViewOutput(null);
                                       }
                                     : undefined
@@ -443,7 +508,7 @@ export default function StudioOutputsPanel({
                     rows={3}
                     value={reportQuery}
                     onChange={(e) => setReportQuery(e.target.value)}
-                    placeholder="Topik laporan..."
+                    placeholder="Report topic..."
                 />
             </Modal>
 
@@ -459,25 +524,25 @@ export default function StudioOutputsPanel({
             >
                 <div className="flex flex-col gap-3">
                     <div>
-                        <Text className="text-xs text-gray-500 block mb-1">Durasi</Text>
+                        <Text className="text-xs text-gray-500 block mb-1">Duration</Text>
                         <Segmented
                             block
                             value={audioLength}
                             onChange={(v) => setAudioLength(v as "short" | "default" | "long")}
                             options={[
-                                { label: "Singkat (~3 mnt)", value: "short" },
-                                { label: "Standar (~5 mnt)", value: "default" },
-                                { label: "Panjang (~10 mnt)", value: "long" },
+                                { label: "Short (~3 min)", value: "short" },
+                                { label: "Standard (~5 min)", value: "default" },
+                                { label: "Long (~10 min)", value: "long" },
                             ]}
                         />
                     </div>
                     <div>
-                        <Text className="text-xs text-gray-500 block mb-1">Fokus pembahasan (opsional)</Text>
+                        <Text className="text-xs text-gray-500 block mb-1">Discussion focus (optional)</Text>
                         <TextArea
                             rows={3}
                             value={audioFocus}
                             onChange={(e) => setAudioFocus(e.target.value)}
-                            placeholder="Mis. fokus ke tren penjualan bulanan dan rekomendasi..."
+                            placeholder="e.g. Focus on monthly sales trends and strategic recommendations..."
                         />
                     </div>
                 </div>

@@ -5,8 +5,6 @@ import CMSLayout from '@/components/layout/CMSLayout';
 import { Card, Row, Col, Typography, Statistic, Space, Tag, Button, Table, Badge, Progress, Spin, Alert } from 'antd';
 import { EditOutlined, FileSearchOutlined, CheckCircleOutlined, ClockCircleOutlined, ReloadOutlined, LinkOutlined, DatabaseOutlined } from '@ant-design/icons';
 import { usePreferencesStore } from '@/store/usePreferencesStore';
-import { AuroraText } from '@/components/magicui/aurora-text';
-import DecryptedText from '@/components/react-bits/DecryptedText';
 import {
     StudioDemoBanner, StudioDemoModeTag, StudioLiveBanner, StudioLiveModeTag,
 } from '@/components/ai-studio/StudioDemoBanner';
@@ -19,7 +17,10 @@ import {
 import { aosGql } from '@/components/agentic-os/lib/api';
 
 const { Text } = Typography;
-const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
+const tacticalCard: React.CSSProperties = {
+    borderRadius: 0,
+    borderTop: '2px solid #fb923c',
+};
 
 export default function LabelStudioPage() {
     const { themeColor } = usePreferencesStore();
@@ -86,7 +87,7 @@ export default function LabelStudioPage() {
     ) : configured ? (
         <StudioLiveModeTag key="mode" />
     ) : loading ? null : (
-        <Tag key="mode" color="default" style={{ margin: 0, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+        <Tag key="mode" color="default" style={{ margin: 0, borderRadius: 0, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
             Not connected
         </Tag>
     );
@@ -106,21 +107,22 @@ export default function LabelStudioPage() {
 
     return (
         <CMSLayout
-            title={<AuroraText colors={[themeColor, '#ff6b35', '#10b981']}>Label Studio</AuroraText>}
-            subTitle={<DecryptedText text="Data annotation projects, task progress & labeling analytics" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}
+            title="Label Studio"
+            subTitle="Data annotation projects, task progress & labeling analytics"
             extra={[
                 modeTag,
                 <Button
                     key="o"
                     icon={<LinkOutlined />}
                     type="primary"
+                    style={{ borderRadius: 0 }}
                     disabled={isDemo || !dashboard?.configured}
                     title={isDemo ? 'Turn off UI demo mode in Agentic OS Settings to open the live Label Studio URL' : dashboard?.configured ? undefined : 'Label Studio is not configured on the server'}
                     onClick={() => !isDemo && dashboard?.configured && window.open(openUrl, '_blank')}
                 >
                     Open Label Studio
                 </Button>,
-                <Button key="r" icon={<ReloadOutlined />} onClick={() => (isDemo ? undefined : loadLive())} loading={loading && !isDemo} disabled={isDemo} />,
+                <Button key="r" icon={<ReloadOutlined />} style={{ borderRadius: 0 }} onClick={() => (isDemo ? undefined : loadLive())} loading={loading && !isDemo} disabled={isDemo} />,
             ]}
         >
             {isDemo ? (
@@ -143,41 +145,51 @@ export default function LabelStudioPage() {
                         dashboard?.message ||
                         'Set LABELSTUDIO_URL and LABELSTUDIO_API_TOKEN on middleware to load live project stats (P2-4).'
                     }
-                    style={{ marginBottom: 16 }}
+                    style={{ marginBottom: 16, borderRadius: 0 }}
                 />
             ) : null}
             {error && !isDemo && configured ? (
-                <Alert type="warning" showIcon message={error} style={{ marginBottom: 16 }} closable />
+                <Alert type="warning" showIcon message={error} style={{ marginBottom: 16, borderRadius: 0 }} closable />
             ) : null}
             <Spin spinning={loading && !isDemo}>
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                     <Row gutter={[12, 12]}>
-                        {[{ t: 'Projects', v: projects.length, c: '#3b82f6', i: <DatabaseOutlined /> }, { t: 'Total Tasks', v: totalTasks, c: '#8b5cf6', i: <FileSearchOutlined /> }, { t: 'Completed', v: totalCompleted, c: '#10b981', i: <CheckCircleOutlined /> }, { t: 'Completion Rate', v: `${completionPct}%`, c: '#f59e0b', i: <ClockCircleOutlined /> }].map((s, i) => (
-                            <Col key={i} xs={12} md={6}><motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}><Card size="small" style={{ ...glass, borderTop: `3px solid ${s.c}` }}><Statistic title={s.t} value={s.v} prefix={s.i} valueStyle={{ color: s.c, fontSize: 20 }} /></Card></motion.div></Col>
-                        ))}
-                    </Row>
-
-                    <Row gutter={[12, 12]}>
-                        {projects.length === 0 && !loading ? (
-                            <Col span={24}>
-                                <Alert type="info" showIcon message="No Label Studio projects yet — create a project in Label Studio or send media from the Media library." />
-                            </Col>
-                        ) : null}
-                        {projects.map((p, i) => (
-                            <Col key={p.id} xs={24} md={8}>
-                                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 + i * 0.06 }}>
-                                    <Card size="small" hoverable style={{ ...glass, borderTop: `3px solid ${p.color}` }}>
-                                        <Text strong style={{ fontSize: 13 }}>{p.name}</Text><br />
-                                        <Tag style={{ fontSize: 9, borderRadius: 8, marginTop: 4 }}>{p.projectType}</Tag>
-                                        <Progress percent={p.tasks > 0 ? Math.round((p.completed / p.tasks) * 100) : 0} size="small" strokeColor={p.color} style={{ marginTop: 8 }} />
-                                        <Row gutter={4} style={{ marginTop: 4 }}><Col span={8}><Text type="secondary" style={{ fontSize: 9 }}>Tasks</Text><br /><Text strong style={{ fontSize: 14 }}>{p.tasks}</Text></Col><Col span={8}><Text type="secondary" style={{ fontSize: 9 }}>Done</Text><br /><Text strong style={{ fontSize: 14, color: '#10b981' }}>{p.completed}</Text></Col><Col span={8}><Text type="secondary" style={{ fontSize: 9 }}>Annotators</Text><br /><Text strong style={{ fontSize: 14 }}>{p.annotators}</Text></Col></Row>
+                        {[{ t: 'Projects', v: projects.length, c: '#38bdf8', i: <DatabaseOutlined /> }, { t: 'Total Tasks', v: totalTasks, c: '#a78bfa', i: <FileSearchOutlined /> }, { t: 'Completed', v: totalCompleted, c: '#34d399', i: <CheckCircleOutlined /> }, { t: 'Completion Rate', v: `${completionPct}%`, c: '#fb923c', i: <ClockCircleOutlined /> }].map((s, i) => (
+                            <Col key={i} xs={12} md={6}>
+                                <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
+                                    <Card size="small" style={{ borderRadius: 0, borderTop: `2px solid ${s.c}` }}>
+                                        <Statistic title={s.t} value={s.v} prefix={s.i} valueStyle={{ color: s.c, fontSize: 20 }} />
                                     </Card>
                                 </motion.div>
                             </Col>
                         ))}
                     </Row>
 
-                    <Card size="small" style={glass} title={<Space><EditOutlined style={{ color: themeColor }} /><Text strong>Recent Annotations</Text><Badge count={tableRows.length} style={{ backgroundColor: themeColor }} /></Space>}>
+                    <Row gutter={[12, 12]}>
+                        {projects.length === 0 && !loading ? (
+                            <Col span={24}>
+                                <Alert type="info" showIcon style={{ borderRadius: 0 }} message="No Label Studio projects yet — create a project in Label Studio or send media from the Media library." />
+                            </Col>
+                        ) : null}
+                        {projects.map((p, i) => (
+                            <Col key={p.id} xs={24} md={8}>
+                                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 + i * 0.06 }}>
+                                    <Card size="small" hoverable style={{ borderRadius: 0, borderTop: `2px solid ${p.color}` }}>
+                                        <Text strong style={{ fontSize: 13 }}>{p.name}</Text><br />
+                                        <Tag className="font-mono" style={{ fontSize: 9, borderRadius: 0, marginTop: 4 }}>{p.projectType}</Tag>
+                                        <Progress percent={p.tasks > 0 ? Math.round((p.completed / p.tasks) * 100) : 0} size="small" strokeColor={p.color} style={{ marginTop: 8 }} />
+                                        <Row gutter={4} style={{ marginTop: 4 }}>
+                                            <Col span={8}><Text type="secondary" style={{ fontSize: 9 }}>Tasks</Text><br /><Text strong className="font-mono" style={{ fontSize: 14 }}>{p.tasks}</Text></Col>
+                                            <Col span={8}><Text type="secondary" style={{ fontSize: 9 }}>Done</Text><br /><Text strong className="font-mono" style={{ fontSize: 14, color: '#34d399' }}>{p.completed}</Text></Col>
+                                            <Col span={8}><Text type="secondary" style={{ fontSize: 9 }}>Annotators</Text><br /><Text strong className="font-mono" style={{ fontSize: 14 }}>{p.annotators}</Text></Col>
+                                        </Row>
+                                    </Card>
+                                </motion.div>
+                            </Col>
+                        ))}
+                    </Row>
+
+                    <Card size="small" style={tacticalCard} title={<Space><EditOutlined style={{ color: '#fb923c' }} /><Text strong className="font-mono text-xs uppercase tracking-[0.06em]">Recent Annotations</Text><Badge count={tableRows.length} style={{ backgroundColor: themeColor }} /></Space>}>
                         <Table
                             dataSource={tableRows}
                             rowKey="id"
@@ -186,10 +198,10 @@ export default function LabelStudioPage() {
                             locale={{ emptyText: isDemo ? 'No sample rows' : 'No synced annotations yet — complete tasks in Label Studio or send media to annotate.' }}
                             columns={[
                                 { title: 'Task', dataIndex: 'task', render: (v: string) => <Text strong style={{ fontSize: 12 }}>{v}</Text> },
-                                { title: 'Project', dataIndex: 'project', render: (v: string) => <Tag style={{ fontSize: 10, borderRadius: 8 }}>{v}</Tag> },
-                                { title: 'Label', dataIndex: 'label', render: (v: string) => <Tag color="blue" style={{ borderRadius: 10, fontSize: 10 }}>{v}</Tag> },
+                                { title: 'Project', dataIndex: 'project', render: (v: string) => <Tag style={{ fontSize: 10, borderRadius: 0 }}>{v}</Tag> },
+                                { title: 'Label', dataIndex: 'label', render: (v: string) => <Tag color="orange" style={{ borderRadius: 0, fontSize: 10 }}>{v}</Tag> },
                                 { title: 'Annotator', dataIndex: 'annotator', render: (v: string) => <Text style={{ fontSize: 11 }}>{v}</Text> },
-                                { title: 'Time', dataIndex: 'time', render: (v: string) => <Text type="secondary" style={{ fontSize: 10 }}>{v}</Text> },
+                                { title: 'Time', dataIndex: 'time', render: (v: string) => <Text type="secondary" className="font-mono" style={{ fontSize: 10 }}>{v}</Text> },
                             ]}
                         />
                     </Card>

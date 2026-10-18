@@ -32,7 +32,7 @@ export default function ChunkPreviewDrawer({ chunkId, docName, score, onClose }:
 
     return (
         <Drawer
-            title={docName ?? chunk?.filename ?? "Cuplikan sumber"}
+            title={docName ?? chunk?.filename ?? "Source Excerpt"}
             open={!!chunkId}
             onClose={onClose}
             size={420}
@@ -44,13 +44,13 @@ export default function ChunkPreviewDrawer({ chunkId, docName, score, onClose }:
                     <div className="flex gap-2 mb-3">
                         <Tag>Chunk #{chunk.chunk_index + 1}</Tag>
                         {typeof score === "number" && (
-                            <Tag color="blue">Relevansi {(score * 100).toFixed(0)}%</Tag>
+                            <Tag color="blue">Relevance {(score * 100).toFixed(0)}%</Tag>
                         )}
                     </div>
                     <Paragraph className="text-sm whitespace-pre-wrap">{chunk.content}</Paragraph>
                 </>
             ) : (
-                <Text type="secondary">Cuplikan tidak ditemukan.</Text>
+                <Text type="secondary">Excerpt not found.</Text>
             )}
         </Drawer>
     );

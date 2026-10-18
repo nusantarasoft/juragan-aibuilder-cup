@@ -43,11 +43,9 @@ import { useStudioUserId } from '../useStudioUserId';
 import QRCode from 'qrcode';
 
 const { Text, Paragraph } = Typography;
-const glass = {
-    background: 'rgba(255,255,255,0.65)',
-    backdropFilter: 'blur(12px)',
-    border: '1px solid rgba(255,255,255,0.45)',
-    borderRadius: 14,
+const tacticalCard: React.CSSProperties = {
+    borderRadius: 0,
+    borderTop: '2px solid #fb923c',
 };
 
 const PROVIDER = 'hermes' as const;
@@ -194,11 +192,11 @@ function WhatsAppGatewayPageContent() {
         setStarting(true);
         try {
             const r = await studioService.startWhatsAppSession(undefined, PROVIDER);
-            if (r.connected) message.success('WhatsApp sudah terhubung');
-            else message.info(`Sesi dimulai — status: ${r.status}. Scan QR di bawah.`);
+            if (r.connected) message.success('WhatsApp is already connected');
+            else message.info(`Session started — status: ${r.status}. Scan QR below.`);
             await load();
         } catch {
-            message.error('Gagal memulai sesi Hermes');
+            message.error('Failed to start Hermes session');
         } finally {
             setStarting(false);
         }
@@ -208,10 +206,10 @@ function WhatsAppGatewayPageContent() {
         setRestarting(true);
         try {
             await studioService.restartWhatsAppSession(PROVIDER);
-            message.info('Sesi di-restart. Tunggu QR muncul lalu scan ulang jika perlu.');
+            message.info('Session restarted. Wait for QR to appear and re-scan if needed.');
             await load();
         } catch {
-            message.error('Gagal restart sesi');
+            message.error('Failed to restart session');
         } finally {
             setRestarting(false);
         }
@@ -221,11 +219,11 @@ function WhatsAppGatewayPageContent() {
         setSyncing(true);
         try {
             const r = await studioService.syncWhatsAppSession(PROVIDER);
-            if (r.connected) message.success(`Status Hermes: ${r.status}`);
-            else message.warning(`Masih ${r.status}. Coba Sync lagi atau Mulai sesi untuk QR.`);
+            if (r.connected) message.success(`Hermes status: ${r.status}`);
+            else message.warning(`Still ${r.status}. Try Sync again or Start session for QR.`);
             await load();
         } catch {
-            message.error('Gagal sync status');
+            message.error('Failed to sync status');
         } finally {
             setSyncing(false);
         }
@@ -235,11 +233,11 @@ function WhatsAppGatewayPageContent() {
         setLoggingOut(true);
         try {
             await studioService.logoutWhatsAppSession(undefined, PROVIDER);
-            message.info('Logout berhasil. Session nomor lama dihapus — scan QR baru untuk nomor lain.');
+            message.info('Logged out successfully. Old phone session cleared — scan new QR for another number.');
             setQrDataUrl(null);
             await load();
         } catch {
-            message.error('Gagal logout sesi');
+            message.error('Failed to log out session');
         } finally {
             setLoggingOut(false);
         }
@@ -250,11 +248,11 @@ function WhatsAppGatewayPageContent() {
         try {
             const r = await studioService.rebindHermesSession();
             if (r.error) message.warning(r.error);
-            else message.info('Session lama dihapus. Scan QR dengan nomor baru sekarang.');
+            else message.info('Old session cleared. Scan QR with the new number now.');
             setQrDataUrl(null);
             await load();
         } catch {
-            message.error('Gagal ganti nomor');
+            message.error('Failed to change number');
         } finally {
             setStarting(false);
         }
@@ -263,7 +261,7 @@ function WhatsAppGatewayPageContent() {
     const handleSave = async () => {
         const values = await form.validateFields();
         if (allowlistRequired && values.enabled && !normalizeSingleStoreWaPhone(values.ownerWaPhone)) {
-            message.error('Nomor pemilik toko wajib diisi saat WhatsApp diaktifkan.');
+            message.error('Store owner phone number is required when WhatsApp is enabled.');
             return;
         }
         setSaving(true);
@@ -281,10 +279,10 @@ function WhatsAppGatewayPageContent() {
                 businessPhone: ownerPhone,
                 label: values.label || null,
             });
-            message.success('Konfigurasi WhatsApp disimpan');
+            message.success('WhatsApp configuration saved');
             await load();
         } catch {
-            message.error('Gagal menyimpan konfigurasi');
+            message.error('Failed to save configuration');
         } finally {
             setSaving(false);
         }
@@ -293,47 +291,51 @@ function WhatsAppGatewayPageContent() {
     return (
         <CMSLayout
             title="WhatsApp Gateway"
-            subTitle="Pair nomor WhatsApp via Hermes dan konfigurasi bot UMKM"
+            subTitle="Pair WhatsApp number via Hermes and configure SME bot"
             extra={[
                 pairedButStuck && (
-                    <Button key="sync" loading={syncing} onClick={handleSync} type="primary">
+                    <Button key="sync" loading={syncing} onClick={handleSync} type="primary" style={{ borderRadius: 0 }}>
                         Sync status → WORKING
                     </Button>
                 ),
-                <Button key="restart" loading={restarting} onClick={handleRestart} disabled={connected}>
+                <Button key="restart" loading={restarting} onClick={handleRestart} disabled={connected} style={{ borderRadius: 0 }}>
                     Restart Hermes
                 </Button>,
-                <Button key="rebind" loading={starting} onClick={handleChangeNumber} danger>
-                    Ganti nomor
+                <Button key="rebind" loading={starting} onClick={handleChangeNumber} danger style={{ borderRadius: 0 }}>
+                    Change number
                 </Button>,
-                <Button key="logout" loading={loggingOut} onClick={handleLogout} danger icon={<LogoutOutlined />}>
+                <Button key="logout" loading={loggingOut} onClick={handleLogout} danger icon={<LogoutOutlined />} style={{ borderRadius: 0 }}>
                     Logout Hermes
                 </Button>,
-                <Button key="r" icon={<ReloadOutlined />} onClick={load} loading={loading} />,
+                <Button key="r" icon={<ReloadOutlined />} onClick={load} loading={loading} style={{ borderRadius: 0 }} />,
             ].filter(Boolean)}
         >
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {hermesUnreachable && (
                     <Alert
                         type="error"
                         showIcon
-                        title="Hermes tidak dapat dihubungi"
-                        description="Middleware tidak reach Hermes bridge proxy (:8765). Pastikan nsoft3-hermes + plugin kasir-pipe berjalan."
+                        style={{ borderRadius: 0, padding: '6px 10px' }}
+                        message="Hermes is unreachable — make sure nsoft3-hermes (:8765) + kasir-pipe plugin are running."
                     />
                 )}
                 {!loading && pairedButStuck && (
-                    <Alert type="warning" showIcon title="Bug sinkronisasi terdeteksi" description="Sudah login tapi status stuck di SCAN QR. Klik Sync status → WORKING di kanan atas." />
+                    <Alert
+                        type="warning"
+                        showIcon
+                        style={{ borderRadius: 0, padding: '6px 10px' }}
+                        message="Logged in but status is stuck at SCAN QR — click Sync status → WORKING at the top right."
+                    />
                 )}
                 {!connected && (
                     <Alert
                         type="info"
                         showIcon
-                        title="Pairing Hermes"
-                        description={
-                            <>
-                                Restart Hermes <strong>tidak</strong> ganti nomor — session lama tetap di disk.
-                                Untuk nomor baru: klik <strong>Ganti nomor</strong> (logout + wipe + QR baru), lalu scan segera.
-                            </>
+                        style={{ borderRadius: 0, padding: '6px 10px' }}
+                        message={
+                            <span className="text-xs">
+                                <strong>Hermes Pairing:</strong> Restarting Hermes does not change the number. For a new number, click <strong>Change number</strong> (logout + wipe + new QR), then scan immediately.
+                            </span>
                         }
                     />
                 )}
@@ -341,83 +343,86 @@ function WhatsAppGatewayPageContent() {
                     <Alert
                         type="success"
                         showIcon
-                        title="Hermes aktif"
-                        description={
-                            businessPhone
-                                ? `Session WORKING untuk ${businessPhone}. Balasan kasir keluar lewat Hermes bridge.`
-                                : 'Session WORKING. Jika nomor belum tampil, Sync/refresh setelah deploy pair.py terbaru (meId dari creds.json).'
+                        style={{ borderRadius: 0, padding: '6px 10px' }}
+                        message={
+                            <span className="text-xs">
+                                <strong>Hermes active:</strong>{' '}
+                                {businessPhone
+                                    ? `Session WORKING for ${businessPhone}. Cashier replies are routed via Hermes bridge.`
+                                    : 'Session WORKING. If the phone number is not displayed yet, click Sync/refresh.'}
+                            </span>
                         }
                     />
                 )}
 
-                <Row gutter={[24, 24]}>
+                <Row gutter={[8, 8]}>
                     <Col xs={24} md={10} lg={8}>
-                        <Card size="small" style={glass} title={<Space><QrcodeOutlined /><Text strong>1. Koneksi Perangkat (Hermes)</Text></Space>}>
+                        <Card size="small" style={tacticalCard} title={<Space><QrcodeOutlined style={{ color: '#fb923c' }} /><Text strong className="font-mono text-xs uppercase tracking-[0.06em]">1. Device Connection (Hermes)</Text></Space>}>
                             {connected ? (
-                                <Space orientation="vertical" size="middle" style={{ width: '100%', textAlign: 'center', padding: '24px 0' }}>
+                                <Space direction="vertical" size="middle" style={{ width: '100%', textAlign: 'center', padding: '24px 0' }}>
                                     <CheckCircleOutlined style={{ fontSize: 48, color: '#25d366' }} />
-                                    <Text strong style={{ fontSize: 16 }}>WhatsApp terhubung via Hermes</Text>
+                                    <Text strong style={{ fontSize: 16 }}>WhatsApp connected via Hermes</Text>
                                     <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-                                        Nomor <strong>{businessPhone || '—'}</strong> siap menerima dan membalas pesan.
+                                        Number <strong className="font-mono">{businessPhone || '—'}</strong> is ready to receive and reply to messages.
                                     </Paragraph>
                                     {hermesVersion && (
-                                        <Tag>Hermes {hermesVersion}</Tag>
+                                        <Tag className="font-mono" style={{ borderRadius: 0 }}>Hermes {hermesVersion}</Tag>
                                     )}
                                 </Space>
                             ) : loading ? (
                                 <div style={{ textAlign: 'center', padding: 40 }}><Spin size="large" /></div>
                             ) : (
-                                <Space orientation="vertical" size="large" style={{ width: '100%', alignItems: 'center' }}>
+                                <Space direction="vertical" size="large" style={{ width: '100%', alignItems: 'center' }}>
                                     {qrDataUrl ? (
-                                        <div style={{ padding: 16, background: '#fff', borderRadius: 12, boxShadow: '0 2px 12px rgba(0,0,0,0.08)' }}>
+                                        <div style={{ padding: 16, background: '#fff', borderRadius: 0, border: '2px solid #25d366' }}>
                                             <img src={qrDataUrl} alt="WhatsApp QR Code" width={240} height={240} style={{ display: 'block' }} />
                                         </div>
                                     ) : (
                                         <div style={{ textAlign: 'center', padding: '24px 0' }}>
                                             {needsQr ? (
-                                                <><Spin style={{ marginBottom: 16 }} /><Paragraph type="secondary">{authQr?.error || 'Menunggu QR code...'}</Paragraph></>
+                                                <><Spin style={{ marginBottom: 16 }} /><Paragraph type="secondary">{authQr?.error || 'Waiting for QR code...'}</Paragraph></>
                                             ) : (
                                                 <>
-                                                    <Paragraph type="secondary">Sesi belum dimulai atau status: <strong>{status}</strong></Paragraph>
-                                                    <Button type="primary" icon={<PlayCircleOutlined />} loading={starting} onClick={handleStart} style={{ background: `linear-gradient(135deg, ${themeColor}, #25d366)`, border: 'none' }}>
-                                                        Mulai sesi
+                                                    <Paragraph type="secondary">Session not started or status: <strong className="font-mono">{status}</strong></Paragraph>
+                                                    <Button type="primary" icon={<PlayCircleOutlined />} loading={starting} onClick={handleStart} style={{ background: themeColor, border: 'none', borderRadius: 0 }}>
+                                                        Start session
                                                     </Button>
                                                 </>
                                             )}
                                         </div>
                                     )}
                                     {needsQr && !qrDataUrl && (
-                                        <Button type="primary" icon={<PlayCircleOutlined />} loading={starting} onClick={handleStart}>
-                                            Mulai sesi
+                                        <Button type="primary" icon={<PlayCircleOutlined />} loading={starting} onClick={handleStart} style={{ borderRadius: 0 }}>
+                                            Start session
                                         </Button>
                                     )}
-                                    {qrDataUrl && <Paragraph type="secondary" style={{ fontSize: 11, textAlign: 'center' }}>QR diperbarui otomatis setiap 5 detik.</Paragraph>}
+                                    {qrDataUrl && <Paragraph type="secondary" className="font-mono" style={{ fontSize: 11, textAlign: 'center' }}>QR updates automatically every 5 seconds.</Paragraph>}
                                 </Space>
                             )}
                         </Card>
                     </Col>
 
                     <Col xs={24} md={14} lg={16}>
-                        <Card size="small" style={glass} title={<Text strong>2. Konfigurasi AI Bot</Text>}>
+                        <Card size="small" style={tacticalCard} title={<Text strong className="font-mono text-xs uppercase tracking-[0.06em]">2. AI Bot Configuration</Text>}>
                             {allowlistRequired && (
                                 <Alert
                                     type="info"
                                     showIcon
-                                    style={{ marginBottom: 16 }}
-                                    message="STUDIO_WHATSAPP_REQUIRE_ALLOWLIST Aktif"
-                                    description="Mode production aktif — isi minimal satu nomor HP pelanggan sebelum mengaktifkan balasan WhatsApp."
+                                    style={{ marginBottom: 16, borderRadius: 0 }}
+                                    message="STUDIO_WHATSAPP_REQUIRE_ALLOWLIST Active"
+                                    description="Production mode active — enter at least one customer phone number before enabling WhatsApp replies."
                                 />
                             )}
 
                             <Form form={form} layout="vertical" onFinish={handleSave}>
                                 <Row gutter={16}>
                                     <Col xs={24} sm={12}>
-                                        <Form.Item name="label" label="Label UMKM / Nama Bisnis">
-                                            <Input placeholder="Toko Kue Enak" />
+                                        <Form.Item name="label" label="SME Label / Business Name">
+                                            <Input placeholder="Delicious Bakery" />
                                         </Form.Item>
                                     </Col>
                                     <Col xs={24} sm={12}>
-                                        <Form.Item name="tenantId" label="Tenant ID (Otomatis)" required>
+                                        <Form.Item name="tenantId" label="Tenant ID (Auto)" required>
                                             <Input disabled />
                                         </Form.Item>
                                     </Col>
@@ -425,12 +430,12 @@ function WhatsAppGatewayPageContent() {
 
                                 <Row gutter={16}>
                                     <Col xs={24} sm={12}>
-                                        <Form.Item name="businessPhone" label="Nomor WhatsApp Bisnis">
-                                            <Input placeholder="08123456789 (Milik Anda)" disabled />
+                                        <Form.Item name="businessPhone" label="Business WhatsApp Number">
+                                            <Input placeholder="08123456789 (Your Number)" disabled />
                                         </Form.Item>
                                     </Col>
                                     <Col xs={24} sm={12}>
-                                        <Form.Item name="sessionName" label="Nama Sesi">
+                                        <Form.Item name="sessionName" label="Session Name">
                                             <Input placeholder="default" disabled />
                                         </Form.Item>
                                     </Col>
@@ -438,13 +443,13 @@ function WhatsAppGatewayPageContent() {
 
                                 <Form.Item
                                     name="notebookId"
-                                    label="Pilih Notebook Pengetahuan (RAG)"
-                                    rules={[{ required: true, message: 'Harap pilih Notebook untuk database AI.' }]}
+                                    label="Select Knowledge Notebook (RAG)"
+                                    rules={[{ required: true, message: 'Please select a Notebook for the AI database.' }]}
                                 >
-                                    <Select placeholder="-- Pilih Notebook --" loading={loading}>
+                                    <Select placeholder="-- Select Notebook --" loading={loading}>
                                         {notebooks.map((n) => (
                                             <Select.Option key={n.id} value={n.id}>
-                                                {n.title}
+                                                {n.name}
                                             </Select.Option>
                                         ))}
                                     </Select>
@@ -452,21 +457,21 @@ function WhatsAppGatewayPageContent() {
 
                                 <Form.Item
                                     name="ownerWaPhone"
-                                    label="Nomor WhatsApp pemilik toko"
-                                    tooltip="Satu nomor per toko (D-40). AI hanya membalas pesan dari nomor ini."
+                                    label="Store owner WhatsApp number"
+                                    tooltip="One number per store (D-40). AI only replies to messages from this number."
                                 >
                                     <Input placeholder="6288123456789" />
                                 </Form.Item>
 
                                 <Row gutter={16} align="middle">
                                     <Col xs={24} sm={8}>
-                                        <Form.Item name="enabled" label="Aktifkan AI Bot" valuePropName="checked" style={{ marginBottom: 0 }}>
-                                            <Switch checkedChildren="Aktif" unCheckedChildren="Mati" />
+                                        <Form.Item name="enabled" label="Enable AI Bot" valuePropName="checked" style={{ marginBottom: 0 }}>
+                                            <Switch checkedChildren="Active" unCheckedChildren="Off" />
                                         </Form.Item>
                                     </Col>
                                     <Col xs={24} sm={8}>
-                                        <Form.Item name="useGuidedFlow" label="Gunakan Guide Flow" valuePropName="checked" style={{ marginBottom: 0 }}>
-                                            <Switch checkedChildren="Ya" unCheckedChildren="Tidak" />
+                                        <Form.Item name="useGuidedFlow" label="Use Guide Flow" valuePropName="checked" style={{ marginBottom: 0 }}>
+                                            <Switch checkedChildren="Yes" unCheckedChildren="No" />
                                         </Form.Item>
                                     </Col>
                                     <Col xs={24} sm={8} style={{ textAlign: 'right' }}>
@@ -475,9 +480,9 @@ function WhatsAppGatewayPageContent() {
                                             htmlType="submit"
                                             icon={<SaveOutlined />}
                                             loading={saving}
-                                            style={{ background: themeColor, width: '100%' }}
+                                            style={{ background: themeColor, width: '100%', borderRadius: 0 }}
                                         >
-                                            Simpan Konfigurasi
+                                            Save Configuration
                                         </Button>
                                     </Col>
                                 </Row>

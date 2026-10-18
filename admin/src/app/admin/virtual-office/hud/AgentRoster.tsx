@@ -4,7 +4,7 @@ import React, { useMemo, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { Activity, CircleCheck, Info, Search, Sparkles, TriangleAlert, Users, XCircle, type LucideIcon } from "lucide-react";
 import { STATUS_META, ZONES, ZONE_BY_ID } from "../lib/floorplan";
-import { MASCOT_ID, getMascotRankTitle, useMascotStore } from "../lib/mascotStore";
+import { MASCOT_ID, MASCOT_MOODS, getMascotRankTitle, useMascotStore } from "../lib/mascotStore";
 import { useOfficeStore } from "../lib/store";
 import type { ActivityEntry, ActivityLevel, Agent, AgentStatus } from "../lib/types";
 import { RosterKindBadge } from "@/components/agentic-os/ui/RosterKindBadge";
@@ -112,6 +112,7 @@ export function AgentRoster() {
             zone: s.zone,
             spotName: s.spotName,
             activityLabel: s.activityLabel,
+            mood: s.mood,
             roaming: s.roaming,
             vitals: s.vitals,
         })),
@@ -133,6 +134,7 @@ export function AgentRoster() {
     const activeCount = counts.active ?? 0;
     const mascotRank = getMascotRankTitle(mascot.vitals.level);
     const mascotZone = ZONE_BY_ID[mascot.zone];
+    const moodMeta = MASCOT_MOODS[mascot.mood] ?? MASCOT_MOODS.playful;
 
     return (
         <OfficeSidePanel
@@ -227,13 +229,16 @@ export function AgentRoster() {
                                 className="flex h-8 w-8 shrink-0 items-center justify-center border border-orange-400/50 bg-orange-500/15 text-[14px]"
                                 title="Cinder-Puff Mascot"
                             >
-                                🐾
+                                {moodMeta.emoji}
                             </div>
                             <div className="min-w-0 flex-1">
                                 <div className="flex items-center justify-between gap-2">
                                     <span className="truncate text-[12px] font-semibold text-white">Cinder-Puff</span>
-                                    <span className="shrink-0 text-[9px] uppercase tracking-wider text-cyan-300">
-                                        {mascot.roaming ? "PLAYING" : "PINNED"}
+                                    <span
+                                        className="shrink-0 text-[9px] font-bold uppercase tracking-wider"
+                                        style={{ color: moodMeta.color }}
+                                    >
+                                        {moodMeta.emoji} {moodMeta.id}
                                     </span>
                                 </div>
                                 <div className="truncate text-[10px] text-slate-400">

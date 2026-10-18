@@ -15,6 +15,14 @@ export interface VOTheme {
     surfaceStrong: string;
     /** Secondary surface (inner sider / elevated card). */
     surface: string;
+    /** Alias for secondary surface background. */
+    surfaceBg: string;
+    /** Alias for elevated card surface background. */
+    cardBg: string;
+    /** Alias for card border color. */
+    cardBorder: string;
+    /** Alias for card shadow. */
+    cardShadow: string;
     /** Floating panel surface (docks / windows / side panels). */
     glass: string;
     /** Dock surface used by floating docks. */
@@ -24,7 +32,11 @@ export interface VOTheme {
     borderStrong: string;
     shadow: string;
     text: string;
+    /** Alias for primary text color. */
+    textPrimary: string;
     textMuted: string;
+    /** Alias for secondary/muted text color. */
+    textSecondary: string;
     textDim: string;
     hoverBg: string;
     selectedBg: string;
@@ -45,6 +57,10 @@ export const VO_DARK: VOTheme = {
     canvas: "#0b0e13",
     surfaceStrong: "#0b0e13",
     surface: "#080a0f",
+    surfaceBg: "#080a0f",
+    cardBg: "#0b0e13",
+    cardBorder: "rgba(255, 255, 255, 0.08)",
+    cardShadow: "0 24px 60px -15px rgba(0, 0, 0, 0.92)",
     glass: "rgba(11, 14, 19, 0.95)",
     glassFaint: "rgba(11, 14, 19, 0.90)",
     blur: "blur(16px)",
@@ -52,7 +68,9 @@ export const VO_DARK: VOTheme = {
     borderStrong: "rgba(255, 255, 255, 0.18)",
     shadow: "0 24px 60px -15px rgba(0, 0, 0, 0.92)",
     text: "#f1f5f9", // slate-100
+    textPrimary: "#f1f5f9",
     textMuted: "#94a3b8", // slate-400
+    textSecondary: "#94a3b8",
     textDim: "#64748b", // slate-500
     hoverBg: "rgba(255, 255, 255, 0.04)",
     selectedBg: "rgba(251, 146, 60, 0.14)",
@@ -68,6 +86,10 @@ export const VO_LIGHT: VOTheme = {
     canvas: "#f8fafc",
     surfaceStrong: "#ffffff",
     surface: "#f1f5f9",
+    surfaceBg: "#f1f5f9",
+    cardBg: "#ffffff",
+    cardBorder: "rgba(15, 23, 42, 0.10)",
+    cardShadow: "0 20px 50px -12px rgba(15, 23, 42, 0.16)",
     glass: "rgba(255, 255, 255, 0.95)",
     glassFaint: "rgba(255, 255, 255, 0.94)",
     blur: "blur(16px)",
@@ -75,7 +97,9 @@ export const VO_LIGHT: VOTheme = {
     borderStrong: "rgba(15, 23, 42, 0.22)",
     shadow: "0 20px 50px -12px rgba(15, 23, 42, 0.16)",
     text: "#0f172a", // slate-900
+    textPrimary: "#0f172a",
     textMuted: "#475569", // slate-600
+    textSecondary: "#475569",
     textDim: "#64748b", // slate-500
     hoverBg: "rgba(15, 23, 42, 0.04)",
     selectedBg: "rgba(251, 146, 60, 0.12)",

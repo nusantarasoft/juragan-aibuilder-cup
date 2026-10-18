@@ -49,7 +49,7 @@ export async function copyText(text: string): Promise<void> {
         await navigator.clipboard.writeText(text);
         return;
     }
-    throw new Error("Clipboard tidak tersedia");
+    throw new Error("Clipboard is unavailable");
 }
 
 export function downloadMarkdown(title: string, content: string): void {
@@ -66,7 +66,7 @@ export function downloadMarkdown(title: string, content: string): void {
 
 export function printAsPdf(title: string, content: string): void {
     const win = window.open("", "_blank", "noopener,noreferrer,width=900,height=700");
-    if (!win) throw new Error("Popup diblokir — izinkan popup untuk cetak/PDF");
+    if (!win) throw new Error("Popup blocked — allow popups to print/PDF");
     win.document.write(buildPrintHtml(title, content));
     win.document.close();
     win.focus();

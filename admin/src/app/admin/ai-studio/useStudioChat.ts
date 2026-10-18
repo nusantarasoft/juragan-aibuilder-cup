@@ -28,8 +28,8 @@ function mapSourceRefs(refs: unknown): StudioChatMessage["references"] | undefin
         content:
             typeof r.content === "string"
                 ? r.content
-                : `(cuplikan dari ${String(r.filename ?? r.docName ?? "dokumen")})`,
-        docName: String(r.filename ?? r.docName ?? "Dokumen"),
+                : `(excerpt from ${String(r.filename ?? r.docName ?? "document")})`,
+        docName: String(r.filename ?? r.docName ?? "Document"),
         score: typeof r.score === "number" ? r.score : 0,
         chunkId: typeof r.chunkId === "string" ? r.chunkId : undefined,
     }));
@@ -53,9 +53,9 @@ export function buildSuggestedPrompts(
     const indexed = sources.filter((s) => s.parse_status === "done" && (s.chunk_count ?? 0) > 0);
     const first = indexed[0]?.filename;
     const prompts = [
-        `Ringkas isi utama notebook "${notebookName}".`,
-        first ? `Apa poin penting dari "${first}"?` : "Apa topik utama dari dokumen di notebook ini?",
-        "Sebutkan fakta atau angka penting yang ada di sumber.",
+        `Summarize the core contents of notebook "${notebookName}".`,
+        first ? `What are the key takeaways from "${first}"?` : "What are the main topics across the documents in this notebook?",
+        "List the most important facts, metrics, and figures cited in the sources.",
     ];
     return prompts.slice(0, 3);
 }
@@ -76,7 +76,7 @@ export function useStudioChat(
     const [waitingInput, setWaitingInput] = useState(false);
     const [conversations, setConversations] = useState<StudioConversation[]>([]);
     const [loadingConversations, setLoadingConversations] = useState(false);
-    const [language, setLanguage] = useState<string>("id");
+    const [language, setLanguage] = useState<string>("en");
 
     const suggestedPrompts = buildSuggestedPrompts(notebookName, sources);
 
@@ -135,7 +135,7 @@ export function useStudioChat(
                 setChatHistory(mapStudioMessages(conv.messages ?? []));
             } catch (e: unknown) {
                 const err = e as { message?: string };
-                message.error(err.message || "Gagal memuat percakapan");
+                message.error(err.message || "Failed to load conversation");
             } finally {
                 setIsChatting(false);
             }
@@ -293,7 +293,7 @@ export function useStudioChat(
                         setChatHistory((prev) => prev.slice(0, -1));
                         const started = await initGuidedFromPublished(guidedFlow);
                         if (!started) return;
-                        message.info("Sesi guided dimulai. Kirim pesan Anda lagi.");
+                        message.info("Guided session started. Please send your message again.");
                         return;
                     }
                     const res = await studioService.guidedChat(

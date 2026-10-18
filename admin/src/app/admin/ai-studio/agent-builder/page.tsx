@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import CMSLayout from "@/components/layout/CMSLayout";
+import CMSLayout, { useAdminLayout } from "@/components/layout/CMSLayout";
+import { getVOTheme } from "@/components/layout/voTheme";
 import {
     Card,
     Row,
@@ -45,11 +46,11 @@ const { Text } = Typography;
 const { Panel } = Collapse;
 
 const PALETTE: Array<{ kind: WorkflowNodeKind; label: string; detail: string; tag: string; icon: React.ReactNode; color: string }> = [
-    { kind: "trigger", label: "Webhook Trigger", detail: "Awaits incoming JSON payload", tag: "Input", icon: <GlobalOutlined />, color: "#1890ff" },
+    { kind: "trigger", label: "Webhook Trigger", detail: "Awaits incoming JSON payload", tag: "Input", icon: <GlobalOutlined />, color: "#38bdf8" },
     { kind: "llm", label: "Intent Classifier", detail: "Model: Claude 3.5 Sonnet", tag: "LLM", icon: <RobotOutlined />, color: "" },
-    { kind: "tool", label: "Context Retrieval", detail: "Queries Supabase pgvector", tag: "Tool", icon: <DatabaseOutlined />, color: "#52c41a" },
-    { kind: "tool", label: "REST API Call", detail: "HTTP request to external API", tag: "Tool", icon: <ApiOutlined />, color: "#52c41a" },
-    { kind: "logic", label: "Python Script", detail: "Executes custom formatting", tag: "Logic", icon: <CodeOutlined />, color: "#faad14" },
+    { kind: "tool", label: "Context Retrieval", detail: "Queries Supabase pgvector", tag: "Tool", icon: <DatabaseOutlined />, color: "#34d399" },
+    { kind: "tool", label: "REST API Call", detail: "HTTP request to external API", tag: "Tool", icon: <ApiOutlined />, color: "#34d399" },
+    { kind: "logic", label: "Python Script", detail: "Executes custom formatting", tag: "Logic", icon: <CodeOutlined />, color: "#fb923c" },
 ];
 
 function tagColor(kind: WorkflowNodeKind): string {
@@ -69,7 +70,9 @@ function newNodeId() {
     return `n-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
-export default function AgentBuilderPage() {
+function AgentBuilderInner() {
+    const { darkMode } = useAdminLayout();
+    const t = getVOTheme(darkMode);
     const { themeColor } = usePreferencesStore();
     const [workflows, setWorkflows] = useState<AgentWorkflow[]>([]);
     const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -200,25 +203,37 @@ export default function AgentBuilderPage() {
     const renderNode = (node: WorkflowNode, index: number) => {
         const palette = PALETTE.find((p) => p.label === node.label);
         const borderColor =
-            node.kind === "trigger" ? "#1890ff" : node.kind === "tool" ? "#52c41a" : node.kind === "logic" ? "#faad14" : themeColor;
+            node.kind === "trigger" ? "#38bdf8" : node.kind === "tool" ? "#34d399" : node.kind === "logic" ? "#fb923c" : themeColor;
         return (
             <React.Fragment key={node.id}>
-                {index > 0 ? <div style={{ height: 32, width: 2, backgroundColor: "#d9d9d9" }} /> : null}
-                <Card style={{ width: 320, borderTop: `4px solid ${borderColor}` }} size="small">
-                    <Space direction="vertical" style={{ width: "100%" }}>
+                {index > 0 ? <div style={{ height: 18, width: 2, backgroundColor: t.cardBorder }} /> : null}
+                <Card
+                    style={{
+                        width: 310,
+                        borderRadius: 0,
+                        background: t.cardBg,
+                        border: `1px solid ${t.cardBorder}`,
+                        borderTop: `2px solid ${borderColor}`,
+                    }}
+                    size="small"
+                    styles={{ body: { padding: "8px 10px" } }}
+                >
+                    <Space direction="vertical" size={4} style={{ width: "100%" }}>
                         <Space style={{ width: "100%", display: "flex", justifyContent: "space-between" }}>
-                            <Text strong>
+                            <Text strong style={{ color: t.textPrimary, fontSize: 12 }}>
                                 {palette?.icon ?? <RobotOutlined />} {node.label}
                             </Text>
-                            <Tag color={tagColor(node.kind)}>{node.tag ?? node.kind.toUpperCase()}</Tag>
+                            <Tag color={tagColor(node.kind)} className="!m-0 !text-[10px] font-mono" style={{ borderRadius: 0 }}>
+                                {node.tag ?? node.kind.toUpperCase()}
+                            </Tag>
                         </Space>
                         {node.detail ? (
-                            <Text type="secondary" style={{ fontSize: 12 }}>
+                            <Text style={{ fontSize: 11, color: t.textSecondary }}>
                                 {node.detail}
                             </Text>
                         ) : null}
                         {node.kind === "llm" ? (
-                            <Button size="small" type="dashed" block icon={<SettingOutlined />} disabled>
+                            <Button size="small" type="dashed" block icon={<SettingOutlined />} disabled style={{ borderRadius: 0 }}>
                                 Edit Prompt (coming soon)
                             </Button>
                         ) : null}
@@ -229,136 +244,165 @@ export default function AgentBuilderPage() {
     };
 
     return (
-        <CMSLayout
-            title="Visual Agent Builder"
-            subTitle="Orchestrate autonomous AI agents and toolchains"
-            extra={[<StudioLiveModeTag key="live" />]}
-        >
-            <StudioLiveBanner
-                title="Visual Agent Builder"
-                detail="Workflows persist per tenant in studio_agent_workflows (GraphQL). Agentic OS playbooks remain separate step templates for task queue."
-            />
-            <Alert
-                type="warning"
-                showIcon={false}
-                message={
-                    <Text type="secondary" style={{ fontSize: 12 }}>
-                        <strong>Demo path:</strong> node palette cards are static UX samples — only the canvas graph is saved to your tenant.
-                    </Text>
-                }
-                style={{ marginBottom: 16 }}
-            />
-            <Row gutter={16} style={{ marginBottom: 16 }}>
-                <Col flex="auto">
-                    <Space wrap>
-                        <Select
-                            style={{ minWidth: 280 }}
-                            placeholder="Select workflow"
-                            loading={loading}
-                            value={selectedId ?? undefined}
-                            onChange={onSelectWorkflow}
-                            options={workflows.map((w) => ({ value: w.id, label: w.name }))}
-                            notFoundContent={<Empty description="No workflows yet" image={Empty.PRESENTED_IMAGE_SIMPLE} />}
-                        />
-                        <Button icon={<PlusOutlined />} onClick={() => setCreateOpen(true)}>
-                            New workflow
+        <div className="flex flex-col gap-1.5 h-[calc(100vh-142px)] min-h-[500px]">
+            {/* Single 38px Tactical Workflow Control Ribbon */}
+            <div
+                style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    flexWrap: "wrap",
+                    gap: 8,
+                    padding: "5px 10px",
+                    background: t.cardBg,
+                    border: `1px solid ${t.cardBorder}`,
+                    borderTop: "2px solid #fb923c",
+                    flexShrink: 0,
+                }}
+            >
+                <Space size={6} wrap>
+                    <Select
+                        size="small"
+                        style={{ minWidth: 230 }}
+                        placeholder="Select workflow"
+                        loading={loading}
+                        value={selectedId ?? undefined}
+                        onChange={onSelectWorkflow}
+                        options={workflows.map((w) => ({ value: w.id, label: w.name }))}
+                        notFoundContent={<Empty description="No workflows yet" image={Empty.PRESENTED_IMAGE_SIMPLE} />}
+                    />
+                    <Button size="small" icon={<PlusOutlined />} onClick={() => setCreateOpen(true)} style={{ borderRadius: 0 }}>
+                        New workflow
+                    </Button>
+                    <Button
+                        size="small"
+                        type="primary"
+                        icon={<SaveOutlined />}
+                        onClick={saveGraph}
+                        loading={saving}
+                        disabled={!selectedId}
+                        data-testid="agent-builder-save"
+                        style={{ borderRadius: 0 }}
+                    >
+                        Save
+                    </Button>
+                    <Popconfirm title="Delete this workflow?" onConfirm={deleteWorkflow} disabled={!selectedId}>
+                        <Button size="small" danger icon={<DeleteOutlined />} disabled={!selectedId} style={{ borderRadius: 0 }}>
+                            Delete
                         </Button>
-                        <Button
-                            type="primary"
-                            icon={<SaveOutlined />}
-                            onClick={saveGraph}
-                            loading={saving}
-                            disabled={!selectedId}
-                            data-testid="agent-builder-save"
-                        >
-                            Save
-                        </Button>
-                        <Popconfirm title="Delete this workflow?" onConfirm={deleteWorkflow} disabled={!selectedId}>
-                            <Button danger icon={<DeleteOutlined />} disabled={!selectedId}>
-                                Delete
-                            </Button>
-                        </Popconfirm>
-                    </Space>
-                </Col>
-                <Col>
+                    </Popconfirm>
+                </Space>
+
+                <Space size={8} wrap>
+                    <span className="font-mono text-[10px] uppercase tracking-wider" style={{ color: t.textSecondary }}>
+                        NODES: <strong style={{ color: t.textPrimary }}>{draftGraph.nodes.length}</strong> · EDGES:{" "}
+                        <strong style={{ color: t.textPrimary }}>{draftGraph.edges.length}</strong>
+                    </span>
                     {selected?.lastTestedAt ? (
-                        <Text type="secondary" style={{ fontSize: 12 }}>
-                            Last test: {new Date(selected.lastTestedAt).toLocaleString()}
+                        <Text type="secondary" className="font-mono" style={{ fontSize: 10 }}>
+                            LAST_TEST: {new Date(selected.lastTestedAt).toLocaleTimeString()}
                         </Text>
                     ) : null}
-                </Col>
-            </Row>
-            <Row gutter={24}>
-                <Col span={6}>
-                    <Card title="Node Library (palette)" size="small" bordered={false} className="shadow-sm">
-                        <Collapse defaultActiveKey={["1", "2"]} ghost>
-                            <Panel header="LLM Engines" key="1">
-                                {PALETTE.filter((p) => p.kind === "llm").map((p) => (
-                                    <Card
-                                        key={p.label}
-                                        size="small"
-                                        hoverable
-                                        style={{ marginBottom: 8, borderLeft: `4px solid ${themeColor}`, cursor: "pointer" }}
-                                        onClick={() => addPaletteNode(p)}
-                                    >
-                                        <Space>
-                                            <RobotOutlined /> {p.label}
-                                        </Space>
-                                    </Card>
-                                ))}
-                            </Panel>
-                            <Panel header="Triggers, Tools & Logic" key="2">
-                                {PALETTE.filter((p) => p.kind !== "llm").map((p) => (
-                                    <Card
-                                        key={p.label}
-                                        size="small"
-                                        hoverable
-                                        style={{ marginBottom: 8, borderLeft: `4px solid ${p.color || themeColor}`, cursor: "pointer" }}
-                                        onClick={() => addPaletteNode(p)}
-                                    >
-                                        <Space>
-                                            {p.icon} {p.label}
-                                        </Space>
-                                    </Card>
-                                ))}
-                            </Panel>
-                        </Collapse>
-                    </Card>
-                </Col>
-                <Col span={18}>
-                    <Card
-                        title={
-                            <>
-                                <NodeIndexOutlined /> Workflow Canvas
-                                {selected ? `: ${selected.name}` : ""}
-                            </>
-                        }
-                        extra={
-                            <Button type="primary" icon={<PlayCircleOutlined />} onClick={testRun} disabled={!selectedId}>
-                                Test Run
-                            </Button>
-                        }
-                        bordered={false}
-                        className="shadow-sm"
-                        style={{
-                            minHeight: 600,
-                            backgroundColor: "#fafafa",
-                            backgroundImage: "radial-gradient(#e5e5e5 1px, transparent 1px)",
-                            backgroundSize: "20px 20px",
-                        }}
+                    <Button
+                        size="small"
+                        type="primary"
+                        icon={<PlayCircleOutlined />}
+                        onClick={testRun}
+                        disabled={!selectedId}
+                        style={{ borderRadius: 0, backgroundColor: themeColor }}
                     >
-                        <div style={{ padding: 40, display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
-                            {!selectedId ? (
-                                <Empty description="Create a workflow to start building" />
-                            ) : draftGraph.nodes.length === 0 ? (
-                                <Empty description="Click a node in the palette to add steps" />
-                            ) : (
-                                draftGraph.nodes.map((n, i) => renderNode(n, i))
-                            )}
-                        </div>
-                    </Card>
-                </Col>
-            </Row>
+                        Test Run
+                    </Button>
+                </Space>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-1.5 flex-1 min-h-0">
+                <Card
+                    title={<span className="font-mono text-[11px] uppercase tracking-[0.06em]">Node Library (palette)</span>}
+                    size="small"
+                    className="lg:col-span-3 flex flex-col min-h-0"
+                    style={{ borderRadius: 0, borderTop: "2px solid #fb923c" }}
+                    styles={{ body: { padding: 8, flex: 1, overflowY: "auto" } }}
+                >
+                    <div className="mb-2 px-1.5 py-1 border border-white/[0.06] font-mono text-[10px]" style={{ color: t.textSecondary }}>
+                        Click any node below to append to active canvas graph.
+                    </div>
+                    <Collapse defaultActiveKey={["1", "2"]} ghost size="small">
+                        <Panel header={<span className="font-mono text-[11px] uppercase">LLM Engines</span>} key="1">
+                            {PALETTE.filter((p) => p.kind === "llm").map((p) => (
+                                <Card
+                                    key={p.label}
+                                    size="small"
+                                    hoverable
+                                    style={{
+                                        marginBottom: 6,
+                                        borderRadius: 0,
+                                        borderLeft: `2px solid ${themeColor}`,
+                                        cursor: "pointer",
+                                    }}
+                                    styles={{ body: { padding: "6px 8px" } }}
+                                    onClick={() => addPaletteNode(p)}
+                                >
+                                    <Space size={6} className="text-xs">
+                                        <RobotOutlined /> {p.label}
+                                    </Space>
+                                </Card>
+                            ))}
+                        </Panel>
+                        <Panel header={<span className="font-mono text-[11px] uppercase">Triggers, Tools & Logic</span>} key="2">
+                            {PALETTE.filter((p) => p.kind !== "llm").map((p) => (
+                                <Card
+                                    key={p.label}
+                                    size="small"
+                                    hoverable
+                                    style={{
+                                        marginBottom: 6,
+                                        borderRadius: 0,
+                                        borderLeft: `2px solid ${p.color || themeColor}`,
+                                        cursor: "pointer",
+                                    }}
+                                    styles={{ body: { padding: "6px 8px" } }}
+                                    onClick={() => addPaletteNode(p)}
+                                >
+                                    <Space size={6} className="text-xs">
+                                        {p.icon} {p.label}
+                                    </Space>
+                                </Card>
+                            ))}
+                        </Panel>
+                    </Collapse>
+                </Card>
+
+                <Card
+                    size="small"
+                    title={
+                        <span className="font-mono text-[11px] uppercase tracking-[0.06em]">
+                            <NodeIndexOutlined style={{ color: "#fb923c", marginRight: 6 }} /> Workflow Canvas
+                            {selected ? `: ${selected.name}` : ""}
+                        </span>
+                    }
+                    className="lg:col-span-9 flex flex-col min-h-0"
+                    style={{
+                        borderRadius: 0,
+                        borderTop: "2px solid #fb923c",
+                        backgroundColor: t.surfaceBg,
+                        backgroundImage: `radial-gradient(${t.cardBorder} 1px, transparent 1px)`,
+                        backgroundSize: "18px 18px",
+                    }}
+                    styles={{ body: { padding: 16, flex: 1, overflowY: "auto" } }}
+                >
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                        {!selectedId ? (
+                            <Empty description="Create a workflow to start building" />
+                        ) : draftGraph.nodes.length === 0 ? (
+                            <Empty description="Click a node in the palette to add steps" />
+                        ) : (
+                            draftGraph.nodes.map((n, i) => renderNode(n, i))
+                        )}
+                    </div>
+                </Card>
+            </div>
+
             <Modal
                 title="New agent workflow"
                 open={createOpen}
@@ -368,6 +412,18 @@ export default function AgentBuilderPage() {
             >
                 <Input placeholder="Workflow name" value={newName} onChange={(e) => setNewName(e.target.value)} />
             </Modal>
+        </div>
+    );
+}
+
+export default function AgentBuilderPage() {
+    return (
+        <CMSLayout
+            title="Visual Agent Builder"
+            subTitle="Orchestrate autonomous AI agents and toolchains"
+            extra={[<StudioLiveModeTag key="live" />]}
+        >
+            <AgentBuilderInner />
         </CMSLayout>
     );
 }

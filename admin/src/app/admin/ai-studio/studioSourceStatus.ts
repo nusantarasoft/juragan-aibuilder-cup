@@ -3,12 +3,12 @@ import type { StudioSource } from '@/lib/studioService';
 export type IngestStage = 'queued' | 'extracting' | 'chunking' | 'embedding' | 'done' | 'error';
 
 const STAGE_LABELS: Record<string, string> = {
-    queued: 'Antrian',
-    extracting: 'Ekstraksi teks',
+    queued: 'Queued',
+    extracting: 'Extracting text',
     chunking: 'Chunking',
-    embedding: 'Vektorisasi',
-    done: 'Selesai',
-    error: 'Gagal',
+    embedding: 'Vectorizing',
+    done: 'Done',
+    error: 'Failed',
 };
 
 export function resolveIngestStage(source: StudioSource): IngestStage {
@@ -73,7 +73,7 @@ export function getSourceStageLabel(source: StudioSource): string {
 
 export function getSourceStatusTag(source: StudioSource): { color: string; label: string } {
     if (isSourceIndexed(source)) {
-        return { color: 'success', label: `Tervektor (${source.chunk_count})` };
+        return { color: 'success', label: `Vectorized (${source.chunk_count})` };
     }
     const stage = resolveIngestStage(source);
     if (stage === 'embedding') {
@@ -84,26 +84,26 @@ export function getSourceStatusTag(source: StudioSource): { color: string; label
     }
     switch (source.parse_status) {
         case 'done':
-            return { color: 'warning', label: 'Tanpa vektor' };
+            return { color: 'warning', label: 'No vectors' };
         case 'error':
-            return { color: 'error', label: 'Gagal' };
+            return { color: 'error', label: 'Failed' };
         default:
-            return { color: 'default', label: 'Antrian' };
+            return { color: 'default', label: 'Queued' };
     }
 }
 
 export function getSourceStatusDetail(source: StudioSource): string | null {
     if (source.parse_error?.trim()) return source.parse_error.trim();
     if (isSourceIndexed(source)) {
-        return `${source.chunk_count} chunk tervektor — siap untuk semantic search RAG.`;
+        return `${source.chunk_count} chunks vectorized — ready for RAG semantic search.`;
     }
     const stage = resolveIngestStage(source);
     if (stage === 'embedding' && (source.embed_total ?? 0) > 0) {
-        return `Mengekstrak embedding per chunk (${source.embed_done ?? 0}/${source.embed_total}).`;
+        return `Generating chunk embeddings (${source.embed_done ?? 0}/${source.embed_total}).`;
     }
-    if (stage === 'extracting') return 'Membaca dan mengekstrak teks dari file.';
-    if (stage === 'chunking') return 'Memecah teks menjadi chunk untuk vektorisasi.';
-    if (stage === 'queued') return 'Menunggu proses indeksasi dimulai.';
+    if (stage === 'extracting') return 'Reading and extracting text from file.';
+    if (stage === 'chunking') return 'Splitting text into chunks for vectorization.';
+    if (stage === 'queued') return 'Waiting for indexing pipeline to start.';
     return null;
 }
 
@@ -126,20 +126,20 @@ export function trackSourceStatusChanges(
         if (status === 'done' && (source.chunk_count ?? 0) > 0) {
             notify(
                 'success',
-                `"${source.filename}" vektorisasi selesai (${source.chunk_count} chunk siap RAG)`,
+                `"${source.filename}" vectorized (${source.chunk_count} chunks ready for RAG)`,
             );
         } else if (status === 'error') {
             const detail = source.parse_error?.trim();
             notify(
                 'error',
                 detail
-                    ? `Vektorisasi/indeks gagal: "${source.filename}" — ${detail}`
-                    : `Indeksasi gagal: "${source.filename}". Coba Reindex.`,
+                    ? `Indexing failed: "${source.filename}" — ${detail}`
+                    : `Indexing failed: "${source.filename}". Try Reindex.`,
             );
         } else if (status === 'done' && (source.chunk_count ?? 0) === 0) {
             notify(
                 'warning',
-                `"${source.filename}" selesai tanpa vektor. Periksa format file atau konfigurasi embedding.`,
+                `"${source.filename}" finished without vectors. Check file format or embedding config.`,
             );
         }
     }

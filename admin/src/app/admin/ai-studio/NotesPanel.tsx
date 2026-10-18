@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
-import { Button, Drawer, Empty, Input, List, Popconfirm, Space, Spin, Tag, Typography } from "antd";
+import { Button, Drawer, Empty, Input, List, Popconfirm, Space, Spin, Tag, Tooltip, Typography } from "antd";
 import {
     DeleteOutlined,
     FileAddOutlined,
@@ -24,8 +24,8 @@ type Props = {
 
 const ORIGIN_LABEL: Record<StudioNote["origin"], string> = {
     manual: "Manual",
-    chat: "Dari chat",
-    output: "Dari output",
+    chat: "From chat",
+    output: "From output",
 };
 
 export default function NotesPanel({ themeColor, notebookId, refreshSignal, onSourceAdded }: Props) {
@@ -88,19 +88,19 @@ export default function NotesPanel({ themeColor, notebookId, refreshSignal, onSo
         try {
             if (editing.id) {
                 await studioService.updateNote(editing.id, { title: draftTitle, content: draftContent });
-                message.success("Catatan diperbarui");
+                message.success("Note updated");
             } else {
                 await studioService.createNote(notebookId, {
                     title: draftTitle,
                     content: draftContent,
                     origin: "manual",
                 });
-                message.success("Catatan dibuat");
+                message.success("Note created");
             }
             closeEditor();
             await loadNotes();
         } catch (e: unknown) {
-            message.error(e instanceof Error ? e.message : "Gagal menyimpan catatan");
+            message.error(e instanceof Error ? e.message : "Failed to save note");
         } finally {
             setSaving(false);
         }
@@ -109,11 +109,11 @@ export default function NotesPanel({ themeColor, notebookId, refreshSignal, onSo
     const handleDelete = async (noteId: string) => {
         try {
             await studioService.deleteNote(noteId);
-            message.success("Catatan dihapus");
+            message.success("Note deleted");
             if (editing?.id === noteId) closeEditor();
             await loadNotes();
         } catch (e: unknown) {
-            message.error(e instanceof Error ? e.message : "Gagal menghapus");
+            message.error(e instanceof Error ? e.message : "Failed to delete note");
         }
     };
 
@@ -121,82 +121,92 @@ export default function NotesPanel({ themeColor, notebookId, refreshSignal, onSo
         setConverting(true);
         try {
             await studioService.convertNoteToSource(noteId);
-            message.success("Catatan dijadikan sumber — indeksasi dimulai");
+            message.success("Note converted to source — indexing started");
             onSourceAdded?.();
         } catch (e: unknown) {
-            message.error(e instanceof Error ? e.message : "Gagal menjadikan sumber");
+            message.error(e instanceof Error ? e.message : "Failed to convert note to source");
         } finally {
             setConverting(false);
         }
     };
 
-    if (!notebookId) {
-        return (
-            <div className="flex items-center justify-center h-full p-4 opacity-60">
-                <Text type="secondary" className="text-xs text-center">Pilih notebook untuk Notes</Text>
-            </div>
-        );
-    }
-
     return (
-        <div className="flex flex-col h-full">
-            <div className="px-3 py-2 border-b border-[rgba(var(--theme-color-rgb,139,92,246),0.12)] flex items-center justify-between">
-                <div>
-                    <Title level={5} className="!mb-0 !text-sm">Notes</Title>
-                    <Text type="secondary" className="text-[10px]">Catatan pribadi untuk notebook ini</Text>
+        <div className="flex flex-col h-full min-h-0 overflow-hidden">
+            <div className="px-2.5 py-1.5 border-b border-white/10 flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="h-1.5 w-1.5 bg-purple-400 shrink-0" />
+                    <Title level={5} className="!mb-0 !text-[11px] font-mono uppercase tracking-[0.14em]">
+                        Notes
+                    </Title>
+                    <span className="font-mono text-[9.5px] text-slate-400 tabular-nums">
+                        [{notes.length}]
+                    </span>
                 </div>
-                <Button size="small" type="primary" icon={<PlusOutlined />} onClick={openNew}
-                    style={{ backgroundColor: themeColor, borderColor: themeColor }}>
-                    Baru
+                <Button
+                    size="small"
+                    type="primary"
+                    icon={<PlusOutlined />}
+                    disabled={!notebookId}
+                    onClick={openNew}
+                    className="!text-[10.5px] !px-2 !h-6"
+                    style={{ backgroundColor: themeColor, borderColor: themeColor }}
+                >
+                    New
                 </Button>
             </div>
 
-            <div className="flex-1 overflow-y-auto custom-scrollbar p-3">
-                {loading ? (
+            <div className="flex-1 overflow-y-auto custom-scrollbar px-2 py-1.5 min-h-0">
+                {!notebookId ? (
+                    <div className="px-2.5 py-3 border border-dashed border-white/10 text-center font-mono text-[10px] text-slate-400">
+                        Select a notebook to manage Notes.
+                    </div>
+                ) : loading ? (
                     <div className="flex justify-center py-4"><Spin size="small" /></div>
                 ) : notes.length === 0 ? (
-                    <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Belum ada catatan" className="my-4" />
+                    <div className="px-2.5 py-3 border border-dashed border-white/10 text-center font-mono text-[10px] text-slate-400">
+                        No notes yet. Click New to write a note.
+                    </div>
                 ) : (
-                    <List
-                        size="small"
-                        dataSource={notes}
-                        renderItem={(item) => (
-                            <List.Item
-                                className="!px-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/40 rounded"
+                    <div className="flex flex-col gap-1">
+                        {notes.map((item) => (
+                            <div
+                                key={item.id}
                                 onClick={() => openEdit(item)}
-                                actions={[
-                                    <Button
-                                        key="del"
-                                        type="text"
-                                        size="small"
-                                        danger
-                                        icon={<DeleteOutlined />}
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            void handleDelete(item.id);
-                                        }}
-                                    />,
-                                ]}
+                                className="group flex items-center justify-between gap-1.5 px-2 py-1.5 cursor-pointer border border-white/[0.06] bg-white/[0.015] hover:border-purple-400/40 hover:bg-white/[0.04] transition-colors"
+                                style={{ borderLeft: `2px solid ${themeColor}` }}
                             >
-                                <List.Item.Meta
-                                    title={<Text className="text-[11px] truncate block">{item.title}</Text>}
-                                    description={
-                                        <Space size={4}>
-                                            <Tag className="text-[9px] m-0">{ORIGIN_LABEL[item.origin]}</Tag>
-                                            <Text className="text-[9px] text-gray-400 truncate">
-                                                {item.content.slice(0, 40)}
-                                            </Text>
-                                        </Space>
-                                    }
+                                <div className="min-w-0 flex-1">
+                                    <Text className="text-[11px] font-medium truncate block leading-snug">
+                                        {item.title}
+                                    </Text>
+                                    <div className="flex items-center gap-1.5 mt-0.5">
+                                        <Tag className="font-mono !text-[8.5px] !m-0 !px-1 !py-0 !leading-3.5 !rounded-none uppercase">
+                                            {ORIGIN_LABEL[item.origin]}
+                                        </Tag>
+                                        <Text className="text-[9.5px] text-slate-400 truncate">
+                                            {item.content.slice(0, 45)}
+                                        </Text>
+                                    </div>
+                                </div>
+                                <Button
+                                    type="text"
+                                    size="small"
+                                    danger
+                                    className="!h-5 !w-5 !p-0 opacity-0 group-hover:opacity-100"
+                                    icon={<DeleteOutlined style={{ fontSize: 11 }} />}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        void handleDelete(item.id);
+                                    }}
                                 />
-                            </List.Item>
-                        )}
-                    />
+                            </div>
+                        ))}
+                    </div>
                 )}
             </div>
 
             <Drawer
-                title={editing?.id ? "Edit catatan" : "Catatan baru"}
+                title={editing?.id ? "Edit Note" : "New Note"}
                 open={!!editing}
                 onClose={closeEditor}
                 size={480}
@@ -209,9 +219,9 @@ export default function NotesPanel({ themeColor, notebookId, refreshSignal, onSo
                                 loading={converting}
                                 onClick={() => void handleConvert(editing.id)}
                             >
-                                Jadikan sumber
+                                Convert to Source
                             </Button>
-                            <Popconfirm title="Hapus catatan?" onConfirm={() => void handleDelete(editing.id)}>
+                            <Popconfirm title="Delete note?" onConfirm={() => void handleDelete(editing.id)}>
                                 <Button size="small" danger icon={<DeleteOutlined />} />
                             </Popconfirm>
                         </Space>
@@ -220,12 +230,12 @@ export default function NotesPanel({ themeColor, notebookId, refreshSignal, onSo
             >
                 <div className="flex flex-col gap-3 h-full">
                     <Input
-                        placeholder="Judul catatan"
+                        placeholder="Note title"
                         value={draftTitle}
                         onChange={(e) => setDraftTitle(e.target.value)}
                     />
                     <TextArea
-                        placeholder="Tulis catatan (mendukung markdown)…"
+                        placeholder="Write note (supports markdown)…"
                         value={draftContent}
                         onChange={(e) => setDraftContent(e.target.value)}
                         autoSize={{ minRows: 12, maxRows: 24 }}
@@ -237,7 +247,7 @@ export default function NotesPanel({ themeColor, notebookId, refreshSignal, onSo
                         onClick={() => void handleSave()}
                         style={{ backgroundColor: themeColor, borderColor: themeColor }}
                     >
-                        Simpan
+                        Save
                     </Button>
                 </div>
             </Drawer>

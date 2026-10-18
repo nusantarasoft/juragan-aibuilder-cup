@@ -50,32 +50,32 @@ export function validateActiveProvider(
 ): string | null {
     switch (provider) {
         case "ollama":
-            if (!values.ollama_base_url?.trim()) return "Ollama endpoint wajib diisi.";
-            if (!values.ollama_model?.trim()) return "Ollama model wajib diisi.";
+            if (!values.ollama_base_url?.trim()) return "Ollama endpoint is required.";
+            if (!values.ollama_model?.trim()) return "Ollama model is required.";
             return null;
         case "anthropic":
             if (!values.anthropic_api_key_configured && !values.anthropic_api_key?.trim()) {
-                return "Anthropic API key wajib untuk provider aktif.";
+                return "Anthropic API key is required for the active provider.";
             }
-            if (!values.anthropic_model?.trim()) return "Anthropic model wajib diisi.";
+            if (!values.anthropic_model?.trim()) return "Anthropic model is required.";
             return null;
         case "openai":
             if (!values.openai_api_key_configured && !values.openai_api_key?.trim()) {
-                return "OpenAI API key wajib untuk provider aktif.";
+                return "OpenAI API key is required for the active provider.";
             }
-            if (!values.openai_model?.trim()) return "OpenAI model wajib diisi.";
+            if (!values.openai_model?.trim()) return "OpenAI model is required.";
             return null;
         case "groq":
             if (!values.groq_api_key_configured && !values.groq_api_key?.trim()) {
-                return "Groq API key wajib untuk provider aktif.";
+                return "Groq API key is required for the active provider.";
             }
-            if (!values.groq_model?.trim()) return "Groq model wajib diisi.";
+            if (!values.groq_model?.trim()) return "Groq model is required.";
             return null;
         case "openrouter":
             if (!values.openrouter_api_key_configured && !values.openrouter_api_key?.trim()) {
-                return "OpenRouter API key wajib untuk provider aktif (atau OPENROUTER_API_KEY di env).";
+                return "OpenRouter API key is required for the active provider (or OPENROUTER_API_KEY in env).";
             }
-            if (!values.openrouter_model?.trim()) return "OpenRouter model wajib diisi.";
+            if (!values.openrouter_model?.trim()) return "OpenRouter model is required.";
             return null;
         case "google":
             if (
@@ -85,9 +85,9 @@ export function validateActiveProvider(
                 !values.google_service_account_configured &&
                 !values.google_service_account_json?.trim()
             ) {
-                return "Google API key, Vertex Project ID, atau Service Account JSON wajib untuk provider aktif.";
+                return "Google API key, Vertex Project ID, or Service Account JSON is required for the active provider.";
             }
-            if (!values.google_model?.trim()) return "Google model wajib diisi.";
+            if (!values.google_model?.trim()) return "Google model is required.";
             return null;
         default:
             return null;

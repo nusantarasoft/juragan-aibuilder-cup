@@ -58,6 +58,7 @@ type Props = {
     onReindex: (sourceId: string) => void;
     onConfigureChat: () => void;
     onOpenSource?: (sourceId: string) => void;
+    onCollapse?: () => void;
 };
 
 export default function SourcesPanel({
@@ -76,6 +77,7 @@ export default function SourcesPanel({
     onReindex,
     onConfigureChat,
     onOpenSource,
+    onCollapse,
 }: Props) {
     const [urlModalOpen, setUrlModalOpen] = useState(false);
     const [urlInput, setUrlInput] = useState("");
@@ -125,7 +127,7 @@ export default function SourcesPanel({
         if (textBody.trim().length < 20) return;
         setSavingText(true);
         try {
-            await onAddText(textTitle.trim() || "Catatan teks", textBody.trim());
+            await onAddText(textTitle.trim() || "Text note", textBody.trim());
             setTextTitle("");
             setTextBody("");
             setTextModalOpen(false);
@@ -143,102 +145,138 @@ export default function SourcesPanel({
                 : 0;
 
         return (
-            <div className="px-3 pt-2 pb-1 border-b border-[rgba(var(--theme-color-rgb,139,92,246),0.12)]">
-                <div className="flex items-center justify-between gap-2 mb-1.5">
+            <div className="px-2.5 py-1.5 border-b border-white/10 bg-white/[0.015]">
+                <div className="flex items-center justify-between gap-1.5">
                     <Checkbox
                         checked={allSelected}
                         indeterminate={selectedSourceIds.length > 0 && !allSelected}
                         onChange={(e) => onSelectAll(e.target.checked)}
                         disabled={indexedIds.length === 0}
                     >
-                        <Text className="text-[10px] text-gray-500">
-                            {selectedSourceIds.length}/{indexedIds.length} dipakai chat
-                        </Text>
+                        <span className="font-mono text-[10px] text-slate-400 tabular-nums">
+                            CTX {selectedSourceIds.length}/{indexedIds.length}
+                        </span>
                     </Checkbox>
+                    <span className="font-mono text-[9.5px] text-slate-400 tabular-nums">
+                        {indexed}/{total} VEC
+                        {inProgress > 0 ? ` · ${inProgress} RUN` : ""}
+                        {errors > 0 ? ` · ${errors} ERR` : ""}
+                    </span>
                     {sourceStats.allIndexed ? (
-                        <Tag color="success" className="text-[9px] m-0">Siap RAG</Tag>
+                        <Tag color="success" className="font-mono !text-[9px] !m-0 !px-1 !py-0 !leading-4 !rounded-none uppercase">
+                            READY
+                        </Tag>
                     ) : inProgress > 0 ? (
-                        <Tag color="processing" icon={<SyncOutlined spin />} className="text-[9px] m-0">
-                            Mengindeks
+                        <Tag color="processing" icon={<SyncOutlined spin />} className="font-mono !text-[9px] !m-0 !px-1 !py-0 !leading-4 !rounded-none uppercase">
+                            INDEXING
                         </Tag>
                     ) : null}
                 </div>
-                <Text className="text-[10px] text-gray-400 block mb-1">
-                    {indexed}/{total} tervektor
-                    {inProgress > 0 ? ` · ${inProgress} diproses` : ""}
-                    {errors > 0 ? ` · ${errors} gagal` : ""}
-                </Text>
-                <Progress
-                    percent={overallPercent}
-                    size="small"
-                    strokeColor={themeColor}
-                    status={
-                        errors > 0 && indexed === 0
-                            ? "exception"
-                            : inProgress > 0
-                              ? "active"
-                              : indexed === total
-                                ? "success"
-                                : "normal"
-                    }
-                />
+                {inProgress > 0 && (
+                    <Progress
+                        percent={overallPercent}
+                        size="small"
+                        showInfo={false}
+                        strokeColor={themeColor}
+                        className="!m-0 !mt-1"
+                    />
+                )}
             </div>
         );
     };
 
     return (
-        <div className="flex flex-col h-full">
-            <div className="flex items-center justify-between px-3 py-2 border-b border-[rgba(var(--theme-color-rgb,139,92,246),0.12)]">
-                <Space size={6}>
-                    <Text strong className="text-sm">Sources</Text>
+        <div className="flex flex-col h-full min-h-0">
+            {/* Compact 32px Tactical Header */}
+            <div className="flex items-center justify-between px-2.5 py-1.5 border-b border-white/10 shrink-0">
+                <div className="flex items-center gap-1.5">
+                    <span className="h-1.5 w-1.5 bg-orange-400" />
+                    <Text strong className="text-[11px] font-mono uppercase tracking-[0.14em]">
+                        Sources
+                    </Text>
+                    <span className="font-mono text-[10px] text-slate-400 tabular-nums">
+                        [{sources.length}]
+                    </span>
                     {sourceStats.inProgress > 0 && (
                         <Badge count={sourceStats.inProgress} size="small" color={themeColor} />
                     )}
-                </Space>
-                <Space size={2}>
-                    <Tooltip title="Configure chat">
-                        <Button type="text" size="small" icon={<SettingOutlined />} onClick={onConfigureChat} />
+                </div>
+                <div className="flex items-center gap-1">
+                    <Tooltip title="Configure chat instructions" placement="bottom">
+                        <Button
+                            type="text"
+                            size="small"
+                            aria-label="setting"
+                            icon={<SettingOutlined />}
+                            onClick={onConfigureChat}
+                            className="!h-6 !w-6 !p-0"
+                        />
                     </Tooltip>
-                    <Tooltip title="Import URL / YouTube / Google Docs">
-                        <Button type="text" size="small" icon={<LinkOutlined />} onClick={() => setUrlModalOpen(true)} />
-                    </Tooltip>
-                    <Tooltip title="Tempel teks">
-                        <Button type="text" size="small" icon={<FileTextOutlined />} onClick={() => setTextModalOpen(true)} />
-                    </Tooltip>
-                    <Tooltip title="Media Library">
-                        <Button type="text" size="small" icon={<AppstoreAddOutlined />} onClick={onOpenMedia} />
-                    </Tooltip>
-                    <Upload customRequest={onUpload} showUploadList={false} multiple>
-                        <Tooltip title="Upload">
-                            <Button type="text" size="small" icon={<CloudUploadOutlined />} />
+                    {onCollapse && (
+                        <Tooltip title="Hide Sources panel" placement="bottom">
+                            <button
+                                type="button"
+                                onClick={onCollapse}
+                                className="inline-flex items-center gap-1 h-5 px-1.5 font-mono text-[9px] font-bold uppercase tracking-wider border border-white/15 bg-white/[0.03] text-slate-400 hover:border-orange-400/50 hover:bg-orange-500/15 hover:text-orange-300 transition-colors cursor-pointer"
+                            >
+                                ◀ HIDE
+                            </button>
                         </Tooltip>
-                    </Upload>
-                </Space>
+                    )}
+                </div>
+            </div>
+
+            {/* Always-Visible 4-Action Tactical Ingestion Strip */}
+            <div className="grid grid-cols-4 gap-1 px-2 py-1.5 border-b border-white/10 shrink-0 font-mono">
+                <Upload customRequest={onUpload} showUploadList={false} multiple className="w-full block [&_.ant-upload]:!w-full [&_.ant-upload]:!block">
+                    <Button
+                        size="small"
+                        icon={<CloudUploadOutlined />}
+                        className="w-full !px-1 !text-[10px] font-mono uppercase !rounded-none"
+                    >
+                        File
+                    </Button>
+                </Upload>
+                <Button
+                    size="small"
+                    icon={<LinkOutlined />}
+                    onClick={() => setUrlModalOpen(true)}
+                    className="w-full !px-1 !text-[10px] font-mono uppercase !rounded-none"
+                >
+                    URL
+                </Button>
+                <Button
+                    size="small"
+                    icon={<FileTextOutlined />}
+                    onClick={() => setTextModalOpen(true)}
+                    className="w-full !px-1 !text-[10px] font-mono uppercase !rounded-none"
+                >
+                    Text
+                </Button>
+                <Button
+                    size="small"
+                    icon={<AppstoreAddOutlined />}
+                    onClick={onOpenMedia}
+                    className="w-full !px-1 !text-[10px] font-mono uppercase !rounded-none"
+                >
+                    Media
+                </Button>
             </div>
 
             {renderSummary()}
 
-            <div className="flex-1 overflow-y-auto custom-scrollbar px-2 py-2">
+            <div className="flex-1 overflow-y-auto custom-scrollbar px-1.5 py-1.5 min-h-0">
                 {loading ? (
-                    <div className="flex justify-center py-8"><Spin size="small" /></div>
+                    <div className="flex justify-center py-6"><Spin size="small" /></div>
                 ) : sources.length === 0 ? (
-                    <Empty
-                        image={Empty.PRESENTED_IMAGE_SIMPLE}
-                        description={
-                            <div className="text-center">
-                                <span className="text-[11px] text-gray-400 block mb-2">Belum ada sumber</span>
-                                <Space size={4} wrap className="justify-center">
-                                    <Upload customRequest={onUpload} showUploadList={false} multiple>
-                                        <Button size="small" icon={<CloudUploadOutlined />}>Upload</Button>
-                                    </Upload>
-                                    <Button size="small" icon={<LinkOutlined />} onClick={() => setUrlModalOpen(true)}>URL</Button>
-                                    <Button size="small" icon={<FileTextOutlined />} onClick={() => setTextModalOpen(true)}>Teks</Button>
-                                    <Button size="small" icon={<AppstoreAddOutlined />} onClick={onOpenMedia}>Media</Button>
-                                </Space>
-                            </div>
-                        }
-                        className="my-6"
-                    />
+                    <div className="px-2.5 py-4 border border-dashed border-white/10 text-center font-mono">
+                        <div className="text-[10px] uppercase tracking-[0.14em] text-slate-400 mb-1">
+                            No sources yet
+                        </div>
+                        <div className="text-[10px] text-slate-500 leading-relaxed">
+                            Use the File, URL, Text, or Media buttons above to index documents into RAG.
+                        </div>
+                    </div>
                 ) : (
                     sources.map((source) => {
                         const statusDetail = getSourceStatusDetail(source);
@@ -248,61 +286,87 @@ export default function SourcesPanel({
                         const checked = selectedSourceIds.includes(source.id);
 
                         return (
-                            <Tooltip key={source.id} title={statusDetail ?? stageLabel} placement="right">
-                                <div className="group flex items-start gap-2 rounded-md p-2 hover:bg-gray-50 dark:hover:bg-gray-800/50 mb-1">
-                                    <Checkbox
-                                        checked={checked}
-                                        disabled={!canSelect}
-                                        onChange={(e) => onToggleSource(source.id, e.target.checked)}
-                                        className="mt-0.5"
-                                    />
-                                    <button
-                                        type="button"
-                                        className="min-w-0 flex-1 text-left bg-transparent border-0 p-0 cursor-pointer"
-                                        onClick={() => onOpenSource?.(source.id)}
+                            <div
+                                key={source.id}
+                                className="group flex items-start gap-1.5 rounded-none px-2 py-1.5 border border-transparent hover:border-white/10 hover:bg-white/[0.03] mb-0.5 transition-colors"
+                                style={{
+                                    borderLeft: checked ? `2px solid ${themeColor}` : "2px solid transparent",
+                                    background: checked ? "rgba(251, 146, 60, 0.04)" : undefined,
+                                }}
+                            >
+                                <Checkbox
+                                    checked={checked}
+                                    disabled={!canSelect}
+                                    onChange={(e) => onToggleSource(source.id, e.target.checked)}
+                                    className="mt-0.5"
+                                />
+                                <button
+                                    type="button"
+                                    className="min-w-0 flex-1 text-left bg-transparent border-0 p-0 cursor-pointer"
+                                    onClick={() => onOpenSource?.(source.id)}
+                                >
+                                    <div className="flex items-center gap-1.5">
+                                        {getStatusIcon(source.parse_status)}
+                                        <Text className="text-[11.5px] font-medium truncate flex-1">{source.filename}</Text>
+                                    </div>
+                                    <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                                        <Text className="font-mono text-[9.5px] text-slate-400 tabular-nums">
+                                            {formatBytes(source.file_size)}
+                                        </Text>
+                                        <Tooltip title={statusDetail ?? stageLabel} placement="top">
+                                            <Tag color={color} className="font-mono !text-[8.5px] !m-0 !px-1 !py-0 !leading-3.5 !rounded-none uppercase">
+                                                {label}
+                                            </Tag>
+                                        </Tooltip>
+                                    </div>
+                                    {source.parse_status === "error" && source.parse_error ? (
+                                        <Text type="danger" className="text-[9.5px] block mt-0.5 line-clamp-1">
+                                            {source.parse_error}
+                                        </Text>
+                                    ) : null}
+                                    {isSourceInProgress(source) && (
+                                        <Progress
+                                            percent={getSourceProgressPercent(source)}
+                                            size="small"
+                                            showInfo={false}
+                                            strokeColor={themeColor}
+                                            className="mt-1 !mb-0"
+                                        />
+                                    )}
+                                </button>
+                                <Space size={0} className="opacity-0 group-hover:opacity-100 shrink-0">
+                                    <Tooltip title="Reindex source" placement="top">
+                                        <Button
+                                            type="text"
+                                            size="small"
+                                            className="!h-5 !w-5 !p-0"
+                                            icon={<SyncOutlined style={{ fontSize: 11 }} />}
+                                            onClick={() => onReindex(source.id)}
+                                        />
+                                    </Tooltip>
+                                    <Popconfirm
+                                        title="Remove this source?"
+                                        okText="Remove"
+                                        cancelText="Cancel"
+                                        onConfirm={() => onRemove(source.id)}
                                     >
-                                        <div className="flex items-center gap-1.5">
-                                            {getStatusIcon(source.parse_status)}
-                                            <Text className="text-[12px] truncate flex-1">{source.filename}</Text>
-                                        </div>
-                                        <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
-                                            <Text className="text-[10px] text-gray-400">{formatBytes(source.file_size)}</Text>
-                                            <Tag color={color} className="text-[9px] m-0 px-1">{label}</Tag>
-                                        </div>
-                                        {source.parse_status === "error" && source.parse_error ? (
-                                            <Text type="danger" className="text-[10px] block mt-0.5 line-clamp-2">
-                                                {source.parse_error}
-                                            </Text>
-                                        ) : null}
-                                        {isSourceInProgress(source) && (
-                                            <Progress
-                                                percent={getSourceProgressPercent(source)}
-                                                size="small"
-                                                strokeColor={themeColor}
-                                                className="mt-1 !mb-0"
-                                            />
-                                        )}
-                                    </button>
-                                    <Space size={0} className="opacity-0 group-hover:opacity-100">
-                                        <Button type="text" size="small" icon={<SyncOutlined />} onClick={() => onReindex(source.id)} />
-                                        <Popconfirm
-                                            title="Hapus sumber ini?"
-                                            okText="Hapus"
-                                            cancelText="Batal"
-                                            onConfirm={() => onRemove(source.id)}
-                                        >
-                                            <Button type="text" size="small" danger icon={<DeleteOutlined />} />
-                                        </Popconfirm>
-                                    </Space>
-                                </div>
-                            </Tooltip>
+                                        <Button
+                                            type="text"
+                                            size="small"
+                                            className="!h-5 !w-5 !p-0"
+                                            danger
+                                            icon={<DeleteOutlined style={{ fontSize: 11 }} />}
+                                        />
+                                    </Popconfirm>
+                                </Space>
+                            </div>
                         );
                     })
                 )}
             </div>
 
             <Modal
-                title="Import dari URL"
+                title="Import from URL"
                 open={urlModalOpen}
                 onCancel={() => setUrlModalOpen(false)}
                 onOk={() => void handleImportUrl()}
@@ -316,34 +380,34 @@ export default function SourcesPanel({
                     onPressEnter={() => void handleImportUrl()}
                 />
                 <Text type="secondary" className="text-[11px] block mt-2">
-                    Mendukung halaman web, video YouTube (transkrip/caption), dan Google Docs/Slides
-                    yang dibagikan publik. Teks diekstrak lalu diindeks seperti file upload.
+                    Supports web pages, YouTube videos (transcripts/captions), and publicly shared Google Docs/Slides.
+                    Extracted text is indexed just like an uploaded file.
                 </Text>
             </Modal>
 
             <Modal
-                title="Tempel teks sebagai sumber"
+                title="Paste Text as Source"
                 open={textModalOpen}
                 onCancel={() => setTextModalOpen(false)}
                 onOk={() => void handleAddText()}
                 confirmLoading={savingText}
-                okText="Tambah sumber"
+                okText="Add Source"
                 okButtonProps={{ disabled: textBody.trim().length < 20 }}
             >
                 <Input
-                    placeholder="Judul (opsional)"
+                    placeholder="Title (optional)"
                     value={textTitle}
                     onChange={(e) => setTextTitle(e.target.value)}
                     className="mb-2"
                 />
                 <Input.TextArea
-                    placeholder="Tempel teks di sini (minimal 20 karakter)…"
+                    placeholder="Paste text here (minimum 20 characters)…"
                     value={textBody}
                     onChange={(e) => setTextBody(e.target.value)}
                     autoSize={{ minRows: 6, maxRows: 14 }}
                 />
                 <Text type="secondary" className="text-[11px] block mt-2">
-                    Teks akan disimpan sebagai file .txt dan diindeks untuk RAG.
+                    Text will be saved as a .txt file and indexed for RAG.
                 </Text>
             </Modal>
         </div>
