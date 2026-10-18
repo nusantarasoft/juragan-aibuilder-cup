@@ -1,5 +1,8 @@
-import sharp from 'sharp';
+import { createRequire } from 'node:module';
 import { escapeXml, formatPriceIdr, wrapOverlayLines } from './studio-marketing.util';
+
+const require = createRequire(__filename);
+const sharp: typeof import('sharp') = require('sharp');
 
 export type MarketingTemplateInput = {
     productName: string;
