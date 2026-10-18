@@ -24,6 +24,7 @@ interface Props {
     state?: string;
     eyeExpression?: EyeExpression;
     darkMode?: boolean;
+    onPet?: () => void;
 }
 
 // ─── Spring Physics Class (from threejs-animation skill) ─────────────────────
@@ -628,6 +629,7 @@ function createBadgeSpriteTexture(text: string, color: string, glowColor: string
 export const TamagotchiModel: React.FC<Props> = ({
     state = 'idle',
     eyeExpression = 'normal',
+    onPet,
 }) => {
     const rootRef = useRef<THREE.Group>(null);
     const characterRef = useRef<THREE.Group>(null);
@@ -2101,14 +2103,18 @@ export const TamagotchiModel: React.FC<Props> = ({
     return (
         <group
             ref={rootRef}
-            position={[0.0, -0.10, 0]}
-            scale={0.90}
+            position={[0.0, -0.02, 0]}
+            scale={1.06}
             dispose={null}
             onPointerOver={() => setHovered(true)}
             onPointerOut={() => setHovered(false)}
             onClick={(e) => {
                 e.stopPropagation();
-                setManualExpIndex((prev) => (prev === null ? 1 : (prev + 1) % ALL_EXPRESSIONS.length));
+                if (onPet) {
+                    onPet();
+                } else {
+                    setManualExpIndex((prev) => (prev === null ? 1 : (prev + 1) % ALL_EXPRESSIONS.length));
+                }
             }}
         >
             {/* Soft Airbrushed Studio Contact Shadow Plane */}

@@ -4,7 +4,7 @@ import { persist } from 'zustand/middleware';
 export interface DockWindowType {
     id: string;
     title: string;
-    widgetType: 'athan' | 'calculator' | 'notes' | 'calendar' | 'snake' | 'pong';
+    widgetType: string;
     zIndex: number;
     minimized: boolean;
     width: number;
@@ -16,15 +16,17 @@ interface DockState {
     activeWindowId: string | null;
     dockMode: 'auto' | 'always' | 'hidden';
     dockItemsOrder: string[];
-    
+
     // Actions
     setDockMode: (mode: 'auto' | 'always' | 'hidden') => void;
     setDockItemsOrder: (order: string[]) => void;
-    openWindow: (widgetType: DockWindowType['widgetType'], title: string, width?: number, height?: number) => void;
+    openWindow: (widgetType: string, title: string, width?: number, height?: number) => void;
     closeWindow: (id: string) => void;
     minimizeWindow: (id: string) => void;
     restoreWindow: (id: string) => void;
     bringToFront: (id: string) => void;
+    minimizeAll: () => void;
+    closeAll: () => void;
 }
 
 let nextZIndex = 1000;
@@ -42,50 +44,58 @@ export const useDockStore = create<DockState>()(
 
             openWindow: (widgetType, title, width = 400, height = 500) => {
                 const state = get();
-                // Check if already open
-                const existing = state.windows.find(w => w.widgetType === widgetType);
+                const existing = state.windows.find((w) => w.widgetType === widgetType);
                 if (existing) {
                     if (existing.minimized) {
                         state.restoreWindow(existing.id);
+                    } else if (state.activeWindowId === existing.id) {
+                        // Clicking an already-focused window toggles it to minimized
+                        state.minimizeWindow(existing.id);
                     } else {
                         state.bringToFront(existing.id);
                     }
                     return;
                 }
 
-                // Open new window
                 const newId = `${widgetType}-${Date.now()}`;
                 nextZIndex += 1;
                 set({
-                    windows: [...state.windows, {
-                        id: newId,
-                        title,
-                        widgetType,
-                        zIndex: nextZIndex,
-                        minimized: false,
-                        width,
-                        height
-                    }],
-                    activeWindowId: newId
+                    windows: [
+                        ...state.windows,
+                        {
+                            id: newId,
+                            title,
+                            widgetType,
+                            zIndex: nextZIndex,
+                            minimized: false,
+                            width,
+                            height,
+                        },
+                    ],
+                    activeWindowId: newId,
                 });
             },
 
-            closeWindow: (id) => set((state) => ({
-                windows: state.windows.filter(w => w.id !== id),
-                activeWindowId: state.activeWindowId === id ? null : state.activeWindowId
-            })),
+            closeWindow: (id) =>
+                set((state) => ({
+                    windows: state.windows.filter((w) => w.id !== id),
+                    activeWindowId: state.activeWindowId === id ? null : state.activeWindowId,
+                })),
 
-            minimizeWindow: (id) => set((state) => ({
-                windows: state.windows.map(w => w.id === id ? { ...w, minimized: true } : w),
-                activeWindowId: state.activeWindowId === id ? null : state.activeWindowId
-            })),
+            minimizeWindow: (id) =>
+                set((state) => ({
+                    windows: state.windows.map((w) => (w.id === id ? { ...w, minimized: true } : w)),
+                    activeWindowId: state.activeWindowId === id ? null : state.activeWindowId,
+                })),
 
             restoreWindow: (id) => {
                 const state = get();
                 nextZIndex += 1;
                 set({
-                    windows: state.windows.map(w => w.id === id ? { ...w, minimized: false, zIndex: nextZIndex } : w),
-                    activeWindowId: id
+                    windows: state.windows.map((w) =>
+                        w.id === id ? { ...w, minimized: false, zIndex: nextZIndex } : w
+                    ),
+                    activeWindowId: id,
                 });
             },
 
@@ -94,17 +104,32 @@ export const useDockStore = create<DockState>()(
                 if (state.activeWindowId === id) return;
                 nextZIndex += 1;
                 set({
-                    windows: state.windows.map(w => w.id === id ? { ...w, zIndex: nextZIndex } : w),
-                    activeWindowId: id
+                    windows: state.windows.map((w) =>
+                        w.id === id ? { ...w, zIndex: nextZIndex } : w
+                    ),
+                    activeWindowId: id,
                 });
-            }
+            },
+
+            minimizeAll: () =>
+                set((state) => ({
+                    windows: state.windows.map((w) => ({ ...w, minimized: true })),
+                    activeWindowId: null,
+                })),
+
+            closeAll: () =>
+                set({
+                    windows: [],
+                    activeWindowId: null,
+                }),
         }),
         {
             name: 'dock-storage',
-            partialize: (state) => ({ 
+            partialize: (state) => ({
                 dockMode: state.dockMode,
-                dockItemsOrder: state.dockItemsOrder 
+                dockItemsOrder: state.dockItemsOrder,
             }),
         }
     )
 );
+

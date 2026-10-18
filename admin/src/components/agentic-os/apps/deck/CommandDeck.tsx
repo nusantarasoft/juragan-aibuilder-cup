@@ -10,7 +10,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
-import { AppWindow, Bot, Box, Circle, CircleDot, Crosshair, Diamond, GripHorizontal, Hexagon, Maximize, Maximize2, Minus, PanelLeft, PanelRight, Play, Search, Target, X, Zap, type LucideIcon } from "lucide-react";
+import { AppWindow, ArrowLeft, Bot, Box, Circle, CircleDot, Crosshair, Diamond, GripHorizontal, Hexagon, Maximize, Maximize2, Minus, PanelLeft, PanelRight, Play, Search, Target, X, Zap, type LucideIcon } from "lucide-react";
 import { useAosStore, startAosPolling, agentById } from "../../lib/store";
 import { usePhase3Store, startPhase3Polling } from "../../lib/phase3Store";
 import { usePulseStore, startPulsePolling } from "../../lib/pulseStore";
@@ -1170,6 +1170,16 @@ export function CommandDeck({ onOpen, exit, toolbar, bottomInset = 0 }: DeckShel
             {/* Status bar */}
             <div className="flex h-9 shrink-0 items-center justify-between gap-4 whitespace-nowrap border-b border-white/[0.07] px-4 text-[10px] tracking-[0.15em] [&_button]:shrink-0">
                 <div className="flex min-w-0 items-center gap-4 overflow-hidden">
+                    {!exit && (
+                        <button
+                            type="button"
+                            title="Back to Admin"
+                            onClick={() => (window.location.href = "/admin/dashboard")}
+                            className="flex h-[22px] w-[22px] shrink-0 items-center justify-center border border-white/15 text-slate-300 transition hover:border-white/35 hover:text-white"
+                        >
+                            <ArrowLeft className="h-3.5 w-3.5" />
+                        </button>
+                    )}
                     <span className="flex items-center gap-1.5">
                         <Dot color={coreState.c} pulse={coreState.t === "RUNNING"} />
                         <span className="text-slate-500">CORE</span>·<span className="text-slate-100">{coreState.t}</span>
@@ -1212,7 +1222,7 @@ export function CommandDeck({ onOpen, exit, toolbar, bottomInset = 0 }: DeckShel
                         onClick={exit ? exit.onClick : () => (window.location.href = "/admin/virtual-office")}
                         className="flex items-center gap-1 border border-orange-400/40 bg-orange-500/10 px-2 py-0.5 tracking-normal text-orange-100 hover:border-orange-300/70 hover:text-white"
                     >
-                        {exit ? <X className="h-3 w-3" /> : null}
+                        {exit ? <X className="h-3 w-3" /> : <Box className="h-3 w-3" />}
                         {exit?.label ?? "virtual office"}
                     </button>
                 </div>
