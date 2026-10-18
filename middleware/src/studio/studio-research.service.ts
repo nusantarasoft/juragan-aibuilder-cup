@@ -16,15 +16,17 @@ import { STUDIO_RESEARCH_TOPICS } from './studio-research-topics';
 import {
     buildMergeProvenanceBody,
     classifyDedupeHits,
+    finalizeResearchLlmResponse,
     htmlOrPlainToText,
     isAllowedResearchUrl,
-    parseResearchLlmJson,
     quotedSnippetInSource,
     sha256Hex,
     type ResearchDedupeResult,
+    type ResearchLlmPayload,
     type ResearchSourceRecord,
     validateResearchSources,
 } from './studio-research.util';
+import type { GenerateTextOpts } from '../ai/ai-router.service';
 import { normalizeAppRole } from '../auth/app-roles';
 
 export type StudioResearchItemStatus =
@@ -33,6 +35,19 @@ export type StudioResearchItemStatus =
     | 'rejected'
     | 'merged'
     | 'expired';
+
+export type StudioResearchRunStatus = 'running' | 'completed' | 'failed' | 'partial';
+
+export interface StudioResearchRunRow {
+    id: string;
+    trigger_type: 'cron' | 'manual';
+    triggered_by: string | null;
+    status: StudioResearchRunStatus;
+    stats: Record<string, unknown>;
+    error_message: string | null;
+    started_at: string;
+    finished_at: string | null;
+}
 
 export interface StudioResearchItemRow {
     id: string;
@@ -90,6 +105,17 @@ export class StudioResearchService {
             );
         }
         return fromEnv;
+    }
+
+    async getLastRun(): Promise<StudioResearchRunRow | null> {
+        const { data, error } = await this.admin()
+            .from('studio_research_runs')
+            .select('*')
+            .order('started_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+        assertNoSupabaseError(error, 'Failed to load last research run');
+        return (data as StudioResearchRunRow | null) ?? null;
     }
 
     async listItems(
@@ -311,6 +337,8 @@ export class StudioResearchService {
             skipped: 0,
             errors: 0,
         };
+        const topicErrors: Record<string, number> = {};
+        const errorSamples: string[] = [];
 
         try {
             for (const topic of STUDIO_RESEARCH_TOPICS) {
@@ -329,15 +357,26 @@ export class StudioResearchService {
                         stats.fetched += 1;
                     } catch (e: any) {
                         stats.errors += 1;
+                        topicErrors[topic.topic_key] = (topicErrors[topic.topic_key] ?? 0) + 1;
+                        const msg = (e?.message || String(e)).slice(0, 160);
+                        if (errorSamples.length < 8) {
+                            errorSamples.push(`${topic.topic_key}: ${msg}`);
+                        }
                         this.logger.warn(`Research fetch ${url}: ${e?.message || e}`);
                     }
                 }
             }
+            let runStatus: StudioResearchRunStatus = 'completed';
+            if (stats.errors > 0) {
+                runStatus = itemsCreated > 0 ? 'partial' : 'failed';
+            }
             await this.admin()
                 .from('studio_research_runs')
                 .update({
-                    status: 'completed',
-                    stats: { ...stats, itemsCreated },
+                    status: runStatus,
+                    error_message:
+                        stats.errors > 0 ? errorSamples.join(' | ').slice(0, 500) : null,
+                    stats: { ...stats, itemsCreated, topic_errors: topicErrors },
                     finished_at: new Date().toISOString(),
                 })
                 .eq('id', runId);
@@ -424,13 +463,16 @@ export class StudioResearchService {
             }
         }
 
-        const dedupe = await this.computeDedupe(targetNotebookId, llm.summary || excerpt.slice(0, 500));
+        const { dedupe, dedupeUnchecked } = await this.computeDedupe(
+            targetNotebookId,
+            llm.summary,
+        );
+        if (dedupeUnchecked) {
+            validation_flags.dedupe_unchecked = true;
+        }
 
         const title = (llm.title || topicTitle).slice(0, 500);
-        const summary = (llm.summary || '').slice(0, 8000);
-        if (summary.length < 20) {
-            throw new BadRequestException('LLM tidak menghasilkan ringkasan valid');
-        }
+        const summary = llm.summary.slice(0, 8000);
 
         const { error } = await this.admin().from('studio_research_items').insert({
             status: 'pending',
@@ -477,16 +519,23 @@ export class StudioResearchService {
         }
     }
 
+    private researchLlmGenerateOpts(): GenerateTextOpts | undefined {
+        const provider = (this.config.get('STUDIO_RESEARCH_PROVIDER') ?? '').toString().trim();
+        const model = (this.config.get('STUDIO_RESEARCH_MODEL') ?? '').toString().trim();
+        if (!provider && !model) return undefined;
+        return {
+            ...(provider ? { provider } : {}),
+            ...(model ? { model } : {}),
+        };
+    }
+
+    private static researchLlmBackoffMs = 1500;
+
     private async summarizeWithLlm(
         url: string,
         topicTitle: string,
         excerpt: string,
-    ): Promise<{
-        title?: string;
-        summary?: string;
-        effective_date?: string | null;
-        sources?: Array<{ url: string; quoted_snippet: string }>;
-    }> {
+    ): Promise<ResearchLlmPayload> {
         const prompt = `Anda analis regulasi UMKM Indonesia. Ringkas teks resmi berikut untuk admin (bahasa Indonesia).
 Aturan KETAT:
 - Setiap klaim di field summary harus bisa dibuktikan dengan quoted_snippet yang disalin VERBATIM (substring persis) dari TEKS SUMBER di bawah.
@@ -507,22 +556,45 @@ URL: ${url}
 TEKS SUMBER (potongan):
 ${excerpt.slice(0, 10_000)}`;
 
-        const raw = await this.aiRouter.generateText(prompt);
-        const parsed = parseResearchLlmJson(raw);
-        if (!parsed) {
-            return {
-                title: topicTitle,
-                summary: excerpt.slice(0, 600),
-                sources: [{ url, quoted_snippet: excerpt.slice(0, 120).trim() }],
-            };
+        const opts = this.researchLlmGenerateOpts();
+        const callLlm = async () => {
+            const raw = await this.aiRouter.generateText(prompt, opts);
+            return finalizeResearchLlmResponse(raw);
+        };
+        try {
+            return await callLlm();
+        } catch (first) {
+            await new Promise((r) => setTimeout(r, StudioResearchService.researchLlmBackoffMs));
+            try {
+                return await callLlm();
+            } catch (second) {
+                const a = first instanceof Error ? first.message : String(first);
+                const b = second instanceof Error ? second.message : String(second);
+                throw new Error(`LLM ringkasan gagal (2x): ${b || a}`);
+            }
         }
-        return parsed;
     }
 
-    private async computeDedupe(notebookId: string, summary: string): Promise<ResearchDedupeResult> {
+    private async computeDedupe(
+        notebookId: string,
+        summary: string,
+    ): Promise<{ dedupe: ResearchDedupeResult; dedupeUnchecked: boolean }> {
         const dupTh = Number(this.config.get('STUDIO_RESEARCH_DUPLICATE_THRESHOLD') ?? 0.88);
         const confTh = Number(this.config.get('STUDIO_RESEARCH_CONFLICT_THRESHOLD') ?? 0.78);
+        const embedding = await this.ragService.embedText(summary);
+        if (!embedding) {
+            this.logger.warn(
+                `Research dedupe skipped — embedding unavailable for notebook ${notebookId}`,
+            );
+            return {
+                dedupeUnchecked: true,
+                dedupe: { flags: [], hits: [] },
+            };
+        }
         const hits = await this.contextService.semanticSearchNotebook(notebookId, summary, 6);
-        return classifyDedupeHits(hits, dupTh, confTh);
+        return {
+            dedupeUnchecked: false,
+            dedupe: classifyDedupeHits(hits, dupTh, confTh),
+        };
     }
 }

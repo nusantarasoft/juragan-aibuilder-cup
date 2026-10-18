@@ -8,8 +8,8 @@ Diagram: [L5-riset-knowledge.svg](../../../diagrams/aistudio/studio/system/L5-ri
 
 1. **Cron mingguan** (default off) atau tombol admin **Jalankan riset sekarang** menjalankan batch fetch + ringkasan LLM.
 2. Setiap URL seed di-allowlist (domain `.go.id` resmi + `jdih.*.go.id`), dengan guard SSRF yang sama seperti `importUrl`.
-3. LLM (`studio_settings` default provider) menghasilkan ringkasan; setiap klaim wajib punya `quoted_snippet` yang divalidasi sebagai substring teks fetch.
-4. Embedding ringkasan dibandingkan ke chunk notebook (`match_studio_chunks`) → flag **mirip/duplikat** atau **mungkin bertentangan** (tidak auto-drop).
+3. LLM (`studio_settings` default provider, opsional override `STUDIO_RESEARCH_PROVIDER` / `STUDIO_RESEARCH_MODEL`) menghasilkan ringkasan JSON; jika provider mengembalikan teks error atau JSON tidak valid, URL itu **gagal** (retry 1× + backoff) — **tidak** ada fallback ringkasan dari potongan sumber. Run batch mencatat `failed` / `partial` + `error_message` di `studio_research_runs`.
+4. Embedding ringkasan dibandingkan ke chunk notebook (`match_studio_chunks`) → flag **mirip/duplikat** atau **mungkin bertentangan** (tidak auto-drop). Jika embedding gagal → `validation_flags.dedupe_unchecked` (UI: **dedupe belum dicek**), bukan “tampak baru”.
 5. Super admin membuka **AI Studio → Riset Knowledge**, review, edit ringkasan, lalu **Approve (merge)** atau **Tolak**.
 6. Merge membuat sumber teks via `addTextSource` + provenance header (URL, kutipan, id riset, reviewer) → `ingestSource`.
 7. **Unmerge** menghapus source (chunk cascade) dan mengembalikan status ke `approved`.
@@ -24,6 +24,8 @@ Diagram: [L5-riset-knowledge.svg](../../../diagrams/aistudio/studio/system/L5-ri
 | `STUDIO_RESEARCH_PENDING_EXPIRE_DAYS` | `30` | Auto-expire pending |
 | `STUDIO_RESEARCH_DUPLICATE_THRESHOLD` | `0.88` | Skor similarity → mirip/duplikat |
 | `STUDIO_RESEARCH_CONFLICT_THRESHOLD` | `0.78` | Skor similarity → mungkin bertentangan |
+| `STUDIO_RESEARCH_PROVIDER` | — | Override provider LLM riset (default: `studio_settings`) |
+| `STUDIO_RESEARCH_MODEL` | — | Override model (Groq/OpenRouter/OpenAI lewat router) |
 
 Migrasi DB: `supabase/migrations/20261018120000_studio_research_items.sql` (`studio_research_runs`, `studio_research_items`).
 

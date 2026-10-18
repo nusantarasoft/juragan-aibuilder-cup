@@ -1016,6 +1016,11 @@ export const studioService = {
 
     // ── Riset Knowledge UMKM (super admin) ─────────────────────
 
+    async getResearchLastRun(): Promise<StudioResearchLastRun | null> {
+        const data = await graphqlRequest(`query { studioResearchLastRun }`);
+        return data.studioResearchLastRun ?? null;
+    },
+
     async listResearchItems(
         status: StudioResearchItemStatus | 'all' = 'pending',
         category?: string,
@@ -1237,6 +1242,26 @@ export interface StudioResearchDedupeHit {
     content_preview: string;
 }
 
+export type StudioResearchRunStatus = 'running' | 'completed' | 'failed' | 'partial';
+
+export interface StudioResearchLastRun {
+    id: string;
+    trigger_type: 'cron' | 'manual';
+    triggered_by?: string | null;
+    status: StudioResearchRunStatus;
+    stats?: {
+        topics?: number;
+        fetched?: number;
+        skipped?: number;
+        errors?: number;
+        itemsCreated?: number;
+        topic_errors?: Record<string, number>;
+    };
+    error_message?: string | null;
+    started_at: string;
+    finished_at?: string | null;
+}
+
 export interface StudioResearchItem {
     id: string;
     status: StudioResearchItemStatus;
@@ -1254,6 +1279,7 @@ export interface StudioResearchItem {
     } | null;
     validation_flags?: {
         quote_validation_failed?: boolean;
+        dedupe_unchecked?: boolean;
         invalid_quotes?: { url: string; reason: string }[];
     } | null;
     research_run_id?: string | null;
