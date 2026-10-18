@@ -453,7 +453,7 @@ export class StudioMarketingService {
         });
         if (!generated?.length) {
             throw new BadRequestException(
-                'Gagal generate foto produk AI. Aktifkan billing Nano Banana di Google AI Studio (API key), atau lengkapi Vertex (Google project + service account JSON) di AI Studio Settings.',
+                'Gagal generate foto produk AI. Cek billing Gemini di AI Studio Settings, atau set CL_ACCOUNT_ID + CL_API_KEY (Cloudflare FLUX) / Vertex di env middleware.',
             );
         }
         return generated;

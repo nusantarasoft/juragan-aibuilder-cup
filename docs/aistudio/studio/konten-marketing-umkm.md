@@ -55,7 +55,9 @@ Jika tidak ada base URL (dev lokal tanpa `SITE_URL`), `image_public_url` / `imag
 
 Provider LLM/image: kredensial **AI Studio → Settings** (`google_api_key`, `google_service_account_json`, `google_project_id`, dll.).
 
-**Foto produk AI (Gemini Nano Banana):** model image **butuh billing pay-as-you-go** di [Google AI Studio](https://aistudio.google.com/) untuk project API key. Tanpa quota image, API mengembalikan HTTP **429 RESOURCE_EXHAUSTED** — middleware lalu mencoba **Vertex Imagen** jika `google_project_id` + service account (atau ADC `/gcp/key.json` di server) valid.
+**Foto produk AI (Gemini Nano Banana):** model image **butuh billing pay-as-you-go** di [Google AI Studio](https://aistudio.google.com/) untuk project API key. Tanpa quota image, API mengembalikan HTTP **429 RESOURCE_EXHAUSTED** — middleware lalu mencoba **Cloudflare Workers AI** (`@cf/black-forest-labs/flux-1-schnell`) jika env **`CL_ACCOUNT_ID` + `CL_API_KEY`** (atau `CLOUDFLARE_ACCOUNT_ID` + `CLOUDFLARE_API_TOKEN`) ada di **middleware**, lalu **Vertex Imagen** jika project + service account valid.
+
+**Catatan:** Cloudflare **belum** ada di **AI Studio → Settings** (hanya `google_api_key` di DB). Credential Cloudflare = **env container middleware** (`.env` / `.env.master-production`), bukan admin `.env.local`.
 
 ## GraphQL (super_admin)
 

@@ -72,6 +72,48 @@ async function generateGeminiApiKeyImage(apiKey: string, prompt: string): Promis
     return null;
 }
 
+/** Workers AI FLUX Schnell — free daily neuron quota; env on middleware only. */
+async function generateCloudflareFluxImage(prompt: string): Promise<Buffer | null> {
+    const accountId =
+        process.env.CLOUDFLARE_ACCOUNT_ID?.trim() ||
+        process.env.CL_ACCOUNT_ID?.trim() ||
+        '';
+    const token =
+        process.env.CLOUDFLARE_API_TOKEN?.trim() ||
+        process.env.CL_API_KEY?.trim() ||
+        '';
+    if (!accountId || !token) return null;
+
+    const url = `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/@cf/black-forest-labs/flux-1-schnell`;
+    try {
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ prompt, steps: 4 }),
+        });
+        const json = (await res.json()) as {
+            success?: boolean;
+            result?: { image?: string };
+            errors?: Array<{ message?: string }>;
+        };
+        if (!res.ok || !json.success) {
+            const msg = json.errors?.[0]?.message ?? `HTTP ${res.status}`;
+            logger.warn(`Cloudflare FLUX failed: ${msg}`);
+            return null;
+        }
+        const b64 = json.result?.image?.trim();
+        if (!b64) return null;
+        logger.log('Cloudflare FLUX schnell product image OK');
+        return Buffer.from(b64, 'base64');
+    } catch (e: any) {
+        logger.warn(`Cloudflare FLUX failed: ${e?.message}`);
+        return null;
+    }
+}
+
 async function generateVertexImagenImage(
     params: MarketingImageGenParams,
     prompt: string,
@@ -133,6 +175,9 @@ export async function generateMarketingImageFromPrompt(
         const fromGemini = await generateGeminiApiKeyImage(params.apiKey, trimmed);
         if (fromGemini) return fromGemini;
     }
+
+    const fromCloudflare = await generateCloudflareFluxImage(trimmed);
+    if (fromCloudflare) return fromCloudflare;
 
     return generateVertexImagenImage(params, trimmed);
 }
