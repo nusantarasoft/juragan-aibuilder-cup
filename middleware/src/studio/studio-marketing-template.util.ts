@@ -16,7 +16,7 @@ export type MarketingTemplateInput = {
 const CANVAS = 1080;
 
 /**
- * Branded NS-style square card: real product photo + DB-rendered text (never AI-drawn text).
+ * Branded NS-style square showcase card: foto inventory atau hero AI + teks dari DB (bukan teks AI).
  */
 export async function renderMarketingTemplatePng(input: MarketingTemplateInput): Promise<Buffer> {
     const priceText = formatPriceIdr(input.priceIdr);

@@ -274,7 +274,7 @@ export default function KontenMarketingPage() {
                     type="info"
                     showIcon
                     style={{ marginBottom: 16 }}
-                    message="Konten approved muncul di showcase publik (brochure-gallery) — grid, share WA, permalink /b/m-{id}."
+                    message="Generate = kartu showcase (Sharp + caption). Tanpa foto inventory, AI isi hero visual kartu — bukan foto katalog. Produk dengan iklan pending/approved dilewati; batch rotasi ke produk lain / iklan lama."
                     action={
                         <Button size="small" type="link" href={SHOWCASE_GALLERY_URL} target="_blank">
                             Buka showcase

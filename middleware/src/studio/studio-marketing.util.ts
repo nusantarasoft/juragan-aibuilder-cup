@@ -31,7 +31,33 @@ export function productHasRealPhoto(mediaIds: unknown): boolean {
     return typeof first === 'string' && first.trim().length > 0;
 }
 
-/** Filter catalog rows to consenting stores; photo optional when AI product image is enabled. */
+/** Pending or approved = iklan aktif; jangan generate duplikat untuk produk yang sama. */
+export function marketingContentBlocksRegeneration(status: MarketingContentStatus): boolean {
+    return status === 'pending' || status === 'approved';
+}
+
+export type MarketingItemHistory = {
+    lastCreatedAt: string | null;
+    hasActiveAd: boolean;
+};
+
+/** Urutkan kandidat batch: belum pernah iklan dulu, lalu yang paling lama sejak iklan terakhir (rotasi). */
+export function prepareMarketingBatchCandidates(
+    rows: EligibleProductRow[],
+    historyByItemId: Map<string, MarketingItemHistory>,
+): EligibleProductRow[] {
+    const withoutActiveAd = rows.filter((r) => !historyByItemId.get(r.item_id)?.hasActiveAd);
+    return withoutActiveAd.sort((a, b) => {
+        const ta = historyByItemId.get(a.item_id)?.lastCreatedAt;
+        const tb = historyByItemId.get(b.item_id)?.lastCreatedAt;
+        if (!ta && !tb) return a.product_name.localeCompare(b.product_name, 'id');
+        if (!ta) return -1;
+        if (!tb) return 1;
+        return ta.localeCompare(tb);
+    });
+}
+
+/** Filter catalog rows to consenting stores; foto inventory opsional jika AI showcase hero aktif. */
 export function filterEligibleProducts(
     rows: EligibleProductRow[],
     opts?: { allowAiProductImage?: boolean },

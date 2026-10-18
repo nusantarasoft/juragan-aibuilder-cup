@@ -2,7 +2,7 @@ flowchart LR
   A[Cron / Generate sekarang] --> B[Eligible: consent + produk active]
   B --> C{Foto inventory?}
   C -->|ya| D[Foto asli MinIO]
-  C -->|tidak| E[Gemini image / Imagen produk]
+  C -->|tidak| E[AI hero showcase → Sharp kartu]
   D --> F[Sharp template + teks DB]
   E --> F
   F --> G{AI background?}

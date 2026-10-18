@@ -26,7 +26,10 @@ import {
     finalizeMarketingCaptionLlm,
     formatPriceIdr,
     isPublicGalleryRow,
+    marketingContentBlocksRegeneration,
+    prepareMarketingBatchCandidates,
     productHasRealPhoto,
+    type MarketingItemHistory,
 } from './studio-marketing.util';
 
 export type StudioMarketingContentRow = {
@@ -314,19 +317,17 @@ export class StudioMarketingService {
         const candidates = await this.loadEligibleProducts(params.store, params.productId);
         const eligible = filterEligibleProducts(candidates, {
             allowAiProductImage: this.isAiProductImageEnabled(),
-        }).slice(0, limit);
+        });
+        const history = await this.loadMarketingHistoryByItemIds(eligible.map((p) => p.item_id));
+        const rotated = prepareMarketingBatchCandidates(eligible, history);
+        const skipped = eligible.length - rotated.length;
+        const batch = rotated.slice(0, limit);
 
         let created = 0;
-        let skipped = 0;
         let errors = 0;
 
-        for (const product of eligible) {
+        for (const product of batch) {
             try {
-                const dup = await this.hasRecentPendingOrApproved(product.item_id);
-                if (dup) {
-                    skipped += 1;
-                    continue;
-                }
                 await this.generateOne(product, params.triggeredBy ?? 'manual');
                 created += 1;
             } catch (e: any) {
@@ -340,14 +341,32 @@ export class StudioMarketingService {
         return { created, skipped, errors };
     }
 
-    private async hasRecentPendingOrApproved(itemId: string): Promise<boolean> {
-        const { data } = await this.admin()
+    private async loadMarketingHistoryByItemIds(
+        itemIds: string[],
+    ): Promise<Map<string, MarketingItemHistory>> {
+        const map = new Map<string, MarketingItemHistory>();
+        if (itemIds.length === 0) return map;
+
+        const { data, error } = await this.admin()
             .from('studio_marketing_contents')
-            .select('id')
-            .eq('inv_item_id', itemId)
-            .in('status', ['pending', 'approved'])
-            .limit(1);
-        return (data?.length ?? 0) > 0;
+            .select('inv_item_id, status, created_at')
+            .in('inv_item_id', itemIds);
+        assertNoSupabaseError(error, 'Failed to load marketing history');
+
+        for (const row of data ?? []) {
+            const itemId = row.inv_item_id as string;
+            const status = row.status as MarketingContentStatus;
+            const createdAt = row.created_at as string | null;
+            const prev = map.get(itemId) ?? { lastCreatedAt: null, hasActiveAd: false };
+            if (createdAt && (!prev.lastCreatedAt || createdAt > prev.lastCreatedAt)) {
+                prev.lastCreatedAt = createdAt;
+            }
+            if (marketingContentBlocksRegeneration(status)) {
+                prev.hasActiveAd = true;
+            }
+            map.set(itemId, prev);
+        }
+        return map;
     }
 
     async loadEligibleProducts(
@@ -443,7 +462,9 @@ export class StudioMarketingService {
             return this.loadMediaBuffer(product.media_id);
         }
         if (!this.isAiProductImageEnabled()) {
-            throw new BadRequestException('Produk tidak punya foto — upload di Inventory atau aktifkan AI product image');
+            throw new BadRequestException(
+                'Produk tidak punya foto — upload di Inventory atau aktifkan AI showcase hero',
+            );
         }
         const generated = await tryGenerateMarketingProductImage({
             ...this.marketingImageGenParams(settings),
@@ -453,7 +474,7 @@ export class StudioMarketingService {
         });
         if (!generated?.length) {
             throw new BadRequestException(
-                'Gagal generate foto produk AI. Cek billing Gemini di AI Studio Settings, atau set CL_ACCOUNT_ID + CL_API_KEY (Cloudflare FLUX) / Vertex di env middleware.',
+                'Gagal generate visual showcase AI. Cek billing Gemini di AI Studio Settings, atau set CL_ACCOUNT_ID + CL_API_KEY (Cloudflare FLUX) / Vertex di env middleware.',
             );
         }
         return generated;

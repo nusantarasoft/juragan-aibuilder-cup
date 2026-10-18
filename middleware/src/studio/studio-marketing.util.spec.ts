@@ -4,7 +4,10 @@ import {
     finalizeMarketingCaptionLlm,
     formatPriceIdr,
     isPublicGalleryRow,
+    marketingContentBlocksRegeneration,
+    prepareMarketingBatchCandidates,
     productHasRealPhoto,
+    type MarketingItemHistory,
 } from './studio-marketing.util';
 
 describe('formatPriceIdr', () => {
@@ -72,6 +75,47 @@ describe('filterEligibleProducts', () => {
             { allowAiProductImage: true },
         );
         expect(rows).toHaveLength(1);
+    });
+});
+
+describe('marketingContentBlocksRegeneration', () => {
+    it('blocks only pending and approved', () => {
+        expect(marketingContentBlocksRegeneration('pending')).toBe(true);
+        expect(marketingContentBlocksRegeneration('approved')).toBe(true);
+        expect(marketingContentBlocksRegeneration('rejected')).toBe(false);
+        expect(marketingContentBlocksRegeneration('unpublished')).toBe(false);
+    });
+});
+
+describe('prepareMarketingBatchCandidates', () => {
+    const row = (id: string, name: string) => ({
+        tenant_id: 't',
+        item_id: id,
+        product_name: name,
+        selling_price: 1000,
+        media_id: null,
+        store_label: 'Toko',
+        category_name: null,
+        marketing_consent: true,
+    });
+
+    it('excludes products with active ads and prefers never-marketed', () => {
+        const history = new Map<string, MarketingItemHistory>([
+            ['1', { lastCreatedAt: '2026-01-01T00:00:00Z', hasActiveAd: true }],
+            ['2', { lastCreatedAt: null, hasActiveAd: false }],
+            ['3', { lastCreatedAt: '2026-06-01T00:00:00Z', hasActiveAd: false }],
+        ]);
+        const out = prepareMarketingBatchCandidates([row('1', 'A'), row('2', 'B'), row('3', 'C')], history);
+        expect(out.map((r) => r.item_id)).toEqual(['2', '3']);
+    });
+
+    it('rotates oldest last-ad first among eligible', () => {
+        const history = new Map<string, MarketingItemHistory>([
+            ['a', { lastCreatedAt: '2026-08-01T00:00:00Z', hasActiveAd: false }],
+            ['b', { lastCreatedAt: '2026-02-01T00:00:00Z', hasActiveAd: false }],
+        ]);
+        const out = prepareMarketingBatchCandidates([row('a', 'X'), row('b', 'Y')], history);
+        expect(out.map((r) => r.item_id)).toEqual(['b', 'a']);
     });
 });
 

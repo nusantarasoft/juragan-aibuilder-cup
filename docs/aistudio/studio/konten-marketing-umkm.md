@@ -2,7 +2,9 @@
 
 Pipeline **human-in-the-loop** untuk membuat kartu promo produk warung dari katalog `inv_items`, lalu menampilkannya di **galeri web publik** (frontend terpisah). **Tidak ada** publish Instagram/Meta di scope ini.
 
-**Foto produk:** pakai upload inventory jika ada; jika tidak, **generate foto produk AI** (Gemini image API key atau Vertex Imagen) — default **`STUDIO_MARKETING_AI_PRODUCT_IMAGE=true`**. Nama/harga/teks di kartu tetap dari DB (Sharp), bukan AI.
+**Visual kartu showcase:** upload inventory (`media_ids[0]`) dipakai sebagai hero di kartu jika ada; jika tidak, **generate hero visual AI** (Gemini / Cloudflare FLUX / Vertex) lalu di-**composite** Sharp jadi **kartu promo persegi** (bukan foto katalog mentah). Nama/harga/teks di kartu tetap dari DB, bukan AI.
+
+**Anti-duplikat iklan:** satu produk tidak di-generate lagi selama masih ada baris **`pending`** atau **`approved`** untuk `inv_item_id` yang sama. Setelah **reject** / **unpublish**, produk boleh masuk batch lagi. Batch/cron **rotasi**: prioritas produk yang belum pernah iklan, lalu yang paling lama sejak iklan terakhir — supaya limit kecil tidak stuck di produk pertama yang sudah live.
 
 ## Alur
 
@@ -10,7 +12,7 @@ Diagram: [L5-konten-marketing.svg](../../../diagrams/aistudio/studio/system/L5-k
 
 1. Super admin mengaktifkan **consent marketing** per warung (`studio_whatsapp_config.marketing_consent`).
 2. **Generate sekarang** (GraphQL) atau **cron mingguan** (opsional) memilih produk eligible: consent=true, status active (foto inventory **opsional** jika AI product image aktif).
-3. **Foto di kartu:** foto asli `media_ids[0]` **atau** AI product image (Gemini Nano Banana via API key — fallback `gemini-nano-banana-2.1`, `gemini-3.1-flash-lite-image`, `gemini-3.1-flash-image`, `gemini-2.5-flash-image`; ops `STUDIO_MARKETING_GEMINI_IMAGE_MODEL`; jika Gemini gagal → Vertex Imagen 3 dengan project + SA/ADC).
+3. **Hero di kartu showcase:** foto inventory **atau** AI showcase hero (prompt promo/brochure, bukan packshot katalog) → Gemini Nano Banana (fallback model; ops `STUDIO_MARKETING_GEMINI_IMAGE_MODEL`) → Cloudflare FLUX → Vertex Imagen 3.
 4. **Sharp** meng-composite foto + teks truthy dari DB (nama, harga Rp, nama warung) — teks **bukan** hasil AI.
 5. Opsional: background abstrak via Gemini/Imagen jika `STUDIO_MARKETING_AI_BACKGROUND=true` (fallback ke gradient template).
 6. **Caption** Bahasa Indonesia via LLM default `studio_settings`; error provider = gagal (tidak ada caption sampah).
@@ -43,7 +45,7 @@ Setelah deploy: `docker exec nsoft3-nginx nginx -t` lalu restart nginx jika conf
 | Env (middleware) | Default | Keterangan |
 |------------------|---------|------------|
 | `STUDIO_MARKETING_CRON_ENABLED` | `false` | `true` → cron Sen 04:00 UTC, max ~20 item |
-| `STUDIO_MARKETING_AI_PRODUCT_IMAGE` | `true` | `false` → wajib foto inventory (`media_ids[0]`) |
+| `STUDIO_MARKETING_AI_PRODUCT_IMAGE` | `true` | `false` → wajib foto inventory; jika `true`, produk tanpa foto dapat hero AI untuk kartu showcase |
 | `STUDIO_MARKETING_AI_BACKGROUND` | `false` | `true` → coba Gemini/Imagen background (fallback template) |
 | `STUDIO_MARKETING_PUBLIC_BASE_URL` | fallback `SITE_URL` | **Prod:** set eksplisit `https://nusantarasoft.com` agar `image_public_url` / `imageUrl` di JSON galeri match domain publik. Compose: `${STUDIO_MARKETING_PUBLIC_BASE_URL:-${SITE_URL:-}}`. |
 | `SITE_URL` | — | Fallback (mis. `http://31.97.66.39:8090` = nginx langsung) jika override marketing kosong |

@@ -3,7 +3,10 @@ import {
     type MarketingImageGenParams,
 } from './studio-marketing-image-gen.util';
 
-/** AI product photo when inventory has no upload (Gemini image / Imagen). */
+/**
+ * AI hero visual for the Sharp showcase card when inventory has no upload.
+ * Output is composited into the kartu promo (bukan foto katalog inventory).
+ */
 export async function tryGenerateMarketingProductImage(
     params: MarketingImageGenParams & {
         productName: string;
@@ -22,10 +25,11 @@ export async function tryGenerateMarketingProductImage(
         .filter(Boolean)
         .join(' ');
 
-    const prompt = `Professional appetizing product photograph for Indonesian small-shop marketing.
-Product: ${name}. ${context}
-Single product centered, realistic food or retail photography, soft natural lighting, clean background, shallow depth of field.
-Strict rules: no text, no logos, no price tags, no watermarks, no people, no brand names other than generic presentation.`;
+    const prompt = `Hero visual for a square social-media showcase card (UMKM warung Indonesia).
+Product theme: ${name}. ${context}
+Appetizing, inviting promo still-life or lifestyle food/retail scene — feels like a brochure hero image, not a sterile packshot.
+Warm natural lighting, shallow depth of field, clean uncluttered composition suitable for overlay text below.
+Strict rules: no text, no logos, no price tags, no watermarks, no people faces, no invented brand packaging labels.`;
 
     return generateMarketingImageFromPrompt(params, prompt);
 }
