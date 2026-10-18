@@ -38,7 +38,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
                 }}
             >
                 <Spin size="large" />
-                <Text type="secondary">Memeriksa sesi…</Text>
+                <Text type="secondary">Checking session…</Text>
             </div>
         );
     }
@@ -58,8 +58,8 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
                     type="warning"
                     showIcon
                     style={{ maxWidth: 480, width: "100%" }}
-                    message="Tidak bisa verifikasi sesi"
-                    description="Server autentikasi tidak terjangkau. Token Anda masih disimpan — coba lagi, atau keluar ke halaman login."
+                    message="Unable to verify session"
+                    description="Authentication server is unreachable. Your session token is still saved — retry or sign out to the login page."
                     action={
                         <Space direction="vertical">
                             <Button type="primary" onClick={() => void refreshSession()}>
@@ -72,7 +72,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
                                     });
                                 }}
                             >
-                                Ke login
+                                Back to Login
                             </Button>
                         </Space>
                     }

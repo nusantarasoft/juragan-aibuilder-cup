@@ -77,7 +77,7 @@ function LoginForm() {
             >
                 <Spin size="large" />
                 <Text style={{ color: "#fff" }}>
-                    {sessionStatus === "authenticated" ? "Mengalihkan…" : "Memeriksa sesi…"}
+                    {sessionStatus === "authenticated" ? "Redirecting…" : "Checking session…"}
                 </Text>
             </div>
         );

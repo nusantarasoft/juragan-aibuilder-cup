@@ -224,13 +224,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const signOut = async () => {
         try {
             const token = getStoredToken();
-            await graphql<{ signOut: boolean }>(mutations.signOut, { token: token || undefined });
+            if (token) {
+                await graphql<{ signOut: boolean }>(mutations.signOut, { token });
+            }
         } catch (error) {
             console.error("Sign out error:", error);
+        } finally {
+            clearAuthTokens();
+            clearAuthPresenceCookie();
+            markUnauthenticated();
         }
-
-        clearAuthTokens();
-        markUnauthenticated();
     };
 
     return (

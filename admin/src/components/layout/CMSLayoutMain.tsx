@@ -86,6 +86,8 @@ import { useRouter, usePathname } from "next/navigation";
 import menuConfig from "@/config/menuConfig";
 import { usePreferencesStore, hexToRgb } from "@/store/usePreferencesStore";
 import { useAuthStore } from "@/store/useAuthStore";
+import { useAuth } from "@/context/AuthContext";
+import { usePermissionCache } from "@/store/usePermissionCache";
 import { filterMenuTreeForAppRole } from "@/lib/tenantOwnerMenu";
 import NotificationBell from "@/components/common/NotificationBell";
 import LanguageSwitcher from "@/components/layout/LanguageSwitcher";
@@ -444,8 +446,36 @@ export default function CMSLayoutMain({
         return w;
     }, [focus, panels.left.mode, panels.left.w, panels.right.mode, panels.right.w, outerCollapsed, innerCollapsed]);
 
+    const { signOut, user: authUser } = useAuth();
+
+    const handleSignOut = useCallback(async () => {
+        try {
+            await signOut();
+        } finally {
+            usePermissionCache.getState().clearCache();
+            message.success("Signed out successfully");
+            router.replace("/login");
+        }
+    }, [signOut, router]);
+
     const accountMenuProps = {
         items: [
+            ...(authUser?.email
+                ? [
+                      {
+                          key: "user-email",
+                          disabled: true,
+                          label: (
+                              <span className="font-mono text-[10.5px] opacity-80">
+                                  {authUser.email}
+                              </span>
+                          ),
+                      },
+                      {
+                          type: "divider" as const,
+                      },
+                  ]
+                : []),
             {
                 key: "settings",
                 icon: <SettingOutlined />,
@@ -467,12 +497,10 @@ export default function CMSLayoutMain({
             },
         ],
         onClick: ({ key }: { key: string }) => {
-            if (key === "logout") {
-                message.success("Signed out successfully");
+            if (key === "logout" || key === "switch") {
+                void handleSignOut();
             } else if (key === "settings") {
                 router.push("/admin/settings/general");
-            } else if (key === "switch") {
-                message.info("Switching account...");
             }
         },
     };
@@ -793,6 +821,29 @@ export default function CMSLayoutMain({
                             >
                                 <Box className="h-3 w-3" />
                                 <span className="hidden sm:inline">virtual office</span>
+                            </button>
+
+                            <Dropdown menu={accountMenuProps} trigger={["click"]} placement="bottomRight">
+                                <button
+                                    type="button"
+                                    data-testid="admin-account-menu"
+                                    title={authUser?.email ? `Account (${authUser.email})` : "Account & Sign Out"}
+                                    className="flex h-[22px] items-center gap-1 border border-white/15 px-2 text-[9.5px] tracking-normal text-slate-300 transition hover:border-red-400/60 hover:text-red-200"
+                                >
+                                    <UserOutlined style={{ fontSize: 10 }} />
+                                    <span className="hidden lg:inline">account</span>
+                                </button>
+                            </Dropdown>
+
+                            <button
+                                type="button"
+                                data-testid="admin-sign-out"
+                                title="Sign Out"
+                                onClick={() => void handleSignOut()}
+                                className="flex h-[22px] items-center gap-1 border border-red-500/35 bg-red-500/10 px-2 text-[9.5px] tracking-normal text-red-300 transition hover:border-red-400 hover:bg-red-500/20 hover:text-white"
+                            >
+                                <LogoutOutlined style={{ fontSize: 10 }} />
+                                <span className="hidden md:inline">sign out</span>
                             </button>
                         </div>
                     </header>
