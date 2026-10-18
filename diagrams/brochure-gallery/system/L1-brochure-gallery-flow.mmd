@@ -1,0 +1,18 @@
+sequenceDiagram
+    participant Browser as Browser / External Site
+    participant Gallery as brochure-gallery (:3004)
+    participant Kong as Supabase Kong (:8000)
+    participant PG as Postgres (tenant_brochures)
+    participant MinIO as MinIO S3 (:9000 / cms-media)
+
+    Browser->>Gallery: GET / or /b/[slug]
+    Gallery->>Kong: SELECT * FROM public.tenant_brochures
+    Kong->>PG: Query active tenant brochures
+    PG-->>Gallery: Brochure rows + highlights + counters
+    Browser->>Gallery: GET /api/brochure-svg/[slug]
+    Gallery->>MinIO: PutObject cms-media/brochures/[slug].svg
+    Gallery-->>Browser: High-res SVG Poster (CORS *)
+    Browser->>Gallery: POST /api/brochures/[slug]/metric { metric: "shares" }
+    Gallery->>Kong: RPC increment_brochure_metric(slug, "shares")
+    Kong->>PG: Atomic counter +1
+    PG-->>Browser: Updated telemetry counts

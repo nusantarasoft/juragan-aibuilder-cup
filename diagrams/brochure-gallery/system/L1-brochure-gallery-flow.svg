@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 380" width="960" height="380">
+  <rect width="960" height="380" fill="#0b0e13"/>
+  <rect x="0" y="0" width="960" height="4" fill="#38bdf8"/>
+  <text x="28" y="34" fill="#38bdf8" font-family="monospace" font-size="12" font-weight="700">L1 SYSTEM ARCHITECTURE // BROCHURE-GALLERY CONTAINER + SUPABASE + MINIO S3</text>
+
+  <rect x="30" y="70" width="180" height="260" fill="#080a0f" stroke="rgba(255,255,255,0.2)" stroke-width="1.5"/>
+  <text x="120" y="100" text-anchor="middle" fill="#f8fafc" font-family="monospace" font-size="12" font-weight="700">CLIENT / ADMIN</text>
+  <text x="120" y="130" text-anchor="middle" fill="#94a3b8" font-family="monospace" font-size="10">Browser (:3004)</text>
+  <text x="120" y="150" text-anchor="middle" fill="#94a3b8" font-family="monospace" font-size="10">Admin CMS (:3003)</text>
+  <text x="120" y="170" text-anchor="middle" fill="#94a3b8" font-family="monospace" font-size="10">External Embeds</text>
+
+  <rect x="270" y="70" width="240" height="260" fill="#080a0f" stroke="#fb923c" stroke-width="2"/>
+  <text x="390" y="100" text-anchor="middle" fill="#fb923c" font-family="monospace" font-size="12" font-weight="700">brochure-gallery (:3004)</text>
+  <text x="390" y="130" text-anchor="middle" fill="#f8fafc" font-family="monospace" font-size="10">GET / &amp; /b/[slug] (OG Meta)</text>
+  <text x="390" y="155" text-anchor="middle" fill="#f8fafc" font-family="monospace" font-size="10">GET /embed/[slug] (Widget)</text>
+  <text x="390" y="180" text-anchor="middle" fill="#f8fafc" font-family="monospace" font-size="10">GET /api/brochure-svg/[slug]</text>
+  <text x="390" y="205" text-anchor="middle" fill="#f8fafc" font-family="monospace" font-size="10">GET/POST /api/brochures</text>
+  <text x="390" y="230" text-anchor="middle" fill="#f8fafc" font-family="monospace" font-size="10">POST /api/brochures/[slug]/metric</text>
+
+  <line x1="210" y1="165" x2="270" y2="165" stroke="#fb923c" stroke-width="2"/>
+  <line x1="510" y1="140" x2="585" y2="125" stroke="#22c55e" stroke-width="2"/>
+  <line x1="510" y1="240" x2="585" y2="255" stroke="#38bdf8" stroke-width="2"/>
+
+  <rect x="585" y="70" width="340" height="120" fill="#080a0f" stroke="#22c55e" stroke-width="2"/>
+  <text x="755" y="100" text-anchor="middle" fill="#22c55e" font-family="monospace" font-size="12" font-weight="700">SUPABASE POSTGRES (kong:8000)</text>
+  <text x="755" y="128" text-anchor="middle" fill="#f8fafc" font-family="monospace" font-size="10">Table: public.tenant_brochures (RLS)</text>
+  <text x="755" y="150" text-anchor="middle" fill="#94a3b8" font-family="monospace" font-size="10">RPC: public.increment_brochure_metric</text>
+
+  <rect x="585" y="210" width="340" height="120" fill="#080a0f" stroke="#38bdf8" stroke-width="2"/>
+  <text x="755" y="240" text-anchor="middle" fill="#38bdf8" font-family="monospace" font-size="12" font-weight="700">MINIO S3 STORAGE (minio:9000)</text>
+  <text x="755" y="268" text-anchor="middle" fill="#f8fafc" font-family="monospace" font-size="10">Bucket: cms-media/brochures/*</text>
+  <text x="755" y="290" text-anchor="middle" fill="#94a3b8" font-family="monospace" font-size="10">Uploaded &amp; Generated Brochure Assets</text>
+</svg>

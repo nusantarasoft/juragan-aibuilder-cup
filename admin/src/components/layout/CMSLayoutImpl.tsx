@@ -7,19 +7,35 @@ import { create } from "zustand";
 import { ThemeProvider as NextThemesProvider } from "next-themes";
 import {
     AppWindow,
+    BarChart3,
+    Bot,
     Box,
+    Calculator,
+    CheckSquare,
+    CloudSun,
+    Compass,
     Cpu,
+    ExternalLink,
+    FileText,
+    FolderOpen,
+    Gamepad2,
     GripHorizontal,
     Hexagon,
     Maximize2,
+    MessageSquare,
     Minus,
+    Music,
     PanelLeft,
     PanelLeftClose,
     PanelLeftOpen,
     PanelRight,
     PanelRightClose,
     PanelRightOpen,
+    Plus,
     Search,
+    Settings,
+    Terminal,
+    Trophy,
     X,
 } from "lucide-react";
 import { AnimatedThemeToggler } from "@/components/magicui/animated-theme-toggler";
@@ -616,29 +632,178 @@ function AdminSidePanel({
 /* ------------------------------------------------------------------ */
 
 const LEFT_DOCK_WIDGETS = [
-    { id: "notes", label: "Notes", icon: "📝", width: 400, height: 500 },
-    { id: "tasks", label: "Tasks", icon: "✅", width: 350, height: 450 },
-    { id: "calendar", label: "Calendar", icon: "📅", width: 350, height: 400 },
-    { id: "clock", label: "Clock", icon: "⏱️", width: 300, height: 350 },
-    { id: "contacts", label: "Contacts", icon: "👤", width: 350, height: 500 },
-    { id: "email", label: "Mail", icon: "📧", width: 450, height: 600 },
-    { id: "files", label: "Files", icon: "📁", width: 500, height: 400 },
-    { id: "messages", label: "Messages", icon: "💬", width: 400, height: 550 },
+    {
+        id: "notes",
+        label: "Notes",
+        code: "NT",
+        group: "capture",
+        color: "#fb923c",
+        icon: <FileText className="h-4 w-4" />,
+        width: 400,
+        height: 480,
+    },
+    {
+        id: "tasks",
+        label: "Tasks",
+        code: "TK",
+        group: "capture",
+        color: "#10b981",
+        icon: <CheckSquare className="h-4 w-4" />,
+        width: 380,
+        height: 460,
+    },
+    {
+        id: "files",
+        label: "Files",
+        code: "FL",
+        group: "workspace",
+        color: "#38bdf8",
+        icon: <FolderOpen className="h-4 w-4" />,
+        width: 480,
+        height: 420,
+    },
+    {
+        id: "messages",
+        label: "Messages",
+        code: "MG",
+        group: "workspace",
+        color: "#a855f7",
+        icon: <MessageSquare className="h-4 w-4" />,
+        width: 420,
+        height: 500,
+    },
 ] as const;
 
 const BOTTOM_DOCK_WIDGETS = [
-    { id: "analytics", label: "Analytics", icon: "📊", width: 600, height: 400 },
-    { id: "calculator", label: "Calculator", icon: "🧮", width: 320, height: 480 },
-    { id: "terminal", label: "Terminal", icon: "💻", width: 600, height: 400 },
-    { id: "snake", label: "Snake", icon: "🐍", width: 450, height: 600 },
-    { id: "pong", label: "Pong", icon: "🏓", width: 450, height: 500 },
-    { id: "athan", label: "Athan", icon: "🧭", width: 350, height: 450 },
-    { id: "robot", label: "AI Assistant", icon: "🤖", width: 400, height: 600 },
-    { id: "weather", label: "Weather", icon: "⛅", width: 350, height: 350 },
-    { id: "music", label: "Music", icon: "🎵", width: 350, height: 450 },
-    { id: "settings", label: "Settings", icon: "⚙️", width: 500, height: 500 },
-    { id: "add-widget", label: "Add Widget", icon: "➕", width: 400, height: 300 },
+    {
+        id: "analytics",
+        label: "Analytics",
+        code: "AN",
+        group: "telemetry",
+        color: "#38bdf8",
+        icon: <BarChart3 className="h-4 w-4" />,
+        width: 560,
+        height: 400,
+    },
+    {
+        id: "calculator",
+        label: "Calculator",
+        code: "CL",
+        group: "telemetry",
+        color: "#fb923c",
+        icon: <Calculator className="h-4 w-4" />,
+        width: 320,
+        height: 480,
+    },
+    {
+        id: "terminal",
+        label: "Terminal",
+        code: "TM",
+        group: "ops",
+        color: "#10b981",
+        icon: <Terminal className="h-4 w-4" />,
+        width: 580,
+        height: 400,
+    },
+    {
+        id: "robot",
+        label: "AI Assistant",
+        code: "AI",
+        group: "ops",
+        color: "#a855f7",
+        icon: <Bot className="h-4 w-4" />,
+        width: 420,
+        height: 540,
+    },
+    {
+        id: "snake",
+        label: "Snake",
+        code: "SN",
+        group: "arcade",
+        color: "#22c55e",
+        icon: <Gamepad2 className="h-4 w-4" />,
+        width: 450,
+        height: 600,
+    },
+    {
+        id: "pong",
+        label: "Pong",
+        code: "PG",
+        group: "arcade",
+        color: "#ec4899",
+        icon: <Trophy className="h-4 w-4" />,
+        width: 450,
+        height: 500,
+    },
+    {
+        id: "athan",
+        label: "Athan",
+        code: "AT",
+        group: "utilities",
+        color: "#f59e0b",
+        icon: <Compass className="h-4 w-4" />,
+        width: 350,
+        height: 450,
+    },
+    {
+        id: "weather",
+        label: "Weather",
+        code: "WX",
+        group: "utilities",
+        color: "#38bdf8",
+        icon: <CloudSun className="h-4 w-4" />,
+        width: 360,
+        height: 360,
+    },
+    {
+        id: "music",
+        label: "Music",
+        code: "MU",
+        group: "utilities",
+        color: "#ec4899",
+        icon: <Music className="h-4 w-4" />,
+        width: 360,
+        height: 420,
+    },
+    {
+        id: "settings",
+        label: "Settings",
+        code: "CF",
+        group: "sys",
+        color: "#94a3b8",
+        icon: <Settings className="h-4 w-4" />,
+        width: 480,
+        height: 460,
+    },
+    {
+        id: "add-widget",
+        label: "Launcher",
+        code: "OS",
+        group: "sys",
+        color: "#fb923c",
+        icon: <Plus className="h-4 w-4" />,
+        width: 420,
+        height: 360,
+    },
 ] as const;
+
+const ALL_DOCK_META: Record<string, { color: string; code: string; route?: string; desc: string }> = {
+    notes: { color: "#fb923c", code: "NT", route: "/admin/pm/knowledge-base", desc: "Persistent scratchpad & operator notes" },
+    tasks: { color: "#10b981", code: "TK", route: "/admin/pm/my-work", desc: "Tactical task queue & sprint checklist" },
+    files: { color: "#38bdf8", code: "FL", route: "/admin/media", desc: "Media vault & workspace asset browser" },
+    messages: { color: "#a855f7", code: "MG", route: "/admin/messaging", desc: "Realtime channels & operator dispatch" },
+    analytics: { color: "#38bdf8", code: "AN", route: "/admin/analytics", desc: "Live telemetry & KPI stream" },
+    calculator: { color: "#fb923c", code: "CL", desc: "Precision numeric evaluator" },
+    terminal: { color: "#10b981", code: "TM", route: "/admin/sql-runner", desc: "Command shell & SQL runner" },
+    robot: { color: "#a855f7", code: "AI", route: "/admin/agentic-os", desc: "Autonomous agent assistant" },
+    snake: { color: "#22c55e", code: "SN", desc: "Grid arcade simulation" },
+    pong: { color: "#ec4899", code: "PG", desc: "Vector paddle simulation" },
+    athan: { color: "#f59e0b", code: "AT", desc: "Prayer schedule & Qibla telemetry" },
+    weather: { color: "#38bdf8", code: "WX", desc: "Atmospheric & region conditions" },
+    music: { color: "#ec4899", code: "MU", desc: "Ambient focus synthesizer" },
+    settings: { color: "#94a3b8", code: "CF", route: "/admin/settings/general", desc: "System configuration & preferences" },
+    "add-widget": { color: "#fb923c", code: "OS", route: "/admin/virtual-office", desc: "Quick module & surface launcher" },
+};
 
 const appList = [
     {
@@ -668,6 +833,13 @@ const appList = [
         title: "Landing Page",
         desc: "Public Website",
         url: "/",
+    },
+    {
+        key: "brochure-gallery",
+        icon: "https://gw.alipayobjects.com/zos/rmsportal/KDpgvguMpGfqaHPjicRK.svg",
+        title: "Brochure Vault",
+        desc: "Tenant Brochure Gallery (:3004)",
+        url: "http://localhost:3004",
     },
 ];
 
@@ -967,7 +1139,7 @@ export default function CMSLayoutImpl({
         setSelectedSegment,
     } = usePreferencesStore();
 
-    const { windows: dockWindows, openWindow: openDockWindow } = useDockStore();
+    const { windows: dockWindows, openWindow: openDockWindow, minimizeAll: minimizeAllDockWindows } = useDockStore();
 
     const panels = useAdminLayout((s) => s.panels);
     const dropEdge = useAdminLayout((s) => s.dropEdge);
@@ -1394,22 +1566,6 @@ export default function CMSLayoutImpl({
         </div>
     );
 
-    const virtualOfficeButton = (
-        <Tooltip key="virtual-office" title="Enter the 3D Virtual Office (AI Agents)" placement="bottomRight">
-            <button
-                type="button"
-                onClick={(e) => {
-                    e.stopPropagation();
-                    router.push("/admin/virtual-office");
-                }}
-                className="ml-2 inline-flex h-[24px] items-center gap-1.5 border border-orange-400/50 bg-orange-500/15 px-2.5 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-orange-200 transition hover:border-orange-300 hover:bg-orange-500/25 hover:text-white"
-            >
-                <CodeSandboxOutlined style={{ fontSize: 12 }} />
-                <span>Virtual Office</span>
-            </button>
-        </Tooltip>
-    );
-
     return (
         <div
             id="cms-pro-layout"
@@ -1737,12 +1893,6 @@ export default function CMSLayoutImpl({
                                         className: item.path ? "cursor-pointer" : "",
                                     })),
                                 }}
-                                breadcrumbRender={(props, defaultDom) => (
-                                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                                        {defaultDom}
-                                        {virtualOfficeButton}
-                                    </div>
-                                )}
                             >
                                 <ProCard>{children}</ProCard>
                             </PageContainer>
@@ -1919,32 +2069,133 @@ export default function CMSLayoutImpl({
                     items={LEFT_DOCK_WIDGETS as any}
                     direction="vertical"
                     darkMode={darkMode}
+                    title="QUICK"
+                    accentColor={ORANGE}
                     onItemClick={openDockWindow as any}
+                    onMinimizeAll={minimizeAllDockWindows}
                     dockWindows={dockWindows}
                 />
             </div>
 
             {/* Dock Widget Windows */}
-            {dockWindows.map(
-                (win) =>
-                    !win.minimized && (
-                        <DockWindow
-                            key={win.id}
-                            id={win.id}
-                            title={win.title}
-                            width={win.width}
-                            height={win.height}
-                            zIndex={win.zIndex}
-                        >
-                            {win.widgetType === "athan" && <AthanWidget />}
-                            {win.widgetType === "calculator" && <CalculatorWidget />}
-                            {win.widgetType === "notes" && <NotesWidget />}
-                            {win.widgetType === "calendar" && <CalendarWidget />}
-                            {win.widgetType === "snake" && <SnakeWidget />}
-                            {win.widgetType === "pong" && <PongWidget />}
-                        </DockWindow>
-                    ),
-            )}
+            {dockWindows.map((win) => {
+                if (win.minimized) return null;
+                const meta = ALL_DOCK_META[win.widgetType] || {
+                    color: ORANGE,
+                    code: "OS",
+                    desc: "Agentic OS Dock Module",
+                };
+                const hasDedicatedWidget =
+                    win.widgetType === "athan" ||
+                    win.widgetType === "calculator" ||
+                    win.widgetType === "notes" ||
+                    win.widgetType === "calendar" ||
+                    win.widgetType === "snake" ||
+                    win.widgetType === "pong";
+
+                return (
+                    <DockWindow
+                        key={win.id}
+                        id={win.id}
+                        title={win.title}
+                        width={win.width}
+                        height={win.height}
+                        zIndex={win.zIndex}
+                        accentColor={meta.color}
+                        code={meta.code}
+                    >
+                        {win.widgetType === "athan" && <AthanWidget />}
+                        {win.widgetType === "calculator" && <CalculatorWidget />}
+                        {win.widgetType === "notes" && <NotesWidget />}
+                        {win.widgetType === "calendar" && <CalendarWidget />}
+                        {win.widgetType === "snake" && <SnakeWidget />}
+                        {win.widgetType === "pong" && <PongWidget />}
+                        {!hasDedicatedWidget && (
+                            <div
+                                className="font-mono"
+                                style={{
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    justifyContent: "space-between",
+                                    height: "100%",
+                                    gap: 12,
+                                }}
+                            >
+                                <div>
+                                    <div
+                                        style={{
+                                            display: "flex",
+                                            alignItems: "center",
+                                            justifyContent: "space-between",
+                                            padding: "8px 10px",
+                                            border: `1px solid ${vo.border}`,
+                                            borderLeft: `2px solid ${meta.color}`,
+                                            background: vo.hoverBg,
+                                            marginBottom: 10,
+                                        }}
+                                    >
+                                        <div>
+                                            <div
+                                                style={{
+                                                    fontSize: 10,
+                                                    fontWeight: 700,
+                                                    letterSpacing: "0.14em",
+                                                    textTransform: "uppercase",
+                                                    color: meta.color,
+                                                }}
+                                            >
+                                                {win.title} · [{meta.code}]
+                                            </div>
+                                            <div style={{ fontSize: 11, color: vo.textMuted, marginTop: 2 }}>
+                                                {meta.desc}
+                                            </div>
+                                        </div>
+                                        <span
+                                            style={{
+                                                fontSize: 9,
+                                                fontWeight: 700,
+                                                padding: "2px 6px",
+                                                border: `1px solid ${meta.color}66`,
+                                                color: meta.color,
+                                            }}
+                                        >
+                                            ONLINE
+                                        </span>
+                                    </div>
+
+                                    <NotesWidget storageKey={`dock-${win.widgetType}`} />
+                                </div>
+
+                                {meta.route && (
+                                    <button
+                                        type="button"
+                                        onClick={() => navigateTo(meta.route!)}
+                                        style={{
+                                            display: "flex",
+                                            alignItems: "center",
+                                            justifyContent: "center",
+                                            gap: 6,
+                                            width: "100%",
+                                            padding: "8px 12px",
+                                            background: `${meta.color}1f`,
+                                            border: `1px solid ${meta.color}88`,
+                                            color: vo.text,
+                                            fontSize: 10,
+                                            fontWeight: 700,
+                                            letterSpacing: "0.16em",
+                                            textTransform: "uppercase",
+                                            cursor: "pointer",
+                                        }}
+                                    >
+                                        <span>Open Full {win.title} Surface</span>
+                                        <ExternalLink className="h-3.5 w-3.5" style={{ color: meta.color }} />
+                                    </button>
+                                )}
+                            </div>
+                        )}
+                    </DockWindow>
+                );
+            })}
 
             {/* Bottom Dock Footer */}
             <div
@@ -1961,7 +2212,10 @@ export default function CMSLayoutImpl({
                     items={BOTTOM_DOCK_WIDGETS as any}
                     direction="horizontal"
                     darkMode={darkMode}
+                    title="DOCK"
+                    accentColor={ORANGE}
                     onItemClick={openDockWindow as any}
+                    onMinimizeAll={minimizeAllDockWindows}
                     dockWindows={dockWindows}
                 />
             </div>
