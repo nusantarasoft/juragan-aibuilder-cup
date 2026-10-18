@@ -1,0 +1,11 @@
+flowchart LR
+  CRON[Cron mingguan / tombol admin] --> FETCH[Fetch allowlist .go.id]
+  FETCH --> LLM[LLM ringkas + kutip wajib]
+  LLM --> VAL[Validasi substring kutip]
+  VAL --> DEDUPE[Embedding vs match_studio_chunks]
+  DEDUPE --> PENDING[(studio_research_items pending)]
+  PENDING --> ADMIN[Admin Riset Knowledge super_admin]
+  ADMIN -->|Approve| MERGE[addTextSource + ingestSource]
+  ADMIN -->|Reject| REJ[rejected]
+  MERGE --> NB[(KASIR_CONSULT_NOTEBOOK_ID)]
+  ADMIN -->|Unmerge| DEL[removeSource + approved]

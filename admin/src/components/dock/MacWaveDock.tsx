@@ -36,20 +36,20 @@ export const MacWaveDock: React.FC<MacWaveDockProps> = ({
         <motion.div
             onMouseMove={(e) => mousePos.set(isHorizontal ? e.pageX : e.pageY)}
             onMouseLeave={() => mousePos.set(Infinity)}
+            className="aos-dock font-mono"
             style={{
                 display: 'flex',
                 flexDirection: isHorizontal ? 'row' : 'column',
-                alignItems: isHorizontal ? 'flex-end' : 'flex-start',
-                gap: 2,
+                alignItems: isHorizontal ? 'center' : 'center',
+                gap: 4,
                 background: vo.glassFaint,
                 backdropFilter: vo.blur,
                 WebkitBackdropFilter: vo.blur,
-                // Fix the cross-axis size so the container doesn't "wave", only the icons do
-                height: isHorizontal ? 60 : undefined,
-                width: isHorizontal ? undefined : 40,
-                padding: isHorizontal ? '0 12px 8px 12px' : '16px 6px 16px 6px',
-                borderRadius: isHorizontal ? '24px 24px 0 0' : 24,
-                border: `1px solid ${vo.border}`,
+                height: isHorizontal ? 48 : undefined,
+                width: isHorizontal ? undefined : 42,
+                padding: isHorizontal ? '6px 8px' : '8px 6px',
+                borderRadius: 0,
+                border: `1px solid ${vo.borderStrong}`,
                 boxShadow: vo.shadow,
                 zIndex: 50,
             }}
@@ -96,22 +96,22 @@ function DockIcon({
         }
     });
 
-    // Define sizing based on direction (left dock is smaller)
-    const baseSize = direction === "horizontal" ? 44 : 32;
-    const maxSize = direction === "horizontal" ? 80 : 54;
-    const iconBaseSize = direction === "horizontal" ? 24 : 16;
-    const iconMaxSize = direction === "horizontal" ? 48 : 28;
+    // Crisp Agentic OS tile sizing
+    const baseSize = direction === "horizontal" ? 36 : 30;
+    const maxSize = direction === "horizontal" ? 50 : 42;
+    const iconBaseSize = direction === "horizontal" ? 17 : 14;
+    const iconMaxSize = direction === "horizontal" ? 24 : 20;
 
-    const sizeTransform = useTransform(distance, [-150, 0, 150], [baseSize, maxSize, baseSize]);
-    const iconSizeTransform = useTransform(distance, [-150, 0, 150], [iconBaseSize, iconMaxSize, iconBaseSize]);
+    const sizeTransform = useTransform(distance, [-120, 0, 120], [baseSize, maxSize, baseSize]);
+    const iconSizeTransform = useTransform(distance, [-120, 0, 120], [iconBaseSize, iconMaxSize, iconBaseSize]);
 
-    const size = useSpring(sizeTransform, { mass: 0.1, stiffness: 150, damping: 12 });
-    const iconSize = useSpring(iconSizeTransform, { mass: 0.1, stiffness: 150, damping: 12 });
+    const size = useSpring(sizeTransform, { mass: 0.1, stiffness: 180, damping: 14 });
+    const iconSize = useSpring(iconSizeTransform, { mass: 0.1, stiffness: 180, damping: 14 });
 
     const [isHovered, setIsHovered] = useState(false);
 
     return (
-        <Tooltip title={item.label} placement={direction === "vertical" ? "right" : "top"}>
+        <Tooltip title={<span className="font-mono text-[10px] uppercase tracking-[0.16em]">{item.label}</span>} placement={direction === "vertical" ? "right" : "top"}>
             <motion.div
                 ref={ref}
                 onClick={onClick}
@@ -120,27 +120,15 @@ function DockIcon({
                 style={{
                     width: size,
                     height: size,
+                    border: `1px solid ${isOpen ? vo.selectedBorder : isHovered ? vo.borderStrong : vo.border}`,
+                    background: isOpen ? vo.selectedBg : isHovered ? vo.hoverBg : 'transparent',
                 }}
-                className="relative flex items-center justify-center rounded-2xl cursor-pointer transition-colors duration-200"
+                className="relative flex items-center justify-center cursor-pointer transition-colors duration-150"
             >
-                {/* Background hover effect */}
-                {isHovered && (
-                    <motion.div
-                        layoutId={`dock-hover-${direction}`}
-                        style={{ background: vo.hoverBg }}
-                        className="absolute inset-0 rounded-2xl"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.2 }}
-                    />
-                )}
-                
                 <motion.span
                     style={{
                         fontSize: iconSize,
                         lineHeight: 1,
-                        filter: 'drop-shadow(0px 4px 6px rgba(0,0,0,0.25))',
                         userSelect: 'none',
                         display: 'flex',
                         alignItems: 'center',
@@ -155,13 +143,9 @@ function DockIcon({
                     <div style={{
                         position: 'absolute',
                         ...(direction === "horizontal" 
-                            ? { bottom: -6, left: '50%', transform: 'translateX(-50%)' }
-                            : { right: -6, top: '50%', transform: 'translateY(-50%)' }),
-                        width: 5,
-                        height: 5,
-                        borderRadius: '50%',
+                            ? { bottom: -4, left: '50%', transform: 'translateX(-50%)', width: 14, height: 2 }
+                            : { right: -4, top: '50%', transform: 'translateY(-50%)', width: 2, height: 12 }),
                         background: vo.accent,
-                        boxShadow: `0 0 8px ${vo.accent}`,
                     }} />
                 )}
             </motion.div>

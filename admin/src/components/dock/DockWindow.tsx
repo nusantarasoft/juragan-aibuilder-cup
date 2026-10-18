@@ -11,6 +11,7 @@ interface DockWindowProps {
     width: number;
     height: number;
     zIndex: number;
+    isFocused?: boolean;
     children: React.ReactNode;
 }
 
@@ -44,41 +45,42 @@ export default function DockWindow({ id, title, width, height, zIndex, children 
             contentStyle={{
                 background: "transparent",
                 color: token.colorText,
-                padding: "16px",
+                padding: "14px",
                 overflow: "auto",
-                flex: 1
+                flex: 1,
+                fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
             }}
             headerStyle={{
-                background: `linear-gradient(180deg, ${token.colorFillAlter} 0%, transparent 100%)`,
-                borderBottom: `1px solid ${token.colorBorderSecondary}44`,
+                background: "rgba(255, 255, 255, 0.02)",
+                borderBottom: `1px solid ${token.colorBorderSecondary}`,
                 color: isActive ? token.colorText : token.colorTextSecondary,
-                padding: "12px 16px",
-                borderTopLeftRadius: "16px",
-                borderTopRightRadius: "16px"
+                padding: "6px 12px",
+                borderRadius: 0,
+                fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
             }}
             pt={{
                 root: {
                     style: {
                         background: token.colorBgElevated,
-                        backgroundColor: `${token.colorBgElevated}b3`, // 70% opacity for ultra glass
-                        backdropFilter: "blur(50px) saturate(200%)",
-                        WebkitBackdropFilter: "blur(50px) saturate(200%)",
-                        borderRadius: "16px",
-                        border: `1px solid ${token.colorBorderSecondary}`,
-                        boxShadow: isActive 
-                            ? `0 30px 60px -15px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255,255,255,0.2), 0 0 0 1px ${token.colorBorder}` 
-                            : `0 15px 30px -10px rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255,255,255,0.1), 0 0 0 1px ${token.colorBorderSecondary}`,
+                        backdropFilter: "blur(16px)",
+                        WebkitBackdropFilter: "blur(16px)",
+                        borderRadius: 0,
+                        border: `1px solid ${isActive ? token.colorBorder : token.colorBorderSecondary}`,
+                        borderTop: `2px solid ${isActive ? "#fb923c" : token.colorBorder}`,
+                        boxShadow: "0 28px 70px -15px rgba(0, 0, 0, 0.85)",
                         display: "flex",
                         flexDirection: "column",
-                        overflow: "hidden"
+                        overflow: "hidden",
                     }
                 },
                 headerTitle: {
                     style: {
-                        fontSize: "14px",
+                        fontSize: "10px",
                         fontWeight: 600,
-                        textAlign: "center",
-                        width: "100%"
+                        textTransform: "uppercase",
+                        letterSpacing: "0.2em",
+                        textAlign: "left",
+                        width: "100%",
                     }
                 }}}
         >

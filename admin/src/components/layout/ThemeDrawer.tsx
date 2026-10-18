@@ -10,9 +10,14 @@ const { Text, Title } = Typography;
 // ─── Preset Palettes (5 colors each) ─────────────────────────────────────
 const PRESET_THEMES: { name: string; description: string; palette: ThemePalette }[] = [
     {
+        name: "Agentic OS",
+        description: "Mission-control orange & sky HUD",
+        palette: { primary: "#fb923c", secondary: "#38bdf8", accent: "#fb923c", sidebarBg: "#0b0e13", headerBg: "#080a0f" },
+    },
+    {
         name: "Violet Dream",
-        description: "Default NusantaraSoft theme",
-        palette: { primary: "var(--theme-color, #8b5cf6)", secondary: "#6366f1", accent: "#a78bfa", sidebarBg: "#1e1b4b", headerBg: "#f5f3ff" },
+        description: "Classic NusantaraSoft violet",
+        palette: { primary: "#8b5cf6", secondary: "#6366f1", accent: "#a78bfa", sidebarBg: "#1e1b4b", headerBg: "#f5f3ff" },
     },
     {
         name: "Ocean Blue",

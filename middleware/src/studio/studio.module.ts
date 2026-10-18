@@ -41,6 +41,9 @@ import { StudioAgentBuilderService } from './studio-agent-builder.service';
 import { StudioAgentBuilderResolver } from './studio-agent-builder.resolver';
 import { StudioLabelStudioService } from './studio-label-studio.service';
 import { StudioLabelStudioResolver } from './studio-label-studio.resolver';
+import { StudioResearchService } from './studio-research.service';
+import { StudioResearchCronService } from './studio-research.cron';
+import { StudioResearchResolver } from './studio-research.resolver';
 
 @Module({
     imports: [
@@ -90,6 +93,9 @@ import { StudioLabelStudioResolver } from './studio-label-studio.resolver';
         StudioLabelStudioResolver,
         StudioWaConversationsService,
         StudioWaConversationsResolver,
+        StudioResearchService,
+        StudioResearchCronService,
+        StudioResearchResolver,
     ],
     exports: [
         StudioService,

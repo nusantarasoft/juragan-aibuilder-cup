@@ -54,25 +54,33 @@ const OnlineUsersAvatars: React.FC<OnlineUsersAvatarsProps> = ({
     // Inner sider is 240px expanded / 80px collapsed. Show as many avatars as fit,
     // then let Avatar.Group collapse the rest into a "+N" bubble with a popover.
     const maxVisible = collapsed ? 1 : 4;
-    const size = collapsed ? 28 : 30;
-    const ringColor = darkMode ? "#141414" : "#ffffff"; // matches inner sider background
+    const size = collapsed ? 24 : 26;
+    const ringColor = darkMode ? "#0b0e13" : "#ffffff";
     const onlineGreen = "#22c55e";
 
     return (
         <div
+            className="font-mono"
             style={{
                 display: "flex",
                 alignItems: "center",
-                justifyContent: collapsed ? "center" : "flex-start",
+                justifyContent: collapsed ? "center" : "space-between",
                 height: SIDER_FOOTER_ROW_HEIGHT,
-                padding: collapsed ? "0 4px" : "0 24px 0 16px",
+                padding: collapsed ? "0 4px" : "0 12px",
+                borderTop: `1px solid ${darkMode ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.08)"}`,
                 boxSizing: "border-box",
                 width: "100%",
             }}
         >
+            {!collapsed && (
+                <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 9, letterSpacing: "0.16em", textTransform: "uppercase", color: darkMode ? "#94a3b8" : "#64748b" }}>
+                    <span style={{ width: 6, height: 6, borderRadius: "50%", background: onlineGreen, display: "inline-block" }} />
+                    ONLINE · {users.length}
+                </span>
+            )}
             <Tooltip title={`${users.length} online`} placement={collapsed ? "right" : "top"}>
                 <Badge
-                    count={users.length}
+                    count={collapsed ? users.length : 0}
                     overflowCount={99}
                     color={onlineGreen}
                     offset={[2, 2]}
@@ -83,10 +91,11 @@ const OnlineUsersAvatars: React.FC<OnlineUsersAvatarsProps> = ({
                         max={{
                             count: maxVisible,
                             style: {
-                                color: "var(--theme-color, #7c3aed)",
-                                backgroundColor: darkMode ? "rgba(124,58,237,0.25)" : "#ede9fe",
+                                color: "#fb923c",
+                                backgroundColor: darkMode ? "rgba(251,146,60,0.18)" : "rgba(251,146,60,0.14)",
+                                border: "1px solid rgba(251,146,60,0.4)",
                                 cursor: "pointer",
-                                fontSize: 12,
+                                fontSize: 10,
                             },
                             popover: {
                                 trigger: "click",
@@ -101,14 +110,15 @@ const OnlineUsersAvatars: React.FC<OnlineUsersAvatarsProps> = ({
                                 dot
                                 color={onlineGreen}
                                 offset={[-3, size - 4]}
-                                style={{ width: 8, height: 8, boxShadow: `0 0 0 2px ${ringColor}` }}
+                                style={{ width: 7, height: 7, boxShadow: `0 0 0 2px ${ringColor}` }}
                             >
                                 <Tooltip title={user.name} placement="top">
                                     <Avatar
                                         src={user.avatarUrl}
                                         style={{
-                                            backgroundColor: user.avatarUrl ? (darkMode ? "#2a2a3e" : "#f1f5f9") : user.color,
+                                            backgroundColor: user.avatarUrl ? (darkMode ? "#0f141c" : "#f1f5f9") : user.color,
                                             cursor: "pointer",
+                                            fontSize: 10,
                                         }}
                                     >
                                         {initials(user.name)}

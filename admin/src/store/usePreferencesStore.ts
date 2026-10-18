@@ -17,16 +17,17 @@ export interface ThemePalette {
 }
 
 export const DEFAULT_PALETTE: ThemePalette = {
-    primary: '#8b5cf6',
-    secondary: '#6366f1',
-    accent: '#a78bfa',
-    sidebarBg: '#1e1b4b',
-    headerBg: '#f5f3ff',
+    primary: '#fb923c',
+    secondary: '#38bdf8',
+    accent: '#fb923c',
+    sidebarBg: '#0b0e13',
+    headerBg: '#080a0f',
 };
 
 // ─── Color utilities ────────────────────────────────────────────────────
 export function hexToRgb(hex: string): { r: number; g: number; b: number } {
-    const h = hex.replace('#', '');
+    const match = (hex || '').match(/#?([0-9a-fA-F]{6})/);
+    const h = match ? match[1] : 'fb923c';
     return {
         r: parseInt(h.substring(0, 2), 16),
         g: parseInt(h.substring(2, 4), 16),
@@ -182,15 +183,20 @@ export const usePreferencesStore = create<PreferencesState>()(
                     state.themeColor = state.themePalette.primary;
                 }
             },
-            // Migrate old single-color store to new palette
+            // Migrate old single-color store or v1 palette to Agentic OS DEFAULT_PALETTE
             migrate: (persisted: any, version: number) => {
-                if (persisted && persisted.themeColor && !persisted.themePalette) {
-                    persisted.themePalette = { ...DEFAULT_PALETTE, primary: persisted.themeColor };
-                    delete persisted.themeColor;
+                if (persisted) {
+                    if (version < 2) {
+                        persisted.themePalette = { ...DEFAULT_PALETTE };
+                        persisted.themeColor = DEFAULT_PALETTE.primary;
+                    } else if (persisted.themeColor && !persisted.themePalette) {
+                        persisted.themePalette = { ...DEFAULT_PALETTE, primary: persisted.themeColor };
+                        delete persisted.themeColor;
+                    }
                 }
                 return persisted;
             },
-            version: 1,
+            version: 2,
         }
     )
 );
