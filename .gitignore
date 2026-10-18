@@ -9,10 +9,17 @@ __pycache__/
 .next/
 dist/
 
-# Environment files
-# Uncomment for production to prevent accidental commits
-# .env
-# .env.production
+# Environment files (never commit secrets to Git / Cloud Build)
+.env
+.env.local
+.env.production
+.env.cloudrun
+middleware/.env
+
+# GCP & generated secret files
+volumes/google-credentials.json
+generated_secrets.txt
+jwt_keys.txt
 
 # Docker volumes backup
 *.tar.gz
@@ -44,11 +51,20 @@ database_dump*.sql
 *.bak
 *.backup
 
-# Temporary files
+# Temporary & scratch files
 *.tmp
 *.temp
 build_v27*.txt
 build_*.txt
+admin/scratch/
+admin/scratch_repo/
+admin/pnpm-lock.yaml.*
+admin/eslint-*.txt
+admin/eslint-*.json
+admin/lint-output.txt
+admin/tsc_output.txt
+admin/build_err.txt
+admin/build_log.txt
 
 # Production secrets (never commit)
 .env.master-production

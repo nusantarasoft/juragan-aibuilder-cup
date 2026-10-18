@@ -211,20 +211,20 @@ export const BOTTOM_DOCK_WIDGETS = [
 ] as const;
 
 export const ALL_DOCK_META: Record<string, { color: string; code: string; route?: string; desc: string }> = {
-    notes: { color: "#fb923c", code: "NT", route: "/admin/pm/knowledge-base", desc: "Persistent scratchpad & operator notes" },
-    tasks: { color: "#10b981", code: "TK", route: "/admin/pm/my-work", desc: "Tactical task queue & sprint checklist" },
-    files: { color: "#38bdf8", code: "FL", route: "/admin/media", desc: "Media vault & workspace asset browser" },
-    messages: { color: "#a855f7", code: "MG", route: "/admin/messaging", desc: "Realtime channels & operator dispatch" },
-    analytics: { color: "#38bdf8", code: "AN", route: "/admin/analytics", desc: "Live telemetry & KPI stream" },
+    notes: { color: "#fb923c", code: "NT", route: "/admin/ai-studio", desc: "Persistent scratchpad & operator notes" },
+    tasks: { color: "#10b981", code: "TK", route: "/admin/agentic-os", desc: "Tactical task queue & sprint checklist" },
+    files: { color: "#38bdf8", code: "FL", route: "/admin/ai-studio/riset-knowledge", desc: "Knowledge vault & workspace asset browser" },
+    messages: { color: "#a855f7", code: "MG", route: "/admin/ai-studio/percakapan-wa", desc: "Realtime WA channels & operator dispatch" },
+    analytics: { color: "#38bdf8", code: "AN", route: "/admin/ai-studio", desc: "Live telemetry & usage stream" },
     calculator: { color: "#fb923c", code: "CL", desc: "Precision numeric evaluator" },
-    terminal: { color: "#10b981", code: "TM", route: "/admin/sql-runner", desc: "Command shell & SQL runner" },
+    terminal: { color: "#10b981", code: "TM", route: "/admin/ai-studio", desc: "AI Studio & prompt runner" },
     robot: { color: "#a855f7", code: "AI", route: "/admin/agentic-os", desc: "Autonomous agent assistant" },
     snake: { color: "#22c55e", code: "SN", desc: "Grid arcade simulation" },
     pong: { color: "#ec4899", code: "PG", desc: "Vector paddle simulation" },
     athan: { color: "#f59e0b", code: "AT", desc: "Prayer schedule & Qibla telemetry" },
     weather: { color: "#38bdf8", code: "WX", desc: "Atmospheric & region conditions" },
     music: { color: "#ec4899", code: "MU", desc: "Ambient focus synthesizer" },
-    settings: { color: "#94a3b8", code: "CF", route: "/admin/settings/general", desc: "System configuration & preferences" },
+    settings: { color: "#94a3b8", code: "CF", route: "/admin/ai-studio/settings", desc: "AI Studio configuration & models" },
     "add-widget": { color: "#fb923c", code: "OS", route: "/admin/virtual-office", desc: "Quick module & surface launcher" },
 };
 
@@ -232,9 +232,9 @@ const appList = [
     {
         key: "cms",
         icon: "https://gw.alipayobjects.com/zos/rmsportal/KDpgvguMpGfqaHPjicRK.svg",
-        title: "Nusantarasoft CMS",
-        desc: "Content Management System",
-        url: "/admin/dashboard",
+        title: "AI Studio",
+        desc: "AI Studio & Knowledge Hub",
+        url: "/admin/ai-studio",
     },
     {
         key: "aos",
@@ -300,17 +300,17 @@ export const getInnerMenuRoutes = (segment: string, pinned: any[], starred: any[
 
     switch (segment) {
         case "new":
-            return [{ path: "/admin/pages/builder", name: "Create New Page", icon: <PlusOutlined /> }];
+            return [{ path: "/admin/ai-studio", name: "New Notebook", icon: <PlusOutlined /> }];
         case "recent":
             return [
-                { path: "/admin/pages/list", name: "Homepage", icon: <FileTextOutlined /> },
-                { path: "/admin/pages/builder", name: "About Us", icon: <FileTextOutlined /> },
-                { path: "/admin/blocks/templates", name: "Contact Page", icon: <FileTextOutlined /> },
+                { path: "/admin/ai-studio", name: "AI Studio", icon: <FileTextOutlined /> },
+                { path: "/admin/virtual-office", name: "Virtual Office", icon: <FileTextOutlined /> },
+                { path: "/admin/agentic-os", name: "Agentic OS", icon: <FileTextOutlined /> },
             ];
         case "newfile":
             return [
-                { path: "/admin/pages/builder", name: "New Page", icon: <FileAddOutlined /> },
-                { path: "/admin/blocks/content", name: "New Block", icon: <FileAddOutlined /> },
+                { path: "/admin/ai-studio", name: "New Notebook", icon: <FileAddOutlined /> },
+                { path: "/admin/ai-studio/konten-marketing", name: "New Marketing Content", icon: <FileAddOutlined /> },
             ];
         case "pinned":
             return pinned.map((item) => ({
@@ -326,9 +326,9 @@ export const getInnerMenuRoutes = (segment: string, pinned: any[], starred: any[
             }));
         case "history":
             return [
-                { path: "/admin/pages/list", name: "Edited Homepage", icon: <HistoryOutlined /> },
-                { path: "/admin/blocks/content", name: "Updated Banner", icon: <HistoryOutlined /> },
-                { path: "/admin/media", name: "Uploaded Image", icon: <HistoryOutlined /> },
+                { path: "/admin/ai-studio", name: "Opened AI Studio", icon: <HistoryOutlined /> },
+                { path: "/admin/virtual-office", name: "Visited Virtual Office", icon: <HistoryOutlined /> },
+                { path: "/admin/agentic-os", name: "Opened Agentic OS", icon: <HistoryOutlined /> },
             ];
         default:
             return [];
@@ -342,27 +342,15 @@ export const BREADCRUMB_LABELS: Record<string, string> = {
     partner: "Partner",
     umkm: "Partner",
     "ai-gateway": "WhatsApp Gateway",
-    "whatsapp-setup": "Setup WhatsApp",
-    "web-crawler": "Web Crawler",
-    "agent-builder": "Agent Builder",
-    "knowledge-graph": "Knowledge Graph",
-    "label-studio": "Label Studio",
     "riset-knowledge": "Knowledge Research",
     "konten-marketing": "Marketing Content",
     "percakapan-wa": "WA Conversations",
-    "connect-wa": "Connect WhatsApp",
-    "my-agents": "My AI Agents",
-    usage: "Usage",
-    recruit: "Recruit Agents",
-    "guide-flows": "Guide Flows",
-    settings: "Settings",
-    playground: "Playground",
-    advanced: "Advanced",
+    settings: "Settings & Models",
 };
 
 export function generateBreadcrumb(pathname: string): { title: string; path?: string }[] {
     const segments = pathname.split("/").filter(Boolean);
-    const items: { title: string; path?: string }[] = [{ title: "Home", path: "/admin/dashboard" }];
+    const items: { title: string; path?: string }[] = [{ title: "Home", path: "/admin/ai-studio" }];
 
     let currentPath = "";
     segments.forEach((segment) => {
@@ -467,8 +455,6 @@ export function buildAntMenuItems(
     const out: NonNullable<MenuProps["items"]> = [];
 
     for (const item of routes) {
-        if (item.path === "/admin/dashboard" || item.path === "/admin/activity") continue;
-
         if (item.path?.includes("divider") && !item.icon) {
             if (collapsed || q) continue;
             out.push({
@@ -495,7 +481,7 @@ export function buildAntMenuItems(
             const children = buildAntMenuItems(subRoutes, collapsed, query, vo, onNavigate);
             if (q && children.length === 0 && !String(item.name ?? "").toLowerCase().includes(q)) continue;
             out.push({
-                key: item.path,
+                key: item.key ?? item.path,
                 icon: item.icon ? (
                     <span className="anticon submenu-icon-el" style={{ display: "inline-flex", fontSize: 15, flexShrink: 0 }}>
                         {item.icon}
@@ -513,7 +499,7 @@ export function buildAntMenuItems(
                     </span>
                 ) : undefined,
                 label: <span className="menuitem-text-el font-mono text-[12px]">{item.name}</span>,
-                onClick: () => onNavigate(item.path || "/admin/dashboard"),
+                onClick: () => onNavigate(item.path || "/admin/ai-studio"),
             });
         }
     }

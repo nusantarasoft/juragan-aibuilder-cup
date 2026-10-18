@@ -12,7 +12,8 @@ describe("safeAdminPath", () => {
     it("allows deep admin paths", () => {
         expect(safeAdminPath("/admin/ai-studio/umkm")).toBe("/admin/ai-studio/umkm");
         expect(safeAdminPath("/admin")).toBe("/admin");
-        expect(safeAdminPath("/admin/dashboard")).toBe("/admin/dashboard");
+        expect(safeAdminPath("/admin/ai-studio")).toBe("/admin/ai-studio");
+        expect(safeAdminPath("/admin/virtual-office")).toBe("/admin/virtual-office");
     });
 
     it("rejects open-redirect class payloads", () => {

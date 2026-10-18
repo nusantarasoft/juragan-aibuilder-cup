@@ -150,7 +150,7 @@ export function AgentStudio({ initialAgentId, onOpenTasks }: { initialAgentId?: 
                         </label>
                         {hideEnterpriseTemplates ? (
                             <Link
-                                href="/admin/recruit"
+                                href="/admin/ai-studio/partner"
                                 className="inline-flex h-8 items-center rounded-lg bg-indigo-500 px-2.5 text-[11px] font-semibold text-white hover:bg-indigo-400"
                             >
                                 Rekrut
@@ -256,7 +256,7 @@ export function AgentStudio({ initialAgentId, onOpenTasks }: { initialAgentId?: 
                         action={
                             hideEnterpriseTemplates ? (
                                 <Link
-                                    href="/admin/recruit"
+                                    href="/admin/ai-studio/partner"
                                     className="inline-flex items-center gap-2 rounded-lg bg-indigo-500 px-3 py-1.5 text-sm font-semibold text-white"
                                 >
                                     Rekrut karyawan

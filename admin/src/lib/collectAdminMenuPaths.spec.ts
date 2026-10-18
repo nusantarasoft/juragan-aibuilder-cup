@@ -12,9 +12,10 @@ describe('collectAdminMenuPaths', () => {
 
     it('includes menu + VO module routes', () => {
         const paths = allAdminCrawlPaths();
-        expect(paths.length).toBeGreaterThan(50);
-        expect(paths).toContain('/admin/dashboard');
+        expect(paths.length).toBeGreaterThanOrEqual(7);
+        expect(paths).toContain('/admin/ai-studio');
         expect(paths).toContain('/admin/virtual-office');
-        expect(paths).toContain('/admin/analytics/metrics');
+        expect(paths).toContain('/admin/agentic-os');
+        expect(paths).not.toContain('/admin/dashboard');
     });
 });

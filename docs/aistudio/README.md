@@ -1,14 +1,22 @@
 # AI Studio
 
-AI Studio adalah modul Admin CMS NusantaraSoft untuk **knowledge (notebook)**, **pengaturan AI/gateway**, dan **tenant kasir WhatsApp UMKM**.
+AI Studio adalah modul utama Admin CMS NusantaraSoft (default landing route `/admin` → `/admin/ai-studio`) untuk **knowledge (notebook)**, **rekrut & kelola agen AI**, **Agentic OS**, **Virtual Office**, **pengaturan AI/gateway**, dan **tenant kasir WhatsApp UMKM**.
 
-Admin UI: `/admin/ai-studio`
+Admin UI (default `/admin/ai-studio`):
 
 ```text
-AI Studio
+AI Studio (/admin/ai-studio)
 ├── Studio (notebook)         /admin/ai-studio
-├── Settings / Gateway        /admin/ai-studio/settings
-└── UMKM kasir WA             /admin/ai-studio/umkm
+├── Partner (UMKM WA)         /admin/ai-studio/partner
+├── Knowledge Research        /admin/ai-studio/riset-knowledge
+├── Marketing Content         /admin/ai-studio/konten-marketing
+├── WA Conversations          /admin/ai-studio/percakapan-wa
+├── WhatsApp Gateway          /admin/ai-studio/ai-gateway
+└── Settings & Models         /admin/ai-studio/settings
+
+Top Bar / Surface Launcher (outside AI Studio submenu):
+├── Agentic OS                /admin/agentic-os
+└── Virtual Office            /admin/virtual-office
 ```
 
 ## Modul dokumen
@@ -18,6 +26,7 @@ AI Studio
 | **Studio** (notebook) | [studio/](./studio/) — use cases + [RAG architecture](./studio/system/rag-architecture.md) |
 | **UMKM kasir WhatsApp** | [umkm-wa/](./umkm-wa/) |
 | **Agentic OS · first live employee** | [studio/business/agentic-os-first-employee.md](./studio/business/agentic-os-first-employee.md) |
+| **Google Cloud Run Deploy** | [../deploy-cloud-run.md](../deploy-cloud-run.md) |
 
 Diagrams: [`diagrams/aistudio/studio/`](../../diagrams/aistudio/studio/README.md) (RAG L1–L4) · [`diagrams/aistudio/umkm-wa/`](../../diagrams/aistudio/umkm-wa/README.md) (kasir WA)
 

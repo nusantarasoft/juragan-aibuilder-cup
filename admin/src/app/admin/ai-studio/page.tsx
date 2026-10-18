@@ -654,12 +654,11 @@ export default function AIStudioPage() {
     };
 
     const STUDIO_QUICK_LINKS = [
-        { code: "GW", label: "Gateway", href: "/admin/ai-studio/ai-gateway" },
-        { code: "AG", label: "Agents", href: "/admin/ai-studio/agent-builder" },
-        { code: "PG", label: "Playground", href: "/admin/ai-studio/advanced/playground" },
-        { code: "KG", label: "Graph", href: "/admin/ai-studio/knowledge-graph" },
         { code: "PTN", label: "Partner", href: "/admin/ai-studio/partner" },
+        { code: "RK", label: "Research", href: "/admin/ai-studio/riset-knowledge" },
+        { code: "MK", label: "Marketing", href: "/admin/ai-studio/konten-marketing" },
         { code: "WA", label: "WA Logs", href: "/admin/ai-studio/percakapan-wa" },
+        { code: "GW", label: "Gateway", href: "/admin/ai-studio/ai-gateway" },
         { code: "CFG", label: "Settings", href: "/admin/ai-studio/settings" },
     ];
 

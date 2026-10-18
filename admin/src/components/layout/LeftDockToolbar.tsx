@@ -36,8 +36,8 @@ export const LeftDockToolbar: React.FC<Props> = ({ themeColor, darkMode, onAIStu
         {
             key: "add",
             icon: <PlusOutlined style={{ fontSize: 16 }} />,
-            label: "Create New",
-            path: "/admin/pages/builder",
+            label: "AI Studio",
+            path: "/admin/ai-studio",
             dividerAfter: true,
         },
         {
@@ -59,7 +59,8 @@ export const LeftDockToolbar: React.FC<Props> = ({ themeColor, darkMode, onAIStu
         {
             key: "apps",
             icon: <AppstoreOutlined style={{ fontSize: 15 }} />,
-            label: "Modules",
+            label: "Virtual Office",
+            path: "/admin/virtual-office",
         },
         {
             key: "snippets",
@@ -75,7 +76,7 @@ export const LeftDockToolbar: React.FC<Props> = ({ themeColor, darkMode, onAIStu
             key: "settings",
             icon: <SettingOutlined style={{ fontSize: 15 }} />,
             label: "Settings",
-            path: "/admin/settings",
+            path: "/admin/ai-studio/settings",
         },
     ];
 

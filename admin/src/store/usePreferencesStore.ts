@@ -134,7 +134,7 @@ export const usePreferencesStore = create<PreferencesState>()(
                 if (isPinned(item.path)) {
                     removePinned(item.path);
                 } else {
-                    addPinned(item.path === '/admin/dashboard' ? { ...safeItem, name: 'Dashboard' } : safeItem);
+                    addPinned(item.path === '/admin/ai-studio' ? { ...safeItem, name: 'AI Studio' } : safeItem);
                 }
             },
 

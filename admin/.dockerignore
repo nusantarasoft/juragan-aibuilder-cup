@@ -51,3 +51,18 @@ docker-compose*.yml
 
 # Lock files (use package.json only for npm install)
 pnpm-lock.yaml
+pnpm-lock.yaml.*
+
+# Scratch & local debug artifacts
+scratch
+scratch_repo
+playwright-report
+test-results
+build_*.txt
+build_err.txt
+build_log.txt
+eslint-*.txt
+eslint-*.json
+lint-output.txt
+tsc_output.txt
+

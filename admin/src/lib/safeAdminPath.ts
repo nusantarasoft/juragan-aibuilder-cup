@@ -1,4 +1,4 @@
-const DEFAULT_ADMIN_PATH = "/admin/dashboard";
+const DEFAULT_ADMIN_PATH = "/admin/ai-studio";
 const MAX_LEN = 512;
 
 /**

@@ -144,7 +144,7 @@ export default function PartnerStudioPage() {
     useEffect(() => {
         if (authLoading) return;
         if (role === 'tenant_owner') {
-            router.replace('/admin/connect-wa');
+            router.replace('/admin/ai-studio');
         }
     }, [authLoading, role, router]);
 

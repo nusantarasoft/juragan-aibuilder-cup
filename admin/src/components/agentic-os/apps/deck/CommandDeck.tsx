@@ -1174,7 +1174,7 @@ export function CommandDeck({ onOpen, exit, toolbar, bottomInset = 0 }: DeckShel
                         <button
                             type="button"
                             title="Back to Admin"
-                            onClick={() => (window.location.href = "/admin/dashboard")}
+                            onClick={() => (window.location.href = "/admin/ai-studio")}
                             className="flex h-[22px] w-[22px] shrink-0 items-center justify-center border border-white/15 text-slate-300 transition hover:border-white/35 hover:text-white"
                         >
                             <ArrowLeft className="h-3.5 w-3.5" />

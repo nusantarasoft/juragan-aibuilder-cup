@@ -48,8 +48,12 @@ async function bootstrap() {
         .map((o) => o.trim())
         .filter(Boolean);
     app.enableCors({
-        origin: [...new Set([...defaultOrigins, ...envOrigins])],
+        origin: [...new Set([...defaultOrigins, ...envOrigins]), /\.run\.app$/],
         credentials: true,
+    });
+
+    expressApp.get('/health', (_req, res) => {
+        res.status(200).json({ status: 'ok', service: 'middleware' });
     });
 
     // GraphQL multipart only — must NOT be global or plain multipart (e.g. POST /studio/upload) breaks with

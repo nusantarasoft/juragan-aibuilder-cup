@@ -1,7 +1,13 @@
 // Mock AI Service for Content Generation
 // In a real application, this would call OpenAI, Anthropic, or Gemini APIs.
 
-import { PageBlock } from "@/app/admin/pages/builder/types";
+export interface PageBlock {
+    id: string;
+    type: string;
+    name: string;
+    icon?: string;
+    props: Record<string, any>;
+}
 
 // Helper to delay for realism
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));

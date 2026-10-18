@@ -17,7 +17,7 @@ export function EmptyOfficeBanner() {
                     Lantai kosong sengaja — rekrut Kasir UMKM dulu, lalu mereka muncul di sini dengan progress tugas live dari antrian.
                 </p>
                 <Link
-                    href="/admin/recruit"
+                    href="/admin/agentic-os"
                     className="mt-4 inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-indigo-500/30 transition hover:brightness-110"
                 >
                     <UserPlus className="h-4 w-4" />

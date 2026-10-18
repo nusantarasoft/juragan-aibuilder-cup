@@ -28,55 +28,22 @@ interface ActionItem {
 }
 
 const PAGES: PageItem[] = [
-    { name: 'Dashboard', path: '/admin/dashboard', icon: '📊', group: 'Business', keywords: 'home overview' },
-    { name: 'My Work', path: '/admin/pm/my-work', icon: '📋', group: 'Project Management', keywords: 'tasks personal' },
-    { name: 'Projects', path: '/admin/pm/projects', icon: '📁', group: 'Project Management', keywords: 'project list' },
-    { name: 'Backlog', path: '/admin/pm/backlog', icon: '📝', group: 'Project Management', keywords: 'tasks all' },
-    { name: 'Roadmap', path: '/admin/pm/roadmap', icon: '🗺️', group: 'Project Management', keywords: 'gantt plan' },
-    { name: 'Workload', path: '/admin/pm/workload', icon: '👥', group: 'Project Management', keywords: 'team capacity' },
-    { name: 'Reports', path: '/admin/pm/reports', icon: '📈', group: 'Project Management', keywords: 'analytics ai' },
-    { name: 'Templates', path: '/admin/pm/templates', icon: '📐', group: 'Project Management', keywords: 'template preset' },
-    { name: 'Knowledge Base', path: '/admin/pm/knowledge-base', icon: '📚', group: 'Project Management', keywords: 'lessons learned' },
-    { name: 'Tickets', path: '/admin/itsm/tickets', icon: '🎫', group: 'ITSM', keywords: 'ticket incident' },
-    { name: 'CMDB', path: '/admin/itsm/cmdb', icon: '🗄️', group: 'ITSM', keywords: 'configuration database assets' },
-    { name: 'SLA Monitor', path: '/admin/itsm/sla-monitor', icon: '⏱️', group: 'ITSM', keywords: 'service level' },
-    { name: 'Changes', path: '/admin/itsm/changes', icon: '🔄', group: 'ITSM', keywords: 'change management' },
-    { name: 'Knowledge', path: '/admin/itsm/knowledge', icon: '📖', group: 'ITSM', keywords: 'knowledge base articles' },
-    { name: 'CRM Pipeline', path: '/admin/crm/pipeline', icon: '💰', group: 'CRM', keywords: 'sales deals' },
-    { name: 'CRM Accounts', path: '/admin/crm/accounts', icon: '🏢', group: 'CRM', keywords: 'companies clients' },
-    { name: 'Sales Analytics', path: '/admin/crm/analytics', icon: '📊', group: 'CRM', keywords: 'revenue forecast' },
-    { name: 'Employees', path: '/admin/hr/employees', icon: '👤', group: 'HR', keywords: 'people staff' },
-    { name: 'Org Chart', path: '/admin/hr/org-chart', icon: '🏛️', group: 'HR', keywords: 'organization hierarchy' },
-    { name: 'Team Calendar', path: '/admin/hr/team-calendar', icon: '📅', group: 'HR', keywords: 'leave pto' },
-    { name: 'Products', path: '/admin/ecommerce/products', icon: '🛍️', group: 'E-Commerce', keywords: 'product catalog' },
-    { name: 'Orders', path: '/admin/ecommerce/orders', icon: '📦', group: 'E-Commerce', keywords: 'order purchase' },
-    { name: 'Inventory Items', path: '/admin/inventory/items', icon: '📦', group: 'Inventory', keywords: 'stock items' },
-    { name: 'Warehouses', path: '/admin/inventory/warehouses', icon: '🏭', group: 'Inventory', keywords: 'warehouse location' },
-    { name: 'Supply Chain', path: '/admin/inventory/supply-chain', icon: '🔗', group: 'Inventory', keywords: 'procurement logistics' },
-    { name: 'Docker', path: '/admin/infrastructure/docker', icon: '🐳', group: 'Infrastructure', keywords: 'containers' },
-    { name: 'Infra Monitoring', path: '/admin/infrastructure/monitoring', icon: '📡', group: 'Infrastructure', keywords: 'topology health' },
-    { name: 'CI/CD Pipeline', path: '/admin/devops/pipelines', icon: '🚀', group: 'DevOps', keywords: 'build deploy' },
-    { name: 'Command Center', path: '/admin/analytics/command-center', icon: '🎯', group: 'Analytics', keywords: 'real-time traffic' },
-    { name: 'Executive Dashboard', path: '/admin/reports/executive', icon: '👔', group: 'Reports', keywords: 'c-suite kpi' },
-    { name: 'Flow Designer', path: '/admin/notifications/flow-designer', icon: '🔔', group: 'Notifications', keywords: 'workflow automation' },
-    { name: 'Audit Trail', path: '/admin/security/audit-trail', icon: '🔒', group: 'Security', keywords: 'compliance soc2' },
-    { name: 'Settings', path: '/admin/settings/general', icon: '⚙️', group: 'System', keywords: 'configuration preferences' },
-    { name: 'Users', path: '/admin/users/list', icon: '👥', group: 'System', keywords: 'user management' },
-    { name: 'Permissions', path: '/admin/permissions/roles', icon: '🔐', group: 'System', keywords: 'roles access control' },
-    // Facility Management
-    { name: 'Interactive View (2D/3D)', path: '/admin/dcim/3d-view', icon: '🌐', group: 'Facility', keywords: 'data center 3d 2d model digital twin map floor plan' },
-    { name: 'SCADA Command Center', path: '/admin/scada/3d', icon: '🧊', group: 'Facility', keywords: 'scada 3d model scene map hmi' },
-    { name: 'CCTV Live', path: '/admin/bms/cctv', icon: '📷', group: 'Facility', keywords: 'camera vms security video' },
-    { name: 'Automation Rules', path: '/admin/bms/automation', icon: '⚙️', group: 'Facility', keywords: 'automation smart rules' },
-    { name: 'BIM Models', path: '/admin/pm/construction-3d', icon: '🏗️', group: 'Facility', keywords: 'bim 3d ifc construction' },
+    { name: 'Studio', path: '/admin/ai-studio', icon: '🤖', group: 'AI Studio', keywords: 'ai studio notebook home overview' },
+    { name: 'Partner', path: '/admin/ai-studio/partner', icon: '🏪', group: 'AI Studio', keywords: 'partner umkm store' },
+    { name: 'Knowledge Research', path: '/admin/ai-studio/riset-knowledge', icon: '🔬', group: 'AI Studio', keywords: 'riset knowledge research' },
+    { name: 'Marketing Content', path: '/admin/ai-studio/konten-marketing', icon: '🎨', group: 'AI Studio', keywords: 'konten marketing content' },
+    { name: 'WA Conversations', path: '/admin/ai-studio/percakapan-wa', icon: '💭', group: 'AI Studio', keywords: 'percakapan wa whatsapp chat' },
+    { name: 'WhatsApp Gateway', path: '/admin/ai-studio/ai-gateway', icon: '🔌', group: 'AI Studio', keywords: 'ai gateway whatsapp' },
+    { name: 'Settings & Models', path: '/admin/ai-studio/settings', icon: '⚙️', group: 'AI Studio', keywords: 'settings models llm' },
+    { name: 'Virtual Office', path: '/admin/virtual-office', icon: '🏢', group: 'Surfaces', keywords: 'virtual office 3d hq' },
+    { name: 'Agentic OS', path: '/admin/agentic-os', icon: '🖥️', group: 'Surfaces', keywords: 'agentic os command deck' },
 ];
 
 const ACTIONS: ActionItem[] = [
-    { name: 'Create New Project', action: '/admin/pm/projects', icon: '➕', group: 'Quick Actions', keywords: 'new project create' },
-    { name: 'Create Ticket', action: '/admin/itsm/tickets', icon: '🎫', group: 'Quick Actions', keywords: 'new ticket incident' },
-    { name: 'View My Tasks', action: '/admin/pm/my-work', icon: '✅', group: 'Quick Actions', keywords: 'my work tasks' },
+    { name: 'Open AI Studio', action: '/admin/ai-studio', icon: '🤖', group: 'Quick Actions', keywords: 'ai studio notebook' },
+    { name: 'Open Virtual Office', action: '/admin/virtual-office', icon: '🏢', group: 'Quick Actions', keywords: 'virtual office 3d' },
+    { name: 'Open Agentic OS', action: '/admin/agentic-os', icon: '🖥️', group: 'Quick Actions', keywords: 'agentic os deck' },
     { name: 'Toggle Dark Mode', action: 'toggle-theme', icon: '🌙', group: 'Quick Actions', keywords: 'dark light theme' },
-    { name: 'Open AI Studio', action: 'open-ai', icon: '🤖', group: 'Quick Actions', keywords: 'ai assistant' },
 ];
 
 const STORAGE_KEY = 'nusantarasoft-recent-pages';
@@ -105,30 +72,6 @@ function groupPages(pages: PageItem[]): Record<string, PageItem[]> {
     return groups;
 }
 
-// ─── Live Search Queries ─────────────────────────────────────
-const SEARCH_TASKS = `
-  query SearchTasks($tenantId: String!) {
-    pmTasks(tenantId: $tenantId) {
-      id title status priority type
-      assignee { firstName lastName }
-    }
-  }
-`;
-
-const SEARCH_PROJECTS = `
-  query SearchProjects($tenantId: String!) {
-    pmProjects(tenantId: $tenantId) { id name projectNumber status }
-  }
-`;
-
-const SEARCH_TICKETS = `
-  query SearchTickets($tenantId: String!) {
-    itsmTickets(tenantId: $tenantId) {
-      id title status priority ticketNumber
-    }
-  }
-`;
-
 interface LiveResult {
     id: string;
     title: string;
@@ -144,9 +87,7 @@ export default function CommandPalette({ isDark, themeColor }: CommandPalettePro
     const router = useRouter();
     const containerRef = useRef<HTMLDivElement>(null);
     const [liveResults, setLiveResults] = useState<LiveResult[]>([]);
-    const [liveLoading, setLiveLoading] = useState(false);
-    const searchTimerRef = useRef<NodeJS.Timeout | null>(null);
-    const liveDataCacheRef = useRef<{ tasks: any[]; projects: any[]; tickets: any[] } | null>(null);
+    const [liveLoading] = useState(false);
 
     // Keyboard shortcut to open
     useEffect(() => {
@@ -161,103 +102,13 @@ export default function CommandPalette({ isDark, themeColor }: CommandPalettePro
         return () => document.removeEventListener("keydown", handleKeyDown);
     }, []);
 
-    // Reset search on open; prefetch live data
+    // Reset search on open
     useEffect(() => {
         if (open) {
             setSearch("");
             setLiveResults([]);
-            // Prefetch data on first open
-            if (!liveDataCacheRef.current) {
-                Promise.all([
-                    gql(SEARCH_TASKS, { tenantId: DEFAULT_TENANT_ID }).catch(() => ({ pmTasks: [] })),
-                    gql(SEARCH_PROJECTS, { tenantId: DEFAULT_TENANT_ID }).catch(() => ({ pmProjects: [] })),
-                    gql(SEARCH_TICKETS, { tenantId: DEFAULT_TENANT_ID }).catch(() => ({ itsmTickets: [] })),
-                ]).then(([taskData, projData, ticketData]) => {
-                    liveDataCacheRef.current = {
-                        tasks: taskData.pmTasks || [],
-                        projects: projData.pmProjects || [],
-                        tickets: ticketData.itsmTickets || [],
-                    };
-                });
-            }
         }
     }, [open]);
-
-    // Debounced live search against cached data
-    useEffect(() => {
-        if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
-
-        if (search.length < 2) {
-            setLiveResults([]);
-            setLiveLoading(false);
-            return;
-        }
-
-        setLiveLoading(true);
-        searchTimerRef.current = setTimeout(() => {
-            const cache = liveDataCacheRef.current;
-            if (!cache) {
-                setLiveLoading(false);
-                return;
-            }
-
-            const q = search.toLowerCase();
-            const results: LiveResult[] = [];
-
-            // Search tasks
-            cache.tasks
-                .filter((t: any) => t.title?.toLowerCase().includes(q) || t.id?.toLowerCase().includes(q))
-                .slice(0, 5)
-                .forEach((t: any) => {
-                    const assigneeName = t.assignee ? `${t.assignee.firstName} ${t.assignee.lastName}` : 'Unassigned';
-                    results.push({
-                        id: `task-${t.id}`,
-                        title: t.title,
-                        subtitle: `${t.status?.replace('_', ' ')} · ${t.priority} · ${assigneeName}`,
-                        path: `/admin/pm/tasks/${t.id}`,
-                        icon: t.type === 'bug' ? '🐛' : t.type === 'story' ? '📖' : t.type === 'epic' ? '🏔️' : '✅',
-                        group: 'Tasks',
-                    });
-                });
-
-            // Search projects
-            cache.projects
-                .filter((p: any) => p.name?.toLowerCase().includes(q) || p.projectNumber?.toLowerCase().includes(q))
-                .slice(0, 3)
-                .forEach((p: any) => {
-                    results.push({
-                        id: `proj-${p.id}`,
-                        title: p.name,
-                        subtitle: `${p.projectNumber || ''} · ${p.status}`,
-                        path: `/admin/pm/dashboard?projectId=${p.id}`,
-                        icon: '📁',
-                        group: 'Projects',
-                    });
-                });
-
-            // Search tickets
-            cache.tickets
-                .filter((t: any) => t.title?.toLowerCase().includes(q) || t.ticketNumber?.toLowerCase().includes(q))
-                .slice(0, 5)
-                .forEach((t: any) => {
-                    results.push({
-                        id: `ticket-${t.id}`,
-                        title: t.title,
-                        subtitle: `${t.ticketNumber || ''} · ${t.status} · ${t.priority}`,
-                        path: `/admin/itsm/tickets/${t.id}`,
-                        icon: '🎫',
-                        group: 'Tickets',
-                    });
-                });
-
-            setLiveResults(results);
-            setLiveLoading(false);
-        }, 150);
-
-        return () => {
-            if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
-        };
-    }, [search]);
 
     const handleSelect = useCallback((path: string) => {
         const page = PAGES.find(p => p.path === path);

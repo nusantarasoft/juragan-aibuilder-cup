@@ -676,7 +676,7 @@ export function AgentInspector() {
             {agent.dbId && (
                 <Section title="Pengaturan toko">
                     <div className="mb-1.5 flex items-center justify-end">
-                        <Link href="/admin/my-agents" className="text-[10px] font-semibold text-orange-200/90 hover:text-orange-100">
+                        <Link href="/admin/agentic-os" className="text-[10px] font-semibold text-orange-200/90 hover:text-orange-100">
                             Semua karyawan
                         </Link>
                     </div>
@@ -721,7 +721,7 @@ export function AgentInspector() {
                     ) : (
                         <p className="text-[11px] text-amber-200">data tidak tersedia</p>
                     )}
-                    <Link href="/admin/connect-wa" className="mt-2 inline-block text-[10px] font-semibold text-orange-200/90 hover:text-orange-100">
+                    <Link href="/admin/ai-studio/ai-gateway" className="mt-2 inline-block text-[10px] font-semibold text-orange-200/90 hover:text-orange-100">
                         Hubungkan / kelola WhatsApp →
                     </Link>
                 </Section>

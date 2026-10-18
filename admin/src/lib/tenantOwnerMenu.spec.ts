@@ -7,7 +7,7 @@ describe("tenantOwnerMenu", () => {
         { path: "/admin/connect-wa", name: "WA" },
         { path: "/admin/ai-studio/partner", name: "Partner" },
         { path: "/admin/ai-studio/umkm", name: "UMKM" },
-        { path: "/admin/dashboard", name: "Dashboard" },
+        { path: "/admin/ai-studio", name: "AI Studio" },
     ];
 
     it("exposes wedge paths set", () => {
@@ -16,11 +16,11 @@ describe("tenantOwnerMenu", () => {
 
     it("hides wedge routes from platform admin", () => {
         const out = filterMenuTreeForAppRole(sample, "admin");
-        expect(out.map((i) => i.path)).toEqual(["/admin/ai-studio/partner", "/admin/ai-studio/umkm", "/admin/dashboard"]);
+        expect(out.map((i) => i.path)).toEqual(["/admin/ai-studio/partner", "/admin/ai-studio/umkm", "/admin/ai-studio"]);
     });
 
     it("shows wedge routes for tenant_owner but hides partner/umkm admin", () => {
         const out = filterMenuTreeForAppRole(sample, "tenant_owner");
-        expect(out.map((i) => i.path)).toEqual(["/admin/recruit", "/admin/connect-wa", "/admin/dashboard"]);
+        expect(out.map((i) => i.path)).toEqual(["/admin/recruit", "/admin/connect-wa", "/admin/ai-studio"]);
     });
 });

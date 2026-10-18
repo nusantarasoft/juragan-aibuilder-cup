@@ -159,7 +159,7 @@ export default function CMSLayoutMain({
     const router = useRouter();
     const currentPath = usePathname();
     const appRole = useAuthStore((s) => s.user?.role);
-    const [pathname, setPathname] = useState(currentPath || "/admin/dashboard");
+    const [pathname, setPathname] = useState(currentPath || "/admin/ai-studio");
     const bodyRef = useRef<HTMLDivElement>(null);
 
     React.useEffect(() => {
@@ -204,12 +204,13 @@ export default function CMSLayoutMain({
 
     // Controlled openKeys to prevent submenu collapse on navigation
     const [openKeys, setOpenKeys] = useState<string[]>(() => {
-        const path = currentPath || "/admin/dashboard";
-        const keys: string[] = [];
+        const path = currentPath || "/admin/ai-studio";
+        const keys: string[] = ["/admin/ai-studio-menu"];
         if (menuConfig?.route?.routes) {
             for (const route of menuConfig.route.routes) {
                 if (route.routes && route.routes.some((r: any) => path.startsWith(r.path))) {
-                    keys.push(route.key ?? route.path);
+                    const key = route.key ?? route.path;
+                    if (!keys.includes(key)) keys.push(key);
                 }
             }
         }
@@ -416,7 +417,7 @@ export default function CMSLayoutMain({
         [filteredTree, isOuterRail, menuQuery, vo, navigateTo],
     );
 
-    const breadcrumbItems = breadcrumb || generateBreadcrumb(currentPath || "/admin/dashboard");
+    const breadcrumbItems = breadcrumb || generateBreadcrumb(currentPath || "/admin/ai-studio");
     const innerRoutes = getInnerMenuRoutes(selectedSegment, pinnedItems, starredItems);
 
     const segmentedOptions = [
@@ -428,12 +429,10 @@ export default function CMSLayoutMain({
     ];
 
     const logoSrc = darkMode ? "/logo-white.png" : "/logo-black.png";
-    const isDashboard = pathname === "/admin/dashboard";
-    const isActivity = pathname === "/admin/activity";
 
     const activeModuleName = useMemo(() => {
         const segs = pathname.split("/").filter(Boolean);
-        const mod = segs[1] || "dashboard";
+        const mod = segs[1] || "ai-studio";
         return BREADCRUMB_LABELS[mod] ?? mod.replace(/-/g, " ");
     }, [pathname]);
 
@@ -500,7 +499,7 @@ export default function CMSLayoutMain({
             if (key === "logout" || key === "switch") {
                 void handleSignOut();
             } else if (key === "settings") {
-                router.push("/admin/settings/general");
+                router.push("/admin/ai-studio/settings");
             }
         },
     };
@@ -716,7 +715,7 @@ export default function CMSLayoutMain({
                             </Popover>
 
                             <div
-                                onClick={() => navigateTo("/admin/dashboard")}
+                                onClick={() => navigateTo("/admin/ai-studio")}
                                 className="flex cursor-pointer items-center gap-1.5"
                             >
                                 <Hexagon className="h-3.5 w-3.5 shrink-0" color={ORANGE} strokeWidth={2.2} />
@@ -891,65 +890,6 @@ export default function CMSLayoutMain({
                                         </div>
                                     </div>
                                 )}
-
-                                {/* Dashboard & Activity Feed Quick Card */}
-                                <div
-                                    className={cx(
-                                        "shrink-0 border-b border-white/[0.07]",
-                                        isOuterRail ? "p-1.5" : "p-2",
-                                    )}
-                                >
-                                    <div className="flex flex-col gap-1">
-                                        <div
-                                            onClick={() => navigateTo("/admin/dashboard")}
-                                            title="Dashboard"
-                                            className={cx(
-                                                "flex cursor-pointer items-center gap-2.5 border px-2.5 py-1.5 transition",
-                                                isOuterRail && "justify-center px-1",
-                                                isDashboard
-                                                    ? "border-orange-400/60 bg-orange-500/15 text-white"
-                                                    : "border-transparent text-slate-400 hover:border-white/15 hover:bg-white/[0.03] hover:text-slate-100",
-                                            )}
-                                        >
-                                            <DashboardOutlined
-                                                style={{ fontSize: 14, color: isDashboard ? ORANGE : "inherit" }}
-                                            />
-                                            {!isOuterRail && (
-                                                <div className="flex flex-1 items-center justify-between">
-                                                    <span className="text-[11px] font-semibold uppercase tracking-[0.14em]">
-                                                        Dashboard
-                                                    </span>
-                                                    <span className="flex h-4 w-4 items-center justify-center border border-orange-400/40 bg-orange-500/15">
-                                                        <SafetyCertificateOutlined
-                                                            style={{ fontSize: 10, color: ORANGE }}
-                                                        />
-                                                    </span>
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        <div
-                                            onClick={() => navigateTo("/admin/activity")}
-                                            title="Activity Feed"
-                                            className={cx(
-                                                "flex cursor-pointer items-center gap-2.5 border px-2.5 py-1.5 transition",
-                                                isOuterRail && "justify-center px-1",
-                                                isActivity
-                                                    ? "border-orange-400/60 bg-orange-500/15 text-white"
-                                                    : "border-transparent text-slate-400 hover:border-white/15 hover:bg-white/[0.03] hover:text-slate-100",
-                                            )}
-                                        >
-                                            <ClockCircleOutlined
-                                                style={{ fontSize: 14, color: isActivity ? ORANGE : "inherit" }}
-                                            />
-                                            {!isOuterRail && (
-                                                <span className="text-[11px] font-semibold uppercase tracking-[0.14em]">
-                                                    Activity Feed
-                                                </span>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
 
                                 {/* Scrollable Module Navigation Tree */}
                                 <div className={cx("min-h-0 flex-1", SCROLL_Y)}>

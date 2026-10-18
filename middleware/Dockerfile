@@ -48,9 +48,9 @@ EXPOSE 4001
 # Set environment variables
 ENV PORT=4001
 
-# Health check
+# Health check (supports both Docker Compose PORT=4001 and Cloud Run PORT=8080)
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:4001/graphql?query=%7Bhealth%7D || exit 1
+    CMD wget --no-verbose --tries=1 --spider http://localhost:${PORT:-4001}/health || exit 1
 
 # Start the application
 CMD ["node", "dist/main.js"]

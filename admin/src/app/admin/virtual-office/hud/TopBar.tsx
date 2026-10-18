@@ -55,7 +55,7 @@ export function TopBar() {
 
     const goBack = () => {
         if (window.history.length > 1) router.back();
-        else router.push("/admin/dashboard");
+        else router.push("/admin/ai-studio");
     };
 
     const toggleFullscreen = () => {

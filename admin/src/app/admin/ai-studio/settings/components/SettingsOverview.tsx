@@ -50,8 +50,8 @@ export default function SettingsOverview({ status, loading }: Props) {
                     <Tag className="font-mono" style={{ borderRadius: 0 }}>{status.embeddingModel}</Tag>
                 </Space>
                 <div style={{ marginTop: 12 }}>
-                    <Link href="/admin/ai-studio/advanced/playground">
-                        <Button icon={<ExperimentOutlined />} style={{ borderRadius: 0 }}>Test in Playground</Button>
+                    <Link href="/admin/ai-studio">
+                        <Button icon={<ExperimentOutlined />} style={{ borderRadius: 0 }}>Open AI Studio</Button>
                     </Link>
                 </div>
             </div>

@@ -20,7 +20,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
         if (sessionStatus !== "unauthenticated") return;
         const next = pathname && pathname.startsWith("/admin")
             ? `${pathname}${typeof window !== "undefined" ? window.location.search : ""}`
-            : "/admin/dashboard";
+            : "/admin/ai-studio";
         console.warn("[auth-gate] AuthGate deny → login", next);
         router.replace(`/login?next=${encodeURIComponent(next)}`);
     }, [sessionStatus, pathname, router]);
