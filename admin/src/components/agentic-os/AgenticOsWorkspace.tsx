@@ -36,14 +36,14 @@ export function AgenticOsWorkspace({ initialApp = "overview", initialParams = {}
     }, []);
 
     return (
-        <div className="h-[calc(100vh-150px)] min-h-[640px] overflow-hidden border border-slate-200 dark:border-white/10 shadow-xl">
+        <div className="fixed inset-0 z-[1000] overflow-hidden bg-[#0b0e13]">
             <AgenticOsDesktop
                 initialApp={initialApp}
                 initialParams={initialParams}
                 onRouteChange={syncUrl}
                 consumePendingRequest={false}
-                exit={{ label: "virtual office", onClick: () => (window.location.href = "/admin/virtual-office") }}
             />
         </div>
     );
 }
+

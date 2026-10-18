@@ -1,0 +1,20 @@
+import { NextResponse } from "next/server";
+import { fetchBrochuresFromDb } from "@/lib/serverStorage";
+
+export async function GET() {
+  const { brochures, source } = await fetchBrochuresFromDb();
+  return NextResponse.json(
+    {
+      success: true,
+      source,
+      count: brochures.length,
+      brochures,
+    },
+    {
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Cache-Control": "no-store",
+      },
+    }
+  );
+}

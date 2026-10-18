@@ -1847,6 +1847,12 @@ const menuConfig = {
                         icon: <SettingOutlined />,
                         isLeaf: true,
                     },
+                    {
+                        path: "/admin/tenants/brochures",
+                        name: "Tenant Brochures",
+                        icon: <PictureOutlined />,
+                        isLeaf: true,
+                    },
                 ],
             },
 
