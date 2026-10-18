@@ -1,19 +1,10 @@
 #!/usr/bin/env bash
-<<<<<<< HEAD
-# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-# pull-on-server.sh â€” run ON THE SERVER inside /opt/nusantarasoft-3 (or via
-# deploy.ps1 over SSH). Always updates to branch master-production.
-#
-#   export DEPLOY_GIT_URL='git@github.com:nusantarasoft/nusantarasoft-3.git'
-#   # or: export GITHUB_TOKEN='ghp_...'   (HTTPS)
-=======
 # ============================================================================
 # pull-on-server.sh — run ON THE SERVER inside /opt/nusantarasoft-3 (or via
 # deploy.ps1 over SSH). Always updates to branch master-production.
 #
 #   export DEPLOY_GIT_URL='git@github-nusantarasoft-3:nusantarasoft/nusantarasoft-3.git'
 #   # or: export GITHUB_TOKEN='ghp_...'   (HTTPS legacy — prefer setup-deploy-key.sh)
->>>>>>> origin/master
 #   bash scripts/master-production/pull-on-server.sh
 #
 # Env:
