@@ -166,6 +166,46 @@ export function buildMergeProvenanceBody(params: {
     return lines.join('\n').slice(0, 500_000);
 }
 
+/** Heuristic: AI router services return these as plain text when the provider call fails. */
+export function isLlmProviderErrorOutput(raw: string): boolean {
+    const t = (raw ?? '').trim();
+    if (!t) return true;
+    const lower = t.toLowerCase();
+    if (lower.includes('not configured')) return true;
+    if (lower.includes('request failed')) return true;
+    if (lower.startsWith('could not generate')) return true;
+    if (
+        /^(groq|claude|openai|openrouter|ollama|google|anthropic|vertex)\b/i.test(t) &&
+        (lower.includes('failed') || lower.includes('error'))
+    ) {
+        return true;
+    }
+    return false;
+}
+
+export type ResearchLlmPayload = {
+    title?: string;
+    summary?: string;
+    effective_date?: string | null;
+    sources?: Array<{ url: string; quoted_snippet: string }>;
+};
+
+/** Parse + validate LLM JSON for research; throws on provider errors or invalid payload. */
+export function finalizeResearchLlmResponse(raw: string): ResearchLlmPayload {
+    if (isLlmProviderErrorOutput(raw)) {
+        throw new Error(`LLM provider error: ${raw.trim().slice(0, 240)}`);
+    }
+    const parsed = parseResearchLlmJson(raw);
+    if (!parsed) {
+        throw new Error('LLM tidak mengembalikan JSON valid');
+    }
+    const summary = (parsed.summary ?? '').trim();
+    if (summary.length < 20) {
+        throw new Error('Ringkasan LLM terlalu pendek atau kosong');
+    }
+    return { ...parsed, summary };
+}
+
 /** Parse LLM JSON payload for research summarization. */
 export function parseResearchLlmJson(raw: string): {
     title?: string;

@@ -30,6 +30,7 @@ import {
     studioService,
     StudioResearchItem,
     StudioResearchItemStatus,
+    StudioResearchLastRun,
 } from '@/lib/studioService';
 
 const { Text, Paragraph, Title } = Typography;
@@ -51,8 +52,17 @@ const STATUS_COLOR: Record<string, string> = {
     expired: 'default',
 };
 
+const RUN_STATUS_COLOR: Record<string, 'success' | 'warning' | 'error' | 'processing' | 'default'> =
+    {
+        completed: 'success',
+        partial: 'warning',
+        failed: 'error',
+        running: 'processing',
+    };
+
 export default function RisetKnowledgePage() {
     const [rows, setRows] = useState<StudioResearchItem[]>([]);
+    const [lastRun, setLastRun] = useState<StudioResearchLastRun | null>(null);
     const [status, setStatus] = useState<StudioResearchItemStatus | 'all'>('pending');
     const [category, setCategory] = useState<string | undefined>();
     const [loading, setLoading] = useState(true);
@@ -69,8 +79,12 @@ export default function RisetKnowledgePage() {
     const load = useCallback(async () => {
         setLoading(true);
         try {
-            const list = await studioService.listResearchItems(status, category);
+            const [list, run] = await Promise.all([
+                studioService.listResearchItems(status, category),
+                studioService.getResearchLastRun(),
+            ]);
             setRows(list);
+            setLastRun(run);
         } catch (e) {
             message.error(e instanceof Error ? e.message : 'Gagal memuat riset');
         } finally {
@@ -195,6 +209,9 @@ export default function RisetKnowledgePage() {
                     {row.validation_flags?.quote_validation_failed && (
                         <Tag color="red">kutip invalid</Tag>
                     )}
+                    {row.validation_flags?.dedupe_unchecked && (
+                        <Tag color="purple">dedupe belum dicek</Tag>
+                    )}
                     {(row.dedupe_hits?.flags || []).map((f) => (
                         <Tag key={f} color="orange">
                             {f}
@@ -241,6 +258,61 @@ export default function RisetKnowledgePage() {
                     </Button>,
                 ]}
             >
+                {lastRun && (
+                    <Alert
+                        style={{ marginBottom: 16 }}
+                        type={
+                            lastRun.status === 'completed'
+                                ? 'success'
+                                : lastRun.status === 'partial'
+                                  ? 'warning'
+                                  : lastRun.status === 'failed'
+                                    ? 'error'
+                                    : 'info'
+                        }
+                        showIcon
+                        message={
+                            <Space wrap>
+                                <span>Run terakhir</span>
+                                <Tag color={RUN_STATUS_COLOR[lastRun.status] || 'default'}>
+                                    {lastRun.status}
+                                </Tag>
+                                {typeof lastRun.stats?.itemsCreated === 'number' && (
+                                    <Text type="secondary">
+                                        {lastRun.stats.itemsCreated} item baru
+                                    </Text>
+                                )}
+                                {typeof lastRun.stats?.errors === 'number' &&
+                                    lastRun.stats.errors > 0 && (
+                                        <Text type="danger">
+                                            {lastRun.stats.errors} URL gagal
+                                        </Text>
+                                    )}
+                            </Space>
+                        }
+                        description={
+                            <>
+                                <div>
+                                    {new Date(lastRun.started_at).toLocaleString('id-ID')}
+                                    {lastRun.finished_at
+                                        ? ` → ${new Date(lastRun.finished_at).toLocaleString('id-ID')}`
+                                        : ''}
+                                    {lastRun.trigger_type === 'manual' ? ' · manual' : ' · cron'}
+                                </div>
+                                {lastRun.error_message && (
+                                    <Paragraph
+                                        type="danger"
+                                        style={{ marginBottom: 0, marginTop: 8 }}
+                                        copyable
+                                    >
+                                        {lastRun.error_message}
+                                    </Paragraph>
+                                )}
+                            </>
+                        }
+                    />
+                )}
+
                 <Card bordered={false} style={{ marginBottom: 16 }}>
                     <Space wrap>
                         <Select

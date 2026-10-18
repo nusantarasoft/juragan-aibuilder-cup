@@ -56,7 +56,7 @@ export class AiRouterService {
             case 'openai':
                 return this.openAi.generateText(prompt, opts?.tenantId, inlineData);
             case 'groq':
-                return this.groqAi.generateText(prompt, opts?.tenantId, inlineData);
+                return this.groqAi.generateText(prompt, opts?.tenantId, inlineData, model);
             case 'openrouter':
                 return this.openRouterAi.generateText(prompt, opts?.tenantId, inlineData, model);
             case 'ollama':

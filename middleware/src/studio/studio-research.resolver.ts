@@ -23,6 +23,12 @@ const sessionUser = (ctx: Ctx) => {
 export class StudioResearchResolver {
     constructor(private readonly svc: StudioResearchService) {}
 
+    @Query(() => GraphQLJSONObject, { name: 'studioResearchLastRun', nullable: true })
+    async studioResearchLastRun(@Context() ctx: Ctx) {
+        this.svc.assertSuperAdmin(sessionUser(ctx).role);
+        return this.svc.getLastRun();
+    }
+
     @Query(() => [GraphQLJSONObject], { name: 'studioResearchItems' })
     async studioResearchItems(
         @Context() ctx: Ctx,

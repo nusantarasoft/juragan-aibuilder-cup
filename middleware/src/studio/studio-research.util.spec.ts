@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { isBlockedImportHost } from './studio-import.util';
 import {
     classifyDedupeHits,
+    finalizeResearchLlmResponse,
     hostMatchesResearchAllowlist,
     isAllowedResearchUrl,
+    isLlmProviderErrorOutput,
     quotedSnippetInSource,
     validateResearchSources,
 } from './studio-research.util';
@@ -56,6 +58,52 @@ describe('validateResearchSources', () => {
         );
         expect(res.ok).toBe(false);
         expect(res.invalid).toHaveLength(1);
+    });
+});
+
+describe('isLlmProviderErrorOutput', () => {
+    it('detects Groq and config error sentences', () => {
+        expect(
+            isLlmProviderErrorOutput(
+                'Groq request failed (401). Check model and API key.',
+            ),
+        ).toBe(true);
+        expect(isLlmProviderErrorOutput('Groq is not configured. Add an API key.')).toBe(true);
+        expect(isLlmProviderErrorOutput('')).toBe(true);
+    });
+
+    it('allows JSON-looking LLM output', () => {
+        expect(
+            isLlmProviderErrorOutput(
+                '{"title":"x","summary":"Ringkasan operasional yang cukup panjang untuk UMKM."}',
+            ),
+        ).toBe(false);
+    });
+});
+
+describe('finalizeResearchLlmResponse', () => {
+    it('throws on provider error text instead of fallback summary', () => {
+        expect(() =>
+            finalizeResearchLlmResponse('Groq request failed (503). Check model and API key.'),
+        ).toThrow(/provider error/i);
+    });
+
+    it('throws on invalid JSON', () => {
+        expect(() => finalizeResearchLlmResponse('bukan json sama sekali')).toThrow(/JSON valid/i);
+    });
+
+    it('throws when summary too short', () => {
+        expect(() =>
+            finalizeResearchLlmResponse('{"title":"x","summary":"pendek"}'),
+        ).toThrow(/terlalu pendek/i);
+    });
+
+    it('returns parsed payload for valid JSON', () => {
+        const out = finalizeResearchLlmResponse(
+            '{"title":"PP 55","summary":"Ringkasan operasional pajak UMKM yang memenuhi panjang minimum."}',
+        );
+        expect(out.title).toBe('PP 55');
+        expect(out.summary).toContain('Ringkasan');
     });
 });
 

@@ -96,6 +96,26 @@ describe('StudioResearchService', () => {
         await expect(svc.reject('item-1', 'r1')).rejects.toBeInstanceOf(BadRequestException);
     });
 
+    it('getLastRun returns most recent row', async () => {
+        const { svc, chain } = buildService();
+        chain.maybeSingle.mockResolvedValueOnce({
+            data: {
+                id: 'run-1',
+                status: 'partial',
+                error_message: 'pp55: LLM gagal',
+                stats: { errors: 1, itemsCreated: 0 },
+                started_at: '2026-01-01T00:00:00Z',
+                finished_at: '2026-01-01T00:05:00Z',
+                trigger_type: 'manual',
+                triggered_by: null,
+            },
+            error: null,
+        });
+        const run = await svc.getLastRun();
+        expect(run?.status).toBe('partial');
+        expect(run?.error_message).toContain('LLM');
+    });
+
     it('unmerge removes source and sets approved', async () => {
         const { svc, chain, studioService } = buildService();
         chain.maybeSingle.mockResolvedValueOnce({
