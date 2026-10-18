@@ -1225,7 +1225,7 @@ export const TamagotchiModel: React.FC<Props> = ({
                 '#include <color_fragment>',
                 `#include <color_fragment>
                 vec3 p = vBodyPos;
-                float angle = atan(p.x, p.z);
+                float angle = (abs(p.x) + abs(p.z) > 0.0001) ? atan(p.x, p.z) : 0.0;
 
                 // Short, staggered feathery fur tufts (avoids continuous vertical lines!)
                 float tuftLayer1 = sin(angle * 48.0 + sin(p.y * 36.0) * 1.8) * cos(p.y * 54.0 + angle * 12.0);
@@ -1242,7 +1242,7 @@ export const TamagotchiModel: React.FC<Props> = ({
 
                 // A) Prominent Ash-White Fluffy V-Belly Patch (from under the V-mantle y = -0.10 down to y = -0.50)
                 if (p.z > 0.05 && p.y < -0.02) {
-                    float bellyY = clamp((p.y + 0.50) / 0.44, 0.0, 1.0); // 0 at bottom, 1 under scarf
+                    float bellyY = clamp((p.y + 0.50) / 0.44, 0.0001, 1.0); // 0 at bottom, 1 under scarf
                     float maxBellyW = mix(0.10, 0.31, pow(bellyY, 0.60));
                     // Feathered fur-tuft border around the ash-white belly patch
                     float tuftEdge = furTuft * 0.042 + sin(angle * 28.0) * 0.018;
@@ -1271,12 +1271,12 @@ export const TamagotchiModel: React.FC<Props> = ({
                     col = mix(col, darkCharcoal * 0.92, bridgeMask * 0.85);
                 }
 
-                diffuseColor.rgb = col;`
+                diffuseColor.rgb = clamp(col, 0.0, 1.0);`
             );
             shader.fragmentShader = shader.fragmentShader.replace(
                 '#include <lights_fragment_begin>',
                 `#include <lights_fragment_begin>
-                float rim = 1.0 - max(dot(normal, normalize(vViewPosition)), 0.0);
+                float rim = clamp(1.0 - max(dot(normalize(normal), normalize(vViewPosition)), 0.0), 0.0001, 1.0);
                 diffuseColor.rgb += vec3(0.10, 0.16, 0.22) * pow(rim, 3.2) * 0.42;`
             );
         };
@@ -1342,9 +1342,10 @@ export const TamagotchiModel: React.FC<Props> = ({
                 vec3 tipIvory = vec3(0.94, 0.89, 0.79);
                 vec3 hornCol  = mix(baseBone, midBone, smoothstep(0.0, 0.42, ht));
                 hornCol       = mix(hornCol, tipIvory, smoothstep(0.42, 1.0, ht));
-                float flutes  = sin(atan(vHornPos.x, vHornPos.z) * 10.0) * 0.055;
+                float hAng    = (abs(vHornPos.x) + abs(vHornPos.z) > 0.0001) ? atan(vHornPos.x, vHornPos.z) : 0.0;
+                float flutes  = sin(hAng * 10.0) * 0.055;
                 float rings   = sin(ht * 34.0) * 0.032;
-                diffuseColor.rgb = hornCol + flutes + rings;`
+                diffuseColor.rgb = clamp(hornCol + flutes + rings, 0.0, 1.0);`
             );
         };
 
@@ -1391,9 +1392,9 @@ export const TamagotchiModel: React.FC<Props> = ({
                 '#include <begin_vertex>',
                 `#include <begin_vertex>
                 vCloakPos = position;
-                float clothWeight = smoothstep(-0.08, -0.60, position.y);
+                float clothWeight = clamp(1.0 - smoothstep(-0.60, -0.08, position.y), 0.0, 1.0);
                 if (clothWeight > 0.001) {
-                    float cAng = atan(position.x, position.z);
+                    float cAng = (abs(position.x) + abs(position.z) > 0.0001) ? atan(position.x, position.z) : 0.0;
                     float windRipple = sin(uTime * 4.0 + cAng * 5.0 + position.y * 6.0) * 0.016 * clothWeight
                                      + cos(uTime * 6.4 - cAng * 8.0) * 0.010 * clothWeight;
                     float radialScale = 1.0 + (uFlare * 0.32 + windRipple) * clothWeight;
@@ -1401,7 +1402,7 @@ export const TamagotchiModel: React.FC<Props> = ({
                     transformed.z *= radialScale;
                     transformed.y += (uFlare * 0.22 + abs(windRipple) * 0.35) * clothWeight;
                     if (position.z < 0.0) {
-                        transformed.y += uLiftRear * pow(clothWeight, 1.3) * 0.88;
+                        transformed.y += uLiftRear * pow(max(clothWeight, 0.0001), 1.3) * 0.88;
                     }
                 }`
             );
@@ -1414,7 +1415,7 @@ export const TamagotchiModel: React.FC<Props> = ({
                 '#include <color_fragment>',
                 `#include <color_fragment>
                 // Weathered teardrop fabric holes near the lower cloak hem (matching BACK & SIDE views)
-                float cAng = atan(vCloakPos.x, vCloakPos.z);
+                float cAng = (abs(vCloakPos.x) + abs(vCloakPos.z) > 0.0001) ? atan(vCloakPos.x, vCloakPos.z) : 0.0;
                 float holeY = vCloakPos.y;
                 float dH1 = length(vec2((cAng - 1.55) * 4.5, (holeY + 0.48) * 6.0));
                 float dH2 = length(vec2((cAng + 1.65) * 4.5, (holeY + 0.46) * 6.0));
@@ -1894,6 +1895,42 @@ export const TamagotchiModel: React.FC<Props> = ({
                 rFootRot = [-1.35, -0.18, -0.1];
 
                 capeFlareTarget = 0.16;
+                break;
+            }
+
+            case 'walking':
+            case 'running': {
+                const isRun = state === 'running';
+                const freq = isRun ? 11.5 : 8.2;
+                const stride = Math.sin(t * freq);
+                const bounce = Math.abs(Math.cos(t * freq));
+                const leftLift = Math.max(0, stride);
+                const rightLift = Math.max(0, -stride);
+
+                posY = bounce * (isRun ? 0.13 : 0.075);
+                posX = stride * 0.025;
+                rotX = isRun ? 0.16 : 0.09;
+                rotZ = -stride * (isRun ? 0.11 : 0.07);
+                rotY = stride * 0.08;
+                scaleY = 1.0 + bounce * 0.035;
+                scaleX = 1.0 - bounce * 0.02;
+
+                headRotX = -0.06 + bounce * 0.04;
+                headRotZ = stride * 0.05;
+
+                lArmPos = [-0.48, -0.13 + rightLift * 0.04, 0.22 - stride * 0.08];
+                rArmPos = [0.48, -0.13 + leftLift * 0.04, 0.22 + stride * 0.08];
+                lArmRot = [stride * 0.55, 0.15, 0.52 + bounce * 0.12];
+                rArmRot = [-stride * 0.55, -0.15, -0.52 - bounce * 0.12];
+
+                lFootPos = [-0.20, -0.56 + leftLift * 0.11, 0.10 + stride * 0.14];
+                rFootPos = [0.20, -0.56 + rightLift * 0.11, 0.10 - stride * 0.14];
+                lFootRot = [-stride * 0.45, 0.08, 0];
+                rFootRot = [stride * 0.45, -0.08, 0];
+
+                mouthOpen = isRun ? 0.45 : 0.2;
+                capeFlareTarget = isRun ? 0.48 : 0.30;
+                capeLiftRearTarget = isRun ? 0.42 : 0.24;
                 break;
             }
 

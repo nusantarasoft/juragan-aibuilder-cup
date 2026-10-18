@@ -979,7 +979,7 @@ export default function CMSLayoutMain({
                                     />
                                 </div>
 
-                                {/* Contextual Items List */}
+                                {/* Scrollable Contextual Items */}
                                 <div className={cx("min-h-0 flex-1 px-2 py-2", SCROLL_Y)}>
                                     {!isInnerRail && (
                                         <div className="mb-1.5 flex items-center justify-between px-1.5 text-[9.5px] font-semibold uppercase tracking-[0.2em] text-slate-400">
@@ -1069,9 +1069,13 @@ export default function CMSLayoutMain({
                                     </div>
                                 </div>
 
-                                {/* Telemetry Cards & Tamagotchi + Online Presence Footer */}
+                                {/* Fixed Gate Review & Tamagotchi Companion Footer */}
                                 <div className="shrink-0 border-t border-white/[0.07]">
                                     <ModuleIllustrationCards collapsed={isInnerRail} darkMode={darkMode} />
+                                </div>
+
+                                {/* Online Presence Footer */}
+                                <div className="shrink-0 border-t border-white/[0.07]">
                                     <OnlineUsersAvatars collapsed={isInnerRail} darkMode={darkMode} />
                                 </div>
                             </AdminSidePanel>

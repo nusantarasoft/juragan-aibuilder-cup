@@ -27,7 +27,8 @@ import {
     type LucideIcon,
 } from "lucide-react";
 import { useOsUi } from "@/components/agentic-os/registry";
-import { STATUS_META, ZONES, ZONE_BY_ID } from "../lib/floorplan";
+import { STATUS_META, ZONES, ZONE_BY_ID, assignSpots, createSeatMemory } from "../lib/floorplan";
+import { MASCOT_ID, getMascotRankTitle, useMascotStore } from "../lib/mascotStore";
 import { MODULES, sessionUrl } from "../lib/modules";
 import { useOfficeStore } from "../lib/store";
 import type { Agent, AgentCommand } from "../lib/types";
@@ -39,6 +40,7 @@ import { AgentBadge, ModuleChip, ORANGE, OfficeSidePanel, ProgressBar, Section, 
 import { AgentSettingsPanel } from "@/components/tenant-agents/AgentSettingsPanel";
 import { isKasirOfficeAgent } from "@/components/agentic-os/lib/firstEmployee";
 import { useAuthStore } from "@/store/useAuthStore";
+import type { EyeExpression } from "@/components/helper/TamagotchiGlobal";
 
 function actionsFor(agent: Agent): { cmd: AgentCommand; label: string; icon: LucideIcon; tone?: "danger" | "primary" }[] {
     const list: { cmd: AgentCommand; label: string; icon: LucideIcon; tone?: "danger" | "primary" }[] = [];
@@ -161,11 +163,24 @@ function Chat({ agent }: { agent: Agent }) {
     );
 }
 
+const MASCOT_TRICKS: { id: string; icon: string; label: string; anim: string; expr: EyeExpression; desc: string }[] = [
+    { id: "golf", icon: "🎯", label: "Orb Golf", anim: "golfing", expr: "star", desc: "Putting Orb Golf on the floor!" },
+    { id: "spin", icon: "💃", label: "Spin Dance", anim: "dancing2", expr: "love", desc: "Breakdancing with cyan ribbons!" },
+    { id: "hop", icon: "🕺", label: "Happy Hop", anim: "dancing", expr: "happy", desc: "Bouncing with joy!" },
+    { id: "conjure", icon: "✨", label: "Arcane Runes", anim: "working", expr: "money", desc: "Conjuring floor rune circle!" },
+    { id: "cool", icon: "🕶️", label: "Cool Visor", anim: "pointing", expr: "cool", desc: "Showing off neon visor!" },
+    { id: "clap", icon: "👏", label: "Cheer Clap", anim: "clapping", expr: "star", desc: "Clapping star sparks!" },
+    { id: "stretch", icon: "🧘", label: "Stretch", anim: "stretching", expr: "happy", desc: "Big morning stretch!" },
+    { id: "wave", icon: "👋", label: "Wave Hi", anim: "waving", expr: "happy", desc: "Waving to the office!" },
+    { id: "sleep", icon: "💤", label: "Power Nap", anim: "sleeping", expr: "sleepy", desc: "Napping on the floor (Zzz)…" },
+];
+
 export function AgentInspector() {
     const router = useRouter();
-    const { agents, agent, activity, dataMode, select, command, openScreen, focusOnZone } = useOfficeStore(
+    const { agents, selectedId, agent, activity, dataMode, select, command, openScreen, focusOnZone } = useOfficeStore(
         useShallow((s) => ({
             agents: s.agents,
+            selectedId: s.selectedId,
             agent: s.agents.find((a) => a.id === s.selectedId),
             activity: s.activity,
             dataMode: s.dataMode,
@@ -175,15 +190,209 @@ export function AgentInspector() {
             focusOnZone: s.focusOnZone,
         })),
     );
+    const mascot = useMascotStore(
+        useShallow((s) => ({
+            zone: s.zone,
+            spotName: s.spotName,
+            anim: s.anim,
+            activityLabel: s.activityLabel,
+            roaming: s.roaming,
+            vitals: s.vitals,
+            triggerTrick: s.triggerTrick,
+            sendToZone: s.sendToZone,
+            visitAgentSpot: s.visitAgentSpot,
+            petMascot: s.petMascot,
+            feedMascot: s.feedMascot,
+            toggleRoaming: s.toggleRoaming,
+        })),
+    );
     const launchOs = useOsUi((s) => s.launch);
     const userRole = useAuthStore((s) => s.user?.role);
     const isTenantOwner = userRole === "tenant_owner";
     const [tab, setTab] = useState<"chat" | "activity">("chat");
     const now = useNow(1000);
+    const seatMem = useRef(createSeatMemory());
+    const agentSpots = useMemo(() => assignSpots(agents, seatMem.current), [agents]);
     const agentActivity = useMemo(() => (agent ? activity.filter((e) => e.agentId === agent.id).slice(0, 30) : []), [activity, agent]);
+
+    if (selectedId === MASCOT_ID) {
+        const rankInfo = getMascotRankTitle(mascot.vitals.level);
+        const mascotZone = ZONE_BY_ID[mascot.zone];
+        const onlineAgents = agents.filter((a) => a.status !== "offline");
+
+        return (
+            <OfficeSidePanel
+                id="right"
+                title="Mascot · Cinder-Puff"
+                summary={`LV.${mascot.vitals.level} ${rankInfo.title} · ${mascotZone?.name ?? mascot.spotName}`}
+                accent={ORANGE}
+                defaultSide="pinned-right"
+                defaultW={320}
+                onClose={() => select(null)}
+            >
+                <Section
+                    title="Mascot identity & status"
+                    right={
+                        <button type="button" onClick={() => select(null)} className="text-[9px] uppercase tracking-wider text-slate-400 hover:text-white">
+                            all floor ▶
+                        </button>
+                    }
+                >
+                    <div className="flex items-start gap-3">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center border border-orange-400/60 bg-orange-500/15 text-[18px]">
+                            🐾
+                        </div>
+                        <div className="min-w-0 flex-1">
+                            <div className="flex items-center justify-between gap-2">
+                                <span className="truncate text-[14px] font-semibold text-white">Cinder-Puff</span>
+                                <span
+                                    className="border px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider"
+                                    style={{
+                                        borderColor: `${rankInfo.color}66`,
+                                        background: `${rankInfo.color}18`,
+                                        color: rankInfo.color,
+                                    }}
+                                >
+                                    RANK {rankInfo.rank} · LV.{mascot.vitals.level}
+                                </span>
+                            </div>
+                            <div className="truncate text-[11px] text-slate-400">
+                                {rankInfo.title} · {mascotZone?.name ?? "Office Floor"} ({mascot.spotName})
+                            </div>
+                            <div className="mt-1.5 text-[10.5px] font-medium text-cyan-300">{mascot.activityLabel}</div>
+                        </div>
+                    </div>
+
+                    <div className="mt-3 grid grid-cols-3 gap-1.5">
+                        <button
+                            type="button"
+                            onClick={mascot.petMascot}
+                            className="inline-flex items-center justify-center gap-1 border border-orange-400/60 bg-orange-500/15 px-2 py-1 text-[10px] font-semibold text-orange-200 transition hover:border-orange-300 hover:text-white"
+                        >
+                            ♥ Pet
+                        </button>
+                        <button
+                            type="button"
+                            onClick={mascot.feedMascot}
+                            className="inline-flex items-center justify-center gap-1 border border-emerald-400/50 bg-emerald-500/15 px-2 py-1 text-[10px] font-semibold text-emerald-200 transition hover:border-emerald-300 hover:text-white"
+                        >
+                            🍖 Feed
+                        </button>
+                        <button
+                            type="button"
+                            onClick={mascot.toggleRoaming}
+                            className={cx(
+                                "inline-flex items-center justify-center gap-1 border px-2 py-1 text-[10px] font-semibold transition",
+                                mascot.roaming
+                                    ? "border-cyan-400/60 bg-cyan-500/15 text-cyan-200 hover:border-cyan-300"
+                                    : "border-white/15 text-slate-300 hover:border-white/35 hover:text-white",
+                            )}
+                        >
+                            {mascot.roaming ? "🐾 Roaming" : "📌 Pinned"}
+                        </button>
+                    </div>
+                </Section>
+
+                <Section title="Play & tricks on floor">
+                    <div className="grid grid-cols-3 gap-1.5">
+                        {MASCOT_TRICKS.map((t) => {
+                            const active = mascot.anim === t.anim;
+                            return (
+                                <button
+                                    key={t.id}
+                                    type="button"
+                                    data-testid={`vo-mascot-trick-${t.id}`}
+                                    onClick={() => mascot.triggerTrick(t.anim, t.expr, t.desc)}
+                                    className={cx(
+                                        "flex flex-col items-center justify-center gap-0.5 border px-1.5 py-1.5 text-center transition",
+                                        active
+                                            ? "border-orange-400/80 bg-orange-500/20 text-white"
+                                            : "border-white/10 bg-white/[0.02] text-slate-300 hover:border-white/25 hover:bg-white/[0.05] hover:text-white",
+                                    )}
+                                >
+                                    <span className="text-[13px] leading-none">{t.icon}</span>
+                                    <span className="text-[9.5px] font-semibold tracking-tight">{t.label}</span>
+                                </button>
+                            );
+                        })}
+                    </div>
+                </Section>
+
+                <Section title="Send Cinder-Puff to zone">
+                    <div className="grid grid-cols-2 gap-1.5">
+                        {ZONES.map((z) => {
+                            const isHere = mascot.zone === z.id;
+                            return (
+                                <button
+                                    key={z.id}
+                                    type="button"
+                                    data-testid={`vo-mascot-zone-${z.id}`}
+                                    onClick={() => mascot.sendToZone(z.id)}
+                                    className={cx(
+                                        "flex items-center gap-1.5 border px-2 py-1.5 text-left text-[10px] transition",
+                                        isHere
+                                            ? "border-orange-400/70 bg-orange-500/15 text-white"
+                                            : "border-white/10 bg-white/[0.02] text-slate-300 hover:border-white/25 hover:text-white",
+                                    )}
+                                >
+                                    <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: z.color }} />
+                                    <span className="truncate font-semibold">{z.name}</span>
+                                </button>
+                            );
+                        })}
+                    </div>
+                </Section>
+
+                {onlineAgents.length > 0 && (
+                    <Section title={`Visit & cheer agent (${onlineAgents.length})`}>
+                        <div className="flex flex-wrap gap-1">
+                            {onlineAgents.map((a) => (
+                                <button
+                                    key={a.id}
+                                    type="button"
+                                    onClick={() => {
+                                        const sp = agentSpots[a.id];
+                                        if (sp) mascot.visitAgentSpot(a.id, a.name, sp);
+                                    }}
+                                    className="inline-flex items-center gap-1 border border-white/10 bg-white/[0.02] px-2 py-1 text-[10px] text-slate-200 transition hover:border-orange-400/60 hover:bg-orange-500/10 hover:text-white"
+                                >
+                                    <span className="h-1.5 w-1.5 rounded-full" style={{ background: a.color }} />
+                                    {a.name}
+                                </button>
+                            ))}
+                        </div>
+                    </Section>
+                )}
+
+                <Section title="Core vitals & bond" className="border-b-0">
+                    <div className="grid grid-cols-3 gap-1.5">
+                        {[
+                            { code: "NRG", val: mascot.vitals.energy, color: "#3b82f6" },
+                            { code: "FUE", val: mascot.vitals.hunger, color: "#f59e0b" },
+                            { code: "JOY", val: mascot.vitals.happiness, color: "#10b981" },
+                            { code: "FIT", val: mascot.vitals.fitness, color: "#ec4899" },
+                            { code: "INT", val: mascot.vitals.intellect, color: "#8b5cf6" },
+                            { code: "BND", val: mascot.vitals.bond, color: "#fb923c" },
+                        ].map((v) => (
+                            <div key={v.code} className="border border-white/10 bg-white/[0.02] px-2 py-1">
+                                <div className="flex items-center justify-between text-[9px] text-slate-400">
+                                    <span>{v.code}</span>
+                                    <span className="font-semibold tabular-nums text-white">{Math.round(v.val)}%</span>
+                                </div>
+                                <div className="mt-1 h-1 w-full bg-white/10">
+                                    <div className="h-full transition-all" style={{ width: `${Math.round(v.val)}%`, background: v.color }} />
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </Section>
+            </OfficeSidePanel>
+        );
+    }
 
     if (!agent) {
         const activeTasks = agents.filter((a) => a.task && (a.status === "working" || a.status === "thinking"));
+        const mascotRank = getMascotRankTitle(mascot.vitals.level);
         return (
             <OfficeSidePanel
                 id="right"
@@ -193,6 +402,38 @@ export function AgentInspector() {
                 defaultSide="pinned-right"
                 defaultW={300}
             >
+                <Section
+                    title="Office Mascot · Cinder-Puff"
+                    right={
+                        <button
+                            type="button"
+                            onClick={() => select(MASCOT_ID)}
+                            className="text-[9px] uppercase tracking-wider text-orange-300 hover:text-white"
+                        >
+                            play / follow ▶
+                        </button>
+                    }
+                >
+                    <button
+                        type="button"
+                        onClick={() => select(MASCOT_ID)}
+                        className="flex w-full items-center justify-between gap-2 border border-orange-400/35 bg-orange-500/[0.06] px-2.5 py-2 text-left transition hover:border-orange-400/70 hover:bg-orange-500/15"
+                    >
+                        <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5 text-[11px] font-semibold text-white">
+                                <span>🐾 Cinder-Puff</span>
+                                <span className="text-[9px] uppercase tracking-wider" style={{ color: mascotRank.color }}>
+                                    LV.{mascot.vitals.level}
+                                </span>
+                            </div>
+                            <div className="mt-0.5 truncate text-[10px] text-cyan-200">{mascot.activityLabel}</div>
+                        </div>
+                        <span className="shrink-0 border border-orange-400/50 px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-orange-200">
+                            inspect
+                        </span>
+                    </button>
+                </Section>
+
                 <Section
                     title="Floor zones"
                     right={
@@ -256,7 +497,7 @@ export function AgentInspector() {
                     <div className="space-y-1.5 text-[10.5px] leading-relaxed text-slate-400">
                         <div className="flex items-center gap-1.5 text-slate-200">
                             <MousePointer2 className="h-3 w-3" color={ORANGE} />
-                            <span>Click any agent or desk monitor</span>
+                            <span>Click any agent, mascot, or desk monitor</span>
                         </div>
                         <div>· Drag to orbit · Right-drag to pan · Wheel zoom</div>
                         <div>· Keys: [1] Overview · [2] Top · [F] Follow</div>

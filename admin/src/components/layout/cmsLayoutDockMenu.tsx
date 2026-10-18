@@ -21,6 +21,7 @@ import {
     Search,
     Settings,
     ExternalLink,
+    Plus,
 } from "lucide-react";
 import {
     FileAddOutlined,
@@ -35,8 +36,14 @@ import {
     HomeOutlined,
     PushpinOutlined,
 } from "@ant-design/icons";
+import { Avatar, Typography } from "antd";
+import type { MenuProps } from "antd";
+import { useRouter } from "next/navigation";
 import menuConfig from "@/config/menuConfig";
+import { ORANGE } from "./adminLayoutConstants";
 import type { VOTheme } from "./voTheme";
+
+const { Text } = Typography;
 
 export interface CMSLayoutProps {
     children: React.ReactNode;
