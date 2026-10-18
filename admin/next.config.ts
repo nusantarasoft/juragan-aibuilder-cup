@@ -1,11 +1,4 @@
 import type { NextConfig } from "next";
-const { WebpackModuleStallLogger } = require("./scripts/webpack-module-stall-logger.js");
-const withPWA = require('next-pwa')({
-  dest: 'public',
-  disable:
-    process.env.NODE_ENV === 'development' ||
-    process.env.DISABLE_PWA === '1',
-});
 
 const nextConfig: NextConfig = {
   output: 'standalone',
@@ -29,11 +22,12 @@ const nextConfig: NextConfig = {
       };
     }
     if (!dev && process.env.BUILD_MODULE_LOG === "1") {
+      const { WebpackModuleStallLogger } = require("./scripts/webpack-module-stall-logger.js");
       config.plugins.push(new WebpackModuleStallLogger({ stallSec: 20, intervalMs: 15_000 }));
     }
     if (!dev && process.env.BUILD_PROGRESS === "1") {
       config.plugins.push(
-        new webpack.ProgressPlugin((percent, msg, ...args) => {
+        new webpack.ProgressPlugin((percent: number, msg: string, ...args: unknown[]) => {
           const pct = Math.round(percent * 100);
           // Throttle noise; still shows steady % during long compiles
           if (pct % 2 === 0 || pct >= 99) {
@@ -70,4 +64,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withPWA(nextConfig);
+export default nextConfig;

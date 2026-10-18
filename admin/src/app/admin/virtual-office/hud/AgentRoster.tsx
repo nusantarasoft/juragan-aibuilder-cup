@@ -2,8 +2,9 @@
 
 import React, { useMemo, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
-import { Activity, CircleCheck, Info, Search, TriangleAlert, Users, XCircle, type LucideIcon } from "lucide-react";
-import { STATUS_META, ZONES } from "../lib/floorplan";
+import { Activity, CircleCheck, Info, Search, Sparkles, TriangleAlert, Users, XCircle, type LucideIcon } from "lucide-react";
+import { STATUS_META, ZONES, ZONE_BY_ID } from "../lib/floorplan";
+import { MASCOT_ID, getMascotRankTitle, useMascotStore } from "../lib/mascotStore";
 import { useOfficeStore } from "../lib/store";
 import type { ActivityEntry, ActivityLevel, Agent, AgentStatus } from "../lib/types";
 import { RosterKindBadge } from "@/components/agentic-os/ui/RosterKindBadge";
@@ -106,6 +107,15 @@ export function AgentRoster() {
             focusOnZone: s.focusOnZone,
         })),
     );
+    const mascot = useMascotStore(
+        useShallow((s) => ({
+            zone: s.zone,
+            spotName: s.spotName,
+            activityLabel: s.activityLabel,
+            roaming: s.roaming,
+            vitals: s.vitals,
+        })),
+    );
     const [tab, setTab] = useState<"agents" | "activity">("agents");
     const [query, setQuery] = useState("");
     const [filter, setFilter] = useState<Filter>("all");
@@ -121,6 +131,8 @@ export function AgentRoster() {
 
     const counts = useMemo(() => Object.fromEntries(FILTERS.map((f) => [f.id, agents.filter((a) => f.match(a.status)).length])), [agents]);
     const activeCount = counts.active ?? 0;
+    const mascotRank = getMascotRankTitle(mascot.vitals.level);
+    const mascotZone = ZONE_BY_ID[mascot.zone];
 
     return (
         <OfficeSidePanel
@@ -183,6 +195,53 @@ export function AgentRoster() {
                                 </button>
                             ))}
                         </div>
+                    </Section>
+
+                    <Section
+                        title={
+                            <span className="flex items-center gap-1.5 text-orange-300">
+                                <Sparkles className="h-3 w-3" color={ORANGE} />
+                                Office Mascot
+                            </span>
+                        }
+                        right={
+                            <span className="text-[9.5px] uppercase tracking-wider" style={{ color: mascotRank.color }}>
+                                LV.{mascot.vitals.level} · {mascotRank.title}
+                            </span>
+                        }
+                    >
+                        <button
+                            type="button"
+                            data-testid="vo-roster-mascot"
+                            onClick={() => select(MASCOT_ID)}
+                            onMouseEnter={() => hover(MASCOT_ID)}
+                            onMouseLeave={() => hover(null)}
+                            className={cx(
+                                "group flex w-full items-start gap-2.5 border border-l-2 px-2.5 py-2 text-left font-mono transition",
+                                selectedId === MASCOT_ID
+                                    ? "border-orange-400/60 border-l-orange-400 bg-orange-500/10"
+                                    : "border-white/10 border-l-orange-400/60 bg-white/[0.02] hover:border-white/25 hover:bg-white/[0.04]",
+                            )}
+                        >
+                            <div
+                                className="flex h-8 w-8 shrink-0 items-center justify-center border border-orange-400/50 bg-orange-500/15 text-[14px]"
+                                title="Cinder-Puff Mascot"
+                            >
+                                🐾
+                            </div>
+                            <div className="min-w-0 flex-1">
+                                <div className="flex items-center justify-between gap-2">
+                                    <span className="truncate text-[12px] font-semibold text-white">Cinder-Puff</span>
+                                    <span className="shrink-0 text-[9px] uppercase tracking-wider text-cyan-300">
+                                        {mascot.roaming ? "PLAYING" : "PINNED"}
+                                    </span>
+                                </div>
+                                <div className="truncate text-[10px] text-slate-400">
+                                    {mascotZone?.name ?? mascot.spotName} · {mascot.spotName}
+                                </div>
+                                <div className="mt-1 truncate text-[10px] text-orange-200">{mascot.activityLabel}</div>
+                            </div>
+                        </button>
                     </Section>
 
                     {grouped.map(({ zone, agents: list }) => (

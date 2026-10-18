@@ -23,6 +23,7 @@ import { MODULES } from "../lib/modules";
 import type { Zone } from "../lib/types";
 import { AgentAvatar } from "./AgentAvatar";
 import { DataWall, Desk, HoloTable, LoungeSet, MeetingRoom, Orchestrator, Plant, ServerRack } from "./Furniture";
+import { OfficeMascot } from "./OfficeMascot";
 import { RoutineBoard } from "./RoutineBoard";
 
 /* ------------------------------------------------------------------ */
@@ -387,6 +388,7 @@ export default function OfficeScene() {
                 <OfficeShell lighting={lighting} />
                 <Props lighting={lighting} />
                 <Agents lighting={lighting} />
+                <OfficeMascot />
             </Suspense>
             <CameraRig />
             <EffectComposer multisampling={4}>

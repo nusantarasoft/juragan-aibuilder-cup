@@ -1,63 +1,25 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import {
-    AreaChart, Area, LineChart, Line, ResponsiveContainer
-} from "recharts";
+import { createPortal } from "react-dom";
+import { useShallow } from "zustand/react/shallow";
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 import { TamagotchiModel, EyeExpression } from '../helper/TamagotchiGlobal';
 import { Tooltip } from 'antd';
+import { useDeckStore, useDeckUi, startDeckPolling } from '../agentic-os/lib/deckStore';
+import { daysBetween, ddmm, dowDdmm, isoWeek, relDays, ymd } from '../agentic-os/lib/deckTime';
+import { GoalEditor, GoalReviewDialog } from '../agentic-os/apps/deck/DeckGoals';
+import type { OsGoal } from '../agentic-os/lib/types';
 
-// ─── Real Data ───────────────────────────────────────────────
-const dashboardData = [
-    { name: 'Mon', tasks: 42, load: 65 },
-    { name: 'Tue', tasks: 58, load: 72 },
-    { name: 'Wed', tasks: 35, load: 58 },
-    { name: 'Thu', tasks: 72, load: 80 },
-    { name: 'Fri', tasks: 61, load: 68 },
-    { name: 'Sat', tasks: 48, load: 45 },
-    { name: 'Sun', tasks: 85, load: 78 },
-];
-
-const crmData = [
-    { name: 'Jan', revenue: 180, target: 200, deals: 12 },
-    { name: 'Feb', revenue: 220, target: 200, deals: 15 },
-    { name: 'Mar', revenue: 195, target: 200, deals: 11 },
-    { name: 'Apr', revenue: 280, target: 250, deals: 18 },
-    { name: 'May', revenue: 310, target: 250, deals: 22 },
-    { name: 'Jun', revenue: 340, target: 300, deals: 25 },
-];
-
-const DashboardRealChart = () => (
-    <ResponsiveContainer width="100%" height={46}>
-        <AreaChart data={dashboardData} margin={{ top: 2, right: 0, left: 0, bottom: 0 }}>
-            <defs>
-                <linearGradient id="taskGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#60a5fa" stopOpacity={0.4} />
-                    <stop offset="100%" stopColor="#60a5fa" stopOpacity={0} />
-                </linearGradient>
-                <linearGradient id="loadGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#fb923c" stopOpacity={0.35} />
-                    <stop offset="100%" stopColor="#fb923c" stopOpacity={0} />
-                </linearGradient>
-            </defs>
-            <Area type="monotone" dataKey="tasks" stroke="#60a5fa" strokeWidth={2} fill="url(#taskGrad)" dot={false} />
-            <Area type="monotone" dataKey="load" stroke="#fb923c" strokeWidth={2} fill="url(#loadGrad)" dot={false} />
-        </AreaChart>
-    </ResponsiveContainer>
-);
-
-const CRMRealChart = () => (
-    <ResponsiveContainer width="100%" height={46}>
-        <LineChart data={crmData} margin={{ top: 2, right: 4, left: 0, bottom: 0 }}>
-            <Line type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={2} dot={{ r: 2, fill: '#3b82f6' }} />
-            <Line type="monotone" dataKey="target" stroke="#d1d5db" strokeWidth={1} strokeDasharray="4 3" dot={false} />
-            <Line type="monotone" dataKey="deals" stroke="#10b981" strokeWidth={2} dot={{ r: 2, fill: '#10b981' }} />
-        </LineChart>
-    </ResponsiveContainer>
-);
+const localTz = () => {
+    try {
+        return Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Jakarta";
+    } catch {
+        return "Asia/Jakarta";
+    }
+};
 
 // ─── Agentic OS Card Styles ──────────────────────────────────
 const MONO_FONT = "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace";
@@ -938,6 +900,32 @@ export const ModuleIllustrationCards: React.FC<{ collapsed?: boolean; darkMode?:
         }
     };
 
+    // Agentic OS Overview store for Gate Review
+    const deck = useDeckStore(useShallow((s) => ({ goals: s.goals ?? [] })));
+    const goalId = useDeckUi((s) => s.goalId);
+    const patchDeckUi = useDeckUi((s) => s.patch);
+    const [editingGoal, setEditingGoal] = useState<string | null>(null);
+    const [reviewingGoal, setReviewingGoal] = useState<string | null>(null);
+
+    useEffect(() => {
+        useDeckUi.getState().hydrate();
+        const stop = startDeckPolling(30000);
+        return () => stop();
+    }, []);
+
+    const tz = useMemo(localTz, []);
+    const today = ymd(new Date(), tz);
+    const safeGoals = Array.isArray(deck.goals) ? deck.goals : [];
+    const activeGoals = useMemo(
+        () =>
+            safeGoals
+                .filter((g) => !g.archivedAt && (g.status === 'active' || g.status === 'at_risk'))
+                .sort((a, b) => (a.gateOn ?? '').localeCompare(b.gateOn ?? '')),
+        [safeGoals]
+    );
+    const goal: OsGoal | undefined =
+        safeGoals.find((g) => g.id === goalId) ?? activeGoals[0] ?? safeGoals[0];
+
     if (collapsed) return null;
 
     const xpNeeded = level * 50;
@@ -953,43 +941,149 @@ export const ModuleIllustrationCards: React.FC<{ collapsed?: boolean; darkMode?:
                 ? '#60a5fa'
                 : '#22c55e';
 
+    const year = Number(today.slice(0, 4));
+    const wkOf = (s: string) =>
+        Number(s.slice(0, 4)) < year ? 0 : Number(s.slice(0, 4)) > year ? 54 : isoWeek(s);
+    const thisWk = isoWeek(today);
+    const ws = goal ? wkOf(goal.startsOn) : 0;
+    const wg = goal ? wkOf(goal.gateOn) : 0;
+
     return (
-        <div style={{ padding: '6px 10px 10px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {/* Dashboard Card */}
+        <div style={{ padding: '6px 10px 10px', display: 'flex', flexDirection: 'column', gap: 8, fontFamily: MONO_FONT }}>
+            {/* ─── 1. GATE REVIEW CARD (from Agentic OS Overview) ─── */}
             <div
                 className="module-illustration-card"
-                style={cardStyle(darkMode)}
-                onMouseEnter={hoverIn('rgba(124, 58, 237, 0.15)', darkMode)}
-                onMouseLeave={hoverOut(darkMode)}
+                style={{
+                    ...cardStyle(darkMode),
+                    cursor: 'default',
+                    borderTop: '2px solid #fb923c',
+                    padding: '8px 10px',
+                }}
             >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
-                    <span className="card-title" style={{ fontSize: 12, fontWeight: 600, color: darkMode ? '#e2e8f0' : '#1a202c' }}>
-                        Dashboard
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                    <span
+                        style={{
+                            fontSize: 10,
+                            fontWeight: 700,
+                            letterSpacing: '0.18em',
+                            textTransform: 'uppercase',
+                            color: darkMode ? '#cbd5e1' : '#334155',
+                        }}
+                    >
+                        Gate review
                     </span>
+                    <div style={{ display: 'flex', gap: 8, fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                        {goal && (
+                            <button
+                                type="button"
+                                onClick={() => setReviewingGoal(goal.id)}
+                                style={{
+                                    background: 'transparent',
+                                    border: 'none',
+                                    padding: 0,
+                                    cursor: 'pointer',
+                                    fontFamily: MONO_FONT,
+                                    fontSize: 9,
+                                    textTransform: 'uppercase',
+                                    color: darkMode ? '#94a3b8' : '#64748b',
+                                }}
+                            >
+                                review
+                            </button>
+                        )}
+                        <button
+                            type="button"
+                            onClick={() => setEditingGoal(goal ? goal.id : 'new')}
+                            style={{
+                                background: 'transparent',
+                                border: 'none',
+                                padding: 0,
+                                cursor: 'pointer',
+                                fontFamily: MONO_FONT,
+                                fontSize: 9,
+                                textTransform: 'uppercase',
+                                color: '#fb923c',
+                            }}
+                        >
+                            {goal ? 'edit' : '+ goal'}
+                        </button>
+                    </div>
                 </div>
-                <div style={{ width: '100%', height: 46 }}>
-                    <DashboardRealChart />
-                </div>
+
+                {goal ? (
+                    <>
+                        <div
+                            style={{
+                                marginBottom: 6,
+                                fontSize: 12,
+                                fontWeight: 600,
+                                color: darkMode ? '#f1f5f9' : '#0f172a',
+                            }}
+                        >
+                            {dowDdmm(goal.gateOn)} · {relDays(daysBetween(today, goal.gateOn))}
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                            {[0, 1, 2, 3].map((q) => (
+                                <div key={q} style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                                    <span style={{ width: 18, fontSize: 8.5, color: '#64748b' }}>Q{q + 1}</span>
+                                    {Array.from({ length: 13 }, (_, c) => {
+                                        const wk = q * 13 + c + 1;
+                                        const state =
+                                            wk === thisWk
+                                                ? 'now'
+                                                : wk === wg
+                                                  ? 'gate'
+                                                  : wk < thisWk
+                                                    ? 'past'
+                                                    : wk >= ws && wk <= wg
+                                                      ? 'window'
+                                                      : 'future';
+                                        return (
+                                            <span
+                                                key={c}
+                                                title={`Week ${wk}`}
+                                                style={{
+                                                    height: 6,
+                                                    flex: 1,
+                                                    background:
+                                                        state === 'now'
+                                                            ? '#ef4444'
+                                                            : state === 'past'
+                                                              ? '#64748b'
+                                                              : state === 'window'
+                                                                ? darkMode
+                                                                    ? '#cbd5e1'
+                                                                    : '#334155'
+                                                                : 'transparent',
+                                                    border:
+                                                        state === 'gate'
+                                                            ? '1px solid #fb923c'
+                                                            : state === 'future'
+                                                              ? '1px solid rgba(148,163,184,0.35)'
+                                                              : 'none',
+                                                    opacity: state === 'past' ? 0.7 : 1,
+                                                }}
+                                            />
+                                        );
+                                    })}
+                                </div>
+                            ))}
+                            <div style={{ paddingTop: 3, fontSize: 8.5, lineHeight: 1.4, color: '#64748b' }}>
+                                <span style={{ color: '#f87171' }}>■</span> this week ·{' '}
+                                <span style={{ color: darkMode ? '#cbd5e1' : '#334155' }}>■</span> {goal.windowDays}d{' '}
+                                {ddmm(goal.startsOn)}–{ddmm(goal.gateOn)} ·{' '}
+                                <span style={{ color: '#fb923c' }}>□</span> review {ddmm(goal.gateOn)}
+                            </div>
+                        </div>
+                    </>
+                ) : (
+                    <div style={{ fontSize: 10.5, color: '#64748b' }}>
+                        No goal yet. Add one to track a 90-day gate.
+                    </div>
+                )}
             </div>
 
-            {/* CRM Card */}
-            <div
-                className="module-illustration-card"
-                style={cardStyle(darkMode)}
-                onMouseEnter={hoverIn('rgba(59, 130, 246, 0.15)', darkMode)}
-                onMouseLeave={hoverOut(darkMode)}
-            >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
-                    <span className="card-title" style={{ fontSize: 12, fontWeight: 600, color: darkMode ? '#e2e8f0' : '#1a202c' }}>
-                        CRM
-                    </span>
-                </div>
-                <div style={{ width: '100%', height: 46 }}>
-                    <CRMRealChart />
-                </div>
-            </div>
-
-            {/* ─── COMPACT AGENTIC OS COMPANION MODULE (~208px total height) ─── */}
+            {/* ─── 2. TALLER AGENTIC OS COMPANION MODULE (220px 3D viewport) ─── */}
             <div
                 style={{
                     ...cardStyle(darkMode),
@@ -1124,11 +1218,11 @@ export const ModuleIllustrationCards: React.FC<{ collapsed?: boolean; darkMode?:
                     </div>
                 </Tooltip>
 
-                {/* 2. Compact 152px 3D Viewport with Integrated Micro-Vitals & Status Overlay */}
+                {/* 2. Taller 220px 3D Viewport with Integrated Micro-Vitals & Status Overlay */}
                 <div
                     style={{
                         width: '100%',
-                        height: 152,
+                        height: 220,
                         background: '#ffffff',
                         position: 'relative',
                         overflow: 'hidden',
@@ -1396,6 +1490,32 @@ export const ModuleIllustrationCards: React.FC<{ collapsed?: boolean; darkMode?:
                     />
                 </div>
             </div>
+
+            {typeof document !== 'undefined' &&
+                editingGoal &&
+                createPortal(
+                    <div className="fixed inset-0 z-[2500] font-mono">
+                        <GoalEditor
+                            goal={editingGoal === 'new' ? null : safeGoals.find((g) => g.id === editingGoal) ?? null}
+                            onClose={() => setEditingGoal(null)}
+                            onSaved={(g) => patchDeckUi({ goalId: g.id })}
+                        />
+                    </div>,
+                    document.body
+                )}
+
+            {typeof document !== 'undefined' &&
+                reviewingGoal &&
+                safeGoals.find((g) => g.id === reviewingGoal) &&
+                createPortal(
+                    <div className="fixed inset-0 z-[2500] font-mono">
+                        <GoalReviewDialog
+                            goal={safeGoals.find((g) => g.id === reviewingGoal)!}
+                            onClose={() => setReviewingGoal(null)}
+                        />
+                    </div>,
+                    document.body
+                )}
         </div>
     );
 };

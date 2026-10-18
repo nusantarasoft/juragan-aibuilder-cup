@@ -8,6 +8,7 @@ import { AnimatedThemeToggler } from "@/components/magicui/animated-theme-toggle
 import { useOsUi } from "@/components/agentic-os/registry";
 import { useAosStore } from "@/components/agentic-os/lib/store";
 import { useAosTheme } from "@/components/agentic-os/lib/deckStore";
+import { MASCOT_ID } from "../lib/mascotStore";
 import { useOfficeStore } from "../lib/store";
 import { IconButton, ORANGE, cx, formatTokens, useVoLayout } from "./shared";
 
@@ -21,13 +22,14 @@ export function TopBar() {
     const focus = useVoLayout((s) => s.focus);
     const toggleFocus = useVoLayout((s) => s.toggleFocus);
     const resetLayout = useVoLayout((s) => s.resetLayout);
-    const { agents, dataMode, cameraMode, selectedId, showLabels, setCameraMode, toggleLabels } = useOfficeStore(
+    const { agents, dataMode, cameraMode, selectedId, showLabels, select, setCameraMode, toggleLabels } = useOfficeStore(
         useShallow((s) => ({
             agents: s.agents,
             dataMode: s.dataMode,
             cameraMode: s.cameraMode,
             selectedId: s.selectedId,
             showLabels: s.showLabels,
+            select: s.select,
             setCameraMode: s.setCameraMode,
             toggleLabels: s.toggleLabels,
         })),
@@ -182,6 +184,21 @@ export function TopBar() {
                     >
                         <Crosshair className="h-3 w-3" />
                         <span className="hidden sm:inline">FOLLOW</span>
+                    </button>
+                    <button
+                        type="button"
+                        data-testid="vo-topbar-mascot"
+                        title="Select & follow Cinder-Puff Office Mascot"
+                        onClick={() => select(MASCOT_ID)}
+                        className={cx(
+                            "flex h-[22px] items-center gap-1 border px-2 text-[9.5px] tracking-wider transition",
+                            selectedId === MASCOT_ID
+                                ? "border-orange-400/80 bg-orange-500/20 text-orange-200"
+                                : "border-orange-400/35 bg-orange-500/5 text-orange-200/90 hover:border-orange-400/70 hover:text-white",
+                        )}
+                    >
+                        <span>🐾</span>
+                        <span className="hidden sm:inline">MASCOT</span>
                     </button>
                 </div>
 

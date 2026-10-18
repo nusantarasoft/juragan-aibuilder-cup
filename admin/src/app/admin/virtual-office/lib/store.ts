@@ -82,7 +82,10 @@ export const useOfficeStore = create<OfficeState>((set, get) => ({
                     const ids = new Set(event.agents.map((a) => a.id));
                     return {
                         agents: event.agents,
-                        selectedId: s.selectedId && !ids.has(s.selectedId) ? null : s.selectedId,
+                        selectedId:
+                            s.selectedId && s.selectedId !== "tamagotchi" && !ids.has(s.selectedId)
+                                ? null
+                                : s.selectedId,
                         screenAgentId: s.screenAgentId && !ids.has(s.screenAgentId) ? null : s.screenAgentId,
                     };
                 });

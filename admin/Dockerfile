@@ -41,7 +41,7 @@ ENV NEXT_PUBLIC_GALLERY_URL=${NEXT_PUBLIC_GALLERY_URL}
 # Build the application (increase heap for 126+ page compilation)
 ENV NODE_OPTIONS="--max-old-space-size=4096"
 ARG CACHEBUST=1
-RUN npm run build
+RUN npm run build:turbo
 
 # ===== Runner Stage =====
 FROM base AS runner
