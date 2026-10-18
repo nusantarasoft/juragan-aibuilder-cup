@@ -10,7 +10,7 @@
 | **Brochure Permalink** | `http://localhost:3004/b/[slug]` | Direct shareable deep-link with server-rendered OpenGraph & Twitter `summary_large_image` cards |
 | **External Widget Embed** | `http://localhost:3004/embed/[slug]` | Frameless embeddable brochure card for external `<iframe>` integrations |
 | **Poster SVG Renderer** | `http://localhost:3004/api/brochure-svg/[slug]` | High-resolution brochure SVG poster renderer with CORS (`Access-Control-Allow-Origin: *`) & MinIO S3 sync |
-| **Brochures Read API** | `http://localhost:3004/api/brochures` | `GET` list of active tenant brochures from Supabase `public.tenant_brochures` |
+| **Brochures Read API** | `http://localhost:3004/api/brochures` | `GET` merged feed: **Konten Marketing approved** (middleware `/public/marketing/gallery`) + `public.tenant_brochures` |
 | **Admin CMS Surface** | `http://localhost:3003/admin/tenants/brochures` | Admin CMS embedded showcase view & surface launcher entry |
 
 <<<<<<< HEAD

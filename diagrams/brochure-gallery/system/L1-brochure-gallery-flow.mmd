@@ -1,18 +1,21 @@
 sequenceDiagram
     participant Browser as Browser / External Site
-    participant Gallery as brochure-gallery (:3004)
+    participant Gallery as brochure-gallery (:3004 / :3014)
+    participant MW as Middleware (/public/marketing)
     participant Kong as Supabase Kong (:8000)
-    participant PG as Postgres (tenant_brochures)
+    participant PG as Postgres
     participant MinIO as MinIO S3 (:9000 / cms-media)
 
     Browser->>Gallery: GET / or /b/[slug]
-    Gallery->>Kong: SELECT * FROM public.tenant_brochures
-    Kong->>PG: Query active tenant brochures
-    PG-->>Gallery: Brochure rows + highlights + counters
-    Browser->>Gallery: GET /api/brochure-svg/[slug]
+    Gallery->>MW: GET /public/marketing/gallery (approved UMKM)
+    MW->>PG: studio_marketing_contents + consent
+    PG-->>Gallery: Promo cards (imageUrl, caption, …)
+    Gallery->>Kong: SELECT tenant_brochures (optional seed)
+    Kong->>PG: Tenant brochure rows
+    PG-->>Gallery: Merge feed (marketing first)
+    Browser->>Gallery: GET /b/m-{contentId} (Konten Marketing permalink)
+    Gallery->>MW: GET /public/marketing/gallery/{id}
+    MW-->>Gallery: Single approved item
+    Browser->>Gallery: GET /api/brochure-svg/[slug] (tenant brochures only)
     Gallery->>MinIO: PutObject cms-media/brochures/[slug].svg
     Gallery-->>Browser: High-res SVG Poster (CORS *)
-    Browser->>Gallery: POST /api/brochures/[slug]/metric { metric: "shares" }
-    Gallery->>Kong: RPC increment_brochure_metric(slug, "shares")
-    Kong->>PG: Atomic counter +1
-    PG-->>Browser: Updated telemetry counts

@@ -111,6 +111,12 @@ Di server (atau dari laptop ke IP publik):
 
 - Admin: `http://31.97.66.39:3013` (sering `307` redirect = OK)
 - Brochure gallery: `http://31.97.66.39:3014` → diharapkan `200`
+
+**Konten Marketing → showcase:** setelah wiring feed, deploy serial (jangan `compose build admin brochure-gallery` paralel — sering hang/OOM):
+
+```bash
+bash scripts/master-production/deploy-marketing-showcase.sh
+```
 - Landing/nginx: `http://31.97.66.39:8090` → diharapkan `200`
 - GraphQL: `POST http://31.97.66.39:8090/graphql` dengan `{"query":"{ __typename }"}` → `200`
 - Di server: `bash scripts/master-production/smoke-umkm.sh` (sama dengan step akhir `redeploy.sh`) → exit 0
@@ -122,6 +128,9 @@ Di server (atau dari laptop ke IP publik):
 |--------|----------|
 | SSH / port 22, 9000, 8090 timeout | Server/network down; jangan ulang merge; tunggu lalu `-SkipMerge -SkipPush` |
 | Mac sleep / SSH putus saat build | Redeploy tetap jalan di server; `-Attach` atau `-Status` (bukan deploy penuh kecuali pull sudah selesai) |
+| Admin `next build` macet / ~1 jam “Creating…” | Penyebab umum: monolit **`CMSLayout`** (~2500 baris) — sudah di-split (`CMSLayoutMain`, dll.). Prod: **`npm run build`** = webpack + `NODE_OPTIONS=--max-old-space-size=4096`. Cek cepat: **`npm run build:verify`** (Turbopack, `DISABLE_PWA=1`) |
+| Admin webpack + PWA hang di compile lama | Verifikasi: `npm run build:verify` (`DISABLE_PWA=1`). Ops prod: `ENV DISABLE_PWA=1` di stage builder jika PWA build tidak selesai (SW lama di `public/` sementara) |
+| Build admin terasa “diam” (tanpa %) | `npm run build:smoke:webpack` atau `BUILD_MODULE_LOG=1 npm run build:module-log`. Progress: `npm run build:progress:webpack` |
 | Preflight `Local deploy aborted — working tree is not clean` | Commit/revert, pakai worktree bersih, atau `-AllowDirty` jika hanya redeploy server (tanpa sync lokal) |
 | nginx `502` setelah recreate app | `docker restart nsoft3-nginx` (sudah otomatis di `redeploy.sh` terbaru) |
 | Git pull gagal di server | Deploy key: ulang `setup-deploy-key.sh`, cek public key di GitHub Deploy keys; atau set `DEPLOY_GIT_URL` / `GITHUB_TOKEN` (legacy) |
