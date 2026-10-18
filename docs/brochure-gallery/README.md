@@ -13,10 +13,6 @@
 | **Brochures Read API** | `http://localhost:3004/api/brochures` | `GET` merged feed: **Konten Marketing approved** (middleware `/public/marketing/gallery`) + `public.tenant_brochures` |
 | **Admin CMS Surface** | `http://localhost:3003/admin/tenants/brochures` | Admin CMS embedded showcase view & surface launcher entry |
 
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
-=======
 ### Production (`master-production` / `nsoft3-prod`)
 
 | Surface | URL |
@@ -26,8 +22,6 @@
 
 Compose: `docker-compose.master-production.yml` service `brochure-gallery`. Redeploy builds it with middleware / landing / admin (`scripts/master-production/redeploy.sh`). Migration: `supabase/migrations/20261018100000_tenant_brochures_gallery.sql`.
 
->>>>>>> origin/cursor/release-adityo-brochure-5fca
->>>>>>> 7e5d63c05f002e1f32c2698d5a091e75944d749e
 ## Seeded Tenant Brochures (Food & Beverage + Multi-Category Retail)
 
 1. **Kopi Senja & Roastery Nusantara** (`kopi-senja-archipelago-menu`) — *Food & Beverage*

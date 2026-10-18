@@ -1,6 +1,4 @@
 import type { NextConfig } from "next";
-<<<<<<< HEAD
-=======
 const { WebpackModuleStallLogger } = require("./scripts/webpack-module-stall-logger.js");
 const withPWA = require('next-pwa')({
   dest: 'public',
@@ -8,7 +6,6 @@ const withPWA = require('next-pwa')({
     process.env.NODE_ENV === 'development' ||
     process.env.DISABLE_PWA === '1',
 });
->>>>>>> origin/master
 
 const nextConfig: NextConfig = {
   output: 'standalone',
@@ -73,4 +70,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withPWA(nextConfig);
