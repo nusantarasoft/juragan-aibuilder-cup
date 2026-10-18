@@ -41,7 +41,7 @@ export const SLAQualityCard: React.FC<Props> = ({ itsm, itsmMod, loading }) => {
                     percent={sla}
                     size={130}
                     strokeColor={strokeColor}
-                    trailColor="rgba(0,0,0,0.04)"
+                    trailColor="rgba(148,163,184,0.16)"
                     format={(p) => (
                         <div style={{ textAlign: 'center' }}>
                             <div style={{ fontSize: 26, fontWeight: 700, color: strokeColor }}>{p}%</div>
@@ -57,7 +57,7 @@ export const SLAQualityCard: React.FC<Props> = ({ itsm, itsmMod, loading }) => {
                     <Statistic
                         title={<span style={{ fontSize: 11, color: DASH_COLORS.textSecondary }}>Avg Resolution</span>}
                         value={loading ? '-' : `${itsm?.avgResolutionHours || 0} h`}
-                        valueStyle={{ fontSize: 15, fontWeight: 600 }}
+                        valueStyle={{ fontSize: 15, fontWeight: 600, color: DASH_COLORS.textPrimary }}
                     />
                 </Col>
                 <Col span={8}>
@@ -71,7 +71,7 @@ export const SLAQualityCard: React.FC<Props> = ({ itsm, itsmMod, loading }) => {
                     <Statistic
                         title={<span style={{ fontSize: 11, color: DASH_COLORS.textSecondary }}>Knowledge</span>}
                         value={loading ? '-' : `${itsmMod?.knowledge?.published || 0}/${itsmMod?.knowledge?.total || 0}`}
-                        valueStyle={{ fontSize: 15, fontWeight: 600 }}
+                        valueStyle={{ fontSize: 15, fontWeight: 600, color: DASH_COLORS.textPrimary }}
                     />
                 </Col>
             </Row>
