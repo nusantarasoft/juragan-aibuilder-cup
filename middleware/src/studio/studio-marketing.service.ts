@@ -106,13 +106,23 @@ export class StudioMarketingService {
         }
     }
 
-    publicAssetUrl(contentId: string): string {
-        const base = (this.config.get('STUDIO_MARKETING_PUBLIC_BASE_URL') ?? '').toString().trim();
-        if (base) {
-            return `${base.replace(/\/$/, '')}/public/marketing/assets/${contentId}`;
+    /** Base URL for public asset links (nginx SITE_URL, explicit override, or relative). */
+    resolveMarketingPublicBase(): string {
+        const explicit = (this.config.get('STUDIO_MARKETING_PUBLIC_BASE_URL') ?? '')
+            .toString()
+            .trim();
+        if (explicit) return explicit.replace(/\/$/, '');
+        for (const key of ['SITE_URL', 'PUBLIC_SITE_URL']) {
+            const fallback = (this.config.get(key) ?? '').toString().trim();
+            if (fallback) return fallback.replace(/\/$/, '');
         }
-        const port = this.config.get('PORT') || 4001;
-        return `http://localhost:${port}/public/marketing/assets/${contentId}`;
+        return '';
+    }
+
+    publicAssetUrl(contentId: string): string {
+        const path = `/public/marketing/assets/${contentId}`;
+        const base = this.resolveMarketingPublicBase();
+        return base ? `${base}${path}` : path;
     }
 
     async listContents(

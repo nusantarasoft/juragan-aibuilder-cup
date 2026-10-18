@@ -88,3 +88,39 @@ describe('StudioMarketingService public visibility', () => {
         expect(rows.find((r) => r.marketing_consent)?.tenant_id).toBe('toko-a');
     });
 });
+
+describe('StudioMarketingService publicAssetUrl', () => {
+    const contentId = '550e8400-e29b-41d4-a716-446655440000';
+
+    function svcWithConfig(get: (key: string) => unknown) {
+        return new StudioMarketingService(
+            { getAdminClient: () => ({}) } as any,
+            { get } as any,
+            {} as any,
+            {} as any,
+        );
+    }
+
+    it('uses STUDIO_MARKETING_PUBLIC_BASE_URL when set', () => {
+        const svc = svcWithConfig((key) =>
+            key === 'STUDIO_MARKETING_PUBLIC_BASE_URL' ? 'https://api.example.com/' : undefined,
+        );
+        expect(svc.publicAssetUrl(contentId)).toBe(
+            `https://api.example.com/public/marketing/assets/${contentId}`,
+        );
+    });
+
+    it('falls back to SITE_URL when public base URL is unset', () => {
+        const svc = svcWithConfig((key) =>
+            key === 'SITE_URL' ? 'http://31.97.66.39:8090' : undefined,
+        );
+        expect(svc.publicAssetUrl(contentId)).toBe(
+            `http://31.97.66.39:8090/public/marketing/assets/${contentId}`,
+        );
+    });
+
+    it('returns a relative path when no base URL is configured', () => {
+        const svc = svcWithConfig(() => undefined);
+        expect(svc.publicAssetUrl(contentId)).toBe(`/public/marketing/assets/${contentId}`);
+    });
+});
