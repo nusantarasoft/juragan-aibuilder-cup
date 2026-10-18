@@ -1086,6 +1086,102 @@ export const studioService = {
         return data.studioResearchRunNow;
     },
 
+    // ── Konten Marketing UMKM (super admin) ───────────────────
+
+    async listMarketingContents(
+        status: StudioMarketingContentStatus | 'all' = 'pending',
+        tenantId?: string,
+    ): Promise<StudioMarketingContent[]> {
+        const data = await graphqlRequest(
+            `query($status: String, $tenantId: String) {
+                studioMarketingContents(status: $status, tenantId: $tenantId)
+            }`,
+            { status, tenantId: tenantId ?? null },
+        );
+        return data.studioMarketingContents || [];
+    },
+
+    async getMarketingContent(id: string): Promise<StudioMarketingContent> {
+        const data = await graphqlRequest(
+            `query($id: String!) { studioMarketingContent(id: $id) }`,
+            { id },
+        );
+        return data.studioMarketingContent;
+    },
+
+    async updateMarketingCaption(
+        id: string,
+        caption: string,
+        headline?: string,
+    ): Promise<StudioMarketingContent> {
+        const data = await graphqlRequest(
+            `mutation($id: String!, $caption: String!, $headline: String) {
+                studioMarketingUpdateCaption(id: $id, caption: $caption, headline: $headline)
+            }`,
+            { id, caption, headline: headline ?? null },
+        );
+        return data.studioMarketingUpdateCaption;
+    },
+
+    async approveMarketingContent(id: string): Promise<StudioMarketingContent> {
+        const data = await graphqlRequest(
+            `mutation($id: String!) { studioMarketingApprove(id: $id) }`,
+            { id },
+        );
+        return data.studioMarketingApprove;
+    },
+
+    async rejectMarketingContent(id: string, reason?: string): Promise<StudioMarketingContent> {
+        const data = await graphqlRequest(
+            `mutation($id: String!, $reason: String) {
+                studioMarketingReject(id: $id, reason: $reason)
+            }`,
+            { id, reason: reason ?? null },
+        );
+        return data.studioMarketingReject;
+    },
+
+    async unpublishMarketingContent(id: string): Promise<StudioMarketingContent> {
+        const data = await graphqlRequest(
+            `mutation($id: String!) { studioMarketingUnpublish(id: $id) }`,
+            { id },
+        );
+        return data.studioMarketingUnpublish;
+    },
+
+    async listMarketingStores(): Promise<StudioMarketingStore[]> {
+        const data = await graphqlRequest(`query { studioMarketingStores }`);
+        return data.studioMarketingStores || [];
+    },
+
+    async setMarketingStoreConsent(tenantId: string, consent: boolean): Promise<StudioMarketingStore> {
+        const data = await graphqlRequest(
+            `mutation($tenantId: String!, $consent: Boolean!) {
+                studioMarketingSetStoreConsent(tenantId: $tenantId, consent: $consent)
+            }`,
+            { tenantId, consent },
+        );
+        return data.studioMarketingSetStoreConsent;
+    },
+
+    async generateMarketingNow(params?: {
+        store?: string;
+        productId?: string;
+        limit?: number;
+    }): Promise<{ created: number; skipped: number; errors: number }> {
+        const data = await graphqlRequest(
+            `mutation($store: String, $productId: String, $limit: Float) {
+                studioMarketingGenerate(store: $store, productId: $productId, limit: $limit)
+            }`,
+            {
+                store: params?.store ?? null,
+                productId: params?.productId ?? null,
+                limit: params?.limit ?? null,
+            },
+        );
+        return data.studioMarketingGenerate;
+    },
+
     /** Simulasi inbound WA tanpa transport live (pipeline sama webhook). */
     async whatsAppSimChat(params: {
         tenantId: string;
@@ -1215,6 +1311,43 @@ export interface StudioWhatsAppConfig {
     allowlist_phones: string[];
     use_guided_flow: boolean;
     updated_at?: string;
+}
+
+export type StudioMarketingContentStatus =
+    | 'draft'
+    | 'pending'
+    | 'approved'
+    | 'rejected'
+    | 'unpublished';
+
+export interface StudioMarketingContent {
+    id: string;
+    tenant_id: string;
+    inv_item_id: string;
+    image_public_url: string;
+    caption: string;
+    headline: string;
+    price_snapshot?: number | null;
+    product_name_snapshot: string;
+    store_label_snapshot: string;
+    category_name_snapshot?: string | null;
+    status: StudioMarketingContentStatus;
+    generated_by?: string | null;
+    model?: string | null;
+    reject_reason?: string | null;
+    reviewer_id?: string | null;
+    decided_at?: string | null;
+    published_at?: string | null;
+    created_at: string;
+}
+
+export interface StudioMarketingStore {
+    tenant_id: string;
+    label?: string | null;
+    enabled?: boolean | null;
+    marketing_consent: boolean;
+    marketing_consent_at?: string | null;
+    marketing_consent_by?: string | null;
 }
 
 export type StudioResearchItemStatus =

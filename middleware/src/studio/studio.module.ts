@@ -44,6 +44,10 @@ import { StudioLabelStudioResolver } from './studio-label-studio.resolver';
 import { StudioResearchService } from './studio-research.service';
 import { StudioResearchCronService } from './studio-research.cron';
 import { StudioResearchResolver } from './studio-research.resolver';
+import { StudioMarketingService } from './studio-marketing.service';
+import { StudioMarketingCronService } from './studio-marketing.cron';
+import { StudioMarketingResolver } from './studio-marketing.resolver';
+import { StudioMarketingPublicController } from './studio-marketing-public.controller';
 
 @Module({
     imports: [
@@ -65,6 +69,7 @@ import { StudioResearchResolver } from './studio-research.resolver';
         StudioWhatsAppController,
         InternalKasirConsultController,
         InternalWaTurnController,
+        StudioMarketingPublicController,
     ],
     providers: [
         GqlAuthGuard,
@@ -96,6 +101,9 @@ import { StudioResearchResolver } from './studio-research.resolver';
         StudioResearchService,
         StudioResearchCronService,
         StudioResearchResolver,
+        StudioMarketingService,
+        StudioMarketingCronService,
+        StudioMarketingResolver,
     ],
     exports: [
         StudioService,

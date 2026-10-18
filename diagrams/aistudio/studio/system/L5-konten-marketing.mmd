@@ -1,0 +1,12 @@
+flowchart LR
+  A[Cron / Generate sekarang] --> B[Eligible: consent + foto produk]
+  B --> C[Sharp template + teks DB]
+  C --> D{AI background?}
+  D -->|opsional| E[Gemini/Imagen]
+  D -->|fallback| F[Gradient NS]
+  E --> G[Caption LLM ID]
+  F --> G
+  G --> H[(studio_marketing_contents pending)]
+  H --> I[Admin Konten Marketing]
+  I -->|Approve| J[API galeri publik]
+  I -->|Reject| K[rejected]
