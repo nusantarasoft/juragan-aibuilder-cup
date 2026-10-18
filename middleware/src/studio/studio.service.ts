@@ -73,7 +73,7 @@ export class StudioService {
         try {
             const url = new URL(endpointUrl);
             endPoint = url.hostname;
-            port = parseInt(url.port || '9000', 10);
+            port = parseInt(url.port || (url.protocol === 'https:' ? '443' : '9000'), 10);
             useSSL = url.protocol === 'https:';
         } catch { /* use defaults */ }
 

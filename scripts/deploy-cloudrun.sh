@@ -36,7 +36,7 @@ SHORT_SHA="$(git rev-parse --short HEAD 2>/dev/null || echo 'manual')"
 
 echo "==> 4. Submitting Cloud Build (cloudbuild.yaml)..."
 gcloud builds submit --config=cloudbuild.yaml \
-  --substitutions="_REGION=${REGION},_AR_REPO=${AR_REPO},SHORT_SHA=${SHORT_SHA},_SUPABASE_URL=${SUPABASE_URL},_NEXT_PUBLIC_SUPABASE_URL=${SUPABASE_URL},_NEXT_PUBLIC_SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY},_SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}"
+  --substitutions="_REGION=${REGION},_AR_REPO=${AR_REPO},_IMAGE_TAG=${SHORT_SHA},_SUPABASE_URL=${SUPABASE_URL},_NEXT_PUBLIC_SUPABASE_URL=${SUPABASE_URL},_NEXT_PUBLIC_SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY},_SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}"
 
 echo "==> Done! Cloud Run services in ${REGION}:"
 gcloud run services list --region="${REGION}"

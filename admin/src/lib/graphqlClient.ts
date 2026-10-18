@@ -5,9 +5,24 @@
 
 import { clearAuthPresenceCookie, setAuthPresenceCookie } from '@/lib/authCookie';
 
-const GRAPHQL_URL = (typeof window === 'undefined' && process.env.GRAPHQL_API_URL)
-    ? process.env.GRAPHQL_API_URL
-    : (process.env.NEXT_PUBLIC_GRAPHQL_URL || 'http://127.0.0.1:4001/graphql');
+export function resolveGraphqlUrl(): string {
+    if (typeof window === 'undefined') {
+        if (process.env.GRAPHQL_API_URL) return process.env.GRAPHQL_API_URL;
+        if (process.env.MIDDLEWARE_URL) {
+            return `${process.env.MIDDLEWARE_URL.replace(/\/$/, '')}/graphql`;
+        }
+        return process.env.NEXT_PUBLIC_GRAPHQL_URL || 'http://127.0.0.1:4001/graphql';
+    }
+    const configured = process.env.NEXT_PUBLIC_GRAPHQL_URL || 'http://127.0.0.1:4001/graphql';
+    const host = window.location.hostname;
+    const isLocalBrowser = host === 'localhost' || host === '127.0.0.1';
+    const pointsToLocal = configured.includes('localhost') || configured.includes('127.0.0.1');
+    if (!isLocalBrowser && pointsToLocal) {
+        return '/api/graphql';
+    }
+    return configured;
+}
+
 
 export const ACCESS_TOKEN_KEY = 'auth_access_token';
 export const REFRESH_TOKEN_KEY = 'auth_refresh_token';
@@ -71,7 +86,7 @@ export async function graphql<T>(
         headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const response = await fetch(GRAPHQL_URL, {
+    const response = await fetch(resolveGraphqlUrl(), {
         method: 'POST',
         headers,
         body: JSON.stringify({ query, variables }),

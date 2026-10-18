@@ -1,7 +1,5 @@
 import { gql } from '@apollo/client';
-import { getStoredToken } from '@/lib/graphqlClient';
-
-const GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_URL || 'http://127.0.0.1:4001/graphql';
+import { getStoredToken, resolveGraphqlUrl } from '@/lib/graphqlClient';
 
 async function graphqlRequest(query: string, variables: Record<string, any> = {}) {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -10,7 +8,7 @@ async function graphqlRequest(query: string, variables: Record<string, any> = {}
         headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const response = await fetch(GRAPHQL_URL, {
+    const response = await fetch(resolveGraphqlUrl(), {
         method: 'POST',
         headers,
         body: JSON.stringify({ query, variables }),

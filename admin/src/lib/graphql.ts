@@ -1,6 +1,6 @@
-import { graphql as graphqlWithAuth } from '@/lib/graphqlClient';
+import { graphql as graphqlWithAuth, resolveGraphqlUrl } from '@/lib/graphqlClient';
 
-const GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_URL || 'http://127.0.0.1:4001/graphql';
+const GRAPHQL_URL = resolveGraphqlUrl();
 
 /** Authenticated GraphQL helper (Nest middleware). Prefer this over raw fetch. */
 export async function gql<T = unknown>(query: string, variables?: Record<string, unknown>): Promise<T> {

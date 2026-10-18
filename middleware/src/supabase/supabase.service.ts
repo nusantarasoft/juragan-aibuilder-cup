@@ -2,6 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
+const FALLBACK_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.placeholder';
+
 @Injectable()
 export class SupabaseService {
     private supabase: SupabaseClient;
@@ -9,8 +11,8 @@ export class SupabaseService {
 
     constructor(private configService: ConfigService) {
         const supabaseUrl = this.configService.get<string>('SUPABASE_URL') || 'http://kong:8000';
-        const supabaseAnonKey = this.configService.get<string>('SUPABASE_ANON_KEY') || '';
-        const supabaseServiceKey = this.configService.get<string>('SUPABASE_SERVICE_KEY') || '';
+        const supabaseAnonKey = this.configService.get<string>('SUPABASE_ANON_KEY') || FALLBACK_SUPABASE_KEY;
+        const supabaseServiceKey = this.configService.get<string>('SUPABASE_SERVICE_KEY') || FALLBACK_SUPABASE_KEY;
 
         // Client for authenticated requests (uses anon key, respects RLS)
         this.supabase = createClient(supabaseUrl, supabaseAnonKey);
@@ -43,7 +45,7 @@ export class SupabaseService {
      */
     getClientWithToken(accessToken: string): SupabaseClient {
         const supabaseUrl = this.configService.get<string>('SUPABASE_URL') || 'http://kong:8000';
-        const supabaseAnonKey = this.configService.get<string>('SUPABASE_ANON_KEY') || '';
+        const supabaseAnonKey = this.configService.get<string>('SUPABASE_ANON_KEY') || FALLBACK_SUPABASE_KEY;
 
         return createClient(supabaseUrl, supabaseAnonKey, {
             global: {

@@ -15,7 +15,7 @@ steps:
     args:
       - 'build'
       - '-t'
-      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/middleware:${SHORT_SHA}'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/middleware:${_IMAGE_TAG}'
       - '-t'
       - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/middleware:latest'
       - './middleware'
@@ -40,7 +40,7 @@ steps:
       - |
         set -euo pipefail
         gcloud run deploy "${_MIDDLEWARE_SERVICE}" \
-          --image="${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/middleware:${SHORT_SHA}" \
+          --image="${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/middleware:${_IMAGE_TAG}" \
           --region="${_REGION}" \
           --platform=managed \
           --port=4001 \
@@ -78,7 +78,7 @@ steps:
           --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY="${_NEXT_PUBLIC_SUPABASE_ANON_KEY}" \
           --build-arg NEXT_PUBLIC_S3_ENDPOINT="${_S3_ENDPOINT}" \
           --build-arg NEXT_PUBLIC_S3_BUCKET="${_S3_BUCKET}" \
-          -t "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/admin:${SHORT_SHA}" \
+          -t "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/admin:${_IMAGE_TAG}" \
           -t "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/admin:latest" \
           ./admin
 
@@ -103,7 +103,7 @@ steps:
         set -euo pipefail
         GRAPHQL_URL=$$(cat /workspace/graphql_url.txt)
         gcloud run deploy "${_ADMIN_SERVICE}" \
-          --image="${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/admin:${SHORT_SHA}" \
+          --image="${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/admin:${_IMAGE_TAG}" \
           --region="${_REGION}" \
           --platform=managed \
           --port=3000 \
@@ -117,6 +117,7 @@ steps:
 substitutions:
   _REGION: 'asia-southeast2'
   _AR_REPO: 'nusantarasoft'
+  _IMAGE_TAG: 'latest'
   _MIDDLEWARE_SERVICE: 'nusantarasoft-middleware'
   _ADMIN_SERVICE: 'nusantarasoft-admin'
   _NEXT_PUBLIC_GRAPHQL_URL: ''

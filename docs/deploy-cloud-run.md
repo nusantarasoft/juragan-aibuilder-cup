@@ -80,3 +80,21 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY="your-anon-key" \
 SUPABASE_SERVICE_KEY="your-service-role-key" \
 ./scripts/deploy-cloudrun.sh your-gcp-project-id asia-southeast2
 ```
+
+---
+
+## Option C: Direct Cloud Run Console Deployment (Dockerfile Mode)
+
+If you prefer to create each service directly inside **Google Cloud Run** → **Deploy Container** → **Continuously deploy from a repository** (pointing to `middleware/Dockerfile` and `admin/Dockerfile` separately without `cloudbuild.yaml`):
+
+1. **Service 1 (`nusantarasoft-middleware`)**:
+   - Build context / Dockerfile: `/middleware/Dockerfile`
+   - Runtime env vars: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_KEY`, `S3_ENDPOINT`, `S3_BUCKET`
+   - Note: `middleware` is resilient to cold starts even before env vars are populated and exposes `GET /health` (`200 OK`) on Cloud Run's injected `$PORT`.
+2. **Service 2 (`nusantarasoft-admin`)**:
+   - Build context / Dockerfile: `/admin/Dockerfile`
+   - Runtime env vars:
+     - `GRAPHQL_API_URL=https://<your-middleware-service>.a.run.app/graphql`
+     - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - Note: Because Cloud Run's single-Dockerfile trigger does not pass Docker `--build-arg` flags during build, `admin` includes a runtime Next.js proxy at `/api/graphql` (`admin/src/app/api/graphql/route.ts`). When running on a non-localhost domain (`*.run.app`), the browser client automatically routes GraphQL calls through `/api/graphql`, which forwards them to `GRAPHQL_API_URL` at runtime.
+

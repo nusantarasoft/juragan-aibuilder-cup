@@ -98,10 +98,12 @@ export class MediaService implements OnModuleInit {
             try {
                 const url = new URL(endPointRaw);
                 endpointUrl = url.hostname;
+                useSSL = url.protocol === 'https:';
                 if (url.port) {
                     port = parseInt(url.port, 10);
+                } else if (useSSL && !this.configService.get('S3_PORT')) {
+                    port = 443;
                 }
-                useSSL = url.protocol === 'https:';
                 this.logger.log(`Parsed S3 Endpoint: ${endpointUrl}:${port}`);
             } catch (e) {
                 this.logger.warn(`Failed to parse S3_ENDPOINT: ${endPointRaw}, using defaults`);
@@ -135,7 +137,9 @@ export class MediaService implements OnModuleInit {
         this.ensureSystemBuckets().catch(e => console.error('Failed to ensure system buckets', e));
         setTimeout(() => {
             console.log('[[MEDIA SERVICE]] calling regenerateMissingThumbnails');
-            this.regenerateMissingThumbnails();
+            this.regenerateMissingThumbnails().catch(e =>
+                console.error('[[MEDIA SERVICE]] regenerateMissingThumbnails skipped:', e instanceof Error ? e.message : e)
+            );
         }, 2000);
     }
 

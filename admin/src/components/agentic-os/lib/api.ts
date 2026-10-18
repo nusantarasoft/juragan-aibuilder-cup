@@ -4,7 +4,7 @@
  * Other AOS reads are open unless guarded server-side.
  */
 
-import { getStoredToken } from "@/lib/graphqlClient";
+import { getStoredToken, resolveGraphqlUrl } from "@/lib/graphqlClient";
 import type {
     OsAgent,
     OsAgentInput,
@@ -41,12 +41,14 @@ import type {
     WfGraph,
 } from "./types";
 
-const GRAPHQL_URL = process.env.NEXT_PUBLIC_GRAPHQL_URL || "http://127.0.0.1:4001/graphql";
-
 function graphqlWsUrl(): string {
-    const http = GRAPHQL_URL.replace(/\/$/, "");
+    const http = resolveGraphqlUrl().replace(/\/$/, "");
     if (http.startsWith("https://")) return http.replace(/^https:\/\//, "wss://");
     if (http.startsWith("http://")) return http.replace(/^http:\/\//, "ws://");
+    if (http.startsWith("/") && typeof window !== "undefined") {
+        const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
+        return `${proto}//${window.location.host}${http}`;
+    }
     return `ws://${http}`;
 }
 
@@ -65,7 +67,7 @@ export async function aosGql<T>(query: string, variables?: Record<string, unknow
     if (token) headers.Authorization = `Bearer ${token}`;
     let res: Response;
     try {
-        res = await fetch(GRAPHQL_URL, { method: "POST", headers, body: JSON.stringify({ query, variables }) });
+        res = await fetch(resolveGraphqlUrl(), { method: "POST", headers, body: JSON.stringify({ query, variables }) });
     } catch {
         throw new AosError("Agentic OS backend is unreachable");
     }

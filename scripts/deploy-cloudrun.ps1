@@ -44,7 +44,7 @@ $shortSha = (git rev-parse --short HEAD 2>$null)
 if (-not $shortSha) { $shortSha = "manual" }
 
 gcloud builds submit --config=cloudbuild.yaml `
-    --substitutions="_REGION=$Region,_AR_REPO=$ArRepo,SHORT_SHA=$shortSha,_SUPABASE_URL=$SupabaseUrl,_NEXT_PUBLIC_SUPABASE_URL=$SupabaseUrl,_NEXT_PUBLIC_SUPABASE_ANON_KEY=$SupabaseAnonKey,_SUPABASE_SERVICE_KEY=$SupabaseServiceKey"
+    --substitutions="_REGION=$Region,_AR_REPO=$ArRepo,_IMAGE_TAG=$shortSha,_SUPABASE_URL=$SupabaseUrl,_NEXT_PUBLIC_SUPABASE_URL=$SupabaseUrl,_NEXT_PUBLIC_SUPABASE_ANON_KEY=$SupabaseAnonKey,_SUPABASE_SERVICE_KEY=$SupabaseServiceKey"
 
 Write-Host "==> Done! Cloud Run services deployed:" -ForegroundColor Green
 gcloud run services list --region=$Region
