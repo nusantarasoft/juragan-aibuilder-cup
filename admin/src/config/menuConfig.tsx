@@ -1266,6 +1266,12 @@ const menuConfig = {
                         isLeaf: true,
                     },
                     {
+                        path: "/admin/ai-studio/konten-marketing",
+                        name: "Konten Marketing",
+                        icon: <PictureOutlined />,
+                        isLeaf: true,
+                    },
+                    {
                         path: "/admin/ai-studio/percakapan-wa",
                         name: "Percakapan WA",
                         icon: <MessageOutlined />,

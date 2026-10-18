@@ -7,6 +7,7 @@
 | **L3** | [L3-embed-vs-llm](./L3-embed-vs-llm.svg) | Lock embedding; LLM boleh diganti |
 | **L4** | [L4-rag-consumers](./L4-rag-consumers.svg) | Studio Chat (notebook) vs WA kurikulum shared |
 | **L5** | [L5-riset-knowledge](./L5-riset-knowledge.svg) | Riset Knowledge: fetch → review → merge kurikulum |
+| **L5b** | [L5-konten-marketing](./L5-konten-marketing.svg) | Konten Marketing: generate → review → galeri publik |
 
 Docs: [rag-architecture.md](../../../docs/aistudio/studio/system/rag-architecture.md)  
 WA knowledge locks: [L8 umkm-wa](../../umkm-wa/system/L8-knowledge-soul.svg)
