@@ -12,11 +12,14 @@ export type MarketingTemplateInput = {
     /** Caption headline from LLM (optional; falls back to product name). */
     headline?: string | null;
     categoryName?: string | null;
-    /** Ignored for HUD template — chrome uses fixed tech grid (brochure-gallery DNA). */
+    /** Ignored for HUD template - chrome uses fixed tech grid (brochure-gallery DNA). */
     background?: Buffer | null;
 };
 
 const CANVAS = 1080;
+/** Alpine middleware image ships URW/Nimbus via ghostscript fonts - not DejaVu. */
+const FONT_SANS = 'Nimbus Sans L, Liberation Sans, Arial, sans-serif';
+const FONT_MONO = 'Nimbus Mono L, Liberation Mono, monospace';
 
 const ACCENT_PALETTES = [
     { primary: '#fb923c', secondary: '#facc15' },
@@ -67,7 +70,7 @@ async function circularProductPhoto(photo: Buffer, size: number): Promise<Buffer
 
 /**
  * HUD / tenant-showcase share-card DNA (brochure-gallery), square for UMKM marketing.
- * All copy (store, product, price, headline) is truthy DB/LLM text — never AI-drawn on canvas.
+ * All copy (store, product, price, headline) is truthy DB/LLM text - never AI-drawn on canvas.
  */
 export async function renderMarketingTemplatePng(input: MarketingTemplateInput): Promise<Buffer> {
     const priceText = formatPriceIdr(input.priceIdr);
@@ -86,7 +89,7 @@ export async function renderMarketingTemplatePng(input: MarketingTemplateInput):
     const titleSvg = titleLines
         .map(
             (line, i) =>
-                `<text x="56" y="${210 + i * 48}" fill="#ffffff" font-family="DejaVu Sans, Arial, sans-serif" font-size="40" font-weight="900">${escapeXml(line)}</text>`,
+                `<text x="56" y="${210 + i * 48}" fill="#ffffff" font-family="${FONT_SANS}" font-size="40" font-weight="900">${escapeXml(line)}</text>`,
         )
         .join('\n');
 
@@ -95,7 +98,7 @@ export async function renderMarketingTemplatePng(input: MarketingTemplateInput):
             const x = 56 + i * 168;
             return `<g transform="translate(${x}, 380)">
   <rect x="0" y="0" width="156" height="32" fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.18)" stroke-width="1"/>
-  <text x="78" y="21" text-anchor="middle" fill="#e2e8f0" font-family="DejaVu Sans Mono, monospace" font-size="12" font-weight="600">#${escapeXml(tag.toUpperCase())}</text>
+  <text x="78" y="21" text-anchor="middle" fill="#e2e8f0" font-family="${FONT_MONO}" font-size="12" font-weight="600">#${escapeXml(tag.toUpperCase())}</text>
 </g>`;
         })
         .join('\n');
@@ -130,17 +133,17 @@ export async function renderMarketingTemplatePng(input: MarketingTemplateInput):
   <!-- Header -->
   <rect x="56" y="56" width="968" height="76" fill="#0b0e13" fill-opacity="0.9" stroke="rgba(255,255,255,0.14)" stroke-width="1"/>
   <rect x="56" y="56" width="76" height="76" fill="${primary}"/>
-  <text x="94" y="104" text-anchor="middle" fill="#080a0f" font-family="DejaVu Sans Mono, monospace" font-size="26" font-weight="900">${escapeXml(initials)}</text>
-  <text x="152" y="88" fill="#f8fafc" font-family="DejaVu Sans, Arial, sans-serif" font-size="20" font-weight="800">${escapeXml(storeLine.toUpperCase())}</text>
-  <text x="152" y="112" fill="${primary}" font-family="DejaVu Sans Mono, monospace" font-size="12" font-weight="600">UMKM · KONTEN MARKETING // SHOWCASE</text>
+  <text x="94" y="104" text-anchor="middle" fill="#080a0f" font-family="${FONT_MONO}" font-size="26" font-weight="900">${escapeXml(initials)}</text>
+  <text x="152" y="88" fill="#f8fafc" font-family="${FONT_SANS}" font-size="20" font-weight="800">${escapeXml(storeLine.toUpperCase())}</text>
+  <text x="152" y="112" fill="${primary}" font-family="${FONT_MONO}" font-size="12" font-weight="600">UMKM - KONTEN MARKETING // SHOWCASE</text>
   <rect x="848" y="72" width="156" height="44" fill="rgba(255,255,255,0.04)" stroke="${primary}" stroke-width="1.2"/>
-  <text x="926" y="92" text-anchor="middle" fill="#94a3b8" font-family="DejaVu Sans Mono, monospace" font-size="10">EDITION</text>
-  <text x="926" y="108" text-anchor="middle" fill="#f8fafc" font-family="DejaVu Sans Mono, monospace" font-size="12" font-weight="700">${editionYear}</text>
+  <text x="926" y="92" text-anchor="middle" fill="#94a3b8" font-family="${FONT_MONO}" font-size="10">EDITION</text>
+  <text x="926" y="108" text-anchor="middle" fill="#f8fafc" font-family="${FONT_MONO}" font-size="12" font-weight="700">${editionYear}</text>
 
   <rect x="56" y="156" width="195" height="28" fill="${primary}" fill-opacity="0.18" stroke="${primary}" stroke-width="1"/>
-  <text x="153" y="175" text-anchor="middle" fill="${primary}" font-family="DejaVu Sans Mono, monospace" font-size="12" font-weight="700">OFFICIAL BROCHURE</text>
+  <text x="153" y="175" text-anchor="middle" fill="${primary}" font-family="${FONT_MONO}" font-size="12" font-weight="700">OFFICIAL BROCHURE</text>
   ${titleSvg}
-  <text x="56" y="360" fill="#cbd5e1" font-family="DejaVu Sans, Arial, sans-serif" font-size="18">${escapeXml(productLine)} · ${escapeXml(priceText)}</text>
+  <text x="56" y="360" fill="#cbd5e1" font-family="${FONT_MONO}" font-size="18">${escapeXml(productLine)} - ${escapeXml(priceText)}</text>
 
   <!-- Hero ring (photo composited separately) -->
   <circle cx="820" cy="300" r="178" fill="${primary}" fill-opacity="0.1" stroke="${primary}" stroke-width="2"/>
@@ -149,32 +152,32 @@ export async function renderMarketingTemplatePng(input: MarketingTemplateInput):
   ${tagsSvg}
 
   <line x1="56" y1="448" x2="1024" y2="448" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
-  <text x="56" y="440" fill="${primary}" font-family="DejaVu Sans Mono, monospace" font-size="12" font-weight="700" letter-spacing="2">FEATURED HIGHLIGHT &amp; PRICING</text>
+  <text x="56" y="440" fill="${primary}" font-family="${FONT_MONO}" font-size="12" font-weight="700" letter-spacing="2">FEATURED HIGHLIGHT &amp; PRICING</text>
 
   <!-- Single highlight row -->
   <g transform="translate(56, 468)">
     <rect x="0" y="0" width="968" height="96" fill="#0b0e13" fill-opacity="0.86" stroke="${primary}" stroke-width="2"/>
     <rect x="0" y="0" width="6" height="96" fill="${primary}"/>
     <circle cx="38" cy="48" r="16" fill="${primary}" fill-opacity="0.2" stroke="${primary}" stroke-width="1.5"/>
-    <text x="38" y="53" text-anchor="middle" fill="${primary}" font-family="DejaVu Sans Mono, monospace" font-size="14" font-weight="700">01</text>
-    <text x="72" y="40" fill="#f8fafc" font-family="DejaVu Sans, Arial, sans-serif" font-size="22" font-weight="800">${escapeXml(productLine.slice(0, 36))}</text>
-    <text x="72" y="68" fill="#94a3b8" font-family="DejaVu Sans, Arial, sans-serif" font-size="14">Harga jujur dari katalog warung — mampir beli di toko</text>
+    <text x="38" y="53" text-anchor="middle" fill="${primary}" font-family="${FONT_MONO}" font-size="14" font-weight="700">01</text>
+    <text x="72" y="40" fill="#f8fafc" font-family="${FONT_SANS}" font-size="22" font-weight="800">${escapeXml(productLine.slice(0, 36))}</text>
+    <text x="72" y="68" fill="#94a3b8" font-family="${FONT_SANS}" font-size="14">Harga jujur dari katalog warung - mampir beli di toko</text>
     <rect x="730" y="23" width="210" height="50" fill="${primary}" fill-opacity="0.18" stroke="${primary}" stroke-width="1.5"/>
-    <text x="835" y="54" text-anchor="middle" fill="#ffffff" font-family="DejaVu Sans Mono, monospace" font-size="18" font-weight="800">${escapeXml(priceText)}</text>
+    <text x="835" y="54" text-anchor="middle" fill="#ffffff" font-family="${FONT_MONO}" font-size="18" font-weight="800">${escapeXml(priceText)}</text>
   </g>
 
   <!-- Footer CTA (no invented voucher / QR) -->
   <g transform="translate(56, 600)">
     <rect x="0" y="0" width="968" height="220" fill="#080a0f" stroke="${primary}" stroke-width="2" stroke-dasharray="10 6"/>
     <rect x="0" y="0" width="968" height="36" fill="${primary}" fill-opacity="0.16"/>
-    <text x="20" y="24" fill="${primary}" font-family="DejaVu Sans Mono, monospace" font-size="12" font-weight="700">SHAREABLE UMKM SHOWCASE // HUMAN REVIEWED</text>
-    <text x="24" y="78" fill="#94a3b8" font-family="DejaVu Sans Mono, monospace" font-size="12">CTA</text>
+    <text x="20" y="24" fill="${primary}" font-family="${FONT_MONO}" font-size="12" font-weight="700">SHAREABLE UMKM SHOWCASE // HUMAN REVIEWED</text>
+    <text x="24" y="78" fill="#94a3b8" font-family="${FONT_MONO}" font-size="12">CTA</text>
     <rect x="24" y="88" width="280" height="46" fill="${primary}"/>
-    <text x="164" y="118" text-anchor="middle" fill="#080a0f" font-family="DejaVu Sans Mono, monospace" font-size="18" font-weight="900">MAMPIR KE WARUNG</text>
-    <text x="332" y="100" fill="#f8fafc" font-family="DejaVu Sans, Arial, sans-serif" font-size="20" font-weight="800">${escapeXml(storeLine)}</text>
-    <text x="332" y="130" fill="${secondary}" font-family="DejaVu Sans Mono, monospace" font-size="15" font-weight="700">${escapeXml(priceText)} · ${escapeXml(productLine.slice(0, 28))}</text>
-    <text x="332" y="158" fill="#94a3b8" font-family="DejaVu Sans Mono, monospace" font-size="13">Beli langsung di toko — harga dari katalog</text>
-    <text x="24" y="198" fill="#64748b" font-family="DejaVu Sans Mono, monospace" font-size="11">NUSANTARASOFT · KONTEN MARKETING UMKM · APPROVE GATE</text>
+    <text x="164" y="118" text-anchor="middle" fill="#080a0f" font-family="${FONT_MONO}" font-size="18" font-weight="900">MAMPIR KE WARUNG</text>
+    <text x="332" y="100" fill="#f8fafc" font-family="${FONT_SANS}" font-size="20" font-weight="800">${escapeXml(storeLine)}</text>
+    <text x="332" y="130" fill="${secondary}" font-family="${FONT_MONO}" font-size="15" font-weight="700">${escapeXml(priceText)} - ${escapeXml(productLine.slice(0, 28))}</text>
+    <text x="332" y="158" fill="#94a3b8" font-family="${FONT_MONO}" font-size="13">Beli langsung di toko - harga dari katalog</text>
+    <text x="24" y="198" fill="#64748b" font-family="${FONT_MONO}" font-size="11">NUSANTARASOFT - KONTEN MARKETING UMKM - APPROVE GATE</text>
     <g transform="translate(820, 60)">
       <rect x="0" y="0" width="112" height="112" fill="#0b0e13" stroke="${primary}" stroke-width="1.5"/>
       <rect x="10" y="10" width="26" height="26" fill="${primary}"/>
@@ -188,9 +191,9 @@ export async function renderMarketingTemplatePng(input: MarketingTemplateInput):
 
   <!-- Bottom bar -->
   <rect x="56" y="860" width="968" height="160" fill="#000000"/>
-  <text x="80" y="920" fill="#ffffff" font-family="DejaVu Sans, Arial, sans-serif" font-size="22" font-weight="800">${escapeXml(storeLine)}</text>
-  <text x="80" y="955" fill="${primary}" font-family="DejaVu Sans Mono, monospace" font-size="14">Kunjungi warung · belanja langsung</text>
-  <text x="80" y="990" fill="#64748b" font-family="DejaVu Sans Mono, monospace" font-size="12">nusantarasoft.com · brochure-gallery</text>
+  <text x="80" y="920" fill="#ffffff" font-family="${FONT_SANS}" font-size="22" font-weight="800">${escapeXml(storeLine)}</text>
+  <text x="80" y="955" fill="${primary}" font-family="${FONT_MONO}" font-size="14">Kunjungi warung - belanja langsung</text>
+  <text x="80" y="990" fill="#64748b" font-family="${FONT_MONO}" font-size="12">nusantarasoft.com / brochure-gallery</text>
 </svg>`;
 
     const chrome = await sharp(Buffer.from(chromeSvg)).png().toBuffer();
