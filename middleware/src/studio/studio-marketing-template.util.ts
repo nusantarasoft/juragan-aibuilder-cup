@@ -1,8 +1,9 @@
 import { createRequire } from 'node:module';
+import type { Sharp } from 'sharp';
 import { escapeXml, formatPriceIdr, wrapOverlayLines } from './studio-marketing.util';
 
-const require = createRequire(__filename);
-const sharp: typeof import('sharp') = require('sharp');
+const nodeRequire = createRequire(__filename);
+const sharp = nodeRequire('sharp') as typeof import('sharp');
 
 export type MarketingTemplateInput = {
     productName: string;
@@ -22,7 +23,7 @@ export async function renderMarketingTemplatePng(input: MarketingTemplateInput):
     const nameLines = wrapOverlayLines(input.productName, 26, 2);
     const storeLine = input.storeLabel.trim().slice(0, 48) || 'Warung UMKM';
 
-    let base: sharp.Sharp;
+    let base: Sharp;
     if (input.background?.length) {
         base = sharp(input.background).resize(CANVAS, CANVAS, { fit: 'cover' }).blur(2);
     } else {
