@@ -13,7 +13,7 @@ Diagram: [L5-konten-marketing.svg](../../../diagrams/aistudio/studio/system/L5-k
 5. **Caption** Bahasa Indonesia via LLM default `studio_settings`; error provider = gagal (tidak ada caption sampah).
 6. Gambar disimpan MinIO (`cms-media`) dengan URL publik via proxy middleware.
 7. Admin **AI Studio → Konten Marketing**: review, edit caption, approve / reject / unpublish.
-8. Hanya `status=approved` + consent warung=true muncul di API galeri publik.
+8. Hanya `status=approved` + consent warung=true muncul di API galeri publik **dan** di **brochure-gallery** (showcase Adityo, port `:3014` prod) — kartu UMKM ditampilkan di atas brosur tenant seed.
 
 Migrasi DB: `supabase/migrations/20261018150000_studio_marketing_contents.sql`.
 
@@ -63,7 +63,18 @@ Provider LLM/image: kredensial **AI Studio → Settings** (`google_api_key`, `go
 | Mutasi caption | `studioMarketingUpdateCaption(id, caption, headline)` |
 | Mutasi consent | `studioMarketingSetStoreConsent(tenantId, consent)` |
 
-## API publik (Adityo — galeri frontend)
+## Showcase publik (brochure-gallery)
+
+Setelah approve, konten masuk feed showcase **`brochure-gallery`** (bukan hanya JSON mentah):
+
+| Prod | URL |
+|------|-----|
+| Grid / 3D showcase | `http://31.97.66.39:3014` |
+| Permalink kartu UMKM | `/b/m-{contentId}` (prefix `m-` = Konten Marketing) |
+
+Server showcase memanggil middleware `GET /public/marketing/gallery` (env `MARKETING_GALLERY_BASE_URL`, default `http://middleware:4001/public/marketing` di Docker) lalu merge dengan `tenant_brochures`.
+
+## API publik (middleware — dipakai showcase)
 
 Base path: `/public/marketing` (no auth, read-only). **Prod:** panggil via `https://nusantarasoft.com/...` (nginx → middleware), bukan port middleware internal `:4001`.
 

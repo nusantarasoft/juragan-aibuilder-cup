@@ -1,7 +1,14 @@
 import { createClient } from "@supabase/supabase-js";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import type { TenantBrochure } from "./brochureTypes";
+import {
+  fetchMarketingBrochureById,
+  fetchMarketingBrochures,
+  parseMarketingContentId,
+} from "./marketingGallery";
 import { SEED_BROCHURES } from "./seedBrochures";
+
+export type BrochureFeedSource = "supabase" | "seed" | "merged";
 
 const SUPABASE_URL =
   process.env.SUPABASE_INTERNAL_URL ||
@@ -88,7 +95,7 @@ function normalizeBrochureRow(row: Record<string, unknown>): TenantBrochure {
   };
 }
 
-export async function fetchBrochuresFromDb(): Promise<{
+async function fetchTenantBrochuresOnly(): Promise<{
   brochures: TenantBrochure[];
   source: "supabase" | "seed";
 }> {
@@ -113,7 +120,37 @@ export async function fetchBrochuresFromDb(): Promise<{
   }
 }
 
+/** Konten Marketing (approved) first, then tenant_brochures / seed. */
+export async function fetchBrochuresFromDb(): Promise<{
+  brochures: TenantBrochure[];
+  source: BrochureFeedSource;
+  marketingCount: number;
+  tenantBrochureCount: number;
+}> {
+  const [marketing, tenantFeed] = await Promise.all([
+    fetchMarketingBrochures(),
+    fetchTenantBrochuresOnly(),
+  ]);
+
+  const brochures = [...marketing, ...tenantFeed.brochures];
+  const source: BrochureFeedSource =
+    marketing.length > 0 ? "merged" : tenantFeed.source;
+
+  return {
+    brochures,
+    source,
+    marketingCount: marketing.length,
+    tenantBrochureCount: tenantFeed.brochures.length,
+  };
+}
+
 export async function fetchBrochureBySlug(slug: string): Promise<TenantBrochure | null> {
+  const marketingId = parseMarketingContentId(slug);
+  if (marketingId) {
+    const fromMarketing = await fetchMarketingBrochureById(marketingId);
+    if (fromMarketing) return fromMarketing;
+  }
+
   try {
     const { data, error } = await supabaseAdmin
       .from("tenant_brochures")

@@ -111,6 +111,12 @@ Di server (atau dari laptop ke IP publik):
 
 - Admin: `http://31.97.66.39:3013` (sering `307` redirect = OK)
 - Brochure gallery: `http://31.97.66.39:3014` → diharapkan `200`
+
+**Konten Marketing → showcase:** setelah wiring feed, deploy serial (jangan `compose build admin brochure-gallery` paralel — sering hang/OOM):
+
+```bash
+bash scripts/master-production/deploy-marketing-showcase.sh
+```
 - Landing/nginx: `http://31.97.66.39:8090` → diharapkan `200`
 - GraphQL: `POST http://31.97.66.39:8090/graphql` dengan `{"query":"{ __typename }"}` → `200`
 - Di server: `bash scripts/master-production/smoke-umkm.sh` (sama dengan step akhir `redeploy.sh`) → exit 0

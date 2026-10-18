@@ -506,7 +506,7 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=4001
-      - CORS_ORIGINS=${CORS_ORIGINS:-http://31.97.66.39:3013,http://31.97.66.39:8090}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://31.97.66.39:3013,http://31.97.66.39:8090,http://31.97.66.39:3014}
       - SUPABASE_URL=http://kong:8000
       - SUPABASE_ANON_KEY=${ANON_KEY}
       - SUPABASE_SERVICE_KEY=${SERVICE_ROLE_KEY}
@@ -656,8 +656,10 @@ services:
       - NEXT_PUBLIC_ADMIN_URL=http://31.97.66.39:3013
       - NEXT_PUBLIC_LANDING_URL=http://31.97.66.39:8090
       - NEXT_PUBLIC_GALLERY_URL=http://31.97.66.39:3014
+      - MARKETING_GALLERY_BASE_URL=http://middleware:4001/public/marketing
     networks: [nsoft3-net]
     depends_on:
+      - middleware
       - kong
       - minio
     healthcheck:

@@ -52,6 +52,9 @@ const STATUS_COLOR: Record<string, string> = {
     draft: 'blue',
 };
 
+const SHOWCASE_GALLERY_URL =
+    process.env.NEXT_PUBLIC_GALLERY_URL || 'http://localhost:3004';
+
 export default function KontenMarketingPage() {
     const [rows, setRows] = useState<StudioMarketingContent[]>([]);
     const [stores, setStores] = useState<StudioMarketingStore[]>([]);
@@ -127,7 +130,7 @@ export default function KontenMarketingPage() {
         setBusy(true);
         try {
             await studioService.approveMarketingContent(selected.id);
-            message.success('Konten di-approve — tampil di galeri publik');
+            message.success('Konten di-approve — tampil di showcase brochure-gallery');
             setDrawerOpen(false);
             load();
         } catch (e) {
@@ -267,6 +270,17 @@ export default function KontenMarketingPage() {
                     </Button>,
                 ]}
             >
+                <Alert
+                    type="info"
+                    showIcon
+                    style={{ marginBottom: 16 }}
+                    message="Konten approved muncul di showcase publik (brochure-gallery) — grid, share WA, permalink /b/m-{id}."
+                    action={
+                        <Button size="small" type="link" href={SHOWCASE_GALLERY_URL} target="_blank">
+                            Buka showcase
+                        </Button>
+                    }
+                />
                 <Card size="small" title="Generate batch" style={{ marginBottom: 16 }}>
                     <Space wrap>
                         <Select

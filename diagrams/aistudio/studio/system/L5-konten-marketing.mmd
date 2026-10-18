@@ -8,5 +8,6 @@ flowchart LR
   F --> G
   G --> H[(studio_marketing_contents pending)]
   H --> I[Admin Konten Marketing]
-  I -->|Approve| J[API galeri publik]
+  I -->|Approve| J[API /public/marketing]
+  J --> S[brochure-gallery showcase :3014]
   I -->|Reject| K[rejected]
