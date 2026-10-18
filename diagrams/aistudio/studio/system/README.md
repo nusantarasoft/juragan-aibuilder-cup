@@ -6,6 +6,7 @@
 | **L2** | [L2-rag-ask](./L2-rag-ask.svg) | Query embed → match → synthesize / miss |
 | **L3** | [L3-embed-vs-llm](./L3-embed-vs-llm.svg) | Lock embedding; LLM boleh diganti |
 | **L4** | [L4-rag-consumers](./L4-rag-consumers.svg) | Studio Chat (notebook) vs WA kurikulum shared |
+| **L5** | [L5-riset-knowledge](./L5-riset-knowledge.svg) | Riset Knowledge: fetch → review → merge kurikulum |
 
 Docs: [rag-architecture.md](../../../docs/aistudio/studio/system/rag-architecture.md)  
 WA knowledge locks: [L8 umkm-wa](../../umkm-wa/system/L8-knowledge-soul.svg)
