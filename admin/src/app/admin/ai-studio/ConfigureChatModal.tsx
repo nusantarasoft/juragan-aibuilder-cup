@@ -34,16 +34,16 @@ export default function ConfigureChatModal({
             onCancel={onCancel}
             onOk={() => void onSave(instruction)}
             confirmLoading={loading}
-            okText="Simpan"
+            okText="Save"
         >
             <Text className="text-xs text-gray-500 block mb-2">
-                Instruksi ini ditambahkan ke setiap jawaban chat RAG di notebook ini (seperti NotebookLM).
+                These instructions are appended to every RAG chat response in this notebook (similar to NotebookLM).
             </Text>
             <TextArea
                 rows={5}
                 value={instruction}
                 onChange={(e) => setInstruction(e.target.value)}
-                placeholder="Contoh: Jawab dalam Bahasa Indonesia formal. Fokus pada insight bisnis."
+                placeholder="Example: Respond in formal English. Focus on actionable business insights and metrics."
             />
         </Modal>
     );

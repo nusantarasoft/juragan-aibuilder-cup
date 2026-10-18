@@ -48,9 +48,9 @@ export default function AudioOverviewPlayer({ script, themeColor, notebookId, ou
             document.body.appendChild(a);
             a.click();
             a.remove();
-            message.success("Audio MP3 siap diunduh");
+            message.success("MP3 audio ready for download");
         } catch (e: unknown) {
-            message.error(e instanceof Error ? e.message : "Gagal membuat MP3");
+            message.error(e instanceof Error ? e.message : "Failed to generate MP3");
         } finally {
             setDownloading(false);
         }
@@ -84,11 +84,11 @@ export default function AudioOverviewPlayer({ script, themeColor, notebookId, ou
         };
     }, [supported]);
 
-    // Pick sensible default voices once the list loads (Indonesian first).
+    // Pick sensible default voices once the list loads (English first).
     useEffect(() => {
         if (!voices.length) return;
-        const idVoices = voices.filter((v) => v.lang?.toLowerCase().startsWith("id"));
-        const pool = idVoices.length ? idVoices : voices;
+        const enVoices = voices.filter((v) => v.lang?.toLowerCase().startsWith("en"));
+        const pool = enVoices.length ? enVoices : voices;
         setVoiceA((prev) => prev || pool[0]?.voiceURI || "");
         setVoiceB((prev) => prev || (pool[1]?.voiceURI ?? pool[0]?.voiceURI) || "");
     }, [voices]);
@@ -190,46 +190,52 @@ export default function AudioOverviewPlayer({ script, themeColor, notebookId, ou
             <Alert
                 type="warning"
                 showIcon
-                message="Audio Overview tidak didukung"
-                description="Browser ini tidak mendukung Web Speech API. Coba Chrome/Edge terbaru."
+                message="Audio Overview not supported"
+                description="This browser does not support the Web Speech API. Try the latest Chrome or Edge."
             />
         );
     }
 
     if (segments.length === 0) {
-        return <Alert type="info" showIcon message="Naskah audio kosong atau tidak bisa diparse." />;
+        return <Alert type="info" showIcon message="Audio script is empty or could not be parsed." />;
     }
 
     const voiceOptions = voices.map((v) => ({ value: v.voiceURI, label: `${v.name} (${v.lang})` }));
 
     return (
-        <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-3 mb-3 bg-[rgba(var(--theme-color-rgb,139,92,246),0.04)]">
+        <div
+            className="rounded-none border border-white/10 p-3 mb-3 bg-white/[0.02]"
+            style={{ borderTop: `2px solid ${themeColor}` }}
+        >
             <div className="flex items-center gap-2 mb-2">
                 {!playing ? (
                     <Button
                         type="primary"
-                        shape="circle"
                         icon={<CaretRightOutlined />}
                         onClick={handlePlay}
                         style={{ backgroundColor: themeColor, borderColor: themeColor }}
                     />
                 ) : (
-                    <Button type="primary" shape="circle" icon={<PauseOutlined />} onClick={handlePause}
-                        style={{ backgroundColor: themeColor, borderColor: themeColor }} />
+                    <Button
+                        type="primary"
+                        icon={<PauseOutlined />}
+                        onClick={handlePause}
+                        style={{ backgroundColor: themeColor, borderColor: themeColor }}
+                    />
                 )}
-                <Button shape="circle" icon={<StepForwardOutlined />} onClick={handleSkip} title="Lewati segmen" />
-                <Button shape="circle" icon={<StopOutlined />} onClick={handleStop} title="Berhenti" />
-                <Text className="text-[11px] text-gray-400 ml-1">
-                    {current >= 0 ? `Segmen ${current + 1}/${segments.length}` : `${segments.length} segmen`}
+                <Button icon={<StepForwardOutlined />} onClick={handleSkip} title="Skip segment" />
+                <Button icon={<StopOutlined />} onClick={handleStop} title="Stop" />
+                <Text className="font-mono text-[11px] text-gray-400 ml-1 tabular-nums">
+                    {current >= 0 ? `Segment ${current + 1}/${segments.length}` : `${segments.length} segments`}
                 </Text>
                 {notebookId && outputId && (
                     <Button
                         size="small"
-                        className="ml-auto"
+                        className="ml-auto font-mono"
                         icon={<DownloadOutlined />}
                         loading={downloading}
                         onClick={() => void handleDownloadMp3()}
-                        title="Sintesis & unduh MP3 (server)"
+                        title="Synthesize & download MP3 (server)"
                     >
                         MP3
                     </Button>
@@ -238,7 +244,7 @@ export default function AudioOverviewPlayer({ script, themeColor, notebookId, ou
 
             <div className="flex flex-wrap items-center gap-2 mb-2">
                 <Space size={4}>
-                    <Text className="text-[10px] text-gray-400">Suara 1</Text>
+                    <Text className="font-mono text-[10px] uppercase tracking-[0.1em] text-gray-400">Voice 1</Text>
                     <Select
                         size="small"
                         style={{ minWidth: 150 }}
@@ -249,7 +255,7 @@ export default function AudioOverviewPlayer({ script, themeColor, notebookId, ou
                     />
                 </Space>
                 <Space size={4}>
-                    <Text className="text-[10px] text-gray-400">Suara 2</Text>
+                    <Text className="font-mono text-[10px] uppercase tracking-[0.1em] text-gray-400">Voice 2</Text>
                     <Select
                         size="small"
                         style={{ minWidth: 150 }}
@@ -260,7 +266,7 @@ export default function AudioOverviewPlayer({ script, themeColor, notebookId, ou
                     />
                 </Space>
                 <Space size={4} className="flex-1 min-w-[120px]">
-                    <Text className="text-[10px] text-gray-400">Kecepatan</Text>
+                    <Text className="font-mono text-[10px] uppercase tracking-[0.1em] text-gray-400">Speed</Text>
                     <Slider
                         className="flex-1"
                         min={0.5}
@@ -276,7 +282,9 @@ export default function AudioOverviewPlayer({ script, themeColor, notebookId, ou
             {current >= 0 && (
                 <div className="text-[11px] text-gray-600 dark:text-gray-300 line-clamp-2">
                     {segments[current].speaker && (
-                        <Tag color={themeColor} className="!text-[9px] !mr-1">{segments[current].speaker}</Tag>
+                        <Tag color={themeColor} className="font-mono !text-[9px] !mr-1 !rounded-none">
+                            {segments[current].speaker}
+                        </Tag>
                     )}
                     {segments[current].text}
                 </div>

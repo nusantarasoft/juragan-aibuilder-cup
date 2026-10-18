@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Alert, Button, Progress, Radio, Space, Tag, Typography } from "antd";
 import { CheckCircleFilled, CloseCircleFilled, RedoOutlined } from "@ant-design/icons";
 import { parseQuiz, type QuizQuestion } from "./quiz";
@@ -14,8 +14,13 @@ export default function QuizView({ content, themeColor }: Props) {
     const [answers, setAnswers] = useState<Record<number, number>>({});
     const [submitted, setSubmitted] = useState(false);
 
+    useEffect(() => {
+        setAnswers({});
+        setSubmitted(false);
+    }, [content]);
+
     if (!questions) {
-        return <Alert type="info" showIcon message="Kuis tidak bisa diparse — lihat teks mentah." />;
+        return <Alert type="info" showIcon message="Quiz could not be parsed — view raw text instead." />;
     }
 
     const answeredCount = Object.keys(answers).length;
@@ -31,7 +36,10 @@ export default function QuizView({ content, themeColor }: Props) {
     return (
         <div className="flex flex-col gap-4">
             {submitted && (
-                <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-3 flex items-center gap-3">
+                <div
+                    className="rounded-none border border-white/10 bg-white/[0.02] p-3 flex items-center gap-3"
+                    style={{ borderTop: `2px solid ${themeColor}` }}
+                >
                     <Progress
                         type="circle"
                         percent={pct}
@@ -40,13 +48,13 @@ export default function QuizView({ content, themeColor }: Props) {
                         format={() => `${score}/${questions.length}`}
                     />
                     <div>
-                        <Title level={5} className="!mb-0">
-                            {pct >= 80 ? "Bagus sekali!" : pct >= 50 ? "Lumayan" : "Perlu belajar lagi"}
+                        <Title level={5} className="!mb-0 !text-[12px] font-mono uppercase tracking-[0.08em]">
+                            {pct >= 80 ? "Excellent work!" : pct >= 50 ? "Good effort" : "Needs review"}
                         </Title>
-                        <Text type="secondary" className="text-xs">Skor {pct}%</Text>
+                        <Text type="secondary" className="font-mono text-[10.5px] tabular-nums">Score {pct}%</Text>
                     </div>
                     <Button className="ml-auto" size="small" icon={<RedoOutlined />} onClick={reset}>
-                        Ulangi
+                        Retry
                     </Button>
                 </div>
             )}
@@ -55,8 +63,12 @@ export default function QuizView({ content, themeColor }: Props) {
                 const chosen = answers[i];
                 const correct = q.answerIndex;
                 return (
-                    <div key={i} className="rounded-lg border border-gray-200 dark:border-gray-700 p-3">
-                        <Text strong className="text-[13px] block mb-2">
+                    <div
+                        key={i}
+                        className="rounded-none border border-white/10 bg-white/[0.02] p-2.5"
+                        style={{ borderLeft: `2px solid ${themeColor}` }}
+                    >
+                        <Text strong className="text-[11.5px] block mb-1.5 leading-snug">
                             {i + 1}. {q.question}
                         </Text>
                         <Radio.Group
@@ -65,7 +77,7 @@ export default function QuizView({ content, themeColor }: Props) {
                             disabled={submitted}
                             onChange={(e) => setAnswers((prev) => ({ ...prev, [i]: e.target.value }))}
                         >
-                            <Space direction="vertical" className="w-full">
+                            <Space direction="vertical" size={4} className="w-full">
                                 {q.options.map((opt, oi) => {
                                     const isCorrect = submitted && oi === correct;
                                     const isWrongChoice = submitted && oi === chosen && chosen !== correct;
@@ -73,7 +85,7 @@ export default function QuizView({ content, themeColor }: Props) {
                                         <Radio
                                             key={oi}
                                             value={oi}
-                                            className={`!text-[12px] w-full px-2 py-1 rounded ${
+                                            className={`!text-[11px] w-full px-2 py-0.5 rounded-none ${
                                                 isCorrect
                                                     ? "bg-green-50 dark:bg-green-900/20"
                                                     : isWrongChoice
@@ -94,8 +106,10 @@ export default function QuizView({ content, themeColor }: Props) {
                             </Space>
                         </Radio.Group>
                         {submitted && q.explanation && (
-                            <div className="mt-2 text-[11px] text-gray-500">
-                                <Tag color={themeColor} className="!text-[9px]">Penjelasan</Tag>
+                            <div className="mt-1.5 text-[10.5px] text-gray-500">
+                                <Tag color={themeColor} className="font-mono !text-[9px] !rounded-none uppercase">
+                                    Explanation
+                                </Tag>
                                 {q.explanation}
                             </div>
                         )}
@@ -105,12 +119,13 @@ export default function QuizView({ content, themeColor }: Props) {
 
             {!submitted && (
                 <Button
+                    size="small"
                     type="primary"
                     disabled={!allAnswered}
                     onClick={() => setSubmitted(true)}
                     style={{ backgroundColor: themeColor, borderColor: themeColor }}
                 >
-                    {allAnswered ? "Periksa jawaban" : `Jawab semua dulu (${answeredCount}/${questions.length})`}
+                    {allAnswered ? "Check answers" : `Answer all questions first (${answeredCount}/${questions.length})`}
                 </Button>
             )}
         </div>

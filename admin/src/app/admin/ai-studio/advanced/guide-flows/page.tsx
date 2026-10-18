@@ -9,7 +9,6 @@ import GuideFlowsPanel from "../../GuideFlowsPanel";
 import { useAuth } from "@/context/AuthContext";
 import { useStudioUserId } from "../../useStudioUserId";
 import { usePreferencesStore } from "@/store/usePreferencesStore";
-import { AuroraText } from "@/components/magicui/aurora-text";
 import { summarizeSources } from "../../studioSourceStatus";
 
 export default function StudioGuideFlowsPage() {
@@ -34,7 +33,7 @@ export default function StudioGuideFlowsPage() {
             setNotebooks(list);
             if (list.length && !activeId) setActiveId(list[0].id);
         } catch {
-            message.error("Gagal memuat notebooks");
+            message.error("Failed to load notebooks");
         } finally {
             setLoading(false);
         }
@@ -54,21 +53,29 @@ export default function StudioGuideFlowsPage() {
 
     return (
         <CMSLayout
-            title={<AuroraText colors={[themeColor, "#6366f1", "#a78bfa"]}>Guide Flows</AuroraText>}
-            subTitle="Advanced — alur percakapan terstruktur per notebook"
+            title="Guide Flows"
+            subTitle="Advanced — structured conversation flows per notebook"
+            extra={
+                notebooks.length > 0
+                    ? [
+                          <Select
+                              key="nb-select"
+                              size="small"
+                              style={{ minWidth: 220 }}
+                              value={activeId ?? undefined}
+                              onChange={setActiveId}
+                              options={notebooks.map((nb) => ({ value: nb.id, label: nb.name }))}
+                          />,
+                      ]
+                    : undefined
+            }
         >
             {loading || authLoading ? (
-                <div className="flex justify-center py-16"><Spin /></div>
+                <div className="flex justify-center py-12"><Spin /></div>
             ) : !userId || notebooks.length === 0 ? (
-                <Empty description="Buat notebook di Studio terlebih dahulu" />
+                <Empty description="Create a notebook in Studio first" />
             ) : (
-                <div className="flex flex-col gap-4 h-full" style={{ minHeight: 500 }}>
-                    <Select
-                        className="max-w-md"
-                        value={activeId ?? undefined}
-                        onChange={setActiveId}
-                        options={notebooks.map((nb) => ({ value: nb.id, label: nb.name }))}
-                    />
+                <div className="flex flex-col h-[calc(100vh-142px)] min-h-[480px]">
                     <GuideFlowsPanel
                         notebookId={activeId}
                         themeColor={themeColor}

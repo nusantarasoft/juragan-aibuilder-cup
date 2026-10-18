@@ -2,6 +2,8 @@
 
 import React from "react";
 import { Card, Col, Form, Input, InputNumber, Row, Typography } from "antd";
+import { useAdminLayout } from "@/components/layout/CMSLayout";
+import { getVOTheme } from "@/components/layout/voTheme";
 import ApiKeyField from "./ApiKeyField";
 import ModelSelect from "./ModelSelect";
 import ConnectionTestButton from "./ConnectionTestButton";
@@ -18,6 +20,8 @@ type Props = {
 };
 
 export default function ProviderPanel({ provider, isActive = true, configured }: Props) {
+    const { darkMode } = useAdminLayout();
+    const t = getVOTheme(darkMode);
     const anthropicKeyConfigured = Form.useWatch("anthropic_api_key_configured");
     const googleKeyConfigured = Form.useWatch("google_api_key_configured");
     const googleSaConfigured = Form.useWatch("google_service_account_configured");
@@ -25,7 +29,7 @@ export default function ProviderPanel({ provider, isActive = true, configured }:
     const groqKeyConfigured = Form.useWatch("groq_api_key_configured");
     const openrouterKeyConfigured = Form.useWatch("openrouter_api_key_configured");
 
-    const req = isActive ? [{ required: true, message: "Wajib diisi untuk provider aktif" }] : [];
+    const req = isActive ? [{ required: true, message: "Required for active provider" }] : [];
 
     const inner = (
         <>
@@ -119,11 +123,11 @@ export default function ProviderPanel({ provider, isActive = true, configured }:
                         rules={req}
                     />
                     <Text type="secondary" style={{ display: "block", marginBottom: 8, fontSize: 12 }}>
-                        Ambil key di{" "}
+                        Get a key at{" "}
                         <a href="https://console.groq.com/keys" target="_blank" rel="noreferrer">
                             console.groq.com/keys
                         </a>
-                        . Embedding tetap pakai provider terpisah (Google / OpenAI / Ollama).
+                        . Embeddings continue to use a separate provider (Google / OpenAI / Ollama).
                     </Text>
                 </>
             )}
@@ -144,12 +148,12 @@ export default function ProviderPanel({ provider, isActive = true, configured }:
                         rules={req}
                     />
                     <Text type="secondary" style={{ display: "block", marginBottom: 8, fontSize: 12 }}>
-                        Key dari{" "}
+                        Key from{" "}
                         <a href="https://openrouter.ai/keys" target="_blank" rel="noreferrer">
                             openrouter.ai/keys
                         </a>
-                        . Boleh juga lewat env <code>OPENROUTER_API_KEY</code>. Default kasir
-                        consult: <code>qwen/qwen3.7-flash</code> (lihat model-stack docs).
+                        . Can also be set via env <code>OPENROUTER_API_KEY</code>. Default consult
+                        model: <code>qwen/qwen3.7-flash</code> (see model-stack docs).
                     </Text>
                 </>
             )}
@@ -162,7 +166,7 @@ export default function ProviderPanel({ provider, isActive = true, configured }:
                             label="Ollama Endpoint"
                             rules={req}
                             preserve
-                            extra="Windows/Mac lokal: http://127.0.0.1:11434"
+                            extra="Local Windows/Mac: http://127.0.0.1:11434"
                         >
                             <Input placeholder="http://127.0.0.1:11434" />
                         </Form.Item>
@@ -193,24 +197,25 @@ export default function ProviderPanel({ provider, isActive = true, configured }:
     return (
         <Card
             title={
-                <span style={{ color: "#111827" }}>
-                    Konfigurasi {PROVIDER_LABELS[provider]}
+                <span className="font-mono text-xs uppercase tracking-[0.06em]" style={{ color: t.textPrimary }}>
+                    {PROVIDER_LABELS[provider]} Configuration
                 </span>
             }
             extra={
                 configured ? (
-                    <Text type="success">Siap digunakan</Text>
+                    <Text type="success" className="font-mono text-xs">Ready to use</Text>
                 ) : (
-                    <Text type="warning">Lengkapi lalu Save</Text>
+                    <Text type="warning" className="font-mono text-xs">Complete then Save</Text>
                 )
             }
             style={{
                 marginTop: 16,
-                background: "#f9fafb",
-                border: "1px solid #e5e7eb",
-                borderRadius: 10,
+                background: t.surfaceBg,
+                border: `1px solid ${t.cardBorder}`,
+                borderLeft: "2px solid #fb923c",
+                borderRadius: 0,
             }}
-            styles={{ header: { borderBottom: "1px solid #e5e7eb" } }}
+            styles={{ header: { borderBottom: `1px solid ${t.cardBorder}` } }}
         >
             {inner}
         </Card>

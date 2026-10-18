@@ -15,14 +15,18 @@ import {
 import "@xyflow/react/dist/style.css";
 import { Empty } from "antd";
 import { mindMapToFlow, parseMindMapMarkdown } from "./mindMap";
+import { useAdminLayout } from "@/components/layout/CMSLayoutContext";
+import { getVOTheme } from "@/components/layout/voTheme";
 
-const DEPTH_COLORS = ["#8b5cf6", "#6366f1", "#0ea5e9", "#10b981", "#f59e0b", "#ef4444"];
+const DEPTH_COLORS = ["#fb923c", "#38bdf8", "#a855f7", "#10b981", "#f59e0b", "#ef4444"];
 
 function colorForDepth(depth: number): string {
     return DEPTH_COLORS[Math.max(0, depth - 1) % DEPTH_COLORS.length];
 }
 
 function MindMapNodeCard({ data }: NodeProps) {
+    const darkMode = useAdminLayout((s) => s.darkMode);
+    const t = getVOTheme(darkMode);
     const depth = typeof data.depth === "number" ? data.depth : 1;
     const label = typeof data.label === "string" ? data.label : "";
     const clickable = data.clickable === true;
@@ -30,15 +34,15 @@ function MindMapNodeCard({ data }: NodeProps) {
     const isRoot = depth <= 1;
     return (
         <div
-            title={clickable ? "Klik untuk tanya di chat" : undefined}
+            title={clickable ? "Click to ask in chat" : undefined}
             style={{
+                border: `1px solid ${t.border}`,
                 borderLeft: `3px solid ${color}`,
-                background: "var(--mm-node-bg, #ffffff)",
-                color: "var(--mm-node-fg, #111827)",
-                borderRadius: 8,
-                padding: isRoot ? "8px 12px" : "6px 10px",
-                boxShadow: "0 1px 3px rgba(0,0,0,0.12)",
-                fontSize: isRoot ? 13 : 12,
+                background: t.cardBg,
+                color: t.textPrimary,
+                borderRadius: 0,
+                padding: isRoot ? "6px 10px" : "4px 8px",
+                fontSize: isRoot ? 11.5 : 11,
                 fontWeight: isRoot ? 600 : 400,
                 maxWidth: 200,
                 lineHeight: 1.3,
@@ -61,6 +65,9 @@ type Props = {
 };
 
 export default function MindMapView({ markdown, height = 460, onNodeAsk }: Props) {
+    const darkMode = useAdminLayout((s) => s.darkMode);
+    const t = getVOTheme(darkMode);
+
     const { nodes, edges } = useMemo(() => {
         const parsed = parseMindMapMarkdown(markdown);
         const flow = mindMapToFlow(parsed);
@@ -73,17 +80,20 @@ export default function MindMapView({ markdown, height = 460, onNodeAsk }: Props
                 ...e,
                 type: "smoothstep",
                 animated: false,
-                style: { stroke: "#c4b5fd", strokeWidth: 1.5 },
+                style: { stroke: darkMode ? "#475569" : "#94a3b8", strokeWidth: 1.5 },
             })) as unknown as Edge[],
         };
-    }, [markdown, onNodeAsk]);
+    }, [markdown, onNodeAsk, darkMode]);
 
     if (nodes.length === 0) {
-        return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Mind map kosong" />;
+        return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Empty mind map" />;
     }
 
     return (
-        <div style={{ width: "100%", height }} className="rounded-lg border border-gray-200 dark:border-gray-700">
+        <div
+            style={{ width: "100%", height, background: t.surfaceBg, border: `1px solid ${t.border}` }}
+            className="rounded-none"
+        >
             <ReactFlow
                 nodes={nodes}
                 edges={edges}
@@ -105,7 +115,7 @@ export default function MindMapView({ markdown, height = 460, onNodeAsk }: Props
                         : undefined
                 }
             >
-                <Background gap={16} color="#e5e7eb" />
+                <Background gap={16} color={darkMode ? "#1e293b" : "#e2e8f0"} />
                 <Controls showInteractive={false} />
                 <MiniMap
                     pannable
@@ -113,7 +123,7 @@ export default function MindMapView({ markdown, height = 460, onNodeAsk }: Props
                     nodeColor={(n) =>
                         colorForDepth(typeof n.data?.depth === "number" ? (n.data.depth as number) : 1)
                     }
-                    style={{ height: 90, width: 130 }}
+                    style={{ height: 90, width: 130, background: t.cardBg, border: `1px solid ${t.border}` }}
                 />
             </ReactFlow>
         </div>

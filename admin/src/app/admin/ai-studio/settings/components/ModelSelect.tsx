@@ -28,7 +28,7 @@ export default function ModelSelect({ name, label, provider, embeddingProvider, 
                 label={label}
                 rules={rules}
                 preserve
-                extra="Jalankan `ollama pull <model>` jika model belum ada"
+                extra="Run `ollama pull <model>` if the model is not installed yet"
             >
                 <AutoComplete
                     options={catalog}

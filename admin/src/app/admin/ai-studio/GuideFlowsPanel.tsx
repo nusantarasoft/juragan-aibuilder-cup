@@ -331,82 +331,120 @@ export default function GuideFlowsPanel({
     }
 
     return (
-        <div className="flex flex-col gap-4 min-h-[480px]">
-            <Alert
-                type="info"
-                showIcon
-                className="!rounded-xl text-xs"
-                message="Guide Flow best practices"
-                description={
-                    <ul className="list-disc pl-4 m-0 space-y-0.5">
-                        <li>Gunakan template <strong>RAG Q&A</strong> untuk notebook dokumen (listen → rag → loop).</li>
-                        <li>Set <code>meta.flowKind</code> agar runtime memilih routing UMKM vs RAG dengan benar.</li>
-                        <li>Setiap <code>listen</code> wajib punya transisi <code>default</code>; validasi graph sebelum publish.</li>
-                        <li>Node <code>sql</code> hanya SELECT read-only; <code>action</code> untuk operasi UMKM (WA).</li>
-                    </ul>
-                }
-            />
-
-            <div className="flex flex-wrap items-center gap-2">
-                <Dropdown
-                    menu={{
-                        items: (templates.length ? templates : [
-                            { kind: "rag_qa" as const, label: "RAG Q&A", description: "" },
-                            { kind: "umkm" as const, label: "UMKM Penjualan", description: "" },
-                            { kind: "blank" as const, label: "Kosong", description: "" },
-                        ]).map((t) => ({
-                            key: t.kind,
-                            label: (
-                                <div>
-                                    <div className="font-medium">{t.label}</div>
-                                    {t.description ? (
-                                        <div className="text-[10px] text-gray-500">{t.description}</div>
-                                    ) : null}
-                                </div>
-                            ),
-                            onClick: () => handleCreate(t.kind as GuideFlowTemplateKind),
-                        })),
-                    }}
-                >
-                    <Button type="primary" icon={<PlusOutlined />} style={{ backgroundColor: themeColor }}>
-                        New flow <DownOutlined />
+        <div className="flex flex-col gap-1.5 h-full min-h-0">
+            {/* Compact 36px Tactical Command Ribbon */}
+            <div
+                className="flex flex-wrap items-center justify-between gap-2 px-2.5 py-1.5 border border-white/[0.08] bg-black/20 shrink-0"
+                style={{ borderTop: `2px solid ${themeColor}` }}
+            >
+                <div className="flex items-center gap-2">
+                    <Dropdown
+                        menu={{
+                            items: (templates.length ? templates : [
+                                { kind: "rag_qa" as const, label: "RAG Q&A", description: "" },
+                                { kind: "umkm" as const, label: "SME Sales", description: "" },
+                                { kind: "blank" as const, label: "Blank", description: "" },
+                            ]).map((t) => ({
+                                key: t.kind,
+                                label: (
+                                    <div>
+                                        <div className="font-medium text-xs">{t.label}</div>
+                                        {t.description ? (
+                                            <div className="text-[10px] text-gray-500">{t.description}</div>
+                                        ) : null}
+                                    </div>
+                                ),
+                                onClick: () => handleCreate(t.kind as GuideFlowTemplateKind),
+                            })),
+                        }}
+                    >
+                        <Button size="small" type="primary" icon={<PlusOutlined />} style={{ backgroundColor: themeColor, borderRadius: 0 }}>
+                            New flow <DownOutlined />
+                        </Button>
+                    </Dropdown>
+                    <Button size="small" onClick={() => loadFlows()} loading={loading} style={{ borderRadius: 0 }}>
+                        Refresh
                     </Button>
-                </Dropdown>
-                <Button onClick={() => loadFlows()} loading={loading}>
-                    Refresh
-                </Button>
+                    <span className="hidden xl:inline font-mono text-[10px] opacity-65">
+                        NODES: <code>start</code> · <code>message</code> · <code>listen</code> (default req) · <code>rag</code> · <code>sql</code> (RO) · <code>action</code> · <code>end</code>
+                    </span>
+                </div>
+                {selected && (
+                    <Space size={4}>
+                        <Button
+                            size="small"
+                            icon={<CheckCircleOutlined />}
+                            onClick={handleValidate}
+                            loading={validating}
+                            style={{ borderRadius: 0 }}
+                        >
+                            Validate
+                        </Button>
+                        <Button
+                            size="small"
+                            icon={<SaveOutlined />}
+                            onClick={handleSave}
+                            loading={saving}
+                            style={{ borderRadius: 0 }}
+                        >
+                            Save
+                        </Button>
+                        <Button
+                            size="small"
+                            type="primary"
+                            icon={<RocketOutlined />}
+                            onClick={handlePublish}
+                            style={{ backgroundColor: themeColor, borderRadius: 0 }}
+                        >
+                            Publish
+                        </Button>
+                        <Button size="small" danger icon={<DeleteOutlined />} onClick={handleDelete} style={{ borderRadius: 0 }}>
+                            Delete
+                        </Button>
+                    </Space>
+                )}
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 flex-1 min-h-0">
-                <Card size="small" title="Flows" className="!rounded-xl overflow-hidden flex flex-col">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-1.5 flex-1 min-h-0">
+                {/* Col 1: Flows Index */}
+                <Card
+                    size="small"
+                    title={<span className="font-mono text-[11px] uppercase tracking-wider">Flows ({flows.length})</span>}
+                    className="!rounded-none overflow-hidden flex flex-col lg:col-span-3"
+                    style={{ borderTop: "2px solid #fb923c" }}
+                    styles={{ body: { padding: 6, flex: 1, overflowY: "auto" } }}
+                >
                     {loading ? (
-                        <div className="flex justify-center py-12">
-                            <Spin />
+                        <div className="flex justify-center py-8">
+                            <Spin size="small" />
                         </div>
                     ) : flows.length === 0 ? (
-                        <Empty description="No guide flows yet" />
+                        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No guide flows yet" />
                     ) : (
                         <List
                             size="small"
                             dataSource={flows}
-                            className="max-h-[280px] overflow-auto custom-scrollbar"
+                            className="overflow-auto custom-scrollbar"
                             renderItem={(item) => (
                                 <List.Item
-                                    className={`cursor-pointer rounded-lg px-2 ${selectedId === item.id ? "bg-[color-mix(in_srgb,var(--theme-color,#7c3aed)_12%,transparent)]" : ""}`}
+                                    className={`cursor-pointer !rounded-none !px-2 !py-1.5 ${selectedId === item.id ? "bg-[color-mix(in_srgb,var(--theme-color,#7c3aed)_12%,transparent)]" : ""}`}
+                                    style={{
+                                        borderLeft: selectedId === item.id ? `2px solid ${themeColor}` : "2px solid transparent",
+                                    }}
                                     onClick={() => {
                                         setSelectedId(item.id);
                                         resetSimulator();
                                     }}
                                 >
-                                    <div className="flex justify-between w-full gap-2 items-center">
-                                        <Text strong className="text-[13px] truncate">
+                                    <div className="flex justify-between w-full gap-1.5 items-center">
+                                        <Text strong className="text-[12px] truncate">
                                             {item.name}
                                         </Text>
-                                        <Space size={4}>
+                                        <Space size={2}>
                                             {flowKindFromDef(item.definition) && (
-                                                <Tag className="!text-[10px]">{flowKindFromDef(item.definition)}</Tag>
+                                                <Tag className="font-mono !text-[9px] !rounded-none !m-0 !px-1">{flowKindFromDef(item.definition)}</Tag>
                                             )}
-                                            <Tag color={item.status === "published" ? "green" : "default"}>
+                                            <Tag color={item.status === "published" ? "green" : "default"} className="font-mono !text-[9px] !rounded-none uppercase !m-0 !px-1">
                                                 {item.status}
                                             </Tag>
                                         </Space>
@@ -417,65 +455,29 @@ export default function GuideFlowsPanel({
                     )}
                 </Card>
 
+                {/* Col 2: Flow Definition Editor */}
                 <Card
                     size="small"
-                    title={selected ? `Edit: ${selected.name}` : "Definition"}
-                    className="!rounded-xl flex flex-col min-h-[320px]"
-                    extra={
-                        selected ? (
-                            <Space size={4}>
-                                <Button
-                                    size="small"
-                                    icon={<CheckCircleOutlined />}
-                                    onClick={handleValidate}
-                                    loading={validating}
-                                >
-                                    Validate
-                                </Button>
-                                <Button
-                                    size="small"
-                                    icon={<SaveOutlined />}
-                                    onClick={handleSave}
-                                    loading={saving}
-                                >
-                                    Save
-                                </Button>
-                                <Button
-                                    size="small"
-                                    type="primary"
-                                    icon={<RocketOutlined />}
-                                    onClick={handlePublish}
-                                    style={{ backgroundColor: themeColor }}
-                                >
-                                    Publish
-                                </Button>
-                                <Button size="small" danger icon={<DeleteOutlined />} onClick={handleDelete}>
-                                    Delete
-                                </Button>
-                            </Space>
-                        ) : null
-                    }
+                    title={<span className="font-mono text-[11px] uppercase tracking-wider">{selected ? `Edit: ${selected.name}` : "Definition"}</span>}
+                    className="!rounded-none flex flex-col lg:col-span-5 min-h-0"
+                    style={{ borderTop: "2px solid #38bdf8" }}
+                    styles={{ body: { padding: 8, display: "flex", flexDirection: "column", flex: 1, minHeight: 0, overflowY: "auto" } }}
                 >
                     {!selected ? (
-                        <Text type="secondary">Select a flow to edit the definition.</Text>
+                        <Text type="secondary" className="text-xs">Select a flow to edit the definition.</Text>
                     ) : (
-                        <div className="flex flex-col gap-2 flex-1 min-h-0">
+                        <div className="flex flex-col gap-1.5 flex-1 min-h-0">
                             <Input
+                                size="small"
                                 value={flowName}
                                 onChange={(e) => setFlowName(e.target.value)}
                                 placeholder="Flow name"
                             />
-                            <Paragraph type="secondary" className="!text-[11px] !mb-0">
-                                Nodes: <code>start</code>, <code>message</code>, <code>listen</code> (keyword /
-                                regex / default), <code>rag</code> (query understanding + placeholders),{" "}
-                                <code>sql</code> (Dremio SELECT), <code>action</code> (UMKM), <code>end</code>.
-                                Runtime: Zod schema + graph validation; XState spec untuk coverage test.
-                            </Paragraph>
                             {validationMsg && (
                                 <Alert
                                     type={validationMsg.startsWith("Valid") ? "success" : "error"}
                                     message={validationMsg}
-                                    className="!text-xs"
+                                    className="!text-xs !rounded-none !py-1 !px-2"
                                     closable
                                     onClose={() => setValidationMsg(null)}
                                 />
@@ -528,7 +530,7 @@ export default function GuideFlowsPanel({
                                                 value={editorJson}
                                                 onChange={(e) => setEditorJson(e.target.value)}
                                                 className="font-mono text-[11px] flex-1"
-                                                style={{ minHeight: 280 }}
+                                                style={{ minHeight: 240 }}
                                             />
                                         ),
                                     },
@@ -537,85 +539,102 @@ export default function GuideFlowsPanel({
                         </div>
                     )}
                 </Card>
-            </div>
 
-            <Card
-                size="small"
-                title="Simulator (draft or published)"
-                className="!rounded-xl"
-                extra={
-                    <Button
-                        type="primary"
-                        icon={<PlayCircleOutlined />}
-                        onClick={handleStartSim}
-                        disabled={!selected || simBusy}
-                        style={{ backgroundColor: themeColor }}
-                    >
-                        Start session
-                    </Button>
-                }
-            >
-                {!selected ? (
-                    <Text type="secondary">Select a flow to simulate.</Text>
-                ) : (
-                    <div className="flex flex-col gap-2">
-                        <div className="text-[11px] text-gray-500">
-                            Conversation: {simConvId ?? "—"} · Waiting for input: {waitingInput ? "yes" : "no"}
-                        </div>
-                        <div className="max-h-[240px] overflow-y-auto custom-scrollbar space-y-2 p-2 rounded-lg bg-gray-50 dark:bg-gray-900/40">
-                            {simHistory.length === 0 ? (
-                                <Text type="secondary" className="text-xs">
-                                    Click Start session to run automated nodes until the first listen step.
-                                </Text>
-                            ) : (
-                                simHistory.map((m, i) => (
-                                    <div
-                                        key={i}
-                                        className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
-                                    >
+                {/* Col 3: Top-First Simulator Console */}
+                <Card
+                    size="small"
+                    title={<span className="font-mono text-[11px] uppercase tracking-wider">Simulator (draft or published)</span>}
+                    className="!rounded-none flex flex-col lg:col-span-4 min-h-0"
+                    style={{ borderTop: "2px solid #a855f7" }}
+                    styles={{ body: { padding: 8, display: "flex", flexDirection: "column", gap: 6, flex: 1, minHeight: 0 } }}
+                    extra={
+                        <Button
+                            size="small"
+                            type="primary"
+                            icon={<PlayCircleOutlined />}
+                            onClick={handleStartSim}
+                            disabled={!selected || simBusy}
+                            style={{ backgroundColor: themeColor, borderRadius: 0 }}
+                        >
+                            Start session
+                        </Button>
+                    }
+                >
+                    {!selected ? (
+                        <Text type="secondary" className="text-xs">Select a flow to simulate.</Text>
+                    ) : (
+                        <div className="flex flex-col gap-1.5 flex-1 min-h-0">
+                            {/* Top-Docked Simulator Reply Bar */}
+                            <div
+                                className="p-1.5 border border-white/10 bg-black/20"
+                                style={{ borderLeft: `2px solid ${themeColor}` }}
+                            >
+                                <div className="flex items-center justify-between mb-1 font-mono text-[10px] text-gray-400">
+                                    <span>CONV: {simConvId ? simConvId.slice(0, 8) : "—"}</span>
+                                    <span>WAIT_INPUT: {waitingInput ? "YES" : "NO"}</span>
+                                </div>
+                                <Space.Compact className="w-full">
+                                    <Input
+                                        size="small"
+                                        value={simInput}
+                                        onChange={(e) => setSimInput(e.target.value)}
+                                        placeholder={
+                                            waitingInput ? "Reply as customer…" : "Start session first or wait for prompt"
+                                        }
+                                        disabled={!simConvId || !waitingInput || simBusy}
+                                        onPressEnter={handleSimSend}
+                                    />
+                                    <Button
+                                        size="small"
+                                        type="primary"
+                                        icon={<SendOutlined />}
+                                        onClick={handleSimSend}
+                                        loading={simBusy}
+                                        disabled={!simConvId || !waitingInput}
+                                        style={{ backgroundColor: themeColor, borderRadius: 0 }}
+                                    />
+                                </Space.Compact>
+                            </div>
+
+                            {/* Simulator Transcript */}
+                            <div className="flex-1 min-h-[200px] max-h-[380px] overflow-y-auto custom-scrollbar space-y-1.5 p-2 rounded-none border border-white/10 bg-white/[0.02]">
+                                {simHistory.length === 0 ? (
+                                    <Text type="secondary" className="text-xs">
+                                        Click Start session to run automated nodes until the first listen step.
+                                    </Text>
+                                ) : (
+                                    simHistory.map((m, i) => (
                                         <div
-                                            className="max-w-[90%] rounded-xl px-3 py-2 text-xs prose prose-sm dark:prose-invert max-w-none [&_p]:m-0"
-                                            style={{
-                                                background:
-                                                    m.role === "user"
-                                                        ? themeColor
-                                                        : "rgba(var(--theme-color-rgb,139,92,246),0.08)",
-                                                color: m.role === "user" ? "#fff" : "inherit",
-                                            }}
+                                            key={i}
+                                            className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
                                         >
-                                            <ReactMarkdown>{m.content}</ReactMarkdown>
-                                            {m.references && m.references.length > 0 && (
-                                                <div className="mt-1 text-[10px] opacity-80">
-                                                    {m.references.length} source(s) cited
-                                                </div>
-                                            )}
+                                            <div
+                                                className="max-w-[92%] rounded-none px-2.5 py-1.5 text-xs prose prose-sm dark:prose-invert max-w-none [&_p]:m-0"
+                                                style={{
+                                                    border: "1px solid rgba(148, 163, 184, 0.18)",
+                                                    borderLeft: m.role === "assistant" ? `2px solid ${themeColor}` : undefined,
+                                                    background:
+                                                        m.role === "user"
+                                                            ? themeColor
+                                                            : "rgba(var(--theme-color-rgb,139,92,246),0.08)",
+                                                    color: m.role === "user" ? "#fff" : "inherit",
+                                                }}
+                                            >
+                                                <ReactMarkdown>{m.content}</ReactMarkdown>
+                                                {m.references && m.references.length > 0 && (
+                                                    <div className="mt-1 font-mono text-[10px] opacity-80">
+                                                        {m.references.length} source(s) cited
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
-                                    </div>
-                                ))
-                            )}
+                                    ))
+                                )}
+                            </div>
                         </div>
-                        <Space.Compact className="w-full">
-                            <Input
-                                value={simInput}
-                                onChange={(e) => setSimInput(e.target.value)}
-                                placeholder={
-                                    waitingInput ? "Reply as customer…" : "Start session first or wait for prompt"
-                                }
-                                disabled={!simConvId || !waitingInput || simBusy}
-                                onPressEnter={handleSimSend}
-                            />
-                            <Button
-                                type="primary"
-                                icon={<SendOutlined />}
-                                onClick={handleSimSend}
-                                loading={simBusy}
-                                disabled={!simConvId || !waitingInput}
-                                style={{ backgroundColor: themeColor }}
-                            />
-                        </Space.Compact>
-                    </div>
-                )}
-            </Card>
+                    )}
+                </Card>
+            </div>
         </div>
     );
 }

@@ -75,7 +75,7 @@ export const PROVIDER_LABELS: Record<LlmProvider, string> = {
 export const AFFECTED_MODULES = [
     'AI Studio Chat & RAG',
     'Guide Flows & Reports',
-    'UMKM WhatsApp',
+    'SME WhatsApp',
     'CRM AI',
     'ITSM AI',
     'Project Management AI',

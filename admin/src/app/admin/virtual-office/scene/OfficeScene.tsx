@@ -307,6 +307,10 @@ function CameraRig() {
 
     useEffect(() => {
         const c = controls.current;
+        if (typeof window !== "undefined") {
+            (window as unknown as { __voCameraControls?: CameraControls | null }).__voCameraControls = c;
+            (window as unknown as { __voAgentObjects?: typeof agentObjects }).__voAgentObjects = agentObjects;
+        }
         if (!c) return;
         const { cameraMode, focusZone, selectedId } = useOfficeStore.getState();
         transitionUntil.current = performance.now() + 900;
@@ -331,6 +335,11 @@ function CameraRig() {
     // Keep a walking agent in frame while following.
     useFrame(() => {
         const c = controls.current;
+        if (typeof window !== "undefined") {
+            (window as unknown as { __voCameraControls?: CameraControls | null }).__voCameraControls = c;
+            (window as unknown as { __voAgentObjects?: typeof agentObjects }).__voAgentObjects = agentObjects;
+            if ((window as unknown as { __voManualCamera?: boolean }).__voManualCamera) return;
+        }
         const { cameraMode, selectedId } = useOfficeStore.getState();
         if (!c || cameraMode !== "follow" || !selectedId) {
             tracking.current = null;
@@ -355,7 +364,7 @@ function CameraRig() {
         <CameraControls
             ref={controls}
             makeDefault
-            minDistance={3}
+            minDistance={1.2}
             maxDistance={80}
             maxPolarAngle={Math.PI / 2.15}
             smoothTime={0.35}

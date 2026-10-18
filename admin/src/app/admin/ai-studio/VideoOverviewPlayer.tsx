@@ -139,7 +139,7 @@ export default function VideoOverviewPlayer({ content, themeColor }: Props) {
     };
 
     if (slides.length === 0) {
-        return <Alert type="info" showIcon message="Konten video overview kosong atau tidak bisa diparse." />;
+        return <Alert type="info" showIcon message="Video overview content is empty or could not be parsed." />;
     }
 
     const slide = slides[index];
@@ -152,9 +152,10 @@ export default function VideoOverviewPlayer({ content, themeColor }: Props) {
             )}
             {/* Slide canvas (16:9) */}
             <div
-                className="relative w-full rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700"
+                className="relative w-full rounded-none overflow-hidden border border-white/10"
                 style={{
                     aspectRatio: "16 / 9",
+                    borderTop: `2px solid ${themeColor}`,
                     background: `linear-gradient(135deg, ${themeColor}14, ${themeColor}05)`,
                 }}
             >
@@ -168,24 +169,24 @@ export default function VideoOverviewPlayer({ content, themeColor }: Props) {
                         className="absolute inset-0 flex flex-col justify-center px-6 py-4"
                     >
                         <div
-                            className="text-[10px] uppercase tracking-widest mb-2 font-semibold"
+                            className="font-mono text-[9.5px] uppercase tracking-[0.16em] mb-1.5 font-semibold tabular-nums"
                             style={{ color: themeColor }}
                         >
-                            {index + 1} / {slides.length}
+                            SLIDE // {index + 1} / {slides.length}
                         </div>
-                        <Title level={4} className="!mb-3 !text-base" style={{ color: themeColor }}>
+                        <Title level={4} className="!mb-2 !text-[13px] font-mono uppercase tracking-[0.06em]" style={{ color: themeColor }}>
                             {slide.heading}
                         </Title>
-                        <ul className="space-y-1.5 list-none p-0 m-0">
+                        <ul className="space-y-1 list-none p-0 m-0">
                             {slide.bullets.map((b, i) => (
                                 <motion.li
                                     key={i}
                                     initial={{ opacity: 0, y: 6 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     transition={{ delay: 0.15 + i * 0.1 }}
-                                    className="flex items-start gap-2 text-[13px] leading-snug"
+                                    className="flex items-start gap-2 text-[11.5px] leading-snug"
                                 >
-                                    <span style={{ color: themeColor }}>•</span>
+                                    <span style={{ color: themeColor }}>■</span>
                                     <span>{b}</span>
                                 </motion.li>
                             ))}
@@ -194,16 +195,16 @@ export default function VideoOverviewPlayer({ content, themeColor }: Props) {
                 </AnimatePresence>
             </div>
 
-            {/* Progress dots */}
+            {/* Progress bars */}
             <div className="flex items-center justify-center gap-1.5 my-2">
                 {slides.map((_, i) => (
                     <button
                         key={i}
                         aria-label={`Slide ${i + 1}`}
                         onClick={() => goTo(i)}
-                        className="h-1.5 rounded-full transition-all"
+                        className="h-1.5 rounded-none transition-all cursor-pointer border-0 p-0"
                         style={{
-                            width: i === index ? 18 : 6,
+                            width: i === index ? 20 : 8,
                             backgroundColor: i === index ? themeColor : `${themeColor}55`,
                         }}
                     />
@@ -211,29 +212,29 @@ export default function VideoOverviewPlayer({ content, themeColor }: Props) {
             </div>
 
             {/* Transport controls */}
-            <div className="flex items-center gap-2">
-                <Button shape="circle" icon={<StepBackwardOutlined />} onClick={() => goTo(index - 1)} disabled={index === 0} title="Sebelumnya" />
+            <div className="flex items-center gap-1.5">
+                <Button size="small" icon={<StepBackwardOutlined />} onClick={() => goTo(index - 1)} disabled={index === 0} title="Previous" />
                 {supported && (!playing ? (
                     <Button
+                        size="small"
                         type="primary"
-                        shape="circle"
                         icon={<CaretRightOutlined />}
                         onClick={handlePlay}
                         style={{ backgroundColor: themeColor, borderColor: themeColor }}
-                        title="Putar"
+                        title="Play"
                     />
                 ) : (
                     <Button
+                        size="small"
                         type="primary"
-                        shape="circle"
                         icon={<PauseOutlined />}
                         onClick={handlePause}
                         style={{ backgroundColor: themeColor, borderColor: themeColor }}
-                        title="Jeda"
+                        title="Pause"
                     />
                 ))}
-                {supported && <Button shape="circle" icon={<StopOutlined />} onClick={handleStop} title="Berhenti" />}
-                <Button shape="circle" icon={<StepForwardOutlined />} onClick={() => goTo(index + 1)} disabled={index === slides.length - 1} title="Berikutnya" />
+                {supported && <Button size="small" icon={<StopOutlined />} onClick={handleStop} title="Stop" />}
+                <Button size="small" icon={<StepForwardOutlined />} onClick={() => goTo(index + 1)} disabled={index === slides.length - 1} title="Next" />
                 {supported && (
                     <>
                         <Select
@@ -242,11 +243,11 @@ export default function VideoOverviewPlayer({ content, themeColor }: Props) {
                             value={voice || undefined}
                             options={voiceOptions}
                             onChange={setVoice}
-                            placeholder="Suara"
+                            placeholder="Voice"
                             popupMatchSelectWidth={false}
                         />
                         <Space size={4} className="flex-1 min-w-[100px]">
-                            <Text className="text-[10px] text-gray-400">Kec.</Text>
+                            <Text className="font-mono text-[10px] uppercase text-gray-400">Spd.</Text>
                             <Slider
                                 className="flex-1"
                                 min={0.5}
@@ -266,7 +267,7 @@ export default function VideoOverviewPlayer({ content, themeColor }: Props) {
                     className="mt-2"
                     type="warning"
                     showIcon
-                    message="Narasi suara tidak didukung browser ini — slide tetap bisa dinavigasi manual."
+                    message="Voice narration is not supported in this browser — slides can still be navigated manually."
                 />
             )}
 

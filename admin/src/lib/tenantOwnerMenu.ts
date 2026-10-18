@@ -21,7 +21,7 @@ export function filterMenuTreeForAppRole(items: MenuTreeItem[], appRole: AppRole
         .filter((item) => {
             const path = item.path;
             if (appRole === "tenant_owner") {
-                if (path === "/admin/ai-studio/umkm") return false;
+                if (path === "/admin/ai-studio/partner" || path === "/admin/ai-studio/umkm") return false;
                 if (path === "/admin/ai-studio/percakapan-wa") return false;
                 return true;
             }

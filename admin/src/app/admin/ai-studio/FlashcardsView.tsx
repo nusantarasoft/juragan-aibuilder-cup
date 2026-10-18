@@ -1,9 +1,11 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Alert, Button, Progress, Space, Typography } from "antd";
 import { LeftOutlined, RightOutlined, RetweetOutlined, SwapOutlined } from "@ant-design/icons";
 import { parseFlashcards, type Flashcard } from "./flashcards";
+import { useAdminLayout } from "@/components/layout/CMSLayoutContext";
+import { getVOTheme } from "@/components/layout/voTheme";
 
 const { Text } = Typography;
 
@@ -19,17 +21,25 @@ function shuffle<T>(arr: T[]): T[] {
 }
 
 export default function FlashcardsView({ content, themeColor }: Props) {
+    const darkMode = useAdminLayout((s) => s.darkMode);
+    const t = getVOTheme(darkMode);
     const parsed = useMemo<Flashcard[] | null>(() => parseFlashcards(content), [content]);
     const [order, setOrder] = useState<Flashcard[] | null>(parsed);
     const [idx, setIdx] = useState(0);
     const [flipped, setFlipped] = useState(false);
 
+    useEffect(() => {
+        setOrder(parsed);
+        setIdx(0);
+        setFlipped(false);
+    }, [parsed]);
+
     const cards = order ?? parsed;
     if (!cards) {
-        return <Alert type="info" showIcon message="Flashcards tidak bisa diparse — lihat teks mentah." />;
+        return <Alert type="info" showIcon message="Flashcards could not be parsed — view raw text instead." />;
     }
 
-    const card = cards[idx];
+    const card = cards[idx] ?? cards[0];
     const go = (delta: number) => {
         setFlipped(false);
         setIdx((prev) => (prev + delta + cards.length) % cards.length);
@@ -43,8 +53,8 @@ export default function FlashcardsView({ content, themeColor }: Props) {
     return (
         <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
-                <Text type="secondary" className="text-xs">
-                    Kartu {idx + 1} / {cards.length}
+                <Text type="secondary" className="font-mono text-xs tabular-nums">
+                    Card {idx + 1} / {cards.length}
                 </Text>
                 <Progress
                     percent={Math.round(((idx + 1) / cards.length) * 100)}
@@ -62,39 +72,41 @@ export default function FlashcardsView({ content, themeColor }: Props) {
                 onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") setFlipped((f) => !f);
                 }}
-                className="cursor-pointer select-none rounded-xl border-2 flex items-center justify-center text-center p-6 min-h-[200px] transition-colors"
+                className="cursor-pointer select-none rounded-none flex items-center justify-center text-center p-6 min-h-[200px] transition-colors"
                 style={{
-                    borderColor: themeColor,
-                    background: flipped ? `${themeColor}12` : "var(--card-bg, #fff)",
+                    border: `1px solid ${t.border}`,
+                    borderTop: `2px solid ${themeColor}`,
+                    background: flipped ? `${themeColor}14` : t.cardBg,
                 }}
             >
                 <div>
-                    <Text className="text-[10px] uppercase tracking-wider block mb-2" style={{ color: themeColor }}>
-                        {flipped ? "Jawaban" : "Pertanyaan"}
+                    <Text className="font-mono text-[9.5px] font-semibold uppercase tracking-[0.14em] block mb-1.5" style={{ color: themeColor }}>
+                        {flipped ? "Answer" : "Question"}
                     </Text>
-                    <Text className="text-base font-medium block whitespace-pre-wrap">
+                    <Text className="text-[12.5px] font-medium block whitespace-pre-wrap leading-relaxed" style={{ color: t.textPrimary }}>
                         {flipped ? card.back : card.front}
                     </Text>
-                    <Text type="secondary" className="text-[10px] block mt-3">
-                        <SwapOutlined /> klik untuk membalik
+                    <Text type="secondary" className="font-mono text-[9.5px] uppercase tracking-[0.1em] block mt-2.5">
+                        <SwapOutlined /> click to flip
                     </Text>
                 </div>
             </div>
 
             <div className="flex items-center justify-between">
-                <Button icon={<LeftOutlined />} onClick={() => go(-1)}>
-                    Sebelumnya
+                <Button size="small" icon={<LeftOutlined />} onClick={() => go(-1)}>
+                    Previous
                 </Button>
                 <Space>
-                    <Button icon={<RetweetOutlined />} onClick={doShuffle} title="Acak">
-                        Acak
+                    <Button size="small" icon={<RetweetOutlined />} onClick={doShuffle} title="Shuffle">
+                        Shuffle
                     </Button>
                     <Button
+                        size="small"
                         type="primary"
                         onClick={() => go(1)}
                         style={{ backgroundColor: themeColor, borderColor: themeColor }}
                     >
-                        Berikutnya <RightOutlined />
+                        Next <RightOutlined />
                     </Button>
                 </Space>
             </div>

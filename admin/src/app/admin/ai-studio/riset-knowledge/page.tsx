@@ -41,7 +41,7 @@ const STATUS_OPTIONS: { value: StudioResearchItemStatus | 'all'; label: string }
     { value: 'merged', label: 'Merged' },
     { value: 'rejected', label: 'Rejected' },
     { value: 'expired', label: 'Expired' },
-    { value: 'all', label: 'Semua' },
+    { value: 'all', label: 'All' },
 ];
 
 const STATUS_COLOR: Record<string, string> = {
@@ -86,7 +86,7 @@ export default function RisetKnowledgePage() {
             setRows(list);
             setLastRun(run);
         } catch (e) {
-            message.error(e instanceof Error ? e.message : 'Gagal memuat riset');
+            message.error(e instanceof Error ? e.message : 'Failed to load research');
         } finally {
             setLoading(false);
         }
@@ -103,7 +103,7 @@ export default function RisetKnowledgePage() {
             form.setFieldsValue({ title: item.title, summary: item.summary });
             setDrawerOpen(true);
         } catch (e) {
-            message.error(e instanceof Error ? e.message : 'Gagal memuat detail');
+            message.error(e instanceof Error ? e.message : 'Failed to load detail');
         }
     };
 
@@ -111,10 +111,10 @@ export default function RisetKnowledgePage() {
         setBusy(true);
         try {
             const res = await studioService.runResearchNow();
-            message.success(`Run selesai — ${res.itemsCreated} item baru (run ${res.runId})`);
+            message.success(`Run complete — ${res.itemsCreated} new items (run ${res.runId})`);
             await load();
         } catch (e) {
-            message.error(e instanceof Error ? e.message : 'Run gagal');
+            message.error(e instanceof Error ? e.message : 'Run failed');
         } finally {
             setBusy(false);
         }
@@ -127,10 +127,10 @@ export default function RisetKnowledgePage() {
         try {
             const updated = await studioService.updateResearchItem(selected.id, values);
             setSelected(updated);
-            message.success('Ringkasan disimpan');
+            message.success('Summary saved');
             await load();
         } catch (e) {
-            message.error(e instanceof Error ? e.message : 'Simpan gagal');
+            message.error(e instanceof Error ? e.message : 'Save failed');
         } finally {
             setBusy(false);
         }
@@ -141,11 +141,11 @@ export default function RisetKnowledgePage() {
         setBusy(true);
         try {
             await studioService.approveResearchItem(selected.id);
-            message.success('Disetujui dan di-merge ke notebook kurikulum');
+            message.success('Approved and merged into curriculum notebook');
             setDrawerOpen(false);
             await load();
         } catch (e) {
-            message.error(e instanceof Error ? e.message : 'Approve gagal');
+            message.error(e instanceof Error ? e.message : 'Approve failed');
         } finally {
             setBusy(false);
         }
@@ -155,12 +155,12 @@ export default function RisetKnowledgePage() {
         if (!selected) return;
         setBusy(true);
         try {
-            await studioService.rejectResearchItem(selected.id, 'Ditolak admin');
-            message.info('Item ditolak');
+            await studioService.rejectResearchItem(selected.id, 'Rejected by admin');
+            message.info('Item rejected');
             setDrawerOpen(false);
             await load();
         } catch (e) {
-            message.error(e instanceof Error ? e.message : 'Reject gagal');
+            message.error(e instanceof Error ? e.message : 'Reject failed');
         } finally {
             setBusy(false);
         }
@@ -171,12 +171,12 @@ export default function RisetKnowledgePage() {
         setBusy(true);
         try {
             await studioService.unmergeResearchItem(selected.id);
-            message.success('Unmerge — source dihapus, status kembali approved');
+            message.success('Unmerged — source removed, status reverted to approved');
             const item = await studioService.getResearchItem(selected.id);
             setSelected(item);
             await load();
         } catch (e) {
-            message.error(e instanceof Error ? e.message : 'Unmerge gagal');
+            message.error(e instanceof Error ? e.message : 'Unmerge failed');
         } finally {
             setBusy(false);
         }
@@ -184,7 +184,7 @@ export default function RisetKnowledgePage() {
 
     const columns = [
         {
-            title: 'Judul',
+            title: 'Title',
             dataIndex: 'title',
             key: 'title',
             render: (t: string, row: StudioResearchItem) => (
@@ -193,7 +193,7 @@ export default function RisetKnowledgePage() {
                 </Button>
             ),
         },
-        { title: 'Kategori', dataIndex: 'category', key: 'category', width: 120 },
+        { title: 'Category', dataIndex: 'category', key: 'category', width: 120 },
         {
             title: 'Status',
             dataIndex: 'status',
@@ -207,10 +207,10 @@ export default function RisetKnowledgePage() {
             render: (_: unknown, row: StudioResearchItem) => (
                 <Space wrap size={4}>
                     {row.validation_flags?.quote_validation_failed && (
-                        <Tag color="red">kutip invalid</Tag>
+                        <Tag color="red">invalid quote</Tag>
                     )}
                     {row.validation_flags?.dedupe_unchecked && (
-                        <Tag color="purple">dedupe belum dicek</Tag>
+                        <Tag color="purple">dedupe unchecked</Tag>
                     )}
                     {(row.dedupe_hits?.flags || []).map((f) => (
                         <Tag key={f} color="orange">
@@ -221,11 +221,11 @@ export default function RisetKnowledgePage() {
             ),
         },
         {
-            title: 'Dibuat',
+            title: 'Created',
             dataIndex: 'created_at',
             key: 'created_at',
             width: 180,
-            render: (v: string) => new Date(v).toLocaleString('id-ID'),
+            render: (v: string) => new Date(v).toLocaleString('en-US'),
         },
     ];
 
@@ -235,17 +235,17 @@ export default function RisetKnowledgePage() {
             fallback={
                 <Alert
                     type="warning"
-                    message="Riset Knowledge hanya untuk super admin Nusantarasoft."
+                    message="Knowledge Research is restricted to Nusantarasoft super admins."
                     showIcon
                 />
             }
         >
             <CMSLayout
-                title="Riset Knowledge UMKM"
-                subTitle="Fetch regulasi resmi → review → merge ke notebook kurikulum (KASIR_CONSULT_NOTEBOOK_ID)"
+                title="SME Knowledge Research"
+                subTitle="Fetch official regulations → review → merge into curriculum notebook (KASIR_CONSULT_NOTEBOOK_ID)"
                 extra={[
-                    <Button key="reload" icon={<ReloadOutlined />} onClick={load} loading={loading}>
-                        Muat ulang
+                    <Button key="reload" icon={<ReloadOutlined />} onClick={load} loading={loading} style={{ borderRadius: 0 }}>
+                        Reload
                     </Button>,
                     <Button
                         key="run"
@@ -253,14 +253,15 @@ export default function RisetKnowledgePage() {
                         icon={<ExperimentOutlined />}
                         onClick={runNow}
                         loading={busy}
+                        style={{ borderRadius: 0 }}
                     >
-                        Jalankan riset sekarang
+                        Run research now
                     </Button>,
                 ]}
             >
                 {lastRun && (
                     <Alert
-                        style={{ marginBottom: 16 }}
+                        style={{ marginBottom: 16, borderRadius: 0 }}
                         type={
                             lastRun.status === 'completed'
                                 ? 'success'
@@ -273,19 +274,19 @@ export default function RisetKnowledgePage() {
                         showIcon
                         message={
                             <Space wrap>
-                                <span>Run terakhir</span>
-                                <Tag color={RUN_STATUS_COLOR[lastRun.status] || 'default'}>
+                                <span>Last run</span>
+                                <Tag color={RUN_STATUS_COLOR[lastRun.status] || 'default'} style={{ borderRadius: 0 }}>
                                     {lastRun.status}
                                 </Tag>
                                 {typeof lastRun.stats?.itemsCreated === 'number' && (
                                     <Text type="secondary">
-                                        {lastRun.stats.itemsCreated} item baru
+                                        {lastRun.stats.itemsCreated} new items
                                     </Text>
                                 )}
                                 {typeof lastRun.stats?.errors === 'number' &&
                                     lastRun.stats.errors > 0 && (
                                         <Text type="danger">
-                                            {lastRun.stats.errors} URL gagal
+                                            {lastRun.stats.errors} URLs failed
                                         </Text>
                                     )}
                             </Space>
@@ -293,9 +294,9 @@ export default function RisetKnowledgePage() {
                         description={
                             <>
                                 <div>
-                                    {new Date(lastRun.started_at).toLocaleString('id-ID')}
+                                    {new Date(lastRun.started_at).toLocaleString('en-US')}
                                     {lastRun.finished_at
-                                        ? ` → ${new Date(lastRun.finished_at).toLocaleString('id-ID')}`
+                                        ? ` → ${new Date(lastRun.finished_at).toLocaleString('en-US')}`
                                         : ''}
                                     {lastRun.trigger_type === 'manual' ? ' · manual' : ' · cron'}
                                 </div>
@@ -313,7 +314,7 @@ export default function RisetKnowledgePage() {
                     />
                 )}
 
-                <Card bordered={false} style={{ marginBottom: 16 }}>
+                <Card style={{ marginBottom: 16, borderRadius: 0, borderTop: '2px solid #fb923c' }}>
                     <Space wrap>
                         <Select
                             style={{ width: 160 }}
@@ -323,7 +324,7 @@ export default function RisetKnowledgePage() {
                         />
                         <Select
                             allowClear
-                            placeholder="Filter kategori"
+                            placeholder="Filter category"
                             style={{ width: 180 }}
                             value={category}
                             onChange={setCategory}
@@ -344,14 +345,14 @@ export default function RisetKnowledgePage() {
                     width={720}
                     open={drawerOpen}
                     onClose={() => setDrawerOpen(false)}
-                    title={selected?.title || 'Detail riset'}
+                    title={selected?.title || 'Research detail'}
                     extra={
                         selected && (
                             <Space>
                                 {selected.status === 'pending' && (
                                     <>
                                         <Button icon={<CloseOutlined />} onClick={reject} loading={busy}>
-                                            Tolak
+                                            Reject
                                         </Button>
                                         <Button
                                             type="primary"
@@ -379,12 +380,12 @@ export default function RisetKnowledgePage() {
                                 <Descriptions.Item label="Status">
                                     <Tag color={STATUS_COLOR[selected.status]}>{selected.status}</Tag>
                                 </Descriptions.Item>
-                                <Descriptions.Item label="Topik">{selected.topic_key}</Descriptions.Item>
-                                <Descriptions.Item label="Notebook target">
+                                <Descriptions.Item label="Topic">{selected.topic_key}</Descriptions.Item>
+                                <Descriptions.Item label="Target notebook">
                                     <Text code>{selected.target_notebook_id}</Text>
                                 </Descriptions.Item>
                                 {selected.effective_date && (
-                                    <Descriptions.Item label="Tanggal berlaku">
+                                    <Descriptions.Item label="Effective date">
                                         {selected.effective_date}
                                     </Descriptions.Item>
                                 )}
@@ -397,7 +398,7 @@ export default function RisetKnowledgePage() {
                                     <Descriptions.Item label="Reviewer">
                                         {selected.reviewer_id}
                                         {selected.decided_at
-                                            ? ` · ${new Date(selected.decided_at).toLocaleString('id-ID')}`
+                                            ? ` · ${new Date(selected.decided_at).toLocaleString('en-US')}`
                                             : ''}
                                     </Descriptions.Item>
                                 )}
@@ -408,7 +409,7 @@ export default function RisetKnowledgePage() {
                                     type="warning"
                                     showIcon
                                     style={{ marginBottom: 16 }}
-                                    message="Similarity vs chunk notebook"
+                                    message="Similarity vs notebook chunks"
                                     description={
                                         <ul style={{ margin: 0, paddingLeft: 18 }}>
                                             {(selected.dedupe_hits?.hits || []).map((h) => (
@@ -422,24 +423,24 @@ export default function RisetKnowledgePage() {
                                 />
                             )}
 
-                            <Title level={5}>Sumber</Title>
+                            <Text strong className="font-mono text-[10.5px] uppercase tracking-[0.12em] block mb-1.5">Sources</Text>
                             {(selected.sources || []).map((s) => (
                                 <Card key={s.url} size="small" style={{ marginBottom: 8 }}>
-                                    <a href={s.url} target="_blank" rel="noreferrer">
+                                    <a href={s.url} target="_blank" rel="noreferrer" className="text-[11px]">
                                         <LinkOutlined /> {s.url}
                                     </a>
-                                    <Paragraph type="secondary" style={{ marginTop: 8, marginBottom: 4 }}>
-                                        Diambil: {s.fetched_at}
+                                    <Paragraph type="secondary" style={{ marginTop: 4, marginBottom: 2, fontSize: 10.5 }}>
+                                        Fetched: {s.fetched_at}
                                     </Paragraph>
-                                    <Text italic>&ldquo;{s.quoted_snippet}&rdquo;</Text>
+                                    <Text italic style={{ fontSize: 11 }}>&ldquo;{s.quoted_snippet}&rdquo;</Text>
                                 </Card>
                             ))}
 
-                            <Title level={5} style={{ marginTop: 16 }}>
-                                Ringkasan
-                            </Title>
+                            <Text strong className="font-mono text-[10.5px] uppercase tracking-[0.12em] block mt-3 mb-1.5">
+                                Summary
+                            </Text>
                             <Form form={form} layout="vertical">
-                                <Form.Item name="title" label="Judul" rules={[{ required: true }]}>
+                                <Form.Item name="title" label="Title" rules={[{ required: true }]}>
                                     <Input disabled={!['pending', 'approved'].includes(selected.status)} />
                                 </Form.Item>
                                 <Form.Item name="summary" label="Summary" rules={[{ required: true }]}>
@@ -450,7 +451,7 @@ export default function RisetKnowledgePage() {
                                 </Form.Item>
                                 {['pending', 'approved'].includes(selected.status) && (
                                     <Button onClick={saveEdit} loading={busy}>
-                                        Simpan edit
+                                        Save changes
                                     </Button>
                                 )}
                             </Form>

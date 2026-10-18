@@ -35,12 +35,12 @@ import { rewriteInlineCitations, citationIndexFromHref } from "./chatActions";
 const { Text } = Typography;
 
 export const CHAT_LANGUAGES: { value: string; label: string }[] = [
-    { value: "id", label: "Indonesia" },
     { value: "en", label: "English" },
-    { value: "jv", label: "Jawa" },
-    { value: "ms", label: "Melayu" },
-    { value: "ar", label: "العربية" },
-    { value: "zh", label: "中文" },
+    { value: "id", label: "Indonesian" },
+    { value: "jv", label: "Javanese" },
+    { value: "ms", label: "Malay" },
+    { value: "ar", label: "Arabic" },
+    { value: "zh", label: "Chinese" },
 ];
 
 type CitationRef = NonNullable<StudioChatMessage["references"]>[number];
@@ -133,7 +133,31 @@ type Props = {
     onRegenerate?: () => void;
     language?: string;
     onSetLanguage?: (lang: string) => void;
+    layoutResetSignal?: number;
 };
+
+export const QUICK_TACTICAL_PROMPTS: { code: string; label: string; prompt: string }[] = [
+    {
+        code: "SUM",
+        label: "Executive Summary",
+        prompt: "Provide a concise, structured executive summary of all selected sources.",
+    },
+    {
+        code: "KEY",
+        label: "Key Findings",
+        prompt: "Extract the key takeaways, critical metrics, and primary conclusions from these sources.",
+    },
+    {
+        code: "FAQ",
+        label: "Generate FAQ",
+        prompt: "Compile a list of the most frequently asked questions (FAQ) with accurate answers grounded in the sources.",
+    },
+    {
+        code: "GAP",
+        label: "Risk & Gap Analysis",
+        prompt: "Identify potential risks, information gaps, or action items based on the indexed documents.",
+    },
+];
 
 export default function AIAssistantPanel({
     themeColor,
@@ -160,13 +184,39 @@ export default function AIAssistantPanel({
     onCitationClick,
     onSaveToNote,
     onRegenerate,
-    language = "id",
+    language = "en",
     onSetLanguage,
+    layoutResetSignal = 0,
 }: Props) {
     const [chatInput, setChatInput] = useState("");
     const [showReferences, setShowReferences] = useState<number | null>(null);
     const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
+    const [dockTop, setDockTop] = useState<boolean>(true);
+    const [showBrief, setShowBrief] = useState<boolean>(true);
+    const [showPrompts, setShowPrompts] = useState<boolean>(true);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const inputRef = useRef<any>(null);
+
+    useEffect(() => {
+        if (layoutResetSignal > 0) {
+            setDockTop(true);
+            setShowBrief(true);
+            setShowPrompts(true);
+        }
+    }, [layoutResetSignal]);
+
+    // Press "/" anywhere (when not inside an input/textarea) to focus chat command bar
+    useEffect(() => {
+        const onKey = (e: KeyboardEvent) => {
+            const tag = (document.activeElement as HTMLElement | null)?.tagName;
+            if (e.key === "/" && tag !== "INPUT" && tag !== "TEXTAREA" && tag !== "SELECT" && !e.metaKey && !e.ctrlKey && !e.altKey) {
+                e.preventDefault();
+                inputRef.current?.focus?.();
+            }
+        };
+        window.addEventListener("keydown", onKey);
+        return () => window.removeEventListener("keydown", onKey);
+    }, []);
 
     const handleCopy = async (idx: number, text: string) => {
         try {
@@ -186,21 +236,24 @@ export default function AIAssistantPanel({
     })();
 
     useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        if (chatHistory.length > 0) {
+            messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        }
     }, [chatHistory, isChatting]);
 
     const sourcesIndexing = sourceStats.inProgress > 0;
     const canSendFree =
         sources.length > 0 && (sourceStats.anyIndexed || sourcesIndexing);
+    const totalChunks = sources.reduce((n, s) => n + (s.chunk_count ?? 0), 0);
 
     const chatInputPlaceholder =
         sources.length === 0
-            ? "Tambahkan sumber dulu…"
+            ? "Add sources in the left panel first…"
             : chatMode === "guided" && guidedFlow
               ? waitingInput
-                  ? "Balas di sini…"
-                  : "Tunggu respons asisten…"
-              : "Tanya tentang sumber Anda…";
+                  ? "Reply here… (press / to focus)"
+                  : "Waiting for assistant response…"
+              : "Ask anything about your sources… (press / to focus)";
 
     const inputDisabled =
         isChatting ||
@@ -219,7 +272,7 @@ export default function AIAssistantPanel({
         key: c.id,
         label: (
             <div className="max-w-[240px]">
-                <div className="text-xs truncate">{c.title || "Percakapan"}</div>
+                <div className="text-xs truncate">{c.title || "Conversation"}</div>
                 <div className="text-[10px] text-gray-400">
                     {new Date(c.updated_at ?? c.created_at).toLocaleString()}
                 </div>
@@ -228,10 +281,86 @@ export default function AIAssistantPanel({
         onClick: () => onResumeConversation(c.id),
     }));
 
+    const renderCommandComposer = (position: "top" | "bottom") => (
+        <div
+            className={`px-2.5 py-2 shrink-0 bg-white/[0.02] ${
+                position === "top" ? "border-b border-white/10" : "border-t border-white/10"
+            }`}
+            style={{ borderLeft: `2px solid ${themeColor}` }}
+        >
+            <div className="flex items-center gap-1.5">
+                <Tooltip title="Press / anywhere to focus the command bar" placement="bottom">
+                    <span
+                        className="hidden sm:inline-flex items-center justify-center px-1.5 h-7 font-mono text-[10px] font-bold uppercase tracking-wider border shrink-0 select-none"
+                        style={{
+                            borderColor: `${themeColor}66`,
+                            backgroundColor: `${themeColor}18`,
+                            color: themeColor,
+                        }}
+                    >
+                        / CMD
+                    </span>
+                </Tooltip>
+                <Space.Compact className="w-full flex-1" style={{ borderRadius: 0 }}>
+                    <Input
+                        ref={inputRef}
+                        size="middle"
+                        value={chatInput}
+                        onChange={(e) => setChatInput(e.target.value)}
+                        onPressEnter={handleSend}
+                        placeholder={chatInputPlaceholder}
+                        disabled={inputDisabled}
+                        style={{ borderRadius: 0, fontSize: 12 }}
+                    />
+                    <Button
+                        size="middle"
+                        type="primary"
+                        icon={<SendOutlined />}
+                        onClick={handleSend}
+                        loading={isChatting}
+                        disabled={inputDisabled || !chatInput.trim()}
+                        style={{
+                            borderRadius: 0,
+                            backgroundColor: themeColor,
+                            borderColor: themeColor,
+                        }}
+                    >
+                        Send
+                    </Button>
+                </Space.Compact>
+            </div>
+
+            {/* Instant Tactical Prompt Strip (always accessible without scrolling) */}
+            {chatMode === "free" && canSendFree && (
+                <div className="flex items-center gap-1 mt-1.5 overflow-x-auto no-scrollbar">
+                    <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-slate-400 shrink-0 mr-0.5">
+                        QUICK //
+                    </span>
+                    {QUICK_TACTICAL_PROMPTS.map((item) => (
+                        <button
+                            key={item.code}
+                            type="button"
+                            disabled={isChatting}
+                            onClick={() => onSend(item.prompt)}
+                            className="shrink-0 px-1.5 py-0.5 font-mono text-[9.5px] border border-white/10 bg-white/[0.02] hover:border-orange-400/50 hover:bg-orange-500/10 transition-colors cursor-pointer disabled:opacity-40"
+                        >
+                            <span style={{ color: themeColor }} className="font-bold mr-1">
+                                [{item.code}]
+                            </span>
+                            <span>{item.label}</span>
+                        </button>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+
+    const effectiveDockTop = dockTop || chatHistory.length === 0;
+
     return (
-        <div className="flex flex-col h-full">
-            {/* Mode + history toolbar */}
-            <div className="px-3 pt-2 pb-1 flex flex-wrap items-center gap-2 border-b border-[rgba(var(--theme-color-rgb,139,92,246),0.12)]">
+        <div className="flex flex-col h-full min-h-0 overflow-hidden">
+            {/* Compact 34px Single-Line Tactical Header + Inline Telemetry */}
+            <div className="px-2.5 py-1.5 flex flex-wrap items-center gap-1.5 border-b border-white/10 shrink-0">
                 <Segmented
                     size="small"
                     value={chatMode}
@@ -242,7 +371,7 @@ export default function AIAssistantPanel({
                         else onSetChatMode(mode);
                     }}
                     options={[
-                        { label: "Chat bebas", value: "free" },
+                        { label: "Free Chat", value: "free" },
                         {
                             label: "Guided",
                             value: "guided",
@@ -250,166 +379,308 @@ export default function AIAssistantPanel({
                         },
                     ]}
                 />
-                <Dropdown
-                    menu={{ items: historyItems }}
-                    trigger={["click"]}
-                    disabled={loadingConversations || conversations.length === 0}
-                >
-                    <Button size="small" icon={<HistoryOutlined />} loading={loadingConversations}>
-                        Riwayat
-                    </Button>
-                </Dropdown>
-                {onSetLanguage && (
-                    <Tooltip title="Bahasa jawaban">
-                        <Select
-                            size="small"
-                            value={language}
-                            onChange={onSetLanguage}
-                            options={CHAT_LANGUAGES}
-                            style={{ minWidth: 104 }}
-                            popupMatchSelectWidth={false}
-                        />
+
+                {/* Inline Live RAG Status Badge (replaces stacked multi-line banners) */}
+                {sourceStats.allIndexed && sources.length > 0 ? (
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 font-mono text-[9.5px] uppercase tracking-wider border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 tabular-nums">
+                        <CheckCircleFilled style={{ color: "#22c55e", fontSize: 10 }} />
+                        RAG Ready · {sourceStats.indexed} files · {totalChunks} chunks
+                    </span>
+                ) : sources.length > 0 ? (
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 font-mono text-[9.5px] uppercase tracking-wider border border-amber-500/30 bg-amber-500/10 text-amber-400 tabular-nums">
+                        {sourcesIndexing
+                            ? `${sourceStats.inProgress} sources indexing`
+                            : sourceStats.errors > 0
+                              ? `${sourceStats.errors} failed`
+                              : "Not vectorized"}
+                    </span>
+                ) : (
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 font-mono text-[9.5px] uppercase tracking-wider border border-white/10 text-slate-400">
+                        0 Sources
+                    </span>
+                )}
+
+                {publishedGuideFlow && chatMode === "free" && (
+                    <Tooltip title={`Start Guide Flow: ${publishedGuideFlow.name}`} placement="bottom">
+                        <button
+                            type="button"
+                            onClick={onStartGuided}
+                            className="hidden xl:inline-flex items-center gap-1 px-1.5 py-0.5 font-mono text-[9.5px] border border-sky-400/30 bg-sky-500/10 text-sky-300 hover:bg-sky-500/20 cursor-pointer"
+                        >
+                            FLOW: {publishedGuideFlow.name} →
+                        </button>
                     </Tooltip>
                 )}
-                {(conversationId || (chatMode === "guided" && guidedFlow)) && (
-                    <Button type="link" size="small" className="text-[10px] ml-auto p-0" onClick={onNewChat}>
-                        Chat baru
-                    </Button>
-                )}
+
+                <div className="ml-auto flex items-center gap-1">
+                    <Dropdown
+                        menu={{ items: historyItems }}
+                        trigger={["click"]}
+                        disabled={loadingConversations || conversations.length === 0}
+                    >
+                        <Button size="small" icon={<HistoryOutlined />} loading={loadingConversations} className="!text-[11px] !px-2">
+                            History
+                        </Button>
+                    </Dropdown>
+                    {onSetLanguage && (
+                        <Tooltip title="Response language" placement="bottom">
+                            <Select
+                                size="small"
+                                value={language}
+                                onChange={onSetLanguage}
+                                options={CHAT_LANGUAGES}
+                                style={{ minWidth: 92 }}
+                                popupMatchSelectWidth={false}
+                            />
+                        </Tooltip>
+                    )}
+                    <Tooltip
+                        title={
+                            effectiveDockTop
+                                ? "Dock command input to bottom"
+                                : "Dock command input to top (zero scrolling)"
+                        }
+                        placement="bottom"
+                    >
+                        <button
+                            type="button"
+                            onClick={() => setDockTop((prev) => !prev)}
+                            className={`inline-flex items-center gap-1 h-6 px-2 font-mono text-[9.5px] font-bold uppercase tracking-wider border transition-colors cursor-pointer ${
+                                effectiveDockTop
+                                    ? "border-sky-400/50 bg-sky-500/15 text-sky-300 hover:bg-sky-500/25"
+                                    : "border-white/15 bg-white/[0.03] text-slate-400 hover:border-sky-400/50 hover:text-sky-300"
+                            }`}
+                        >
+                            {effectiveDockTop ? "▲ DOCK: TOP" : "▼ DOCK: BOT"}
+                        </button>
+                    </Tooltip>
+                    {(conversationId || chatHistory.length > 0 || (chatMode === "guided" && guidedFlow)) && (
+                        <button
+                            type="button"
+                            onClick={onNewChat}
+                            className="inline-flex items-center gap-1 h-6 px-2 font-mono text-[9.5px] font-bold uppercase tracking-wider border border-white/15 bg-white/[0.03] hover:border-orange-400/50 hover:bg-orange-500/15 transition-colors cursor-pointer"
+                            style={{ color: themeColor }}
+                        >
+                            + Reset
+                        </button>
+                    )}
+                </div>
             </div>
 
+            {/* Slim 1-line Guided Flow indicator only when Guided mode is active */}
             {chatMode === "guided" && guidedFlow && (
                 <div
-                    className="mx-3 mt-2 px-3 py-2 rounded-lg text-[11px] border"
-                    style={{ borderColor: `${themeColor}33`, backgroundColor: `${themeColor}0d` }}
+                    className="px-2.5 py-1 text-[10.5px] border-b flex items-center justify-between gap-2 shrink-0"
+                    style={{
+                        borderColor: `${themeColor}33`,
+                        borderLeft: `2px solid ${themeColor}`,
+                        backgroundColor: `${themeColor}0d`,
+                    }}
                 >
-                    <Text strong className="text-[11px] block" style={{ color: themeColor }}>
-                        Guided: {guidedFlow.name}
-                    </Text>
-                    <Text type="secondary" className="text-[10px]">
-                        {waitingInput
-                            ? "Menunggu balasan Anda — jawaban memakai sumber terindeks."
-                            : "Alur sedang berjalan…"}
-                    </Text>
+                    <span className="font-mono text-[10px] font-semibold uppercase tracking-wider" style={{ color: themeColor }}>
+                        GUIDED // {guidedFlow.name}
+                    </span>
+                    <span className="text-[10px] text-slate-400 truncate">
+                        {waitingInput ? "Waiting for your reply" : "Flow running…"}
+                    </span>
                 </div>
             )}
 
-            {publishedGuideFlow && chatMode === "free" && (
-                <Alert
-                    className="mx-3 mt-2 text-[11px]"
-                    type="info"
-                    showIcon
-                    message={`Guide flow "${publishedGuideFlow.name}" tersedia`}
-                    description="Mode chat bebas (RAG) aktif. Gunakan tab Guided jika ingin alur terstruktur."
-                />
-            )}
+            {/* TOP-DOCKED COMMAND COMPOSER: Zero scrolling required! */}
+            {effectiveDockTop && renderCommandComposer("top")}
 
-            {sources.length > 0 && !sourceStats.allIndexed && (
-                <motion.div className="mx-3 mt-2 px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200/60 text-[11px] text-amber-800 dark:text-amber-200">
-                    {sourcesIndexing
-                        ? sourceStats.embedding > 0
-                            ? `${sourceStats.embedding} file sedang vektorisasi.`
-                            : `${sourceStats.inProgress} sumber diproses.`
-                        : sourceStats.errors > 0
-                          ? `${sourceStats.errors} sumber gagal — lihat Sources.`
-                          : "Sumber belum tervektor. Tunggu atau Reindex."}
-                </motion.div>
-            )}
-
-            {sourceStats.allIndexed && sources.length > 0 && (
-                <div className="mx-3 mt-2 px-3 py-2 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200/60 text-[11px] text-green-800 dark:text-green-200 flex items-center gap-1.5">
-                    <CheckCircleFilled style={{ color: "#52c41a", fontSize: 12 }} />
-                    Siap RAG — {sourceStats.indexed} file,{" "}
-                    {sources.reduce((n, s) => n + (s.chunk_count ?? 0), 0)} chunk
-                </div>
-            )}
-
-            <div className="flex-1 overflow-y-auto p-4 custom-scrollbar min-h-0">
+            {/* Independent Scrollable Message & Brief Surface */}
+            <div className="flex-1 overflow-y-auto px-3 py-2 custom-scrollbar min-h-0">
                 {chatHistory.length === 0 && (
-                    <div className="w-full h-full flex flex-col items-center justify-center gap-4 opacity-70">
-                        <RobotOutlined style={{ fontSize: 44, color: themeColor }} />
-                        <div className="text-center px-2">
-                            <Text strong className="block text-sm mb-1">
-                                {notebookName ? `Asisten — ${notebookName}` : "AI Assistant"}
-                            </Text>
-                            {briefSummary ? (
-                                <div className="text-left max-w-[420px] mx-auto mt-2 p-3 rounded-lg bg-[rgba(var(--theme-color-rgb,139,92,246),0.06)] border border-[rgba(var(--theme-color-rgb,139,92,246),0.15)]">
-                                    <Text className="text-[10px] text-gray-400 uppercase block mb-1">Notebook Brief</Text>
-                                    <div className="prose prose-sm dark:prose-invert max-w-none text-xs">
+                    <div className="flex flex-col gap-2">
+                        {/* Compact Tactical Welcome Strip */}
+                        <div
+                            className="flex items-center justify-between gap-2.5 px-2.5 py-1.5 border border-white/10 bg-white/[0.02]"
+                            style={{ borderLeft: `2px solid ${themeColor}` }}
+                        >
+                            <div className="flex items-center gap-2 min-w-0">
+                                <RobotOutlined style={{ fontSize: 15, color: themeColor }} />
+                                <div className="min-w-0">
+                                    <Text strong className="block font-mono text-[10.5px] uppercase tracking-[0.12em] truncate">
+                                        {notebookName ? `RAG CONSOLE // ${notebookName}` : "AI STUDIO RAG CONSOLE"}
+                                    </Text>
+                                    <Text className="text-[10.5px] text-slate-400 block">
+                                        {sources.length === 0
+                                            ? "Add documents in the left panel (File, URL, Text, Media) to start querying."
+                                            : "Type a question in the top command bar or click a suggested prompt below."}
+                                    </Text>
+                                </div>
+                            </div>
+                            <span className="font-mono text-[9px] uppercase tracking-widest px-1.5 py-0.5 border border-white/15 text-slate-400 shrink-0 hidden sm:inline">
+                                SHORTCUT: [/]
+                            </span>
+                        </div>
+
+                        {/* Suggested Prompts Grid (high density, 2 columns) */}
+                        {chatMode === "free" && suggestedPrompts.length > 0 && canSendFree && (
+                            <div className="border border-white/10 bg-white/[0.015] p-2">
+                                <div className="flex items-center justify-between gap-2 mb-1">
+                                    <Text className="font-mono text-[9.5px] font-bold uppercase tracking-[0.14em] text-slate-400">
+                                        Contextual Suggested Prompts //
+                                    </Text>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPrompts((v) => !v)}
+                                        className="inline-flex items-center gap-1 h-5 px-1.5 font-mono text-[9px] font-bold uppercase tracking-[0.1em] border border-white/15 bg-white/[0.03] text-slate-300 hover:border-orange-400/60 hover:bg-orange-500/15 hover:text-orange-200 transition-colors cursor-pointer"
+                                    >
+                                        {showPrompts ? "▲ HIDE" : "▼ SHOW"}
+                                    </button>
+                                </div>
+                                {showPrompts && (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5">
+                                        {suggestedPrompts.map((p) => (
+                                            <button
+                                                key={p}
+                                                type="button"
+                                                disabled={isChatting}
+                                                onClick={() => onSend(p)}
+                                                className="text-left px-2 py-1 border border-white/10 bg-white/[0.02] hover:border-orange-400/50 hover:bg-white/[0.04] transition-colors cursor-pointer text-[11px] leading-snug"
+                                                style={{ borderLeft: `2px solid ${themeColor}` }}
+                                            >
+                                                {p}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Notebook Brief (collapsible with Tactical HUD HIDE / SHOW button) */}
+                        {briefSummary && (
+                            <div
+                                className="p-2 border border-white/10 bg-white/[0.02]"
+                                style={{ borderLeft: `2px solid ${themeColor}` }}
+                            >
+                                <div className="flex items-center justify-between gap-2 mb-1">
+                                    <Text className="font-mono text-[9.5px] font-bold text-slate-400 uppercase tracking-[0.14em]">
+                                        Notebook Executive Brief //
+                                    </Text>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowBrief((v) => !v)}
+                                        className="inline-flex items-center gap-1 h-5 px-1.5 font-mono text-[9px] font-bold uppercase tracking-[0.1em] border border-white/15 bg-white/[0.03] text-slate-300 hover:border-orange-400/60 hover:bg-orange-500/15 hover:text-orange-200 transition-colors cursor-pointer"
+                                    >
+                                        {showBrief ? "▲ HIDE BRIEF" : "▼ SHOW BRIEF"}
+                                    </button>
+                                </div>
+                                {showBrief && (
+                                    <div className="studio-markdown prose prose-sm dark:prose-invert max-w-none text-[11.5px] leading-relaxed">
                                         <ReactMarkdown>{briefSummary}</ReactMarkdown>
                                     </div>
-                                </div>
-                            ) : (
-                                <Text className="text-xs text-gray-400 block max-w-[280px]">
-                                    {chatMode === "guided"
-                                        ? "Ikuti alur guided flow. Jawaban berdasarkan sumber terindeks."
-                                        : "Tanya jawab bebas dengan RAG — jawaban dikaitkan ke dokumen notebook."}
-                                </Text>
-                            )}
-                        </div>
-                        {chatMode === "free" && suggestedPrompts.length > 0 && canSendFree && (
-                            <div className="flex flex-col gap-1.5 w-full max-w-[300px]">
-                                <Text className="text-[10px] text-gray-400 text-center">Saran pertanyaan</Text>
-                                {suggestedPrompts.map((p) => (
-                                    <Button
-                                        key={p}
-                                        size="small"
-                                        type="dashed"
-                                        className="!text-[11px] !h-auto !py-1.5 !whitespace-normal !text-left"
-                                        disabled={isChatting}
-                                        onClick={() => onSend(p)}
-                                    >
-                                        {p}
-                                    </Button>
-                                ))}
+                                )}
                             </div>
                         )}
                     </div>
                 )}
 
                 {chatHistory.map((msg, i) => {
-                    // Empty assistant bubble (pre-first-token while streaming) is hidden;
-                    // the loading indicator below covers that state.
                     if (msg.role === "assistant" && !msg.content.trim()) return null;
+                    const isUser = msg.role === "user";
                     return (
-                    <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} mb-4`}>
-                        <div className="max-w-[85%]">
-                            <div
-                                style={{
-                                    padding: "12px 16px",
-                                    borderRadius:
-                                        msg.role === "user" ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
-                                    background:
-                                        msg.role === "user"
-                                            ? themeColor
-                                            : "rgba(var(--theme-color-rgb, 139, 92, 246), 0.06)",
-                                    color: msg.role === "user" ? "#fff" : "inherit",
-                                    wordBreak: "break-word",
-                                    boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
-                                }}
-                            >
-                                {msg.role === "assistant" ? (
-                                    <MessageContent
-                                        content={msg.content}
-                                        references={msg.references}
-                                        onCitationClick={onCitationClick}
-                                    />
-                                ) : (
-                                    <div className="prose prose-sm dark:prose-invert max-w-none [&_p]:m-0">
-                                        <ReactMarkdown>{msg.content}</ReactMarkdown>
+                        <div key={i} className={`flex ${isUser ? "justify-end" : "justify-start"} mb-2`}>
+                            <div className={isUser ? "max-w-[85%]" : "w-full"}>
+                                <div
+                                    style={{
+                                        padding: "6px 10px",
+                                        borderRadius: 0,
+                                        border: "1px solid rgba(148, 163, 184, 0.16)",
+                                        borderLeft: !isUser ? `2px solid ${themeColor}` : undefined,
+                                        borderRight: isUser ? `2px solid ${themeColor}` : undefined,
+                                        background: isUser
+                                            ? `${themeColor}1f`
+                                            : "rgba(148, 163, 184, 0.04)",
+                                        wordBreak: "break-word",
+                                        fontSize: 11.5,
+                                        lineHeight: 1.5,
+                                    }}
+                                >
+                                    {/* Compact Tactical Message Header with Inline Actions */}
+                                    <div className="flex items-center justify-between gap-2 mb-1 pb-1 border-b border-white/[0.06]">
+                                        <span
+                                            className="font-mono text-[9px] font-bold uppercase tracking-[0.14em]"
+                                            style={{ color: isUser ? themeColor : "#38bdf8" }}
+                                        >
+                                            {isUser ? "YOU // QUERY" : "ASSISTANT // RAG SYNTHESIS"}
+                                        </span>
+                                        {!isUser && msg.content.trim() && (
+                                            <Space size={4}>
+                                                {msg.references && msg.references.length > 0 && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setShowReferences(showReferences === i ? null : i)}
+                                                        className={`inline-flex items-center gap-1 h-5 px-1.5 font-mono text-[9px] font-bold uppercase tracking-wider border transition-colors cursor-pointer tabular-nums ${
+                                                            showReferences === i
+                                                                ? "border-orange-400/60 bg-orange-500/20 text-orange-300"
+                                                                : "border-orange-400/35 bg-orange-500/10 text-orange-400 hover:bg-orange-500/20"
+                                                        }`}
+                                                    >
+                                                        {showReferences === i
+                                                            ? `▲ HIDE CITATIONS [${msg.references.length}]`
+                                                            : `▼ SHOW CITATIONS [${msg.references.length}]`}
+                                                    </button>
+                                                )}
+                                                <Tooltip title={copiedIdx === i ? "Copied" : "Copy response"} placement="top">
+                                                    <Button
+                                                        type="text"
+                                                        size="small"
+                                                        icon={
+                                                            copiedIdx === i ? (
+                                                                <CheckOutlined style={{ color: "#52c41a", fontSize: 11 }} />
+                                                            ) : (
+                                                                <CopyOutlined style={{ fontSize: 11 }} />
+                                                            )
+                                                        }
+                                                        className="!text-[10px] text-slate-400 !p-0 !px-1 !h-5"
+                                                        onClick={() => handleCopy(i, msg.content)}
+                                                    />
+                                                </Tooltip>
+                                                {chatMode === "free" && onRegenerate && i === lastAssistantIdx && (
+                                                    <Tooltip title="Regenerate response" placement="top">
+                                                        <Button
+                                                            type="text"
+                                                            size="small"
+                                                            icon={<RedoOutlined style={{ fontSize: 11 }} />}
+                                                            className="!text-[10px] text-slate-400 !p-0 !px-1 !h-5"
+                                                            disabled={isChatting}
+                                                            onClick={onRegenerate}
+                                                        />
+                                                    </Tooltip>
+                                                )}
+                                                {onSaveToNote && (
+                                                    <Button
+                                                        type="text"
+                                                        size="small"
+                                                        icon={<FileAddOutlined style={{ fontSize: 11 }} />}
+                                                        className="font-mono !text-[9.5px] text-slate-400 !p-0 !px-1 !h-5"
+                                                        onClick={() => onSaveToNote(msg.content)}
+                                                    >
+                                                        +Note
+                                                    </Button>
+                                                )}
+                                            </Space>
+                                        )}
                                     </div>
-                                )}
-                            </div>
-                            {msg.references && msg.references.length > 0 && (
-                                <div className="mt-1.5">
-                                    <Button
-                                        type="text"
-                                        size="small"
-                                        className="text-[10px] text-gray-400 p-0 h-auto"
-                                        onClick={() => setShowReferences(showReferences === i ? null : i)}
-                                    >
-                                        {msg.references.length} sumber dikutip
-                                    </Button>
+
+                                    {!isUser ? (
+                                        <MessageContent
+                                            content={msg.content}
+                                            references={msg.references}
+                                            onCitationClick={onCitationClick}
+                                        />
+                                    ) : (
+                                        <div className="studio-markdown prose prose-sm dark:prose-invert max-w-none text-[11.5px] [&_p]:m-0">
+                                            <ReactMarkdown>{msg.content}</ReactMarkdown>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Expandable Citations Drawer inline */}
+                                {msg.references && msg.references.length > 0 && (
                                     <AnimatePresence>
                                         {showReferences === i && (
                                             <motion.div
@@ -418,45 +689,33 @@ export default function AIAssistantPanel({
                                                 exit={{ height: 0, opacity: 0 }}
                                                 className="overflow-hidden"
                                             >
-                                                <div className="mt-1 space-y-1">
+                                                <div className="mt-1 grid grid-cols-1 sm:grid-cols-2 gap-1">
                                                     {msg.references.map((ref, ri) => (
                                                         <div
                                                             key={ri}
                                                             role={ref.chunkId && onCitationClick ? "button" : undefined}
                                                             tabIndex={ref.chunkId && onCitationClick ? 0 : undefined}
-                                                            className={`bg-gray-50 dark:bg-gray-800/50 rounded-md p-2 text-[11px] ${
+                                                            className={`bg-white/[0.03] border border-white/10 rounded-none p-1.5 text-[10.5px] ${
                                                                 ref.chunkId && onCitationClick
-                                                                    ? "cursor-pointer hover:ring-1 hover:ring-[color:var(--theme-color)]"
+                                                                    ? "cursor-pointer hover:border-orange-400/50"
                                                                     : ""
                                                             }`}
+                                                            style={{ borderLeft: `2px solid ${themeColor}` }}
                                                             onClick={() => {
                                                                 if (ref.chunkId && onCitationClick) {
                                                                     onCitationClick(ref.chunkId, ref.docName, ref.score);
                                                                 }
                                                             }}
-                                                            onKeyDown={(e) => {
-                                                                if (
-                                                                    ref.chunkId &&
-                                                                    onCitationClick &&
-                                                                    (e.key === "Enter" || e.key === " ")
-                                                                ) {
-                                                                    onCitationClick(ref.chunkId, ref.docName, ref.score);
-                                                                }
-                                                            }}
                                                         >
-                                                            <Space size={4} wrap>
-                                                                <Text
-                                                                    strong
-                                                                    className="text-[10px]"
-                                                                    style={{ color: themeColor }}
-                                                                >
-                                                                    {ref.docName}
+                                                            <div className="flex items-center justify-between gap-1">
+                                                                <Text strong className="text-[10px] truncate" style={{ color: themeColor }}>
+                                                                    #{ri + 1} {ref.docName}
                                                                 </Text>
-                                                                <Tag className="!text-[9px] !m-0">
-                                                                    {(ref.score * 100).toFixed(0)}% relevan
+                                                                <Tag className="font-mono !text-[8.5px] !m-0 !px-1 !py-0 !rounded-none tabular-nums">
+                                                                    {(ref.score * 100).toFixed(0)}%
                                                                 </Tag>
-                                                            </Space>
-                                                            <Text className="text-gray-500 text-[10px] line-clamp-3 block mt-0.5">
+                                                            </div>
+                                                            <Text className="text-slate-400 text-[9.5px] line-clamp-2 block mt-0.5">
                                                                 {ref.content}
                                                             </Text>
                                                         </div>
@@ -465,91 +724,28 @@ export default function AIAssistantPanel({
                                             </motion.div>
                                         )}
                                     </AnimatePresence>
-                                </div>
-                            )}
-                            {msg.role === "assistant" && msg.content.trim() && (
-                                <Space size={2} className="mt-1">
-                                    <Tooltip title={copiedIdx === i ? "Tersalin" : "Salin"}>
-                                        <Button
-                                            type="text"
-                                            size="small"
-                                            icon={
-                                                copiedIdx === i ? (
-                                                    <CheckOutlined style={{ color: "#52c41a" }} />
-                                                ) : (
-                                                    <CopyOutlined />
-                                                )
-                                            }
-                                            className="text-[10px] text-gray-400 p-0 h-auto px-1"
-                                            onClick={() => handleCopy(i, msg.content)}
-                                        />
-                                    </Tooltip>
-                                    {chatMode === "free" && onRegenerate && i === lastAssistantIdx && (
-                                        <Tooltip title="Buat ulang jawaban">
-                                            <Button
-                                                type="text"
-                                                size="small"
-                                                icon={<RedoOutlined />}
-                                                className="text-[10px] text-gray-400 p-0 h-auto px-1"
-                                                disabled={isChatting}
-                                                onClick={onRegenerate}
-                                            />
-                                        </Tooltip>
-                                    )}
-                                    {onSaveToNote && (
-                                        <Button
-                                            type="text"
-                                            size="small"
-                                            icon={<FileAddOutlined />}
-                                            className="text-[10px] text-gray-400 p-0 h-auto px-1"
-                                            onClick={() => onSaveToNote(msg.content)}
-                                        >
-                                            Simpan ke Notes
-                                        </Button>
-                                    )}
-                                </Space>
-                            )}
+                                )}
+                            </div>
                         </div>
-                    </div>
                     );
                 })}
 
                 {isChatting && (
-                    <div className="flex justify-start mb-4">
-                        <div className="p-3 rounded-2xl bg-gray-50 dark:bg-gray-800/50">
+                    <div className="flex justify-start mb-2">
+                        <div
+                            className="px-3 py-1.5 rounded-none border border-white/10 bg-white/[0.03] flex items-center gap-2 font-mono text-[10px] text-slate-400"
+                            style={{ borderLeft: `2px solid ${themeColor}` }}
+                        >
                             <Spin indicator={<LoadingOutlined spin />} size="small" />
+                            <span>SYNTHESIZING ANSWER FROM SOURCES...</span>
                         </div>
                     </div>
                 )}
                 <div ref={messagesEndRef} />
             </div>
 
-            <div className="p-3 border-t border-[rgba(var(--theme-color-rgb,139,92,246),0.1)]">
-                <Space.Compact className="w-full" style={{ borderRadius: 10 }}>
-                    <Input
-                        size="large"
-                        value={chatInput}
-                        onChange={(e) => setChatInput(e.target.value)}
-                        onPressEnter={handleSend}
-                        placeholder={chatInputPlaceholder}
-                        disabled={inputDisabled}
-                        style={{ borderBottomLeftRadius: 10, borderTopLeftRadius: 10 }}
-                    />
-                    <Button
-                        size="large"
-                        type="primary"
-                        icon={<SendOutlined />}
-                        onClick={handleSend}
-                        loading={isChatting}
-                        disabled={inputDisabled || !chatInput.trim()}
-                        style={{
-                            borderBottomRightRadius: 10,
-                            borderTopRightRadius: 10,
-                            backgroundColor: themeColor,
-                        }}
-                    />
-                </Space.Compact>
-            </div>
+            {/* BOTTOM-DOCKED COMMAND COMPOSER (when user toggles ▼ DOCK: BOT) */}
+            {!effectiveDockTop && renderCommandComposer("bottom")}
         </div>
     );
 }

@@ -42,7 +42,7 @@ export default function SourceDetailDrawer({
 
     return (
         <Drawer
-            title={source?.filename ?? "Detail sumber"}
+            title={source?.filename ?? "Source Details"}
             open={!!sourceId}
             onClose={onClose}
             size={480}
@@ -50,35 +50,38 @@ export default function SourceDetailDrawer({
             {loading ? (
                 <div className="flex justify-center py-8"><Spin /></div>
             ) : !detail || !source ? (
-                <Text type="secondary">Sumber tidak ditemukan.</Text>
+                <Text type="secondary">Source not found.</Text>
             ) : (
                 <div className="flex flex-col gap-3">
                     <div className="flex flex-wrap gap-2">
-                        <Tag color={getSourceStatusTag(source).color}>{getSourceStatusTag(source).label}</Tag>
-                        <Tag>{detail.totalChunks} chunk</Tag>
-                        {source.file_type ? <Tag>{source.file_type}</Tag> : null}
+                        <Tag color={getSourceStatusTag(source).color} className="font-mono !rounded-none uppercase">
+                            {getSourceStatusTag(source).label}
+                        </Tag>
+                        <Tag className="font-mono !rounded-none tabular-nums">{detail.totalChunks} chunks</Tag>
+                        {source.file_type ? <Tag className="font-mono !rounded-none uppercase">{source.file_type}</Tag> : null}
                     </div>
                     {source.parse_error ? (
                         <Paragraph type="danger" className="text-xs mb-0">
                             {source.parse_error}
                         </Paragraph>
                     ) : null}
-                    <Text strong className="text-xs" style={{ color: themeColor }}>
-                        Cuplikan terindeks
+                    <Text strong className="font-mono text-[11px] uppercase tracking-[0.12em]" style={{ color: themeColor }}>
+                        Indexed Chunks
                     </Text>
                     {detail.chunks.length === 0 ? (
-                        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Belum ada chunk" />
+                        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No chunks indexed yet" />
                     ) : (
                         <div className="flex flex-col gap-2 max-h-[70vh] overflow-y-auto">
                             {detail.chunks.map((c) => (
                                 <button
                                     key={c.id}
                                     type="button"
-                                    className="text-left rounded-lg border border-black/5 p-2 hover:bg-black/[0.03] transition-colors"
+                                    className="text-left rounded-none border border-white/10 bg-white/[0.02] p-2.5 hover:bg-white/[0.05] transition-colors cursor-pointer"
+                                    style={{ borderLeft: `2px solid ${themeColor}` }}
                                     onClick={() => onOpenChunk?.(c.id, source.filename)}
                                 >
-                                    <Tag className="mb-1">#{c.chunk_index + 1}</Tag>
-                                    <Paragraph className="text-xs mb-0 whitespace-pre-wrap text-gray-700">
+                                    <Tag className="font-mono mb-1 !rounded-none tabular-nums">#{c.chunk_index + 1}</Tag>
+                                    <Paragraph className="text-xs mb-0 whitespace-pre-wrap">
                                         {c.content}
                                         {c.content.length >= 800 ? "…" : ""}
                                     </Paragraph>

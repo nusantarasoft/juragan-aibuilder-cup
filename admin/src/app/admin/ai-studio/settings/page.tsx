@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
-import CMSLayout from "@/components/layout/CMSLayout";
+import CMSLayout, { useAdminLayout } from "@/components/layout/CMSLayout";
+import { getVOTheme } from "@/components/layout/voTheme";
 import {
     Button,
     Card,
@@ -33,14 +34,6 @@ import { buildSavePayload, validateActiveProvider } from "./utils/buildSavePaylo
 
 const { Title, Text } = Typography;
 
-/** Solid cards — avoid glass over animated CMS background (text/color stacking). */
-const panelCard: React.CSSProperties = {
-    background: "#ffffff",
-    border: "1px solid #e5e7eb",
-    borderRadius: 12,
-    boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
-};
-
 const DEFAULT_VALUES: Partial<StudioSettingsFormValues> = {
     default_llm_provider: "google",
     default_embedding_provider: "auto",
@@ -58,13 +51,23 @@ const DEFAULT_VALUES: Partial<StudioSettingsFormValues> = {
     ollama_embedding_model: "nomic-embed-text",
 };
 
-export default function AiStudioSettingsPage() {
+function AiStudioSettingsInner() {
+    const { darkMode } = useAdminLayout();
+    const t = getVOTheme(darkMode);
     const [form] = Form.useForm<StudioSettingsFormValues>();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [status, setStatus] = useState<StudioAiStatus | null>(null);
     const [dirty, setDirty] = useState(false);
     const activeProvider = Form.useWatch("default_llm_provider", form) as LlmProvider | undefined;
+
+    const panelCard: React.CSSProperties = {
+        background: t.cardBg,
+        border: `1px solid ${t.cardBorder}`,
+        borderTop: "2px solid #fb923c",
+        borderRadius: 0,
+        boxShadow: t.cardShadow,
+    };
 
     const loadAll = useCallback(async () => {
         setLoading(true);
@@ -108,7 +111,7 @@ export default function AiStudioSettingsPage() {
         setSaving(true);
         try {
             await studioService.updateSettings(buildSavePayload(values));
-            message.success(`Disimpan. Semua modul memakai ${PROVIDER_LABELS[provider]}.`);
+            message.success(`Saved. All modules now use ${PROVIDER_LABELS[provider]}.`);
             setDirty(false);
             await loadAll();
         } catch (error: unknown) {
@@ -125,6 +128,15 @@ export default function AiStudioSettingsPage() {
             children: <SettingsOverview status={status} loading={loading} />,
         },
         {
+            key: "chat_llm",
+            label: <span><RobotOutlined /> Chat LLM</span>,
+            children: loading ? (
+                <Skeleton active paragraph={{ rows: 3 }} />
+            ) : (
+                <OptionalProvidersPanel activeProvider={activeProvider} status={status} />
+            ),
+        },
+        {
             key: "embeddings",
             label: <span><DatabaseOutlined /> Embeddings</span>,
             children: loading ? (
@@ -138,86 +150,82 @@ export default function AiStudioSettingsPage() {
             label: <span><GlobalOutlined /> Integrations</span>,
             children: loading ? <Skeleton active paragraph={{ rows: 2 }} /> : <IntegrationsPanel />,
         },
-        {
-            key: "other",
-            label: <span><SettingOutlined /> Provider Lain</span>,
-            children: loading ? (
-                <Skeleton active paragraph={{ rows: 3 }} />
-            ) : (
-                <OptionalProvidersPanel activeProvider={activeProvider} status={status} />
-            ),
-        },
     ];
 
     return (
-        <CMSLayout
-            title="AI Models & Configuration"
-            breadcrumb={[{ title: "AI Studio" }, { title: "Settings" }]}
-        >
-            <div style={{ maxWidth: 1100, margin: "0 auto", paddingBottom: 88, position: "relative", zIndex: 1 }}>
-                <div
-                    style={{
-                        marginBottom: 20,
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "flex-start",
-                        flexWrap: "wrap",
-                        gap: 12,
-                        background: "rgba(255,255,255,0.92)",
-                        border: "1px solid #e5e7eb",
-                        borderRadius: 12,
-                        padding: "16px 20px",
-                    }}
-                >
-                    <div style={{ minWidth: 0, flex: "1 1 240px" }}>
-                        <Title level={4} style={{ margin: 0, color: "#111827" }}>
-                            Satu LLM aktif untuk seluruh platform
-                        </Title>
-                        <Text type="secondary" style={{ display: "block", marginTop: 4 }}>
-                            CRM, ITSM, PM, AI Studio, RAG, dan modul lain hanya memakai provider yang
-                            Anda pilih di bawah.
-                        </Text>
-                    </div>
-                    <Space wrap>
-                        <Button icon={<ReloadOutlined />} onClick={loadAll} disabled={loading}>
-                            Refresh
-                        </Button>
-                        <Button
-                            type="primary"
-                            icon={<SaveOutlined />}
-                            loading={saving}
-                            onClick={() => form.submit()}
-                        >
-                            Save Settings
-                        </Button>
-                    </Space>
+        <div style={{ margin: "0 auto", paddingBottom: dirty ? 56 : 8, position: "relative", zIndex: 1 }}>
+            <div
+                style={{
+                    marginBottom: 8,
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    flexWrap: "wrap",
+                    gap: 8,
+                    background: t.cardBg,
+                    border: `1px solid ${t.cardBorder}`,
+                    borderLeft: "2px solid #fb923c",
+                    borderRadius: 0,
+                    padding: "8px 12px",
+                }}
+            >
+                <div className="flex items-center flex-wrap gap-2 min-w-0">
+                    <span className="font-mono text-[10px] tracking-[0.14em] uppercase font-semibold" style={{ color: "#fb923c" }}>
+                        Central AI Configuration
+                    </span>
+                    <span style={{ color: t.cardBorder }}>|</span>
+                    <Text strong style={{ fontSize: 13, color: t.textPrimary }}>
+                        Single active LLM for the entire platform
+                    </Text>
+                    <Text className="hidden xl:inline" style={{ fontSize: 11, color: t.textSecondary }}>
+                        — CRM, ITSM, PM, AI Studio, and RAG use the active provider below.
+                    </Text>
                 </div>
+                <Space size={6} wrap>
+                    <Button size="small" icon={<ReloadOutlined />} onClick={loadAll} disabled={loading} style={{ borderRadius: 0 }}>
+                        Refresh
+                    </Button>
+                    <Button
+                        size="small"
+                        type="primary"
+                        icon={<SaveOutlined />}
+                        loading={saving}
+                        onClick={() => form.submit()}
+                        style={{ borderRadius: 0 }}
+                    >
+                        Save Settings
+                    </Button>
+                </Space>
+            </div>
 
-                <Form
-                    form={form}
-                    layout="vertical"
-                    onFinish={handleSave}
-                    onFinishFailed={() => message.error("Lengkapi field provider aktif terlebih dahulu.")}
-                    initialValues={DEFAULT_VALUES}
-                    onValuesChange={() => setDirty(true)}
-                >
-                    {/* Always mounted — tidak boleh di dalam tab yang di-destroy */}
-                    <Form.Item name="default_llm_provider" hidden>
-                        <input type="hidden" />
-                    </Form.Item>
-                    <Form.Item name="anthropic_api_key_configured" hidden><input type="hidden" /></Form.Item>
-                    <Form.Item name="google_api_key_configured" hidden><input type="hidden" /></Form.Item>
-                    <Form.Item name="google_service_account_configured" hidden><input type="hidden" /></Form.Item>
-                    <Form.Item name="openai_api_key_configured" hidden><input type="hidden" /></Form.Item>
-                    <Form.Item name="groq_api_key_configured" hidden><input type="hidden" /></Form.Item>
-                    <Form.Item name="openrouter_api_key_configured" hidden><input type="hidden" /></Form.Item>
+            <Form
+                form={form}
+                layout="vertical"
+                onFinish={handleSave}
+                onFinishFailed={() => message.error("Please complete the active provider fields first.")}
+                initialValues={DEFAULT_VALUES}
+                onValuesChange={() => setDirty(true)}
+            >
+                {/* Always mounted — must not be inside a destroyed tab */}
+                <Form.Item name="default_llm_provider" hidden>
+                    <input type="hidden" />
+                </Form.Item>
+                <Form.Item name="anthropic_api_key_configured" hidden><input type="hidden" /></Form.Item>
+                <Form.Item name="google_api_key_configured" hidden><input type="hidden" /></Form.Item>
+                <Form.Item name="google_service_account_configured" hidden><input type="hidden" /></Form.Item>
+                <Form.Item name="openai_api_key_configured" hidden><input type="hidden" /></Form.Item>
+                <Form.Item name="groq_api_key_configured" hidden><input type="hidden" /></Form.Item>
+                <Form.Item name="openrouter_api_key_configured" hidden><input type="hidden" /></Form.Item>
 
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-2 items-start">
                     <Card
-                        style={{ ...panelCard, marginBottom: 16 }}
-                        styles={{ body: { paddingTop: 16 } }}
+                        size="small"
+                        className="lg:col-span-5"
+                        style={panelCard}
+                        styles={{ body: { padding: 10 } }}
                         title={
-                            <span style={{ color: "#111827" }}>
-                                <RobotOutlined /> LLM Aktif
+                            <span className="font-mono text-[11px] uppercase tracking-[0.1em]" style={{ color: t.textPrimary }}>
+                                <RobotOutlined style={{ color: "#fb923c", marginRight: 6 }} /> Active LLM
                             </span>
                         }
                     >
@@ -225,8 +233,8 @@ export default function AiStudioSettingsPage() {
                             <Skeleton active paragraph={{ rows: 3 }} />
                         ) : (
                             <>
-                                <Text type="secondary" style={{ display: "block", marginBottom: 16 }}>
-                                    Pilih satu provider. Hanya provider ini yang dipakai runtime.
+                                <Text style={{ display: "block", marginBottom: 8, fontSize: 11, color: t.textSecondary }}>
+                                    Select one provider. Only this provider is used at runtime.
                                 </Text>
                                 <ActiveProviderSelector status={status} />
                                 {activeProvider && (
@@ -242,45 +250,63 @@ export default function AiStudioSettingsPage() {
                         )}
                     </Card>
 
-                    <Card style={panelCard} styles={{ body: { paddingTop: 8 } }}>
-                        <Tabs destroyInactiveTabPane={false} items={tabItems} />
+                    <Card
+                        size="small"
+                        className="lg:col-span-7"
+                        style={panelCard}
+                        styles={{ body: { padding: "4px 10px 10px 10px" } }}
+                    >
+                        <Tabs size="small" destroyInactiveTabPane={false} items={tabItems} />
                     </Card>
-                </Form>
+                </div>
+            </Form>
 
-                {dirty && (
-                    <div
-                        style={{
-                            position: "fixed",
-                            bottom: 0,
-                            left: 0,
-                            right: 0,
-                            padding: "12px 24px",
-                            background: "#ffffff",
-                            borderTop: "1px solid #e5e7eb",
-                            display: "flex",
-                            justifyContent: "center",
-                            alignItems: "center",
-                            gap: 12,
-                            zIndex: 100,
-                            boxShadow: "0 -4px 12px rgba(0,0,0,0.06)",
+            {dirty && (
+                <div
+                    style={{
+                        position: "fixed",
+                        bottom: 0,
+                        left: 0,
+                        right: 0,
+                        padding: "12px 24px",
+                        background: t.cardBg,
+                        borderTop: `1px solid ${t.cardBorder}`,
+                        display: "flex",
+                        justifyContent: "center",
+                        alignItems: "center",
+                        gap: 12,
+                        zIndex: 100,
+                        boxShadow: t.cardShadow,
+                    }}
+                >
+                    <Text type="warning" className="font-mono text-xs">Unsaved changes</Text>
+                    <Button
+                        style={{ borderRadius: 0 }}
+                        onClick={() => {
+                            form.resetFields();
+                            setDirty(false);
+                            loadAll();
                         }}
                     >
-                        <Text type="warning">Perubahan belum disimpan</Text>
-                        <Button
-                            onClick={() => {
-                                form.resetFields();
-                                setDirty(false);
-                                loadAll();
-                            }}
-                        >
-                            Discard
-                        </Button>
-                        <Button type="primary" loading={saving} onClick={() => form.submit()}>
-                            Save Settings
-                        </Button>
-                    </div>
-                )}
-            </div>
+                        Discard
+                    </Button>
+                    <Button type="primary" loading={saving} onClick={() => form.submit()} style={{ borderRadius: 0 }}>
+                        Save Settings
+                    </Button>
+                </div>
+            )}
+        </div>
+    );
+}
+
+export default function AiStudioSettingsPage() {
+    return (
+        <CMSLayout
+            title="AI Models & Configuration"
+            subTitle="Central AI Configuration"
+            breadcrumb={[{ title: "AI Studio" }, { title: "Settings" }]}
+        >
+            <AiStudioSettingsInner />
         </CMSLayout>
     );
 }

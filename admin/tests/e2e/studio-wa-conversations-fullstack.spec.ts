@@ -116,7 +116,7 @@ test.describe('Percakapan WA — super admin inbox', () => {
     }) => {
         await loginAsAdmin(page);
         await page.goto('/admin/ai-studio/percakapan-wa', { waitUntil: 'domcontentloaded' });
-        await expect(page.getByRole('heading', { name: 'Percakapan WA' })).toBeVisible({
+        await expect(page.getByRole('heading', { name: 'WA Conversations' })).toBeVisible({
             timeout: 60_000,
         });
         await expect(page.getByText('6289990000001', { exact: true }).first()).toBeVisible({
@@ -126,8 +126,8 @@ test.describe('Percakapan WA — super admin inbox', () => {
         await expect(page.getByText('AI', { exact: true }).first()).toBeVisible();
         await expect(page.getByText('Stok Indomie goreng')).toBeVisible();
 
-        await page.getByRole('button', { name: 'Ambil alih' }).click();
-        await expect(page.getByRole('button', { name: 'Kembalikan ke AI' })).toBeVisible({
+        await page.getByRole('button', { name: 'Take over' }).click();
+        await expect(page.getByRole('button', { name: 'Return to AI' })).toBeVisible({
             timeout: 15_000,
         });
 
@@ -138,21 +138,21 @@ test.describe('Percakapan WA — super admin inbox', () => {
         await expect(page.getByText(inboundDuringTakeover)).toBeVisible({ timeout: 15_000 });
 
         const reply = `Balasan QA ${Date.now()}`;
-        await page.getByPlaceholder('Balas pemilik toko').fill(reply);
-        await page.getByRole('button', { name: 'Kirim' }).click();
-        await expect(page.getByText('Pesan terkirim')).toBeVisible({ timeout: 20_000 });
+        await page.getByPlaceholder('Reply to store owner').fill(reply);
+        await page.getByRole('button', { name: 'Send' }).click();
+        await expect(page.getByText('Message sent')).toBeVisible({ timeout: 20_000 });
 
         await expect.poll(() => fs.existsSync(HERMES_MOCK_LOG), { timeout: 15_000 }).toBe(true);
         const sent = JSON.parse(fs.readFileSync(HERMES_MOCK_LOG, 'utf-8')) as { message?: string };
         expect(sent.message).toContain(reply);
         expect(sent.message).toContain('— Admin Nusantarasoft');
 
-        await page.getByRole('button', { name: 'Kembalikan ke AI' }).click();
-        await expect(page.getByText('Dikembalikan ke AI')).toBeVisible({ timeout: 15_000 });
+        await page.getByRole('button', { name: 'Return to AI' }).click();
+        await expect(page.getByText('Returned to AI')).toBeVisible({ timeout: 15_000 });
 
         await page.getByText('6289990000002', { exact: true }).first().click();
         await expect(page.getByText('Expired takeover thread')).toBeVisible();
-        await expect(page.getByRole('button', { name: 'Ambil alih' })).toBeVisible({
+        await expect(page.getByRole('button', { name: 'Take over' })).toBeVisible({
             timeout: 15_000,
         });
     });
@@ -172,6 +172,6 @@ test.describe('Percakapan WA — super admin inbox', () => {
             await route.continue();
         });
         await page.goto('/admin/ai-studio/percakapan-wa', { waitUntil: 'domcontentloaded' });
-        await expect(page.getByText('Belum ada percakapan WA')).toBeVisible({ timeout: 30_000 });
+        await expect(page.getByText('No WA conversations yet')).toBeVisible({ timeout: 30_000 });
     });
 });

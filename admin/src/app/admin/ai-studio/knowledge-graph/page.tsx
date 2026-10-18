@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import CMSLayout from "@/components/layout/CMSLayout";
+import CMSLayout, { useAdminLayout } from "@/components/layout/CMSLayout";
+import { getVOTheme } from "@/components/layout/voTheme";
 import { Card, Row, Col, Typography, Input, Space, Tag, Empty, Statistic, Tree, Spin, Alert, Descriptions } from "antd";
 import {
     ShareAltOutlined, SearchOutlined, NodeIndexOutlined, DatabaseOutlined, LinkOutlined, FileTextOutlined,
@@ -52,8 +53,176 @@ function buildAntTree(nodes: KnowledgeGraphNode[]): DataNode[] {
     return roots;
 }
 
-export default function KnowledgeGraphPage() {
+function KnowledgeGraphInner({ isDemo, overview, loading, error, onSearch, searching, searchHits, treeData, onSelectNode, inspectorLoading, selectedChunk }: {
+    isDemo: boolean;
+    overview: KnowledgeGraphOverview | null;
+    loading: boolean;
+    error: string | null;
+    onSearch: (v: string) => void;
+    searching: boolean;
+    searchHits: KnowledgeGraphSearchHit[];
+    treeData: DataNode[];
+    onSelectNode: (_keys: React.Key[], info: { node: DataNode & { raw?: KnowledgeGraphNode } }) => void;
+    inspectorLoading: boolean;
+    selectedChunk: KnowledgeGraphChunkDetail | null;
+}) {
+    const { darkMode } = useAdminLayout();
+    const t = getVOTheme(darkMode);
     const { themeColor } = usePreferencesStore();
+    const stats = overview?.stats;
+
+    return (
+        <div className="flex flex-col gap-1.5 h-[calc(100vh-142px)] min-h-[500px]">
+            {/* Compact 38px Tactical Graph Search & Telemetry Ribbon */}
+            <div
+                style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    flexWrap: "wrap",
+                    gap: 8,
+                    padding: "6px 10px",
+                    background: t.cardBg,
+                    border: `1px solid ${t.cardBorder}`,
+                    borderTop: "2px solid #fb923c",
+                    flexShrink: 0,
+                }}
+            >
+                <div className="flex items-center gap-2 flex-1 min-w-[260px] max-w-[540px]">
+                    <Search
+                        placeholder="Search nodes or semantic concepts (e.g., 'Leave Policy')"
+                        enterButton={<SearchOutlined />}
+                        size="small"
+                        onSearch={onSearch}
+                        loading={searching}
+                        disabled={isDemo}
+                    />
+                </div>
+                <div className="flex items-center gap-3 font-mono text-[11px] tabular-nums">
+                    <span style={{ color: t.textSecondary }}>
+                        NODES: <strong style={{ color: t.textPrimary }}>{stats?.totalNodes ?? 0}</strong>
+                    </span>
+                    <span style={{ color: t.textSecondary }}>
+                        EDGES: <strong style={{ color: t.textPrimary }}>{stats?.totalEdges ?? 0}</strong>
+                    </span>
+                    <span style={{ color: t.textSecondary }}>
+                        ORPHANED: <strong style={{ color: "#f87171" }}>{stats?.orphanedChunks ?? 0}</strong>
+                    </span>
+                    <Tag color={isDemo ? "gold" : "green"} className="!m-0 !text-[10px] font-mono" style={{ borderRadius: 0 }}>
+                        {isDemo ? "DEMO_TREE" : "PGVECTOR_LIVE"}
+                    </Tag>
+                </div>
+            </div>
+
+            {error && !isDemo ? (
+                <Alert type="error" message={error} style={{ borderRadius: 0, padding: "4px 8px" }} showIcon />
+            ) : null}
+
+            {!isDemo && searchHits.length > 0 ? (
+                <div
+                    style={{
+                        padding: "6px 10px",
+                        background: t.cardBg,
+                        border: `1px solid ${t.cardBorder}`,
+                        flexShrink: 0,
+                    }}
+                >
+                    <Text type="secondary" className="font-mono text-[10px] uppercase tracking-wider">
+                        Semantic matches ({searchHits.length})
+                    </Text>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5 mt-1">
+                        {searchHits.slice(0, 4).map((h) => (
+                            <div
+                                key={h.chunkId}
+                                className="px-2 py-1 text-xs border truncate"
+                                style={{ borderColor: t.cardBorder, background: t.surfaceBg }}
+                            >
+                                <Tag color="orange" className="font-mono !text-[10px] !mr-1.5" style={{ borderRadius: 0 }}>
+                                    {Math.round(h.similarity * 100)}%
+                                </Tag>
+                                <strong style={{ color: t.textPrimary }}>{h.filename}</strong> —{" "}
+                                <span style={{ color: t.textSecondary }}>{h.content.slice(0, 90)}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            ) : null}
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-1.5 flex-1 min-h-0">
+                <Card
+                    size="small"
+                    title={
+                        <span className="font-mono text-[11px] uppercase tracking-[0.06em]">
+                            <ShareAltOutlined style={{ color: "#fb923c", marginRight: 6 }} /> Entity Graph
+                        </span>
+                    }
+                    className="lg:col-span-8 flex flex-col min-h-0"
+                    style={{ borderRadius: 0, borderTop: "2px solid #fb923c" }}
+                    styles={{ body: { padding: 10, flex: 1, overflowY: "auto" } }}
+                >
+                    <Spin spinning={loading}>
+                        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: 320, flexDirection: "column" }}>
+                            {treeData.length === 0 && !loading ? (
+                                <>
+                                    <ShareAltOutlined style={{ fontSize: 42, color: themeColor, opacity: 0.5, marginBottom: 10 }} />
+                                    <Text style={{ color: t.textPrimary, fontSize: 13 }}>No indexed notebooks for this tenant yet.</Text>
+                                    <Text style={{ color: t.textSecondary, fontSize: 12 }}>Upload sources in AI Studio notebooks to populate the graph.</Text>
+                                </>
+                            ) : (
+                                <div style={{ padding: 12, backgroundColor: t.surfaceBg, border: `1px solid ${t.cardBorder}`, width: "100%", borderRadius: 0 }}>
+                                    <Tree
+                                        showIcon
+                                        defaultExpandAll
+                                        treeData={treeData}
+                                        onSelect={onSelectNode}
+                                        style={{ background: "transparent", color: t.textPrimary }}
+                                    />
+                                </div>
+                            )}
+                        </div>
+                    </Spin>
+                </Card>
+
+                <Card
+                    size="small"
+                    title={
+                        <span className="font-mono text-[11px] uppercase tracking-[0.06em]">
+                            <NodeIndexOutlined style={{ color: "#fb923c", marginRight: 6 }} /> Node Inspector
+                        </span>
+                    }
+                    className="lg:col-span-4 flex flex-col min-h-0"
+                    style={{ borderRadius: 0, borderTop: "2px solid #fb923c" }}
+                    styles={{ body: { padding: 10, flex: 1, overflowY: "auto" } }}
+                >
+                    <Spin spinning={inspectorLoading}>
+                        {selectedChunk ? (
+                            <Descriptions column={1} size="small" bordered>
+                                <Descriptions.Item label="File">{selectedChunk.filename}</Descriptions.Item>
+                                <Descriptions.Item label="Chunk index">{selectedChunk.chunkIndex}</Descriptions.Item>
+                                <Descriptions.Item label="Embedding">
+                                    {selectedChunk.hasEmbedding ? <Tag color="green" style={{ borderRadius: 0 }}>Yes</Tag> : <Tag color="red" style={{ borderRadius: 0 }}>Missing</Tag>}
+                                </Descriptions.Item>
+                                <Descriptions.Item label="Content">
+                                    <Paragraph style={{ maxHeight: 280, overflow: "auto", marginBottom: 0, fontSize: 12 }}>
+                                        {selectedChunk.content}
+                                    </Paragraph>
+                                </Descriptions.Item>
+                            </Descriptions>
+                        ) : (
+                            <Empty
+                                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                                description="Select a chunk node to view its semantic properties and raw text"
+                                style={{ marginTop: 60 }}
+                            />
+                        )}
+                    </Spin>
+                </Card>
+            </div>
+        </div>
+    );
+}
+
+export default function KnowledgeGraphPage() {
     const [uiDemoMode, setUiDemoMode] = useState<boolean | null>(null);
     const [overview, setOverview] = useState<KnowledgeGraphOverview | null>(null);
     const [loading, setLoading] = useState(true);
@@ -152,137 +321,25 @@ export default function KnowledgeGraphPage() {
         }
     };
 
-    const stats = overview?.stats;
-
     return (
         <CMSLayout
             title="Knowledge Graph Explorer"
             subTitle="Visualize semantic relationships in your Vector DB"
             extra={[isDemo ? <StudioDemoModeTag key="demo" /> : <StudioLiveModeTag key="live" />]}
         >
-            {isDemo ? (
-                <StudioDemoBanner
-                    title="Knowledge Graph Explorer"
-                    detail="Sample tree and metrics only — turn off Agentic OS UI demo mode to load tenant notebooks and pgvector chunks (P2-2 Live)."
-                />
-            ) : (
-                <StudioLiveBanner
-                    title="Knowledge Graph Explorer"
-                    detail="Tree and metrics load from Postgres RPC over studio notebooks, sources, and embeddings; search uses match_studio_chunks_for_tenant."
-                />
-            )}
-            {error && !isDemo ? (
-                <Alert type="error" message={error} style={{ marginBottom: 16 }} showIcon />
-            ) : null}
-            <Row gutter={[24, 24]}>
-                <Col span={24}>
-                    <Card bordered={false} className="shadow-sm">
-                        <Row gutter={24} align="middle">
-                            <Col span={12}>
-                                <Search
-                                    placeholder="Search nodes or semantic concepts (e.g., 'Leave Policy')"
-                                    enterButton={<SearchOutlined />}
-                                    size="large"
-                                    onSearch={onSearch}
-                                    loading={searching}
-                                    disabled={isDemo}
-                                />
-                            </Col>
-                            <Col span={4}>
-                                <Statistic title="Total Nodes" value={stats?.totalNodes ?? 0} loading={loading} />
-                            </Col>
-                            <Col span={4}>
-                                <Statistic title="Total Edges" value={stats?.totalEdges ?? 0} loading={loading} />
-                            </Col>
-                            <Col span={4}>
-                                <Statistic
-                                    title="Orphaned Chunks"
-                                    value={stats?.orphanedChunks ?? 0}
-                                    valueStyle={{ color: "#cf1322" }}
-                                    loading={loading}
-                                />
-                            </Col>
-                        </Row>
-                        {!isDemo && searchHits.length > 0 ? (
-                            <div style={{ marginTop: 16 }}>
-                                <Text type="secondary">Semantic matches ({searchHits.length})</Text>
-                                <Space direction="vertical" style={{ width: "100%", marginTop: 8 }}>
-                                    {searchHits.slice(0, 6).map((h) => (
-                                        <Alert
-                                            key={h.chunkId}
-                                            type="info"
-                                            message={
-                                                <span>
-                                                    <Tag color="blue">{Math.round(h.similarity * 100)}%</Tag>
-                                                    {h.filename} — {h.content.slice(0, 120)}
-                                                    {h.content.length > 120 ? "…" : ""}
-                                                </span>
-                                            }
-                                        />
-                                    ))}
-                                </Space>
-                            </div>
-                        ) : null}
-                    </Card>
-                </Col>
-
-                <Col span={16}>
-                    <Card
-                        title={<><ShareAltOutlined /> Entity Graph</>}
-                        bordered={false}
-                        className="shadow-sm"
-                        style={{ minHeight: 500, backgroundColor: "#000" }}
-                    >
-                        <Spin spinning={loading}>
-                            <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: 400, flexDirection: "column" }}>
-                                {treeData.length === 0 && !loading ? (
-                                    <>
-                                        <ShareAltOutlined style={{ fontSize: 64, color: themeColor, opacity: 0.5, marginBottom: 16 }} />
-                                        <Text style={{ color: "#fff" }}>No indexed notebooks for this tenant yet.</Text>
-                                        <Text type="secondary">Upload sources in AI Studio notebooks to populate the graph.</Text>
-                                    </>
-                                ) : (
-                                    <div style={{ marginTop: 24, padding: 24, backgroundColor: "#141414", width: "100%", borderRadius: 8 }}>
-                                        <Tree
-                                            showIcon
-                                            defaultExpandAll
-                                            treeData={treeData}
-                                            onSelect={onSelectNode}
-                                            style={{ background: "transparent", color: "#fff" }}
-                                        />
-                                    </div>
-                                )}
-                            </div>
-                        </Spin>
-                    </Card>
-                </Col>
-
-                <Col span={8}>
-                    <Card title={<><NodeIndexOutlined /> Node Inspector</>} bordered={false} className="shadow-sm" style={{ minHeight: 500 }}>
-                        <Spin spinning={inspectorLoading}>
-                            {selectedChunk ? (
-                                <Descriptions column={1} size="small" bordered>
-                                    <Descriptions.Item label="File">{selectedChunk.filename}</Descriptions.Item>
-                                    <Descriptions.Item label="Chunk index">{selectedChunk.chunkIndex}</Descriptions.Item>
-                                    <Descriptions.Item label="Embedding">
-                                        {selectedChunk.hasEmbedding ? <Tag color="green">Yes</Tag> : <Tag color="red">Missing</Tag>}
-                                    </Descriptions.Item>
-                                    <Descriptions.Item label="Content">
-                                        <Paragraph style={{ maxHeight: 280, overflow: "auto", marginBottom: 0 }}>
-                                            {selectedChunk.content}
-                                        </Paragraph>
-                                    </Descriptions.Item>
-                                </Descriptions>
-                            ) : (
-                                <Empty
-                                    description="Select a chunk node to view its semantic properties and raw text"
-                                    style={{ marginTop: 100 }}
-                                />
-                            )}
-                        </Spin>
-                    </Card>
-                </Col>
-            </Row>
+            <KnowledgeGraphInner
+                isDemo={isDemo}
+                overview={overview}
+                loading={loading}
+                error={error}
+                onSearch={onSearch}
+                searching={searching}
+                searchHits={searchHits}
+                treeData={treeData}
+                onSelectNode={onSelectNode}
+                inspectorLoading={inspectorLoading}
+                selectedChunk={selectedChunk}
+            />
         </CMSLayout>
     );
 }

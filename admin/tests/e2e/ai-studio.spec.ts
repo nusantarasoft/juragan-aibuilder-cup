@@ -10,7 +10,7 @@ test.describe('AI Studio — NotebookLM layout', () => {
 
     test('renders 3-column layout: Sources, Chat, Studio', async ({ page }) => {
         await expect(page.getByText('Sources', { exact: true })).toBeVisible({ timeout: 15_000 });
-        await expect(page.getByText('Chat bebas')).toBeVisible();
+        await expect(page.getByText('Free Chat')).toBeVisible();
         await expect(page.getByText('Studio', { exact: true })).toBeVisible();
     });
 

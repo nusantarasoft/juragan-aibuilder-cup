@@ -28,7 +28,7 @@ import {
 } from "lucide-react";
 import { useOsUi } from "@/components/agentic-os/registry";
 import { STATUS_META, ZONES, ZONE_BY_ID, assignSpots, createSeatMemory } from "../lib/floorplan";
-import { MASCOT_ID, getMascotRankTitle, useMascotStore } from "../lib/mascotStore";
+import { MASCOT_ID, MASCOT_MOODS, MASCOT_MOOD_LIST, getMascotRankTitle, useMascotStore } from "../lib/mascotStore";
 import { MODULES, sessionUrl } from "../lib/modules";
 import { useOfficeStore } from "../lib/store";
 import type { Agent, AgentCommand } from "../lib/types";
@@ -196,8 +196,12 @@ export function AgentInspector() {
             spotName: s.spotName,
             anim: s.anim,
             activityLabel: s.activityLabel,
+            mood: s.mood,
             roaming: s.roaming,
             vitals: s.vitals,
+            setMood: s.setMood,
+            roamNextByMood: s.roamNextByMood,
+            randomizeMoodAndRoam: s.randomizeMoodAndRoam,
             triggerTrick: s.triggerTrick,
             sendToZone: s.sendToZone,
             visitAgentSpot: s.visitAgentSpot,
@@ -218,20 +222,21 @@ export function AgentInspector() {
     if (selectedId === MASCOT_ID) {
         const rankInfo = getMascotRankTitle(mascot.vitals.level);
         const mascotZone = ZONE_BY_ID[mascot.zone];
+        const moodMeta = MASCOT_MOODS[mascot.mood] ?? MASCOT_MOODS.playful;
         const onlineAgents = agents.filter((a) => a.status !== "offline");
 
         return (
             <OfficeSidePanel
                 id="right"
                 title="Mascot · Cinder-Puff"
-                summary={`LV.${mascot.vitals.level} ${rankInfo.title} · ${mascotZone?.name ?? mascot.spotName}`}
+                summary={`${moodMeta.emoji} ${moodMeta.label} · ${mascotZone?.name ?? mascot.spotName}`}
                 accent={ORANGE}
                 defaultSide="pinned-right"
                 defaultW={320}
                 onClose={() => select(null)}
             >
                 <Section
-                    title="Mascot identity & status"
+                    title="Mascot identity & mood"
                     right={
                         <button type="button" onClick={() => select(null)} className="text-[9px] uppercase tracking-wider text-slate-400 hover:text-white">
                             all floor ▶
@@ -240,7 +245,7 @@ export function AgentInspector() {
                 >
                     <div className="flex items-start gap-3">
                         <div className="flex h-10 w-10 shrink-0 items-center justify-center border border-orange-400/60 bg-orange-500/15 text-[18px]">
-                            🐾
+                            {moodMeta.emoji}
                         </div>
                         <div className="min-w-0 flex-1">
                             <div className="flex items-center justify-between gap-2">
@@ -257,13 +262,25 @@ export function AgentInspector() {
                                 </span>
                             </div>
                             <div className="truncate text-[11px] text-slate-400">
-                                {rankInfo.title} · {mascotZone?.name ?? "Office Floor"} ({mascot.spotName})
+                                {mascotZone?.name ?? "Office Floor"} · {mascot.spotName}
                             </div>
-                            <div className="mt-1.5 text-[10.5px] font-medium text-cyan-300">{mascot.activityLabel}</div>
+                            <div className="mt-1 flex items-center gap-1.5">
+                                <span
+                                    className="border px-1.5 py-px text-[9px] font-bold uppercase tracking-wider"
+                                    style={{
+                                        borderColor: `${moodMeta.color}66`,
+                                        background: `${moodMeta.color}1f`,
+                                        color: moodMeta.color,
+                                    }}
+                                >
+                                    {moodMeta.emoji} {moodMeta.label}
+                                </span>
+                            </div>
+                            <div className="mt-1 text-[10.5px] font-medium text-cyan-300">{mascot.activityLabel}</div>
                         </div>
                     </div>
 
-                    <div className="mt-3 grid grid-cols-3 gap-1.5">
+                    <div className="mt-3 grid grid-cols-2 gap-1.5">
                         <button
                             type="button"
                             onClick={mascot.petMascot}
@@ -280,6 +297,14 @@ export function AgentInspector() {
                         </button>
                         <button
                             type="button"
+                            data-testid="vo-mascot-roam-next"
+                            onClick={() => mascot.roamNextByMood(agents, agentSpots)}
+                            className="inline-flex items-center justify-center gap-1 border border-purple-400/60 bg-purple-500/15 px-2 py-1 text-[10px] font-semibold text-purple-200 transition hover:border-purple-300 hover:text-white"
+                        >
+                            🎲 Roam Next
+                        </button>
+                        <button
+                            type="button"
                             onClick={mascot.toggleRoaming}
                             className={cx(
                                 "inline-flex items-center justify-center gap-1 border px-2 py-1 text-[10px] font-semibold transition",
@@ -288,8 +313,58 @@ export function AgentInspector() {
                                     : "border-white/15 text-slate-300 hover:border-white/35 hover:text-white",
                             )}
                         >
-                            {mascot.roaming ? "🐾 Roaming" : "📌 Pinned"}
+                            {mascot.roaming ? "🐾 Auto-Roam" : "📌 Pinned"}
                         </button>
+                    </div>
+                </Section>
+
+                <Section
+                    title="Mood-driven behavior"
+                    right={
+                        <button
+                            type="button"
+                            data-testid="vo-mascot-random-mood"
+                            onClick={() => mascot.randomizeMoodAndRoam(agents, agentSpots)}
+                            className="text-[9px] uppercase tracking-wider text-orange-300 hover:text-white"
+                        >
+                            🎲 shift mood
+                        </button>
+                    }
+                >
+                    <p className="mb-2 text-[10px] leading-snug text-slate-400">{moodMeta.tagline}</p>
+                    <div className="grid grid-cols-2 gap-1.5">
+                        {MASCOT_MOOD_LIST.map((m) => {
+                            const active = mascot.mood === m.id;
+                            return (
+                                <button
+                                    key={m.id}
+                                    type="button"
+                                    data-testid={`vo-mascot-mood-${m.id}`}
+                                    onClick={() => {
+                                        mascot.setMood(m.id, true);
+                                        mascot.roamNextByMood(agents, agentSpots);
+                                    }}
+                                    className={cx(
+                                        "flex items-center gap-1.5 border px-2 py-1 text-left text-[10px] transition",
+                                        active
+                                            ? "bg-white/[0.06] text-white"
+                                            : "border-white/10 bg-white/[0.02] text-slate-300 hover:border-white/25 hover:text-white",
+                                    )}
+                                    style={
+                                        active
+                                            ? {
+                                                  borderColor: m.color,
+                                                  borderLeftWidth: 2,
+                                                  borderLeftColor: m.color,
+                                              }
+                                            : undefined
+                                    }
+                                >
+                                    <span>{m.emoji}</span>
+                                    <span className="truncate font-semibold">{m.label}</span>
+                                </button>
+                            );
+                        })}
                     </div>
                 </Section>
 
@@ -393,6 +468,7 @@ export function AgentInspector() {
     if (!agent) {
         const activeTasks = agents.filter((a) => a.task && (a.status === "working" || a.status === "thinking"));
         const mascotRank = getMascotRankTitle(mascot.vitals.level);
+        const moodMeta = MASCOT_MOODS[mascot.mood] ?? MASCOT_MOODS.playful;
         return (
             <OfficeSidePanel
                 id="right"
@@ -421,7 +497,13 @@ export function AgentInspector() {
                     >
                         <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-1.5 text-[11px] font-semibold text-white">
-                                <span>🐾 Cinder-Puff</span>
+                                <span>{moodMeta.emoji} Cinder-Puff</span>
+                                <span
+                                    className="border px-1 py-px text-[8.5px] uppercase tracking-wider"
+                                    style={{ borderColor: `${moodMeta.color}66`, color: moodMeta.color }}
+                                >
+                                    {moodMeta.label}
+                                </span>
                                 <span className="text-[9px] uppercase tracking-wider" style={{ color: mascotRank.color }}>
                                     LV.{mascot.vitals.level}
                                 </span>

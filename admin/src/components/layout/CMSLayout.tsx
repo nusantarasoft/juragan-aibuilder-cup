@@ -3,6 +3,9 @@
 import dynamic from "next/dynamic";
 import type { ComponentProps } from "react";
 
+export type { AdminPanelId, AdminPanelState } from "./useAdminLayoutStore";
+export { useAdminLayout, DEFAULT_ADMIN_PANELS } from "./useAdminLayoutStore";
+
 const CMSLayoutImpl = dynamic(() => import("./CMSLayoutImpl"), {
     ssr: false,
     loading: () => (

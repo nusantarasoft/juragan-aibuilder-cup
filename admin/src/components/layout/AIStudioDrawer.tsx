@@ -49,16 +49,16 @@ export default function AIStudioDrawer({ visible, onClose }: AIStudioDrawerProps
         return () => obs.disconnect();
     }, []);
 
-    // Theme-aware colors
-    const bg = isDark ? '#141414' : '#ffffff';
-    const textColor = isDark ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.88)';
-    const textSecondary = isDark ? 'rgba(255,255,255,0.65)' : 'rgba(0,0,0,0.65)';
-    const bgSoft = isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)';
-    const border = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
-    const textMuted = isDark ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.4)';
-    const textFaint = isDark ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.3)';
-    const refBg = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)';
-    const aiBubbleBg = isDark ? `${themeColor}18` : `${themeColor}0a`;
+    // Theme-aware colors (Agentic OS tactical tokens)
+    const bg = isDark ? '#0b0e13' : '#ffffff';
+    const textColor = isDark ? '#f8fafc' : '#0f172a';
+    const textSecondary = isDark ? '#94a3b8' : '#475569';
+    const bgSoft = isDark ? 'rgba(255,255,255,0.04)' : 'rgba(15,23,42,0.04)';
+    const border = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(15,23,42,0.12)';
+    const textMuted = isDark ? '#64748b' : '#64748b';
+    const textFaint = isDark ? 'rgba(255,255,255,0.35)' : 'rgba(15,23,42,0.35)';
+    const refBg = isDark ? 'rgba(255,255,255,0.04)' : 'rgba(15,23,42,0.03)';
+    const aiBubbleBg = isDark ? `${themeColor}14` : `${themeColor}0a`;
 
     // Notebook
     const [notebooks, setNotebooks] = useState<StudioNotebook[]>([]);
@@ -99,7 +99,13 @@ export default function AIStudioDrawer({ visible, onClose }: AIStudioDrawerProps
             return;
         }
         setLoadingNotebooks(true);
-        try { setNotebooks(await studioService.getNotebooks(userId)); } catch { }
+        try {
+            const list = await studioService.getNotebooks(userId);
+            setNotebooks(list);
+            if (list.length > 0 && !pollNotebookIdRef.current) {
+                void selectNotebook(list[0]);
+            }
+        } catch { }
         finally { setLoadingNotebooks(false); }
     }, [userId]);
 
@@ -216,7 +222,7 @@ export default function AIStudioDrawer({ visible, onClose }: AIStudioDrawerProps
     const handleAddMedia = async (mediaId: string) => {
         if (!activeNotebook) return;
         setAddingMedia(prev => new Set(prev).add(mediaId));
-        try { await studioService.addMediaToNotebook(activeNotebook.id, mediaId); message.success("Sumber ditambahkan — indeksasi dimulai"); await loadSourceStatus(activeNotebook.id); }
+        try { await studioService.addMediaToNotebook(activeNotebook.id, mediaId); message.success("Source added — indexing started"); await loadSourceStatus(activeNotebook.id); }
         catch (e: any) { message.error(e.message || "Failed"); }
         finally { setAddingMedia(prev => { const s = new Set(prev); s.delete(mediaId); return s; }); }
     };
@@ -224,7 +230,7 @@ export default function AIStudioDrawer({ visible, onClose }: AIStudioDrawerProps
     const handleUploadFile: UploadProps['customRequest'] = async (options) => {
         if (!activeNotebook) return;
         const { file, onSuccess, onError } = options as any;
-        try { await studioService.uploadFileToNotebook(activeNotebook.id, file); onSuccess?.({}, file); message.success(`"${(file as File).name}" diupload — indeksasi dimulai`); await loadSourceStatus(activeNotebook.id); }
+        try { await studioService.uploadFileToNotebook(activeNotebook.id, file); onSuccess?.({}, file); message.success(`"${(file as File).name}" uploaded — indexing started`); await loadSourceStatus(activeNotebook.id); }
         catch (e: any) { onError?.(e); message.error(e.message || "Upload failed"); }
     };
 
@@ -237,7 +243,7 @@ export default function AIStudioDrawer({ visible, onClose }: AIStudioDrawerProps
     const handleChatSend = async () => {
         if (!chatInput.trim() || !activeNotebook) return;
         const indexed = sourceStats.anyIndexed;
-        if (!indexed) { message.warning("Sumber belum terindeks."); return; }
+        if (!indexed) { message.warning("Sources are not indexed yet."); return; }
         const userMsg = { role: 'user' as const, content: chatInput, timestamp: Date.now() };
         setChatHistory(prev => [...prev, userMsg]); setChatInput(""); setIsChatting(true);
         try {
@@ -263,7 +269,7 @@ export default function AIStudioDrawer({ visible, onClose }: AIStudioDrawerProps
 
     return (
         <Drawer title={null} size={760} onClose={onClose} open={visible} closable={false}
-            styles={{ header: { display: 'none' }, body: { padding: 0, overflow: 'hidden', background: bg, color: textColor } }}>
+            styles={{ header: { display: 'none' }, body: { padding: 0, overflow: 'hidden', background: bg, color: textColor, borderTop: `2px solid ${themeColor}` } }}>
             <div style={{ display: 'flex', height: '100%', overflow: 'hidden', color: textColor }}>
 
                 {/* LEFT: Notebooks + Sources */}
@@ -278,16 +284,16 @@ export default function AIStudioDrawer({ visible, onClose }: AIStudioDrawerProps
                             <div style={{ padding: '12px 12px 8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: `1px solid ${border}`, flexShrink: 0 }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                     <RobotOutlined style={{ fontSize: 14, color: themeColor }} />
-                                    <Text strong style={{ fontSize: 13, color: textColor }}>AI Studio</Text>
+                                    <Text strong className="font-mono uppercase tracking-[0.08em]" style={{ fontSize: 12, color: textColor }}>AI Studio</Text>
                                 </div>
-                                <button onClick={onClose} style={{ width: 24, height: 24, borderRadius: 6, border: 'none', background: bgSoft, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: textMuted }}>
+                                <button onClick={onClose} style={{ width: 24, height: 24, borderRadius: 0, border: `1px solid ${border}`, background: bgSoft, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: textMuted }}>
                                     <CloseOutlined />
                                 </button>
                             </div>
 
                             {/* Notebooks Section */}
                             <div style={{ padding: '8px 10px 4px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
-                                <Text style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: textMuted }}>Notebooks</Text>
+                                <Text className="font-mono" style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.14em', color: textMuted }}>Notebooks</Text>
                                 <Button type="text" size="small" icon={<PlusOutlined style={{ fontSize: 11 }} />} onClick={() => setShowCreateModal(true)}
                                     style={{ width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', color: textFaint }} />
                             </div>
@@ -297,14 +303,15 @@ export default function AIStudioDrawer({ visible, onClose }: AIStudioDrawerProps
                                         notebooks.map(nb => (
                                             <div key={nb.id} onClick={() => selectNotebook(nb)}
                                                 style={{
-                                                    padding: '6px 8px', borderRadius: 8, cursor: 'pointer', marginBottom: 2, display: 'flex', alignItems: 'center', gap: 8,
+                                                    padding: '6px 8px', borderRadius: 0, cursor: 'pointer', marginBottom: 2, display: 'flex', alignItems: 'center', gap: 8,
                                                     background: activeNotebook?.id === nb.id ? `${themeColor}14` : 'transparent',
                                                     border: activeNotebook?.id === nb.id ? `1px solid ${themeColor}33` : '1px solid transparent',
+                                                    borderLeft: activeNotebook?.id === nb.id ? `2px solid ${themeColor}` : '2px solid transparent',
                                                 }}>
                                                 <span style={{ fontSize: 14 }}>{normalizeNotebookIcon(nb.icon)}</span>
                                                 <div style={{ flex: 1, minWidth: 0 }}>
                                                     <Text ellipsis style={{ fontSize: 11, fontWeight: 500, display: 'block', color: textColor }}>{nb.name}</Text>
-                                                    <Text style={{ fontSize: 9, color: textMuted }}>{nb.source_count || 0} sources</Text>
+                                                    <Text className="font-mono tabular-nums" style={{ fontSize: 9, color: textMuted }}>{nb.source_count || 0} sources</Text>
                                                 </div>
                                                 <Popconfirm title="Delete?" onConfirm={(e) => { e?.stopPropagation(); handleDeleteNotebook(nb.id); }} onCancel={e => e?.stopPropagation()}>
                                                     <Button type="text" size="small" danger icon={<DeleteOutlined style={{ fontSize: 10 }} />}
@@ -319,8 +326,8 @@ export default function AIStudioDrawer({ visible, onClose }: AIStudioDrawerProps
                             {activeNotebook && (
                                 <>
                                     <div style={{ padding: '8px 10px 4px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: `1px solid ${border}`, flexShrink: 0 }}>
-                                        <Text style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: textMuted }}>
-                                            Sources ({sourceStats.indexed}/{sourceStats.total} tervektor)
+                                        <Text className="font-mono tabular-nums" style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: textMuted }}>
+                                            Sources ({sourceStats.indexed}/{sourceStats.total})
                                         </Text>
                                         <Space size={2}>
                                             <Button type="text" size="small" icon={<AppstoreAddOutlined style={{ fontSize: 11 }} />} onClick={openMediaModal}
@@ -339,16 +346,16 @@ export default function AIStudioDrawer({ visible, onClose }: AIStudioDrawerProps
                                                     const stageLabel = getSourceStageLabel(s);
                                                     const detail = getSourceStatusDetail(s);
                                                     return (
-                                                    <div key={s.id} title={detail ?? stageLabel} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 6px', borderRadius: 6, marginBottom: 1 }} className="group">
+                                                    <div key={s.id} title={detail ?? stageLabel} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 6px', borderRadius: 0, marginBottom: 1 }} className="group">
                                                         {getStatusIcon(s.parse_status)}
                                                         <div style={{ flex: 1, minWidth: 0 }}>
                                                             <Text ellipsis style={{ fontSize: 10, display: 'block', color: textSecondary }}>{s.filename}</Text>
                                                             <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
-                                                                <Text style={{ fontSize: 9, color: textMuted }}>{formatBytes(s.file_size)}</Text>
+                                                                <Text className="font-mono tabular-nums" style={{ fontSize: 9, color: textMuted }}>{formatBytes(s.file_size)}</Text>
                                                                 {isSourceInProgress(s) && (
                                                                     <Text style={{ fontSize: 9, color: themeColor }}>{stageLabel}</Text>
                                                                 )}
-                                                                <Tag color={statusTag.color} style={{ fontSize: 8, margin: 0, lineHeight: '14px', padding: '0 3px' }}>{statusTag.label}</Tag>
+                                                                <Tag color={statusTag.color} style={{ fontSize: 8, margin: 0, lineHeight: '14px', padding: '0 3px', borderRadius: 0 }}>{statusTag.label}</Tag>
                                                             </div>
                                                             {s.parse_status === 'error' && s.parse_error && (
                                                                 <Text style={{ fontSize: 8, color: '#ff4d4f', display: 'block' }} ellipsis>{s.parse_error}</Text>
@@ -372,75 +379,137 @@ export default function AIStudioDrawer({ visible, onClose }: AIStudioDrawerProps
                 {/* RIGHT: Chat */}
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', minWidth: 0 }}>
                     {/* Chat Header */}
-                    <div style={{ padding: '10px 14px', borderBottom: `1px solid ${border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <Button type="text" size="small" icon={showSources ? <MenuFoldOutlined /> : <MenuUnfoldOutlined />}
-                                onClick={() => setShowSources(!showSources)} style={{ width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center' }} />
-                            <Text strong style={{ fontSize: 12, color: textColor }}>{activeNotebook ? activeNotebook.name : 'Select a notebook'}</Text>
+                    <div style={{ padding: '6px 10px', borderBottom: `1px solid ${border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, gap: 6, flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <button
+                                type="button"
+                                onClick={() => setShowSources(!showSources)}
+                                className="inline-flex items-center gap-1 h-6 px-2 font-mono text-[9.5px] font-bold uppercase tracking-wider cursor-pointer"
+                                style={{
+                                    border: `1px solid ${showSources ? `${themeColor}88` : border}`,
+                                    background: showSources ? `${themeColor}1a` : bgSoft,
+                                    color: showSources ? themeColor : textSecondary,
+                                }}
+                            >
+                                {showSources ? (
+                                    <>
+                                        <MenuFoldOutlined style={{ fontSize: 10 }} />
+                                        <span>◀ HIDE SOURCES</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <MenuUnfoldOutlined style={{ fontSize: 10 }} />
+                                        <span>▶ SHOW SOURCES</span>
+                                    </>
+                                )}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setShowSources(true)}
+                                className="inline-flex items-center gap-1 h-6 px-2 font-mono text-[9.5px] font-bold uppercase tracking-wider cursor-pointer"
+                                style={{
+                                    border: `1px solid ${!showSources ? `${themeColor}88` : border}`,
+                                    background: !showSources ? `${themeColor}1a` : bgSoft,
+                                    color: !showSources ? themeColor : textSecondary,
+                                }}
+                            >
+                                <span>RESET LAYOUT</span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setShowSources(!showSources)}
+                                className="inline-flex items-center gap-1 h-6 px-2 font-mono text-[9.5px] font-bold uppercase tracking-wider cursor-pointer"
+                                style={{
+                                    border: `1px solid ${!showSources ? '#38bdf888' : border}`,
+                                    background: !showSources ? 'rgba(56,189,248,0.16)' : bgSoft,
+                                    color: !showSources ? '#38bdf8' : textSecondary,
+                                }}
+                            >
+                                <span>FOCUS CHAT</span>
+                            </button>
+                            <Text strong className="font-mono uppercase tracking-[0.06em]" style={{ fontSize: 11, color: textColor }}>{activeNotebook ? activeNotebook.name : 'Select a notebook'}</Text>
                             {activeNotebook && sourceStats.embedding > 0 && (
-                                <Tag color="processing" icon={<SyncOutlined spin />} style={{ fontSize: 9, margin: 0, lineHeight: '16px', padding: '0 4px' }}>
-                                    Vektor {sourceStats.embedding}
+                                <Tag color="processing" icon={<SyncOutlined spin />} style={{ fontSize: 9, margin: 0, lineHeight: '16px', padding: '0 4px', borderRadius: 0 }}>
+                                    Vectorizing {sourceStats.embedding}
                                 </Tag>
                             )}
                             {activeNotebook && sourceStats.inProgress > 0 && sourceStats.embedding === 0 && (
-                                <Tag color="processing" icon={<SyncOutlined spin />} style={{ fontSize: 9, margin: 0, lineHeight: '16px', padding: '0 4px' }}>
-                                    Indeks
+                                <Tag color="processing" icon={<SyncOutlined spin />} style={{ fontSize: 9, margin: 0, lineHeight: '16px', padding: '0 4px', borderRadius: 0 }}>
+                                    Indexing
                                 </Tag>
                             )}
                             {activeNotebook && sourceStats.allIndexed && sourceStats.total > 0 && (
-                                <Tag color="success" style={{ fontSize: 9, margin: 0, lineHeight: '16px', padding: '0 4px' }}>Siap RAG</Tag>
+                                <Tag color="success" style={{ fontSize: 9, margin: 0, lineHeight: '16px', padding: '0 4px', borderRadius: 0 }}>RAG Ready</Tag>
                             )}
                         </div>
-                        {conversationId && (
-                            <Button type="text" size="small" style={{ fontSize: 10, color: textMuted }}
-                                onClick={() => { setChatHistory([]); setConversationId(undefined); }}>New Chat</Button>
-                        )}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <a href="/admin/ai-studio" className="font-mono uppercase" style={{ fontSize: 9.5, color: themeColor, textDecoration: 'none' }}>
+                                Full Studio →
+                            </a>
+                            {conversationId && (
+                                <Button type="text" size="small" className="font-mono uppercase" style={{ fontSize: 10, color: textMuted }}
+                                    onClick={() => { setChatHistory([]); setConversationId(undefined); }}>Reset</Button>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Top-Docked Tactical Command Input (Zero scrolling needed!) */}
+                    <div style={{ padding: '6px 10px', borderBottom: `1px solid ${border}`, borderLeft: `2px solid ${themeColor}`, background: bgSoft, display: 'flex', gap: 6, flexShrink: 0 }}>
+                        <Input size="small" value={chatInput} onChange={e => setChatInput(e.target.value)} onPressEnter={handleChatSend}
+                            placeholder={activeNotebook ? "Ask about your sources… (Enter to send)" : "Select a notebook first"} disabled={isChatting || !activeNotebook}
+                            style={{ borderRadius: 0, flex: 1, fontSize: 11.5 }} />
+                        <Button size="small" type="primary" icon={<SendOutlined />} onClick={handleChatSend} loading={isChatting} disabled={!activeNotebook || !chatInput.trim()}
+                            style={{ borderRadius: 0, backgroundColor: themeColor, borderColor: themeColor }} />
                     </div>
 
                     {/* Chat Messages */}
-                    <div style={{ flex: 1, overflowY: 'auto', padding: 14 }} className="custom-scrollbar">
+                    <div style={{ flex: 1, overflowY: 'auto', padding: 10 }} className="custom-scrollbar">
                         {!activeNotebook ? (
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 12, opacity: 0.5 }}>
-                                <BookOutlined style={{ fontSize: 36, color: themeColor }} />
-                                <Text style={{ fontSize: 11, textAlign: 'center', maxWidth: 200, color: textSecondary }}>Select or create a notebook to start chatting with your documents.</Text>
+                            <div style={{ padding: 12, border: `1px dashed ${border}`, textAlign: 'center' }}>
+                                <Text style={{ fontSize: 11, color: textSecondary }}>Select or create a notebook on the left to start a RAG conversation.</Text>
                             </div>
                         ) : chatHistory.length === 0 ? (
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 12, opacity: 0.5 }}>
-                                <RobotOutlined style={{ fontSize: 36, color: themeColor }} />
-                                <div style={{ textAlign: 'center' }}>
-                                    <Text strong style={{ fontSize: 12, display: 'block', marginBottom: 4, color: textColor }}>Ask about your sources</Text>
-                                    <Text style={{ fontSize: 10, color: textMuted, maxWidth: 220, display: 'block' }}>AI will reference parsed documents to answer your questions.</Text>
-                                </div>
+                            <div style={{ padding: '8px 10px', border: `1px solid ${border}`, borderLeft: `2px solid ${themeColor}`, background: bgSoft }}>
+                                <Text strong className="font-mono uppercase tracking-[0.1em]" style={{ fontSize: 10.5, display: 'block', marginBottom: 2, color: textColor }}>
+                                    RAG Console Ready // {activeNotebook.name}
+                                </Text>
+                                <Text style={{ fontSize: 10.5, color: textMuted, display: 'block' }}>
+                                    Type a question in the command input above. Answers will be synthesized with citations from your indexed documents.
+                                </Text>
                             </div>
                         ) : (
                             chatHistory.map((msg, i) => (
-                                <div key={i} style={{ marginBottom: 14, display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
-                                    <div style={{ maxWidth: '85%' }}>
+                                <div key={i} style={{ marginBottom: 8, display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
+                                    <div style={{ maxWidth: msg.role === 'user' ? '85%' : '100%', width: msg.role === 'assistant' ? '100%' : undefined }}>
                                         <div style={{
-                                            padding: '10px 14px', fontSize: 12, lineHeight: 1.6, wordBreak: 'break-word',
-                                            borderRadius: msg.role === 'user' ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
-                                            background: msg.role === 'user' ? themeColor : aiBubbleBg,
-                                            color: msg.role === 'user' ? '#fff' : textColor,
-                                            boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                                            padding: '6px 10px', fontSize: 11.5, lineHeight: 1.5, wordBreak: 'break-word',
+                                            borderRadius: 0,
+                                            border: `1px solid ${border}`,
+                                            borderLeft: msg.role === 'assistant' ? `2px solid ${themeColor}` : undefined,
+                                            borderRight: msg.role === 'user' ? `2px solid ${themeColor}` : undefined,
+                                            background: msg.role === 'user' ? `${themeColor}22` : aiBubbleBg,
+                                            color: textColor,
                                         }}>
-                                            <div className="prose prose-sm dark:prose-invert max-w-none [&_p]:m-0 [&_ul]:my-1 [&_ol]:my-1 [&_li]:my-0">
+                                            <div className="studio-markdown prose prose-sm dark:prose-invert max-w-none [&_p]:m-0 [&_ul]:my-1 [&_ol]:my-1 [&_li]:my-0">
                                                 <ReactMarkdown>{msg.content}</ReactMarkdown>
                                             </div>
                                         </div>
                                         {msg.references && msg.references.length > 0 && (
-                                            <div style={{ marginTop: 4 }}>
+                                            <div style={{ marginTop: 3 }}>
                                                 <button onClick={() => setShowReferences(showReferences === i ? null : i)}
-                                                    style={{ fontSize: 9, color: textMuted, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-                                                    📄 {msg.references.length} source{msg.references.length > 1 ? 's' : ''} cited
+                                                    style={{ fontSize: 9, color: themeColor, background: `${themeColor}14`, border: `1px solid ${themeColor}55`, cursor: 'pointer', padding: '1px 6px' }} className="font-mono uppercase font-bold">
+                                                    {showReferences === i
+                                                        ? `▲ HIDE CITATIONS [${msg.references.length}]`
+                                                        : `▼ SHOW CITATIONS [${msg.references.length}]`}
                                                 </button>
                                                 <AnimatePresence>
                                                     {showReferences === i && (
                                                         <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} style={{ overflow: 'hidden' }}>
                                                             <div style={{ marginTop: 4, display: 'flex', flexDirection: 'column', gap: 4 }}>
                                                                 {msg.references.map((ref: any, ri: number) => (
-                                                                    <div key={ri} style={{ padding: '6px 8px', borderRadius: 6, background: refBg, fontSize: 10 }}>
-                                                                        <Text strong style={{ fontSize: 9, color: themeColor, display: 'block', marginBottom: 2 }}>{ref.docName}</Text>
-                                                                        <Text style={{ fontSize: 9, color: textMuted }} className="line-clamp-2">{ref.content}</Text>
+                                                                    <div key={ri} style={{ padding: '4px 8px', borderRadius: 0, border: `1px solid ${border}`, borderLeft: `2px solid ${themeColor}`, background: refBg, fontSize: 10 }}>
+                                                                        <Text strong style={{ fontSize: 9.5, color: themeColor, display: 'block', marginBottom: 1 }}>{ref.docName}</Text>
+                                                                        <Text style={{ fontSize: 9.5, color: textMuted }} className="line-clamp-2">{ref.content}</Text>
                                                                     </div>
                                                                 ))}
                                                             </div>
@@ -453,17 +522,8 @@ export default function AIStudioDrawer({ visible, onClose }: AIStudioDrawerProps
                                 </div>
                             ))
                         )}
-                        {isChatting && <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: 14 }}><div style={{ padding: 10, borderRadius: 14, background: `${themeColor}08` }}><Spin indicator={<LoadingOutlined spin />} size="small" /></div></div>}
+                        {isChatting && <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: 8 }}><div style={{ padding: '6px 10px', borderRadius: 0, border: `1px solid ${border}`, borderLeft: `2px solid ${themeColor}`, background: `${themeColor}08` }}><Spin indicator={<LoadingOutlined spin />} size="small" /></div></div>}
                         <div ref={messagesEndRef} />
-                    </div>
-
-                    {/* Chat Input */}
-                    <div style={{ padding: '10px 14px', borderTop: `1px solid ${border}`, display: 'flex', gap: 8, flexShrink: 0 }}>
-                        <Input value={chatInput} onChange={e => setChatInput(e.target.value)} onPressEnter={handleChatSend}
-                            placeholder={activeNotebook ? "Ask about your sources..." : "Select a notebook"} disabled={isChatting || !activeNotebook}
-                            style={{ borderRadius: 10, flex: 1 }} />
-                        <Button type="primary" icon={<SendOutlined />} onClick={handleChatSend} loading={isChatting} disabled={!activeNotebook}
-                            style={{ borderRadius: 10, backgroundColor: themeColor, borderColor: themeColor }} />
                     </div>
                 </div>
             </div>
@@ -472,8 +532,8 @@ export default function AIStudioDrawer({ visible, onClose }: AIStudioDrawerProps
             <Modal title={<span><BookOutlined style={{ color: themeColor, marginRight: 8 }} />Create Notebook</span>}
                 open={showCreateModal} onCancel={() => setShowCreateModal(false)} onOk={handleCreateNotebook}
                 confirmLoading={creatingNotebook} okText="Create" okButtonProps={{ style: { backgroundColor: themeColor } }} centered>
-                <div style={{ paddingTop: 16 }}>
-                    <Input size="large" value={newNotebookName} onChange={e => setNewNotebookName(e.target.value)}
+                <div style={{ paddingTop: 10 }}>
+                    <Input size="small" value={newNotebookName} onChange={e => setNewNotebookName(e.target.value)}
                         placeholder="e.g. Q4 Research Analysis" onPressEnter={handleCreateNotebook} />
                 </div>
             </Modal>
@@ -481,16 +541,16 @@ export default function AIStudioDrawer({ visible, onClose }: AIStudioDrawerProps
             {/* Add from Media Library Modal */}
             <Modal title={<span><AppstoreAddOutlined style={{ color: themeColor, marginRight: 8 }} />Add from Media Library</span>}
                 open={showAddMediaModal} onCancel={() => setShowAddMediaModal(false)} footer={null} width={500} centered>
-                {loadingMedia ? <div style={{ textAlign: 'center', padding: 40 }}><Spin size="large" /></div> : (
-                    <List className="max-h-[350px] overflow-y-auto" dataSource={mediaFiles} renderItem={item => {
+                {loadingMedia ? <div style={{ textAlign: 'center', padding: 30 }}><Spin size="small" /></div> : (
+                    <List size="small" className="max-h-[340px] overflow-y-auto" dataSource={mediaFiles} renderItem={item => {
                         const added = sources.some(s => s.media_id === item.id);
                         return (
                             <List.Item actions={[added ? <Tag key="a" color="success">Added</Tag> :
                                 <Button key="b" type="primary" size="small" icon={<PlusOutlined />} loading={addingMedia.has(item.id)}
                                     onClick={() => handleAddMedia(item.id)} style={{ backgroundColor: themeColor }}>Add</Button>]}>
                                 <List.Item.Meta
-                                    avatar={<Avatar icon={<FileOutlined />} shape="square" style={{ backgroundColor: `${themeColor}22`, color: themeColor }} />}
-                                    title={<Text style={{ fontSize: 12, color: textColor }}>{item.filename}</Text>}
+                                    avatar={<Avatar size="small" icon={<FileOutlined />} shape="square" style={{ backgroundColor: `${themeColor}22`, color: themeColor }} />}
+                                    title={<Text style={{ fontSize: 11.5, color: textColor }}>{item.filename}</Text>}
                                     description={<Text style={{ fontSize: 10, color: textMuted }}>{item.mime_type}</Text>} />
                             </List.Item>);
                     }} />

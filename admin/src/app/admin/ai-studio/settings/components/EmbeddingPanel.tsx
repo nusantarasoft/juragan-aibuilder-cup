@@ -23,7 +23,7 @@ export default function EmbeddingPanel({ activeProvider }: Props) {
                     type="info"
                     showIcon
                     style={{ marginBottom: 16 }}
-                    message={`LLM aktif: ${PROVIDER_LABELS.ollama}. Untuk RAG, pilih Embedding Provider = Ollama dan pull model nomic-embed-text.`}
+                    message={`Active LLM: ${PROVIDER_LABELS.ollama}. For RAG, select Embedding Provider = Ollama and pull the nomic-embed-text model.`}
                 />
             )}
             {activeProvider === "groq" && (
@@ -31,7 +31,7 @@ export default function EmbeddingPanel({ activeProvider }: Props) {
                     type="info"
                     showIcon
                     style={{ marginBottom: 16 }}
-                    message={`LLM aktif: ${PROVIDER_LABELS.groq}. Groq tidak dipakai untuk embedding — pilih Google / OpenAI / Ollama untuk RAG.`}
+                    message={`Active LLM: ${PROVIDER_LABELS.groq}. Groq is not used for embeddings — select Google / OpenAI / Ollama for RAG.`}
                 />
             )}
             {activeProvider === "openrouter" && (
@@ -39,10 +39,10 @@ export default function EmbeddingPanel({ activeProvider }: Props) {
                     type="info"
                     showIcon
                     style={{ marginBottom: 16 }}
-                    message={`LLM aktif: ${PROVIDER_LABELS.openrouter}. OpenRouter tidak dipakai untuk embedding — pilih Google / OpenAI / Ollama untuk RAG.`}
+                    message={`Active LLM: ${PROVIDER_LABELS.openrouter}. OpenRouter is not used for embeddings — select Google / OpenAI / Ollama for RAG.`}
                 />
             )}
-            <Card title="Embedding (RAG / pencarian dokumen)" bordered={false} styles={{ body: { padding: 0 } }}>
+            <Card title="Embedding (RAG / document search)" bordered={false} styles={{ body: { padding: 0 } }}>
                 <Form.Item
                     name="default_embedding_provider"
                     label="Embedding Provider"
@@ -53,7 +53,7 @@ export default function EmbeddingPanel({ activeProvider }: Props) {
                 </Form.Item>
 
                 <Text type="secondary" style={{ display: "block", marginBottom: 16 }}>
-                    Terpisah dari chat LLM — khusus vektorisasi dokumen di AI Studio.
+                    Separate from chat LLM — dedicated to document vectorization in AI Studio.
                 </Text>
 
                 {(embeddingProvider === "auto" || embeddingProvider === "google_ai" || embeddingProvider === "vertex") && (
@@ -63,7 +63,7 @@ export default function EmbeddingPanel({ activeProvider }: Props) {
                                 type="info"
                                 showIcon
                                 style={{ marginBottom: 16 }}
-                                message="Vertex embedding memakai Project ID / Service Account dari panel Google (Settings & Models)."
+                                message="Vertex embedding uses Project ID / Service Account from the Google panel (Settings & Models)."
                             />
                         )}
                         <ModelSelect

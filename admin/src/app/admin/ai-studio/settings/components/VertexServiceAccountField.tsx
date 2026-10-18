@@ -17,8 +17,8 @@ export default function VertexServiceAccountField({ configured }: Props) {
                 label="Vertex Service Account JSON"
                 extra={
                     configured
-                        ? "Kosongkan untuk mempertahankan kredensial tersimpan. Dipakai untuk Vertex chat & embedding; fallback ADC jika kosong."
-                        : "Paste isi file service-account.json dari GCP (client_email + private_key). Project ID bisa diambil dari JSON jika field Project ID kosong."
+                        ? "Leave blank to keep stored credentials. Used for Vertex chat & embedding; falls back to ADC if empty."
+                        : "Paste the contents of service-account.json from GCP (client_email + private_key). Project ID can be extracted from JSON if the Project ID field is empty."
                 }
             >
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -32,14 +32,14 @@ export default function VertexServiceAccountField({ configured }: Props) {
                             rows={6}
                             placeholder={
                                 configured
-                                    ? "•••• service account tersimpan — paste JSON baru untuk mengganti"
+                                    ? "•••• service account stored — paste new JSON to replace"
                                     : '{"type":"service_account","project_id":"...","private_key":"...","client_email":"..."}'
                             }
                             style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: 12 }}
                         />
                     </Form.Item>
                     <Text type="secondary" style={{ fontSize: 12 }}>
-                        Model chat/embedding tetap diganti di field di bawah / tab Embeddings — tanpa sentuh env server.
+                        Chat/embedding models can still be changed in the fields below / Embeddings tab — without touching server env.
                     </Text>
                 </div>
             </Form.Item>
@@ -49,7 +49,7 @@ export default function VertexServiceAccountField({ configured }: Props) {
                     valuePropName="checked"
                     style={{ marginTop: -8 }}
                 >
-                    <Checkbox>Hapus service account tersimpan saat Save</Checkbox>
+                    <Checkbox>Remove stored service account on Save</Checkbox>
                 </Form.Item>
             )}
         </>

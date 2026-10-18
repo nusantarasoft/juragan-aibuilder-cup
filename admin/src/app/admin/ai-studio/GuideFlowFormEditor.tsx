@@ -178,10 +178,10 @@ const NODE_TYPES: GuideFlowNode["type"][] = [
 ];
 
 const ACTION_OPTIONS = [
-    { value: "record_sale", label: "record_sale — catat penjualan" },
-    { value: "sales_report", label: "sales_report — laporan harian" },
-    { value: "list_products", label: "list_products — daftar produk" },
-    { value: "umkm_help", label: "umkm_help — bantuan UMKM" },
+    { value: "record_sale", label: "record_sale — record sale" },
+    { value: "sales_report", label: "sales_report — daily sales report" },
+    { value: "list_products", label: "list_products — product list" },
+    { value: "umkm_help", label: "umkm_help — SME help" },
 ] as const;
 
 export default function GuideFlowFormEditor({ value, onChange }: Props) {

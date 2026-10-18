@@ -51,11 +51,14 @@ export default function GuideFlowPreview({ definition }: Props) {
     const flowKind = definition.meta?.flowKind;
 
     return (
-        <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-3 bg-gray-50/80 dark:bg-gray-900/30">
+        <div
+            className="rounded-none border border-white/10 p-3 bg-white/[0.02]"
+            style={{ borderLeft: "2px solid #fb923c" }}
+        >
             <div className="flex flex-wrap items-center gap-2 mb-2">
-                <Text className="text-xs text-gray-500">Flow preview</Text>
-                {flowKind && <Tag color="geekblue">{flowKind}</Tag>}
-                <Text type="secondary" className="text-[10px]">
+                <Text className="font-mono text-[10px] uppercase tracking-[0.14em] text-gray-500">Flow preview</Text>
+                {flowKind && <Tag color="geekblue" className="font-mono !rounded-none uppercase">{flowKind}</Tag>}
+                <Text type="secondary" className="font-mono text-[10px] tabular-nums">
                     {definition.nodes.length} nodes · start: {definition.startNodeId}
                 </Text>
             </div>
@@ -64,7 +67,7 @@ export default function GuideFlowPreview({ definition }: Props) {
                     <Tag
                         key={n.id}
                         color={NODE_COLORS[n.type] ?? "default"}
-                        className="!text-[10px] !m-0"
+                        className="font-mono !text-[10px] !m-0 !rounded-none"
                     >
                         {n.id}
                     </Tag>

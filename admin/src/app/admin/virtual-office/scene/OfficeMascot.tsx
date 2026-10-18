@@ -9,7 +9,7 @@ import { TamagotchiModel } from "@/components/helper/TamagotchiGlobal";
 import { assignSpots, createSeatMemory } from "../lib/floorplan";
 import {
     MASCOT_ID,
-    MASCOT_PLAY_SPOTS,
+    MASCOT_MOODS,
     buildMascotPath,
     getMascotRankTitle,
     useMascotStore,
@@ -17,8 +17,6 @@ import {
 import { agentObjects, useOfficeStore } from "../lib/store";
 import type { ZoneId } from "../lib/types";
 
-const WALK_SPEED = 2.5;
-const RUN_SPEED = 4.0;
 const tmp = new THREE.Vector3();
 
 function dampAngle(current: number, target: number, t: number) {
@@ -55,14 +53,15 @@ export const OfficeMascot = memo(function OfficeMascot() {
         anim,
         expression,
         activityLabel,
+        mood,
         roaming,
         hurrying,
         toast,
         moveNonce,
         vitals,
         hydrateVitals,
-        setDestination,
-        visitAgentSpot,
+        roamNextByMood,
+        actRandomlyInPlace,
         petMascot,
     } = useMascotStore(
         useShallow((s) => ({
@@ -73,14 +72,15 @@ export const OfficeMascot = memo(function OfficeMascot() {
             anim: s.anim,
             expression: s.expression,
             activityLabel: s.activityLabel,
+            mood: s.mood,
             roaming: s.roaming,
             hurrying: s.hurrying,
             toast: s.toast,
             moveNonce: s.moveNonce,
             vitals: s.vitals,
             hydrateVitals: s.hydrateVitals,
-            setDestination: s.setDestination,
-            visitAgentSpot: s.visitAgentSpot,
+            roamNextByMood: s.roamNextByMood,
+            actRandomlyInPlace: s.actRandomlyInPlace,
             petMascot: s.petMascot,
         })),
     );
@@ -129,48 +129,39 @@ export const OfficeMascot = memo(function OfficeMascot() {
         }
     }, [moveNonce, targetPosition, zone]);
 
-    // Autonomous roaming & play scheduler
+    // Mood-driven autonomous random roaming & random in-place behavior scheduler
     useEffect(() => {
-        const timer = setInterval(() => {
+        let timeoutId: ReturnType<typeof setTimeout>;
+
+        const scheduleNextTick = () => {
             const st = useMascotStore.getState();
-            if (!st.roaming) return;
-            if (isMovingRef.current) return;
-            if (Date.now() < st.lockUntil) return;
+            const moodMeta = MASCOT_MOODS[st.mood] ?? MASCOT_MOODS.playful;
+            const [minMs, maxMs] = moodMeta.roamIntervalMs;
+            // Tick frequently so Puff feels alive, spontaneous, and responsive to mood
+            const delay = Math.round((minMs + Math.random() * (maxMs - minMs)) * 0.55);
 
-            const onlineAgents = agents.filter((a) => a.status !== "offline");
-            // 38% chance to go visit a live/online agent and cheer or play beside them
-            if (onlineAgents.length > 0 && Math.random() < 0.38) {
-                const chosenAgent = onlineAgents[Math.floor(Math.random() * onlineAgents.length)];
-                const sp = agentSpots[chosenAgent.id];
-                if (sp) {
-                    visitAgentSpot(chosenAgent.id, chosenAgent.name, sp);
-                    return;
+            timeoutId = setTimeout(() => {
+                const cur = useMascotStore.getState();
+                if (!isMovingRef.current && Date.now() >= cur.lockUntil) {
+                    if (cur.roaming) {
+                        // 72% chance to roam to a new random spot/zone, 28% chance to do a spontaneous new trick right here
+                        if (Math.random() < 0.72) {
+                            roamNextByMood(agents, agentSpots);
+                        } else {
+                            actRandomlyInPlace();
+                        }
+                    } else {
+                        // Even when pinned to a spot, Puff still acts randomly based on his mood!
+                        actRandomlyInPlace();
+                    }
                 }
-            }
+                scheduleNextTick();
+            }, delay);
+        };
 
-            // Otherwise pick another play spot around the Virtual Office
-            const otherSpots = MASCOT_PLAY_SPOTS.filter(
-                (sp) => Math.hypot(sp.position[0] - st.targetPosition[0], sp.position[1] - st.targetPosition[1]) > 1.2,
-            );
-            const nextSpot = otherSpots[Math.floor(Math.random() * otherSpots.length)] ?? MASCOT_PLAY_SPOTS[0];
-            const nextAct = nextSpot.activities[Math.floor(Math.random() * nextSpot.activities.length)];
-
-            setDestination({
-                zone: nextSpot.zone,
-                spotName: nextSpot.name,
-                position: nextSpot.position,
-                yaw: nextSpot.yaw,
-                anim: nextAct.anim,
-                expression: nextAct.expression,
-                activityLabel: nextAct.label,
-                hurrying: Math.random() < 0.25,
-                lockDurationMs: nextAct.durationMs,
-                visitingAgentId: null,
-            });
-        }, 7200);
-
-        return () => clearInterval(timer);
-    }, [agents, agentSpots, setDestination, visitAgentSpot]);
+        scheduleNextTick();
+        return () => clearTimeout(timeoutId);
+    }, [agents, agentSpots, roamNextByMood, actRandomlyInPlace]);
 
     useFrame((state, rawDt) => {
         const dt = Math.min(rawDt, 0.05);
@@ -178,6 +169,7 @@ export const OfficeMascot = memo(function OfficeMascot() {
         const g = groupRef.current;
         if (!g) return;
 
+        const moodMeta = MASCOT_MOODS[mood] ?? MASCOT_MOODS.playful;
         let movingNow = false;
         let desiredYaw = targetYaw;
         const nextWaypoint = pathRef.current[0];
@@ -185,7 +177,7 @@ export const OfficeMascot = memo(function OfficeMascot() {
         if (nextWaypoint) {
             tmp.set(nextWaypoint.x - g.position.x, 0, nextWaypoint.z - g.position.z);
             const dist = tmp.length();
-            const speed = hurrying ? RUN_SPEED : WALK_SPEED;
+            const speed = hurrying ? moodMeta.runSpeed : moodMeta.walkSpeed;
             const step = speed * dt;
             if (dist > 1e-4) {
                 desiredYaw = Math.atan2(tmp.x, tmp.z);
@@ -236,10 +228,21 @@ export const OfficeMascot = memo(function OfficeMascot() {
     };
 
     const rankInfo = getMascotRankTitle(vitals.level);
+    const moodMeta = MASCOT_MOODS[mood] ?? MASCOT_MOODS.playful;
     const effectiveModelState = isMoving ? (hurrying ? "running" : "walking") : anim;
-    const effectiveLabel = isMoving
-        ? `${hurrying ? "Dashing" : "Waddling"} to ${spotName}…`
-        : activityLabel;
+    const moveVerb =
+        mood === "hyper"
+            ? "Zooming"
+            : mood === "sleepy"
+              ? "Drifting"
+              : mood === "grumpy"
+                ? "Stomping"
+                : mood === "hungry"
+                  ? "Foraging"
+                  : hurrying
+                    ? "Dashing"
+                    : "Waddling";
+    const effectiveLabel = isMoving ? `${moveVerb} to ${spotName}…` : activityLabel;
 
     return (
         <group
@@ -251,22 +254,26 @@ export const OfficeMascot = memo(function OfficeMascot() {
             {/* Mascot Floor Aura Ring */}
             <mesh rotation-x={-Math.PI / 2} position-y={0.022}>
                 <ringGeometry args={[0.42, 0.50, 48]} />
-                <meshBasicMaterial color="#fb923c" transparent opacity={0.88} toneMapped={false} />
+                <meshBasicMaterial color={moodMeta.color} transparent opacity={0.88} toneMapped={false} />
             </mesh>
             <mesh rotation-x={-Math.PI / 2} position-y={0.017}>
                 <circleGeometry args={[0.42, 48]} />
-                <meshBasicMaterial color="#38bdf8" transparent opacity={0.16} depthWrite={false} />
+                <meshBasicMaterial color={moodMeta.color} transparent opacity={0.16} depthWrite={false} />
             </mesh>
             <mesh ref={selRingRef} rotation-x={-Math.PI / 2} position-y={0.026} visible={false}>
                 <ringGeometry args={[0.60, 0.68, 64]} />
                 <meshBasicMaterial color={selected ? "#ffffff" : "#fb923c"} transparent opacity={0.95} toneMapped={false} />
             </mesh>
             {selected && (
-                <mesh position-y={1.35}>
-                    <cylinderGeometry args={[0.58, 0.58, 2.7, 32, 1, true]} />
-                    <meshBasicMaterial color="#fb923c" transparent opacity={0.08} side={THREE.DoubleSide} depthWrite={false} />
+                <mesh rotation-x={-Math.PI / 2} position-y={0.03}>
+                    <ringGeometry args={[0.72, 0.76, 64]} />
+                    <meshBasicMaterial color={moodMeta.color} transparent opacity={0.75} toneMapped={false} />
                 </mesh>
             )}
+
+            {/* Soft local studio key & rim light so Puff's 3D fur coat and cream belly pop in both Day & Night modes */}
+            <pointLight position={[0.3, 1.35, 1.05]} intensity={1.15} distance={3.6} decay={1.6} color="#fffaf0" />
+            <pointLight position={[-0.4, 1.25, -0.95]} intensity={0.65} distance={3.2} decay={1.6} color="#e2e8f0" />
 
             {/* 3D Cinder-Puff Tamagotchi Model (scaled & offset so feet sit cleanly on floor y=0) */}
             <group position={[0, 0.62, 0]} scale={0.88}>
@@ -280,7 +287,7 @@ export const OfficeMascot = memo(function OfficeMascot() {
                 />
             </group>
 
-            {/* Floating Agentic OS Name Tag & Activity Bubble */}
+            {/* Floating Agentic OS Name Tag, Mood Pill & Activity Bubble */}
             {(showLabels || selected || hovered || toast) && (
                 <Html position={[0, 1.95, 0]} center zIndexRange={[12, 0]} style={{ pointerEvents: "none" }}>
                     <div
@@ -306,19 +313,29 @@ export const OfficeMascot = memo(function OfficeMascot() {
                                     ? "border-orange-400/90 bg-[#0b0e13]/95 text-white"
                                     : "border-orange-400/45 bg-[#0b0e13]/90 text-white"
                             }`}
-                            style={{ borderLeftColor: "#fb923c", borderLeftWidth: 2 }}
+                            style={{ borderLeftColor: moodMeta.color, borderLeftWidth: 2 }}
                         >
                             <span className="relative flex h-1.5 w-1.5">
                                 <span
                                     className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-65"
-                                    style={{ background: "#38bdf8" }}
+                                    style={{ background: moodMeta.color }}
                                 />
                                 <span
                                     className="relative inline-flex h-1.5 w-1.5 rounded-full"
-                                    style={{ background: "#fb923c" }}
+                                    style={{ background: moodMeta.color }}
                                 />
                             </span>
                             <span>CINDER-PUFF</span>
+                            <span
+                                className="border px-1 py-px text-[8.5px] font-bold uppercase tracking-wider"
+                                style={{
+                                    background: `${moodMeta.color}22`,
+                                    borderColor: `${moodMeta.color}66`,
+                                    color: moodMeta.color,
+                                }}
+                            >
+                                {moodMeta.emoji} {moodMeta.id}
+                            </span>
                             <span
                                 className="border px-1 py-px text-[8.5px] font-bold uppercase tracking-wider"
                                 style={{
@@ -327,10 +344,10 @@ export const OfficeMascot = memo(function OfficeMascot() {
                                     color: rankInfo.color,
                                 }}
                             >
-                                LV.{vitals.level} {rankInfo.title}
+                                LV.{vitals.level}
                             </span>
                         </div>
-                        <div className="max-w-[240px] truncate border border-white/15 bg-[#0b0e13]/92 px-2 py-0.5 text-[9.5px] text-cyan-200 backdrop-blur-md">
+                        <div className="max-w-[260px] truncate border border-white/15 bg-[#0b0e13]/92 px-2 py-0.5 text-[9.5px] text-cyan-200 backdrop-blur-md">
                             {effectiveLabel}
                         </div>
                     </div>

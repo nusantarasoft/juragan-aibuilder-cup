@@ -58,15 +58,16 @@ function smoothstep(edge0: number, edge1: number, x: number): number {
     return t * t * (3 - 2 * t);
 }
 
-// ─── 1. Procedural Feathered Fur Bump Map (threejs-textures skill) ───────────
+// ─── 1. Procedural Multi-Layer Animal Fur Pelt Texture (threejs-textures skill) ──
 function createFurBumpTexture(): THREE.CanvasTexture {
-    const size = 512;
+    const size = 1024;
     const bumpCanvas = document.createElement('canvas');
     bumpCanvas.width = size;
     bumpCanvas.height = size;
     const bCtx = bumpCanvas.getContext('2d')!;
 
-    bCtx.fillStyle = '#808080';
+    // Soft undercoat base
+    bCtx.fillStyle = '#525252';
     bCtx.fillRect(0, 0, size, size);
 
     let seed = 1337;
@@ -75,25 +76,97 @@ function createFurBumpTexture(): THREE.CanvasTexture {
         return (seed - 1) / 2147483646;
     };
 
-    bCtx.lineCap = 'round';
-    for (let i = 0; i < 9000; i++) {
+    // Pass 0: Organic soft undercoat clumping blotches
+    for (let i = 0; i < 1200; i++) {
         const x = rand() * size;
         const y = rand() * size;
-        const angle = (rand() - 0.5) * 0.45;
-        const len = 5 + rand() * 8;
-        const val = Math.floor(95 + rand() * 140);
-        bCtx.strokeStyle = `rgb(${val},${val},${val})`;
-        bCtx.lineWidth = 1.0 + rand() * 1.5;
+        const r = 10 + rand() * 18;
+        const v = Math.floor(55 + rand() * 50);
+        bCtx.fillStyle = `rgba(${v},${v},${v},0.18)`;
         bCtx.beginPath();
-        bCtx.moveTo(x, y);
-        bCtx.lineTo(x + Math.sin(angle) * len, y + Math.cos(angle) * len);
-        bCtx.stroke();
+        bCtx.arc(x, y, r, 0, Math.PI * 2);
+        bCtx.fill();
+    }
+
+    bCtx.lineCap = 'round';
+
+    // Helper to draw a curved short animal hair stroke with seamless tile wrapping
+    const drawCurvedHair = (
+        x: number,
+        y: number,
+        dx: number,
+        dy: number,
+        cxOff: number,
+        width: number,
+        style: string
+    ) => {
+        bCtx.strokeStyle = style;
+        bCtx.lineWidth = width;
+        const wrapX = [-size, 0, size];
+        const wrapY = [-size, 0, size];
+        for (let wx = 0; wx < 3; wx++) {
+            const ox = wrapX[wx];
+            if (x + ox < -40 || x + ox > size + 40) continue;
+            for (let wy = 0; wy < 3; wy++) {
+                const oy = wrapY[wy];
+                if (y + oy < -40 || y + oy > size + 40) continue;
+                bCtx.beginPath();
+                bCtx.moveTo(x + ox, y + oy);
+                bCtx.quadraticCurveTo(
+                    x + ox + dx * 0.5 + cxOff,
+                    y + oy + dy * 0.5,
+                    x + ox + dx,
+                    y + oy + dy
+                );
+                bCtx.stroke();
+            }
+        }
+    };
+
+    // Pass 1: Dense soft undercoat hairs (12,000 short curved fibers)
+    for (let i = 0; i < 12000; i++) {
+        const x = rand() * size;
+        const y = rand() * size;
+        const angle = (rand() - 0.5) * 0.52;
+        const len = 9 + rand() * 10;
+        const dx = Math.sin(angle) * len;
+        const dy = Math.cos(angle) * len;
+        const cxOff = (rand() - 0.5) * 3.2;
+        const val = Math.floor(72 + rand() * 68);
+        drawCurvedHair(x, y, dx, dy, cxOff, 1.4 + rand() * 1.1, `rgba(${val},${val},${val},0.55)`);
+    }
+
+    // Pass 2: Mid-coat animal fur fibers (12,000 fine overlapping hairs)
+    for (let i = 0; i < 12000; i++) {
+        const x = rand() * size;
+        const y = rand() * size;
+        const angle = (rand() - 0.5) * 0.38;
+        const len = 12 + rand() * 13;
+        const dx = Math.sin(angle) * len;
+        const dy = Math.cos(angle) * len;
+        const cxOff = (rand() - 0.5) * 2.8;
+        const val = Math.floor(130 + rand() * 75);
+        drawCurvedHair(x, y, dx, dy, cxOff, 0.85 + rand() * 0.75, `rgba(${val},${val},${val},0.72)`);
+    }
+
+    // Pass 3: Crisp Agouti Guard Hairs (8,000 bright-tipped raccoon/panda guard hairs)
+    for (let i = 0; i < 8000; i++) {
+        const x = rand() * size;
+        const y = rand() * size;
+        const angle = (rand() - 0.5) * 0.28;
+        const len = 14 + rand() * 15;
+        const dx = Math.sin(angle) * len;
+        const dy = Math.cos(angle) * len;
+        const cxOff = (rand() - 0.5) * 2.2;
+        const val = Math.floor(205 + rand() * 50);
+        drawCurvedHair(x, y, dx, dy, cxOff, 0.55 + rand() * 0.55, `rgba(${val},${val},${val},0.85)`);
     }
 
     const furBumpMap = new THREE.CanvasTexture(bumpCanvas);
     furBumpMap.wrapS = THREE.RepeatWrapping;
     furBumpMap.wrapT = THREE.RepeatWrapping;
-    furBumpMap.repeat.set(3, 2);
+    furBumpMap.repeat.set(5, 4);
+    furBumpMap.anisotropy = 4;
     furBumpMap.needsUpdate = true;
     return furBumpMap;
 }
@@ -637,6 +710,7 @@ export const TamagotchiModel: React.FC<Props> = ({
     const headLookRef = useRef<THREE.Group>(null);
     const hoodRef = useRef<THREE.Group>(null);
     const scarfRef = useRef<THREE.Group>(null);
+    const tailRef = useRef<THREE.Group>(null);
     const leftArmRef = useRef<THREE.Group>(null);
     const rightArmRef = useRef<THREE.Group>(null);
     const leftFootRef = useRef<THREE.Group>(null);
@@ -688,10 +762,15 @@ export const TamagotchiModel: React.FC<Props> = ({
         return 'normal';
     }, [eyeExpression, manualExpIndex]);
 
-    // ─── Build Exact Reference-Matched Geometries (threejs-geometry skill) ─────
+    // ─── Build Red Panda Head + Fat Raccoon Body + Mecha Beast Horn + Fox Tail Geometries ─────
     const {
         bodyGeo,
+        furShellsGeo,
+        redPandaEarOuterGeo,
+        redPandaEarInnerGeo,
         hornGeo,
+        hornCollarGeo,
+        foxTailGeo,
         hoodCowlGeo,
         hoodRimGeo,
         scarfCoilsGeo,
@@ -707,86 +786,271 @@ export const TamagotchiModel: React.FC<Props> = ({
         swirlRibbonGeo2,
     } = useMemo(() => {
         const v = new THREE.Vector3();
+        const n = new THREE.Vector3();
 
-        // 1A. Plump Pear-Ovoid Body (Matching FRONT & SIDE VIEW Silhouette)
-        // Upper head: rx ≈ 0.44, rz ≈ 0.43 (top at y = +0.54)
-        // Neck (y ≈ +0.08): rx ≈ 0.43, rz ≈ 0.42 (so the V-draped scarf at r = 0.46..0.51 fits snugly without bulging!)
-        // Lower belly (y = -0.05 to -0.58): swells to rx ≈ 0.53, rz ≈ 0.50 (giving a full, prominent chubby pear belly!)
-        const bGeo = new THREE.SphereGeometry(0.48, 128, 128);
-        const pos = bGeo.attributes.position;
-        for (let i = 0; i < pos.count; i++) {
-            v.fromBufferAttribute(pos, i);
-            const dir = v.clone().normalize();
+        // Helper: Shared anatomical deformation for Fatty Red Panda Head + Fat Oval Raccoon Body (NO vertical accordion ribs!)
+        const deformFatPandaRaccoonBody = (pt: THREE.Vector3) => {
+            const dir = pt.clone().normalize();
+            const angle = Math.atan2(dir.x, dir.z);
+            const absAng = Math.abs(angle);
 
-            // Pear silhouette: narrower upper head, snug neck at y ≈ +0.08, plump lower belly at y ≈ -0.30
-            const bellyFullness = smoothstep(-0.85, -0.25, dir.y) * (1 - smoothstep(-0.18, 0.28, dir.y));
-            const headTaper = smoothstep(0.05, 0.85, dir.y);
-            const neckIn = smoothstep(-0.08, 0.14, dir.y) * (1 - smoothstep(0.14, 0.36, dir.y));
+            // Keep the full fat oval silhouette across the entire front & sides (|angle| < 1.18 rad),
+            // only tapering slightly at the hidden rear back under the cloak so it never clips through the cape
+            const underCloakRear = smoothstep(1.15, 1.72, absAng);
 
-            const scaleX = 0.96 + bellyFullness * 0.18 - headTaper * 0.10 - neckIn * 0.05;
-            const scaleZ = 0.93 + bellyFullness * 0.15 - headTaper * 0.08 - neckIn * 0.04;
-            v.x *= scaleX;
-            v.z *= scaleZ;
-            v.y *= 1.18; // Extends from y = -0.56 to y = +0.56
+            // 1) FAT OVAL RACCOON BODY SHAPE (Smooth, wide, plump elliptical oval torso below the neck!)
+            // Map the torso (dir.y from +0.10 down to -1.0) onto a plump mathematical Fat Oval
+            // whose widest horizontal equator is at mid-lower belly (dir.y = -0.40, y ≈ -0.23)
+            const torsoMask = smoothstep(0.11, -0.03, dir.y);
+            const ovalCenterY = -0.40;
+            const uOval =
+                dir.y >= ovalCenterY
+                    ? ((dir.y - ovalCenterY) / (0.10 - ovalCenterY)) * 0.72
+                    : (dir.y - ovalCenterY) / (-1.0 - ovalCenterY);
+            const clampedU = Math.max(-1.0, Math.min(0.95, uOval));
+            // Plump fat-oval super-ellipse arc (stays full & round through the lower belly before rounding closed at the bottom)
+            const ovalArc = Math.pow(Math.max(0.0, 1.0 - Math.pow(Math.abs(clampedU), 2.12)), 0.50);
+            const sphereHoriz = Math.max(0.0001, Math.hypot(dir.x, dir.z));
 
-            if (dir.y < -0.72) {
-                v.y *= 0.94;
+            // Blend native sphere radius (0.49 * sphereHoriz) with the plump Fat Oval radius (Rx=0.70, Rz=0.60)
+            const ovalRx = 0.49 * sphereHoriz * (1.0 - torsoMask) + (0.70 * ovalArc) * torsoMask;
+            const ovalRz = 0.49 * sphereHoriz * (1.0 - torsoMask) + (0.60 * ovalArc) * torsoMask;
+
+            // 2) FATTY RED PANDA HEAD SHAPE (broad, round, chubby head + big squishy cheek pouches!)
+            const headBroadness =
+                smoothstep(0.04, 0.24, dir.y) *
+                (1.0 - smoothstep(0.56, 0.90, dir.y)) *
+                (1.0 - underCloakRear * 0.55);
+            const headTaper = smoothstep(0.32, 0.92, dir.y);
+            const neckIn = smoothstep(-0.02, 0.10, dir.y) * (1.0 - smoothstep(0.10, 0.24, dir.y));
+
+            const headScaleX =
+                0.98 +
+                headBroadness * 0.11 -
+                headTaper * 0.04 -
+                neckIn * 0.04 -
+                underCloakRear * 0.08;
+            const headScaleZ =
+                0.95 +
+                headBroadness * 0.05 -
+                headTaper * 0.05 -
+                neckIn * 0.03 -
+                underCloakRear * 0.10;
+
+            const rearBodyTaperX = 1.0 - torsoMask * underCloakRear * 0.18;
+            const rearBodyTaperZ = 1.0 - torsoMask * underCloakRear * 0.22;
+
+            if (sphereHoriz > 0.0001) {
+                const nx = dir.x / sphereHoriz;
+                const nz = dir.z / sphereHoriz;
+                pt.x = nx * ovalRx * headScaleX * rearBodyTaperX;
+                pt.z = nz * ovalRz * headScaleZ * rearBodyTaperZ;
             }
+            pt.y = pt.y * (1.15 - torsoMask * 0.05);
 
-            // Subtle eye sockets & chubby lower cheeks on upper face (dir.y > 0.15)
-            if (dir.z > 0.30 && dir.y > 0.12) {
+            // Fatty Red Panda Cheek Pouches & Subtle Eye Sockets
+            if (dir.z > 0.12 && dir.y > 0.06) {
                 const dLeftEye = Math.hypot(dir.x + 0.34, dir.y - 0.42);
                 const dRightEye = Math.hypot(dir.x - 0.34, dir.y - 0.42);
                 const eyeSocket =
-                    (1 - smoothstep(0.04, 0.20, dLeftEye)) +
-                    (1 - smoothstep(0.04, 0.20, dRightEye));
-                v.z -= eyeSocket * 0.015;
+                    (1.0 - smoothstep(0.04, 0.20, dLeftEye)) +
+                    (1.0 - smoothstep(0.04, 0.20, dRightEye));
+                pt.z -= eyeSocket * 0.014;
 
-                const dCheek = Math.hypot(Math.abs(dir.x) - 0.44, dir.y - 0.26);
-                const cheekPuff = (1 - smoothstep(0.0, 0.25, dCheek)) * smoothstep(0.2, 0.7, dir.z);
-                v.x += Math.sign(dir.x) * cheekPuff * 0.025;
-                v.z += cheekPuff * 0.016;
+                // Big, plump, round Fatty Red Panda cheek pouches bulging out on left & right sides
+                const dCheek = Math.hypot((Math.abs(dir.x) - 0.46) * 0.95, (dir.y - 0.21) * 1.25);
+                const cheekPouch = (1.0 - smoothstep(0.0, 0.38, dCheek)) * smoothstep(0.08, 0.62, dir.z);
+                // Soft horizontal layered cheek ruff tiers (no vertical pleats!)
+                const softRuffTier = 0.88 + 0.12 * Math.sin(dir.y * 26.0);
+                pt.x += Math.sign(dir.x) * cheekPouch * softRuffTier * 0.094;
+                pt.z += cheekPouch * softRuffTier * 0.046;
+                pt.y -= cheekPouch * 0.012;
             }
+        };
 
-            // Feathered fur silhouette tufts along the chubby lower belly & flanks (matching FRONT VIEW)
-            if (dir.y < -0.05) {
-                const angle = Math.atan2(dir.x, dir.z);
-                const tuft =
-                    Math.sin(angle * 26.0 + dir.y * 8.0) * 0.009 +
-                    Math.cos(angle * 42.0 - dir.y * 16.0) * 0.007;
-                v.addScaledVector(dir, tuft * smoothstep(-0.05, -0.35, dir.y));
-            }
-
+        // 1A. Fatty Red Panda Head + Fat Oval Raccoon Body Base Mesh
+        const bGeo = new THREE.SphereGeometry(0.49, 144, 144);
+        const pos = bGeo.attributes.position;
+        for (let i = 0; i < pos.count; i++) {
+            v.fromBufferAttribute(pos, i);
+            deformFatPandaRaccoonBody(v);
             pos.setXYZ(i, v.x, v.y, v.z);
         }
         bGeo.computeVertexNormals();
 
-        // 1B. Curved, Ridged Metallic-Bone Forehead Horn (Protruding ABOVE the top of the hood!)
-        // Height 0.30: when placed at [0, 0.53, 0.28] with rotation [0.06, 0, 0],
-        // base sits in the top brow notch (y = 0.44) and tip rises to y = 0.70 (well above the 0.58 hood arch!)
-        const hGeo = new THREE.CylinderGeometry(0.006, 0.072, 0.30, 48, 32);
+        // 1A-2. 6-Layer Volumetric 3D Short-Hair Fur Shell Coat (Soft fuzzy animal hair silhouette!)
+        const shellBase = new THREE.SphereGeometry(0.49, 120, 96);
+        const sbPos = shellBase.attributes.position;
+        for (let i = 0; i < sbPos.count; i++) {
+            v.fromBufferAttribute(sbPos, i);
+            deformFatPandaRaccoonBody(v);
+            sbPos.setXYZ(i, v.x, v.y, v.z);
+        }
+        shellBase.computeVertexNormals();
+
+        const shellLayers: THREE.BufferGeometry[] = [];
+        const numShells = 6;
+        for (let sIdx = 1; sIdx <= numShells; sIdx++) {
+            const layerFrac = sIdx / numShells;
+            const sg = shellBase.clone();
+            const sPos = sg.attributes.position;
+            const sNorm = sg.attributes.normal;
+            const layerAttr = new Float32Array(sPos.count);
+
+            for (let i = 0; i < sPos.count; i++) {
+                v.fromBufferAttribute(sPos, i);
+                n.fromBufferAttribute(sNorm, i);
+                const angle = Math.atan2(v.x, v.z);
+                const absAng = Math.abs(angle);
+
+                // Keep 3D fur shells across the full uncovered fat oval front & sides
+                const lowerBodyMask =
+                    smoothstep(0.01, -0.09, v.y) *
+                    (1.0 - smoothstep(-0.48, -0.54, v.y)) *
+                    (1.0 - smoothstep(0.94, 1.10, absAng));
+                const cheekForeheadMask =
+                    smoothstep(0.09, 0.17, v.y) *
+                    (1.0 - smoothstep(0.74, 0.94, absAng)) *
+                    (1.0 - smoothstep(0.46, 0.54, v.y));
+                const dLEye = Math.hypot(v.x + 0.155, v.y - 0.245);
+                const dREye = Math.hypot(v.x - 0.155, v.y - 0.245);
+                const eyeClear = smoothstep(0.09, 0.15, dLEye) * smoothstep(0.09, 0.15, dREye);
+                const dSnout = Math.hypot(v.x, v.y - 0.155);
+                const snoutClear = smoothstep(0.06, 0.13, dSnout);
+
+                const activeFur = Math.min(1.0, (lowerBodyMask + cheekForeheadMask * 0.90) * eyeClear * snoutClear);
+                const furLen = 0.036 * activeFur * layerFrac;
+
+                v.x += n.x * furLen;
+                v.z += n.z * furLen;
+                v.y += n.y * furLen * 0.55 - Math.pow(layerFrac, 1.35) * 0.014 * activeFur;
+
+                sPos.setXYZ(i, v.x, v.y, v.z);
+                layerAttr[i] = activeFur > 0.04 ? layerFrac : 2.0;
+            }
+            sg.setAttribute('aShellLayer', new THREE.BufferAttribute(layerAttr, 1));
+            shellLayers.push(sg);
+        }
+        const fShellsGeo = mergeGeometries(shellLayers);
+
+        // 1A-3. Fluffy Triangular Red Panda Ears (Wide & Furry with Rounded Tips)
+        const earOutGeo = new THREE.ConeGeometry(0.098, 0.150, 32, 16);
+        const eoPos = earOutGeo.attributes.position;
+        for (let i = 0; i < eoPos.count; i++) {
+            v.fromBufferAttribute(eoPos, i);
+            const t = (v.y + 0.075) / 0.150;
+            const roundTip = Math.sin(t * Math.PI * 0.86) * 0.28 + (1.0 - t) * 0.85;
+            v.x = v.x * roundTip * 1.24;
+            v.z = v.z * roundTip * 0.65 - (v.z > 0 ? Math.sin(t * Math.PI) * 0.018 : 0);
+            eoPos.setXYZ(i, v.x, v.y, v.z);
+        }
+        earOutGeo.computeVertexNormals();
+
+        const earInGeo = earOutGeo.clone();
+        earInGeo.scale(0.82, 0.84, 0.75);
+        earInGeo.translate(0, -0.005, 0.016);
+
+        // 1B. Cone-Shaped Silver Metal Mecha Horn (Seamless Conical Silhouette + Subtle Machined Bevel Fluting & Seam Rings!)
+        const hGeo = new THREE.CylinderGeometry(0.002, 0.098, 0.32, 48, 48);
         const hPos = hGeo.attributes.position;
         for (let i = 0; i < hPos.count; i++) {
             v.fromBufferAttribute(hPos, i);
-            const t = Math.max(0, Math.min(1, (v.y + 0.15) / 0.30)); // 0 at base, 1 at tip
-            const radiusScale = Math.pow(Math.max(0, 1 - t * 0.92), 0.76);
-            const currentR = Math.hypot(v.x, v.z);
+            const t = Math.max(0, Math.min(1, (v.y + 0.16) / 0.32)); // 0 at wide cone base, 1 at sharp cone tip
             const angle = Math.atan2(v.x, v.z);
+            const currentR = Math.hypot(v.x, v.z);
+
             if (currentR > 0.0001) {
-                const flutes = Math.sin(angle * 10.0) * 0.048 * (1 - t * 0.45);
-                const rings = Math.sin(t * 24.0) * 0.025 * (1 - t * 0.8);
-                const targetR = 0.072 * radiusScale * (1 + flutes + rings);
-                v.x = (v.x / currentR) * targetR;
-                v.z = (v.z / currentR) * targetR;
+                const nx = v.x / currentR;
+                const nz = v.z / currentR;
+
+                // Subtle 8-plane conical mecha bevel fluting & fine machined ring grooves while keeping a pure cone shape
+                const coneFacet = Math.cos(angle * 8.0) * 0.015;
+                const ringSeam1 = Math.exp(-Math.pow((t - 0.28) * 55.0, 2.0)) * 0.035;
+                const ringSeam2 = Math.exp(-Math.pow((t - 0.58) * 55.0, 2.0)) * 0.035;
+                const seamIndent = 1.0 - ringSeam1 - ringSeam2;
+
+                // True linear-conical taper from wide base (0.098) straight to a sharp point (0.002)
+                const coneTaper = Math.pow(Math.max(0, 1.0 - t * 0.98), 1.02);
+                const rCone = 0.098 * coneTaper * (1.0 + coneFacet) * seamIndent;
+
+                v.x = nx * rCone;
+                v.z = nz * rCone;
             }
-            // Subtle forward-then-upward horn curve (matching SIDE VIEW)
-            v.z += Math.sin(t * Math.PI * 0.6) * 0.024 - Math.pow(t, 2.1) * 0.032;
+
+            v.y = t * 0.32;
             hPos.setXYZ(i, v.x, v.y, v.z);
         }
         hGeo.computeVertexNormals();
 
-        // 1C. Parametric Hood Cowl (Sits from y = +0.06 up to y = +0.58, with a deep V-notch at top center
-        // so the upper half of the bone horn protrudes cleanly ABOVE the hood silhouette!)
+        // Seamless Conical Silver Metal Mounting Collar at Forehead Root
+        const hCollarGeo = new THREE.CylinderGeometry(0.090, 0.104, 0.030, 48, 4);
+        hCollarGeo.translate(0, 0.012, 0);
+        hCollarGeo.computeVertexNormals();
+
+        // 1B-2. Lush, Bushy S-Curved Fox-Shaped Tail with 3 Volumetric Fur Shell Layers (NO vertical pleats!)
+        const tailCurve = new THREE.CatmullRomCurve3([
+            new THREE.Vector3(0.0, 0.0, 0.0),
+            new THREE.Vector3(0.14, -0.05, -0.24),
+            new THREE.Vector3(0.30, 0.04, -0.50),
+            new THREE.Vector3(0.40, 0.24, -0.72),
+            new THREE.Vector3(0.35, 0.46, -0.85),
+        ]);
+        const tSegsU = 72;
+        const tSegsV = 44;
+        const tailBaseGeo = new THREE.TubeGeometry(tailCurve, tSegsU, 0.18, tSegsV, false);
+        const ftPos = tailBaseGeo.attributes.position;
+        const ftUv = tailBaseGeo.attributes.uv;
+        const centerPt = new THREE.Vector3();
+
+        for (let i = 0; i < ftPos.count; i++) {
+            v.fromBufferAttribute(ftPos, i);
+            const u = Math.max(0, Math.min(1, ftUv.getX(i)));
+            tailCurve.getPointAt(u, centerPt);
+            const radial = v.clone().sub(centerPt);
+            const rLen = radial.length();
+
+            if (rLen > 0.0001) {
+                radial.normalize();
+                // Smooth, ultra-plush bushy Fox Tail spindle profile (narrow at root, huge & round in middle, soft tapered tip)
+                const foxProfile =
+                    Math.pow(Math.sin(u * Math.PI), 0.68) * (0.32 + 0.86 * Math.sin(u * Math.PI * 0.85)) +
+                    (1.0 - u) * 0.06;
+                const targetR = 0.225 * foxProfile;
+                v.copy(centerPt).addScaledVector(radial, targetR);
+                v.y -= Math.max(0, -radial.y) * 0.020 * Math.sin(u * Math.PI);
+            } else {
+                v.copy(centerPt);
+            }
+            ftPos.setXYZ(i, v.x, v.y, v.z);
+        }
+        tailBaseGeo.computeVertexNormals();
+
+        // Merge base tail + 3 concentric volumetric fur shells so the bushy tail has a soft 3D hair silhouette!
+        const tailLayers: THREE.BufferGeometry[] = [];
+        for (let tLayer = 0; tLayer <= 3; tLayer++) {
+            const tg = tailBaseGeo.clone();
+            const tPos = tg.attributes.position;
+            const tNorm = tg.attributes.normal;
+            const tUvAttr = tg.attributes.uv;
+            const shellAttr = new Float32Array(tPos.count);
+            const frac = tLayer / 3; // 0.0 (solid core), 0.33, 0.67, 1.0 (outer fur tips)
+
+            for (let i = 0; i < tPos.count; i++) {
+                v.fromBufferAttribute(tPos, i);
+                n.fromBufferAttribute(tNorm, i);
+                const u = tUvAttr.getX(i);
+                const env = Math.sin(u * Math.PI);
+                const outPush = frac * 0.032 * env;
+                v.addScaledVector(n, outPush);
+                tPos.setXYZ(i, v.x, v.y, v.z);
+                shellAttr[i] = frac;
+            }
+            tg.setAttribute('aTailShell', new THREE.BufferAttribute(shellAttr, 1));
+            tailLayers.push(tg);
+        }
+        const fTailGeo = mergeGeometries(tailLayers);
+
+        // 1C. Parametric Hood Cowl (Widened around the cheeks for the Fatty Red Panda Head!)
         const uSegs = 96;
         const vSegs = 64;
         const hdGeo = new THREE.BufferGeometry();
@@ -802,27 +1066,24 @@ export const TamagotchiModel: React.FC<Props> = ({
 
             for (let iu = 0; iu <= uSegs; iu++) {
                 const u = iu / uSegs;
-                const phi = (u - 0.5) * Math.PI * 2; // 0 is top crown, ±PI is bottom back
+                const phi = (u - 0.5) * Math.PI * 2;
 
-                // Rear pointed hood peak (matching SIDE VIEW & BACK VIEW)
                 const peakY = 0.30;
                 const peakZ = -0.74;
 
-                const crownRx = 0.54;
-                const crownRy = 0.48;
+                const crownRx = 0.57;
+                const crownRy = 0.49;
 
-                // Deep V-notch at phi ≈ 0 on the front rim so the horn pierces/protrudes through the top!
-                const hornNotch = Math.exp(-phi * phi * 24.0) * smoothstep(0.68, 1.0, s);
-                const templeWidth = Math.sin(phi) * Math.sin(phi) * 0.05;
+                const topArchClearance = Math.exp(-phi * phi * 12.0) * smoothstep(0.50, 1.0, s);
+                const templeWidth = Math.sin(phi) * Math.sin(phi) * 0.088;
 
-                const frontRx = 0.42 + templeWidth;
-                const frontRy = 0.36;
-                const frontCenterY = 0.21;
+                const frontRx = 0.462 + templeWidth;
+                const frontRy = 0.368;
+                const frontCenterY = 0.215;
 
-                // Small weathered nicks on left & right hood rim edges
                 const absPhi = Math.abs(phi);
-                const nick1 = Math.exp(-Math.pow((absPhi - 0.85) * 16.0, 2)) * 0.035;
-                const nick2 = Math.exp(-Math.pow((absPhi - 1.32) * 18.0, 2)) * 0.028;
+                const nick1 = Math.exp(-Math.pow((absPhi - 0.85) * 16.0, 2)) * 0.038;
+                const nick2 = Math.exp(-Math.pow((absPhi - 1.32) * 18.0, 2)) * 0.030;
                 const rimNotch = (nick1 + nick2) * smoothstep(0.75, 1.0, s);
 
                 const bell = Math.sin(s * Math.PI * 0.72);
@@ -833,26 +1094,24 @@ export const TamagotchiModel: React.FC<Props> = ({
                 const cy = THREE.MathUtils.lerp(peakY, frontCenterY, s) + (1 - s) * s * 0.16;
 
                 let px = Math.sin(phi) * rx;
-                let py = cy + Math.cos(phi) * ry - hornNotch * 0.065;
-                let pz = THREE.MathUtils.lerp(peakZ, 0.36, Math.pow(s, 0.86)) - rimNotch - hornNotch * 0.11;
+                let py = cy + Math.cos(phi) * ry + topArchClearance * 0.055;
+                let pz = THREE.MathUtils.lerp(peakZ, 0.34, Math.pow(s, 0.86)) - rimNotch - topArchClearance * 0.095;
 
-                // Tuck the bottom of the hood (|phi| > 1.45) into the neck scarf at y = +0.06
                 const bottomWeight = smoothstep(1.40, 2.65, absPhi);
-                py = THREE.MathUtils.lerp(py, 0.06, bottomWeight * smoothstep(0.3, 1.0, s));
+                py = THREE.MathUtils.lerp(py, 0.08, bottomWeight * smoothstep(0.3, 1.0, s));
                 pz -= bottomWeight * 0.12 * s;
 
-                // Ensure hood stays strictly outside the upper head sphere (center [0, 0.22, 0], radius 0.465)
-                const distFromHead = Math.hypot(px, py - 0.22, pz);
-                if (distFromHead < 0.468 && s < 0.92 && !isLip) {
-                    const push = 0.468 / Math.max(0.001, distFromHead);
+                const distFromHead = Math.hypot(px * 0.92, py - 0.22, pz);
+                if (distFromHead < 0.502 && s < 0.92 && !isLip) {
+                    const push = 0.502 / Math.max(0.001, distFromHead);
                     px *= push;
                     py = 0.22 + (py - 0.22) * push;
                     pz *= push;
                 }
 
                 const clothFold =
-                    (Math.sin(phi * 4.0 + s * 8.0) * 0.010 +
-                        Math.cos(phi * 7.0 - s * 5.0) * 0.007) *
+                    (Math.sin(phi * 4.0 + s * 8.0) * 0.011 +
+                        Math.cos(phi * 7.0 - s * 5.0) * 0.008) *
                     Math.sin(s * Math.PI);
                 px += Math.sin(phi) * clothFold;
                 py += Math.cos(phi) * clothFold;
@@ -885,23 +1144,22 @@ export const TamagotchiModel: React.FC<Props> = ({
         hdGeo.setIndex(hdIndices);
         hdGeo.computeVertexNormals();
 
-        // Rolled 3D Arch Rim Tube framing the face opening (dipping into a V-notch under the horn)
+        // Rolled 3D Arch Rim Tube framing the wider Fatty Red Panda face opening
         const rimCurvePts: THREE.Vector3[] = [];
         const numRimPts = 56;
         for (let i = 0; i <= numRimPts; i++) {
             const u = (i / numRimPts) * 2 - 1;
             const phi = u * 1.56;
-            const hornNotch = Math.exp(-phi * phi * 24.0);
-            const rx = Math.sin(phi) * (0.41 + Math.sin(phi) * Math.sin(phi) * 0.05);
-            const ry = 0.20 + Math.cos(phi) * 0.35 - hornNotch * 0.065;
-            const rz = 0.35 - Math.abs(u) * 0.04 - hornNotch * 0.105;
+            const topArchClearance = Math.exp(-phi * phi * 12.0);
+            const rx = Math.sin(phi) * (0.452 + Math.sin(phi) * Math.sin(phi) * 0.088);
+            const ry = 0.205 + Math.cos(phi) * 0.358 + topArchClearance * 0.055;
+            const rz = 0.33 - Math.abs(u) * 0.04 - topArchClearance * 0.095;
             rimCurvePts.push(new THREE.Vector3(rx, ry, rz));
         }
         const rimCurve = new THREE.CatmullRomCurve3(rimCurvePts);
         const hRimGeo = new THREE.TubeGeometry(rimCurve, 64, 0.042, 16, false);
 
-        // 1D. Snug V-Draped Neck Scarf Folds (Matching FRONT VIEW: snug width rx ≈ 0.48,
-        // dipping diagonally into a V in the front, sitting HIGH at y = +0.08 to -0.08 so the plump belly is exposed!)
+        // 1D. Compact Neck Scarf Folds (Widened for Fatty Raccoon neck/shoulders, leaving belly uncovered!)
         const createVDrapedScarfFold = (
             radius: number,
             tube: number,
@@ -910,137 +1168,132 @@ export const TamagotchiModel: React.FC<Props> = ({
             tiltZ: number,
             seed: number
         ) => {
-            const tGeo = new THREE.TorusGeometry(radius, tube, 28, 96);
+            const tGeo = new THREE.TorusGeometry(radius, tube, 24, 96);
             tGeo.rotateX(Math.PI / 2);
             tGeo.rotateZ(tiltZ);
             const tPos = tGeo.attributes.position;
             for (let i = 0; i < tPos.count; i++) {
                 v.fromBufferAttribute(tPos, i);
-                const angle = Math.atan2(v.x, v.z); // 0 is front center (+Z)
+                const angle = Math.atan2(v.x, v.z);
                 const frontFactor = Math.max(0, Math.cos(angle));
                 const backFactor = Math.max(0, -Math.cos(angle));
 
-                // Diagonal V-dip toward the front chest center (matching FRONT VIEW!)
-                const vDip = Math.pow(frontFactor, 1.35) * frontVDip;
-                const bDip = Math.pow(backFactor, 1.5) * 0.035;
+                const vDip = Math.pow(frontFactor, 1.45) * frontVDip;
+                const bDip = Math.pow(backFactor, 1.5) * 0.025;
                 const crease =
-                    Math.sin(angle * 5 + seed) * 0.010 +
-                    Math.cos(angle * 9 - seed) * 0.007;
+                    Math.sin(angle * 5 + seed) * 0.008 +
+                    Math.cos(angle * 9 - seed) * 0.005;
 
                 v.y += yOffset - vDip - bDip + crease;
-                // Keep horizontal X width snug (0.98) and push front Z slightly forward for layered V-folds
-                v.x *= 0.99;
-                v.z += frontFactor * 0.035;
+                v.z += frontFactor * 0.032;
                 tPos.setXYZ(i, v.x, v.y, v.z);
             }
             tGeo.computeVertexNormals();
             return tGeo;
         };
 
-        const fold1 = createVDrapedScarfFold(0.44, 0.056, 0.095, 0.065, 0.03, 1.1);
-        const fold2 = createVDrapedScarfFold(0.46, 0.060, 0.045, 0.095, -0.04, 2.7);
-        const fold3 = createVDrapedScarfFold(0.47, 0.058, -0.005, 0.125, 0.03, 4.3);
-        const fold4 = createVDrapedScarfFold(0.45, 0.052, -0.050, 0.145, -0.02, 5.9);
-        const sCoilsGeo = mergeGeometries([fold1, fold2, fold3, fold4]);
+        const fold1 = createVDrapedScarfFold(0.462, 0.046, 0.105, 0.032, 0.02, 1.1);
+        const fold2 = createVDrapedScarfFold(0.478, 0.048, 0.072, 0.045, -0.03, 2.7);
+        const fold3 = createVDrapedScarfFold(0.484, 0.046, 0.038, 0.055, 0.02, 4.3);
+        const sCoilsGeo = mergeGeometries([fold1, fold2, fold3]);
 
-        // 1E. Prominent Triangular Jagged V-Mantle Over Upper Chest (Matching FRONT VIEW!)
-        // Extends from under the scarf folds (y = +0.02) down to a central V-point at y = -0.25,
-        // leaving the entire lower belly (y = -0.25 to -0.58) clearly visible!
+        // 1E. Heavily Tattered Jagged V-Mantle Collar Under Chin (15 uneven ragged teeth)
         const apronShape = new THREE.Shape();
-        apronShape.moveTo(-0.36, 0.06);
-        apronShape.lineTo(0.36, 0.06);
-        // Right diagonal edge with crisp torn notches
-        apronShape.lineTo(0.32, -0.05);
-        apronShape.lineTo(0.27, -0.02);
-        apronShape.lineTo(0.20, -0.13);
-        apronShape.lineTo(0.15, -0.09);
-        apronShape.lineTo(0.08, -0.20);
-        apronShape.lineTo(0.04, -0.16);
-        apronShape.lineTo(0.00, -0.25); // Central V-tip over upper chest
-        // Left diagonal edge with crisp torn notches
-        apronShape.lineTo(-0.05, -0.17);
-        apronShape.lineTo(-0.10, -0.22);
-        apronShape.lineTo(-0.16, -0.12);
-        apronShape.lineTo(-0.22, -0.16);
-        apronShape.lineTo(-0.27, -0.05);
-        apronShape.lineTo(-0.33, -0.08);
+        apronShape.moveTo(-0.32, 0.075);
+        apronShape.lineTo(0.32, 0.075);
+        apronShape.lineTo(0.30, -0.02);
+        apronShape.lineTo(0.27, 0.025);
+        apronShape.lineTo(0.24, -0.065);
+        apronShape.lineTo(0.21, -0.005);
+        apronShape.lineTo(0.18, -0.095);
+        apronShape.lineTo(0.15, -0.025);
+        apronShape.lineTo(0.12, -0.125);
+        apronShape.lineTo(0.09, -0.045);
+        apronShape.lineTo(0.06, -0.145);
+        apronShape.lineTo(0.03, -0.065);
+        apronShape.lineTo(0.00, -0.175);
+        apronShape.lineTo(-0.03, -0.060);
+        apronShape.lineTo(-0.06, -0.150);
+        apronShape.lineTo(-0.09, -0.040);
+        apronShape.lineTo(-0.12, -0.120);
+        apronShape.lineTo(-0.15, -0.020);
+        apronShape.lineTo(-0.18, -0.100);
+        apronShape.lineTo(-0.21, -0.010);
+        apronShape.lineTo(-0.24, -0.070);
+        apronShape.lineTo(-0.27, 0.020);
+        apronShape.lineTo(-0.30, -0.025);
         apronShape.closePath();
 
         const apronGeo = new THREE.ExtrudeGeometry(apronShape, {
             steps: 2,
-            depth: 0.030,
+            depth: 0.026,
             bevelEnabled: true,
-            bevelThickness: 0.010,
-            bevelSize: 0.008,
+            bevelThickness: 0.008,
+            bevelSize: 0.006,
             bevelSegments: 3,
         });
         const aPos = apronGeo.attributes.position;
         for (let i = 0; i < aPos.count; i++) {
             v.fromBufferAttribute(aPos, i);
             const chestAng = v.x * 1.05;
-            const rad = 0.495 + v.z;
-            const ny = v.y - 0.02;
+            const rad = 0.525 + v.z;
+            const ny = v.y;
             v.x = Math.sin(chestAng) * rad;
-            v.z = Math.cos(chestAng) * rad + 0.025;
+            v.z = Math.cos(chestAng) * rad + 0.026;
             v.y = ny;
             aPos.setXYZ(i, v.x, v.y, v.z);
         }
         apronGeo.computeVertexNormals();
 
-        // 1F. Sculpted 3D Tattered Cloak (Drapes closely along shoulders & arms, flaring ONLY at the floor
-        // into 14 sharp, deep V-shaped tattered cloth strips matching FRONT, SIDE & BACK views!)
-        const cSegsU = 140;
-        const cSegsV = 52;
+        // 1F. Open-Front Cloak with Organic Random Bottom Tatters (No front tatters; leaves Fat Oval Raccoon belly open!)
+        const cSegsU = 180;
+        const cSegsV = 64;
         const clkGeo = new THREE.BufferGeometry();
         const clkVerts: number[] = [];
         const clkUvs: number[] = [];
         const clkIndices: number[] = [];
 
-        // Open in front (angle from +0.58 around sides/back to 2*PI - 0.58) so the plump belly is 100% visible!
-        const startAng = 0.58;
-        const endAng = Math.PI * 2 - 0.58;
-        const spanAng = endAng - startAng;
+        const startAng = 1.10;
+        const endAng = Math.PI * 2 - 1.10;
 
         for (let iv = 0; iv <= cSegsV; iv++) {
-            const t = iv / cSegsV; // 0 at neck/scarf, 1 at floor hem
+            const t = iv / cSegsV;
             for (let iu = 0; iu <= cSegsU; iu++) {
                 const u = iu / cSegsU;
-                const ang = startAng + u * spanAng;
+                const edgeSweep = Math.pow(t, 1.15) * 0.09;
+                const ang = THREE.MathUtils.lerp(startAng + edgeSweep, endAng - edgeSweep, u);
 
-                const edgeDist = Math.min(u, 1 - u);
-                const frontTaper = smoothstep(0.0, 0.10, edgeDist);
+                const upperDrapeR = 0.555 + Math.sin(t * Math.PI * 0.65) * 0.155 + t * 0.16;
+                const floorFlare = Math.pow(Math.max(0, (t - 0.54) / 0.46), 1.9) * 0.24;
+                const sideWingSpread = Math.pow(Math.sin(ang), 2) * Math.pow(Math.max(0, (t - 0.24) / 0.76), 1.18) * 0.18;
 
-                // Hugs shoulders & flanks closely (r = 0.47 -> 0.58), then flares out on the floor (t > 0.65) to r = 0.82!
-                const upperDrapeR = 0.47 + t * 0.14;
-                const floorFlare = Math.pow(Math.max(0, (t - 0.45) / 0.55), 2.1) * 0.24 * frontTaper;
+                const distFromBack = Math.abs(ang - Math.PI);
+                const tailArchMask = Math.exp(-Math.pow(distFromBack * 3.2, 2.0)) * smoothstep(0.44, 0.95, t);
 
-                // Vertical drapery folds
+                // Natural fabric drapery folds
                 const pleats =
-                    (Math.sin(u * Math.PI * 12.0) * 0.028 +
-                        Math.cos(u * Math.PI * 20.0 + 0.4) * 0.016) *
-                    Math.sin(t * Math.PI * 0.9);
+                    (Math.sin(ang * 7.0) * 0.024 +
+                        Math.cos(ang * 13.0 + 0.4) * 0.014 +
+                        Math.sin(ang * 21.0 - 1.1) * 0.007) *
+                    Math.sin(t * Math.PI * 0.92);
 
-                // 14 sharp triangular tattered cloth strips along the bottom hem!
-                // Using triangle wave (1 - 2*abs(fract(...) - 0.5)) for crisp pointed cloth tips & V-notches!
-                const numStrips = 14.0;
-                const stripPhase = u * numStrips;
-                const triWave = 1.0 - 2.0 * Math.abs(stripPhase - Math.floor(stripPhase) - 0.5); // 0 at valley, 1 at tip
-                const stripMod = 0.75 + 0.25 * Math.sin(Math.floor(stripPhase) * 2.3);
+                // Subtle organic random wave near the bottom hem
+                const hemMask = smoothstep(0.76, 1.0, t);
+                const randomHemWave =
+                    (Math.sin(u * 29.0 + 0.7) * 0.45 +
+                        Math.cos(u * 47.0 - 1.9) * 0.35 +
+                        Math.sin(u * 79.0 + 2.4) * 0.20) *
+                    hemMask;
 
-                const tatterTipExt = triWave * stripMod * Math.pow(t, 2.8) * 0.14;
-                const tatterValleyCut = (1.0 - triWave) * Math.pow(t, 2.4) * 0.16;
-
-                const rad = upperDrapeR + floorFlare + pleats + tatterTipExt;
+                const rad = upperDrapeR + floorFlare + sideWingSpread + pleats + randomHemWave * 0.022 + tailArchMask * 0.08;
                 const px = Math.sin(ang) * rad;
                 const pz = Math.cos(ang) * rad;
 
-                // Drapes from y = +0.02 under the scarf down to the floor at y = -0.64,
-                // with sharp V-notches cut upward (+tatterValleyCut) between the pointed strips!
-                const baseHemY = 0.02 - t * 0.66;
-                const py = Math.max(-0.64, baseHemY + tatterValleyCut);
+                const baseHemY = 0.06 - t * 0.69;
+                const py = Math.max(-0.63, baseHemY + Math.max(0, -randomHemWave) * 0.045 + tailArchMask * 0.18);
 
                 clkVerts.push(px, py, pz);
-                clkUvs.push(u * 2.0, t);
+                clkUvs.push(u, t);
             }
         }
 
@@ -1059,24 +1312,79 @@ export const TamagotchiModel: React.FC<Props> = ({
         clkGeo.setIndex(clkIndices);
         clkGeo.computeVertexNormals();
 
-        // 1G. Front-Facing Curved Eye Decal Geometry
+        // 1G. Front-Facing Curved Eye Decal Geometry (Keep Current Eyes!)
         const eDecalGeo = createCurvedEyeGeometry(0.195, 0.195, 0.024);
 
-        // 1H. Stubby Limbs Using CapsuleGeometry (from threejs-geometry skill)
-        const pGeo = new THREE.CapsuleGeometry(0.078, 0.060, 12, 24);
-        pGeo.scale(0.95, 1.0, 0.85);
+        // 1H. Sculpted Fatty Raccoon Arms/Hands (pawGeo) & Fatty Raccoon Legs/Feet (footGeo)!
+        const armParts: THREE.BufferGeometry[] = [];
+        // Rounded shoulder joint that tucks smoothly into the side of the fat oval torso
+        const shoulderBulb = new THREE.SphereGeometry(0.068, 24, 20);
+        shoulderBulb.scale(1.04, 1.28, 1.02);
+        shoulderBulb.translate(0, 0.056, -0.022);
+        armParts.push(shoulderBulb);
 
-        const ftGeo = new THREE.CapsuleGeometry(0.095, 0.045, 12, 24);
-        ftGeo.rotateX(Math.PI / 2);
-        ftGeo.scale(1.02, 0.80, 1.05);
+        // Chubby furry raccoon forearm tapering toward the wrist
+        const upperArm = new THREE.SphereGeometry(0.062, 24, 20);
+        upperArm.scale(1.06, 1.18, 0.94);
+        upperArm.translate(0, 0.002, 0.002);
+        armParts.push(upperArm);
 
-        // Cute triangular feline nose (slight inverted-triangle puff)
-        const nGeo = new THREE.SphereGeometry(0.022, 24, 24);
-        nGeo.scale(1.25, 0.85, 0.85);
+        // Flattened, rounded raccoon hand palm (ends at y ≈ -0.088 so the 5 fingers protrude clearly!)
+        const handPalm = new THREE.SphereGeometry(0.054, 24, 20);
+        handPalm.scale(1.18, 0.78, 0.68);
+        handPalm.translate(0, -0.046, 0.018);
+        armParts.push(handPalm);
 
-        // Soft integrated muzzle bridge
-        const mBridgeGeo = new THREE.SphereGeometry(0.052, 24, 24);
-        mBridgeGeo.scale(1.35, 0.82, 0.55);
+        // 5 Distinct Sculpted Raccoon Fingers/Digits fanning out clearly beyond the palm (y down to -0.128)
+        for (let f = -2; f <= 2; f++) {
+            const finger = new THREE.CapsuleGeometry(0.013, 0.032, 8, 14);
+            const fAng = f * 0.25;
+            finger.rotateX(0.28);
+            finger.rotateZ(-fAng * 0.55);
+            finger.translate(
+                Math.sin(fAng) * 0.054,
+                -0.096 + Math.abs(f) * 0.006,
+                0.028 + Math.cos(fAng) * 0.010
+            );
+            armParts.push(finger);
+        }
+        const pGeo = mergeGeometries(armParts);
+        pGeo.computeVertexNormals();
+
+        // Fatty Raccoon Legs & Feet (Thick drumstick thigh haunch + hind foot + 4 protruding raccoon toes!)
+        const legParts: THREE.BufferGeometry[] = [];
+        const thighHaunch = new THREE.SphereGeometry(0.118, 28, 24);
+        thighHaunch.scale(1.14, 1.22, 1.08);
+        thighHaunch.translate(0, 0.078, -0.012);
+        legParts.push(thighHaunch);
+
+        const hindFoot = new THREE.CapsuleGeometry(0.078, 0.048, 16, 24);
+        hindFoot.rotateX(Math.PI / 2);
+        hindFoot.scale(1.20, 0.78, 1.08);
+        hindFoot.translate(0, -0.012, 0.028);
+        legParts.push(hindFoot);
+
+        for (let tIdx = -1.5; tIdx <= 1.5; tIdx += 1.0) {
+            const toe = new THREE.SphereGeometry(0.028, 14, 14);
+            toe.scale(0.95, 0.82, 1.45);
+            const tAng = tIdx * 0.25;
+            toe.rotateY(tAng * 0.5);
+            toe.translate(
+                Math.sin(tAng) * 0.076,
+                -0.024,
+                0.128 + Math.cos(tAng) * 0.018
+            );
+            legParts.push(toe);
+        }
+        const ftGeo = mergeGeometries(legParts);
+        ftGeo.computeVertexNormals();
+
+        // Cute Fatty Red Panda dark button nose & plump white snout
+        const nGeo = new THREE.SphereGeometry(0.026, 24, 24);
+        nGeo.scale(1.28, 0.92, 0.92);
+
+        const mBridgeGeo = new THREE.SphereGeometry(0.060, 24, 24);
+        mBridgeGeo.scale(1.52, 0.96, 0.72);
 
         const golfCurve = new THREE.CatmullRomCurve3([
             new THREE.Vector3(-0.26, -0.50, 0.52),
@@ -1104,7 +1412,12 @@ export const TamagotchiModel: React.FC<Props> = ({
 
         return {
             bodyGeo: bGeo,
+            furShellsGeo: fShellsGeo,
+            redPandaEarOuterGeo: earOutGeo,
+            redPandaEarInnerGeo: earInGeo,
             hornGeo: hGeo,
+            hornCollarGeo: hCollarGeo,
+            foxTailGeo: fTailGeo,
             hoodCowlGeo: hdGeo,
             hoodRimGeo: hRimGeo,
             scarfCoilsGeo: sCoilsGeo,
@@ -1173,10 +1486,15 @@ export const TamagotchiModel: React.FC<Props> = ({
 
     const {
         furBodyMaterial,
+        furShellMaterial,
+        redPandaEarOuterMaterial,
+        redPandaEarInnerMaterial,
         muzzleFurMaterial,
         darkLimbFurMaterial,
         pawPadMaterial,
         hornMaterial,
+        hornCollarMaterial,
+        foxTailMaterial,
         hoodScarfMaterial,
         cloakTatterMaterial,
         leftEyeMat,
@@ -1189,18 +1507,194 @@ export const TamagotchiModel: React.FC<Props> = ({
         const furBumpMap = createFurBumpTexture();
         const { clothColorMap, clothBumpMap } = createCrimsonClothTextures();
 
-        // 1. 3D Object-Space Feathered Fur Shader + Physical Sheen (threejs-materials + threejs-shaders skills)
-        // Uses short staggered 3D fur tufts (no vertical pin-stripes!) to paint the dark charcoal coat,
-        // prominent fluffy ash-white V-shaped belly patch, silver-grey eye mask, and dark forehead bridge.
+        // Shared GLSL Staggered Short-Hair Animal Fur Generator (Eliminates vertical stripes; draws thousands of short tapered animal hairs!)
+        const furNoiseFunctionsGLSL = `
+            float furHash21(vec2 p) {
+                p = fract(p * vec2(127.1, 311.7));
+                p += dot(p, p + 45.32);
+                return fract(p.x * p.y);
+            }
+
+            float furValueNoise(vec2 p) {
+                vec2 i = floor(p);
+                vec2 f = fract(p);
+                vec2 u = f * f * (3.0 - 2.0 * f);
+                return mix(
+                    mix(furHash21(i + vec2(0.0, 0.0)), furHash21(i + vec2(1.0, 0.0)), u.x),
+                    mix(furHash21(i + vec2(0.0, 1.0)), furHash21(i + vec2(1.0, 1.0)), u.x),
+                    u.y
+                );
+            }
+
+            // Generates staggered, overlapping short tapered animal hair fibers (root -> tip)
+            float shortHairLayer(vec2 coord, float freqX, float freqY, float seed) {
+                float colX = coord.x * freqX;
+                float laneId = floor(colX);
+                float laneU  = fract(colX);
+                float hRand  = furHash21(vec2(laneId, seed));
+                float yStagger = coord.y * freqY + hRand * 6.2 + (laneU - 0.5) * 0.35;
+                float segId  = floor(yStagger);
+                float segV   = fract(yStagger);
+                float segRand = furHash21(vec2(laneId * 1.37 + seed, segId));
+                float hairCenter = 0.24 + 0.52 * segRand;
+                float halfWidth = mix(0.44, 0.13, segV);
+                float radialProfile = 1.0 - smoothstep(0.0, halfWidth, abs(laneU - hairCenter));
+                float lengthEnvelope = smoothstep(0.0, 0.16, segV) * (1.0 - smoothstep(0.76, 1.0, segV));
+                float agoutiTip = mix(0.32, 1.0, smoothstep(0.12, 0.86, segV));
+                return radialProfile * lengthEnvelope * agoutiTip * (0.62 + 0.38 * segRand);
+            }
+
+            vec2 computeAnimalFur(vec2 flowCoord) {
+                float waveX = (furValueNoise(flowCoord * vec2(7.5, 6.0)) - 0.5) * 0.034
+                            + (furValueNoise(flowCoord * vec2(18.0, 14.0)) - 0.5) * 0.015;
+                vec2 warped = vec2(flowCoord.x + waveX, flowCoord.y);
+
+                float undercoat = furValueNoise(warped * vec2(24.0, 10.0));
+                float hCoarse   = shortHairLayer(warped, 68.0,  9.5,  1.1);
+                float hMed      = shortHairLayer(warped + vec2(0.007, 0.04), 132.0, 15.0, 3.7);
+                float hFine     = shortHairLayer(warped + vec2(0.003, 0.02), 210.0, 22.0, 7.3);
+
+                float fiberVal  = clamp(undercoat * 0.26 + hCoarse * 0.34 + hMed * 0.42 + hFine * 0.36, 0.0, 1.0);
+                float shellMask = clamp(max(hCoarse * 0.88, max(hMed * 0.96, hFine)) + undercoat * 0.20, 0.0, 1.0);
+                return vec2(fiberVal, shellMask);
+            }
+        `;
+
+        const sharedFurColorGLSL = `
+            vec3 p = vBodyPos;
+            float angle = (abs(p.x) + abs(p.z) > 0.0001) ? atan(p.x, p.z) : 0.0;
+            float localR = max(0.22, length(p.xz));
+            // Circumferential arc-length + vertical height so short hairs have uniform width & length everywhere!
+            vec2 furCoord = vec2(angle * localR, -p.y);
+            vec2 furData  = computeAnimalFur(furCoord);
+            float furStrand = furData.x;
+            float furShellDensity = furData.y;
+            float furJitter = (furValueNoise(furCoord * vec2(32.0, 18.0)) - 0.5) * 0.032
+                            + (furStrand - 0.5) * 0.024;
+
+            // 1. EXTRA-FATTY RACCOON BODY TEXTURE (p.y <= 0.04):
+            // Authentic grizzled salt-and-pepper Raccoon agouti fur (dark charcoal undercoat, warm taupe-grey mid, silver guard-hair tips!)
+            vec3 raccoonRoot   = vec3(0.09, 0.08, 0.08);
+            vec3 raccoonMid    = vec3(0.39, 0.36, 0.33);
+            vec3 raccoonSilver = vec3(0.82, 0.79, 0.74);
+            vec3 raccoonGrizzle = mix(raccoonRoot, raccoonMid, smoothstep(0.14, 0.54, furStrand));
+            raccoonGrizzle      = mix(raccoonGrizzle, raccoonSilver, smoothstep(0.56, 0.88, furStrand));
+
+            // Natural soft dark charcoal raccoon banding across the wide chubby flanks & haunches
+            float flankWeight = smoothstep(0.12, 0.38, abs(p.x));
+            float raccoonBandWave = sin(p.y * 24.0 + furValueNoise(furCoord * 8.0) * 1.4);
+            float raccoonDarkBand = smoothstep(0.10, 0.78, raccoonBandWave) * smoothstep(-0.02, -0.16, p.y) * (0.45 + 0.55 * flankWeight);
+            vec3 raccoonCoat = mix(raccoonGrizzle, raccoonRoot * 1.10, raccoonDarkBand * 0.52);
+
+            // Plush Silver-Cream / Warm Buff Fatty Raccoon Center Belly Patch
+            vec3 bellyBuffRoot = vec3(0.52, 0.49, 0.45);
+            vec3 bellyBuffMid  = vec3(0.76, 0.73, 0.68);
+            vec3 bellyBuffTip  = vec3(0.92, 0.89, 0.84);
+            vec3 raccoonBelly  = mix(bellyBuffRoot, bellyBuffMid, smoothstep(0.15, 0.55, furStrand));
+            raccoonBelly       = mix(raccoonBelly, bellyBuffTip, smoothstep(0.55, 0.88, furStrand));
+
+            vec3 col = raccoonCoat;
+
+            if (p.z > 0.08 && p.y < 0.03) {
+                float bellyY = clamp((p.y + 0.56) / 0.56, 0.0001, 1.0);
+                float maxBellyW = mix(0.18, 0.32, sin(bellyY * 2.8) * 0.48 + 0.52);
+                float horizMask = 1.0 - smoothstep(maxBellyW - 0.08, maxBellyW + 0.06, abs(p.x) + furJitter * 1.2);
+                float vertMask  = smoothstep(-0.55, -0.38, p.y + furJitter * 0.5) * (1.0 - smoothstep(-0.08, 0.01, p.y));
+                float frontMask = smoothstep(0.14, 0.32, p.z + furJitter * 0.5);
+                float bellyMask = clamp(horizMask * vertMask * frontMask, 0.0, 1.0);
+                col = mix(col, raccoonBelly, bellyMask * 0.92);
+            }
+
+            // 2. FATTY RED PANDA HEAD WITH RACCOON COLORATION (p.y > 0.02):
+            // Grizzled Raccoon grey-taupe crown, dark charcoal median bridge streak, snowy-white eyebrow arches & fatty cheek pouches, and charcoal-black Raccoon bandit mask!
+            float headBlend = smoothstep(0.01, 0.09, p.y);
+            if (headBlend > 0.001) {
+                // Grizzled Raccoon Grey-Taupe Crown & Upper Head Coat
+                vec3 headRoot   = vec3(0.11, 0.10, 0.09);
+                vec3 headMid    = vec3(0.42, 0.39, 0.36);
+                vec3 headSilver = vec3(0.84, 0.81, 0.76);
+                vec3 raccoonHeadCoat = mix(headRoot, headMid, smoothstep(0.14, 0.54, furStrand));
+                raccoonHeadCoat      = mix(raccoonHeadCoat, headSilver, smoothstep(0.56, 0.88, furStrand));
+
+                // Snowy-White Raccoon/Panda Facial Fur (eyebrow band, fatty cheek pouches, snout)
+                vec3 whiteRoot = vec3(0.68, 0.65, 0.61);
+                vec3 whiteMid  = vec3(0.88, 0.86, 0.82);
+                vec3 whiteTip  = vec3(0.99, 0.97, 0.94);
+                vec3 raccoonWhite = mix(whiteRoot, whiteMid, smoothstep(0.12, 0.50, furStrand));
+                raccoonWhite      = mix(raccoonWhite, whiteTip, smoothstep(0.50, 0.86, furStrand));
+
+                // Deep Charcoal-Black Raccoon Bandit Mask & Tear-Track Fur
+                vec3 banditRoot = vec3(0.04, 0.04, 0.04);
+                vec3 banditMid  = vec3(0.12, 0.11, 0.11);
+                vec3 banditTip  = vec3(0.25, 0.23, 0.22);
+                vec3 raccoonBandit = mix(banditRoot, banditMid, smoothstep(0.15, 0.60, furStrand));
+                raccoonBandit      = mix(raccoonBandit, banditTip, smoothstep(0.65, 0.92, furStrand));
+
+                vec3 headCol = raccoonHeadCoat;
+
+                if (p.z > 0.06) {
+                    // A) Snowy-White Raccoon Eyebrow Arches & Red Panda Teardrop Brow Badges above the Bandit Mask
+                    vec2 browL = p.xy - vec2(-0.135, 0.348 - pow(max(0.0, abs(p.x) - 0.10), 1.4) * 0.35);
+                    vec2 browR = p.xy - vec2( 0.135, 0.348 - pow(max(0.0, abs(p.x) - 0.10), 1.4) * 0.35);
+                    float dLBrow = length(browL / vec2(0.115, 0.052));
+                    float dRBrow = length(browR / vec2(0.115, 0.052));
+                    float browMask = (1.0 - smoothstep(0.55, 1.15, min(dLBrow, dRBrow) + furJitter * 0.8))
+                                   * smoothstep(0.16, 0.30, p.z);
+
+                    // B) Big Plump Snowy-White Fatty Red Panda Cheek Pouches
+                    float dLCheek = length((p.xy - vec2(-0.285, 0.190)) / vec2(0.168, 0.115));
+                    float dRCheek = length((p.xy - vec2( 0.285, 0.190)) / vec2(0.168, 0.115));
+                    float cheekMask = (1.0 - smoothstep(0.55, 1.15, min(dLCheek, dRCheek) + furJitter))
+                                    * smoothstep(0.08, 0.26, p.z);
+
+                    // C) Snowy-White Snout / Muzzle Bridge
+                    float dSnout = length((p.xy - vec2(0.0, 0.158)) / vec2(0.115, 0.078));
+                    float snoutMask = (1.0 - smoothstep(0.55, 1.12, dSnout + furJitter * 0.7))
+                                    * smoothstep(0.20, 0.35, p.z);
+
+                    float allWhiteMask = clamp(max(browMask, max(cheekMask, snoutMask)), 0.0, 1.0);
+                    headCol = mix(headCol, raccoonWhite, allWhiteMask * 0.96);
+
+                    // D) Classic Raccoon Dark Charcoal Median Forehead/Nose-Bridge Streak (between the eyes/brows)
+                    float dCenterStreak = length((p.xy - vec2(0.0, 0.31)) / vec2(0.036, 0.115));
+                    float streakMask = (1.0 - smoothstep(0.45, 1.10, dCenterStreak + furJitter * 0.6))
+                                     * smoothstep(0.20, 0.35, p.z);
+                    headCol = mix(headCol, raccoonBandit, streakMask * 0.82);
+
+                    // E) Iconic Raccoon Charcoal-Black Bandit Eye Mask + Red-Panda Tear-Track Sweep
+                    vec2 maskL = p.xy - vec2(-0.165, 0.242);
+                    vec2 maskR = p.xy - vec2( 0.165, 0.242);
+                    maskL.y += (abs(p.x) - 0.155) * 0.18;
+                    maskR.y += (abs(p.x) - 0.155) * 0.18;
+                    float dLBandit = length(maskL / vec2(0.135, 0.088));
+                    float dRBandit = length(maskR / vec2(0.135, 0.088));
+
+                    vec2 tearL = p.xy - vec2(-0.152, 0.192);
+                    vec2 tearR = p.xy - vec2( 0.152, 0.192);
+                    tearL.x += (p.y - 0.192) * 0.28;
+                    tearR.x -= (p.y - 0.192) * 0.28;
+                    float dLTear = length(tearL / vec2(0.052, 0.086));
+                    float dRTear = length(tearR / vec2(0.052, 0.086));
+
+                    float banditMask = (1.0 - smoothstep(0.52, 1.12, min(min(dLBandit, dRBandit), min(dLTear, dRTear)) + furJitter * 0.7))
+                                     * smoothstep(0.16, 0.32, p.z);
+                    headCol = mix(headCol, raccoonBandit, banditMask * 0.95);
+                }
+
+                col = mix(col, headCol, headBlend);
+            }
+        `;
+
+        // 1. Base Body Fur Material
         const furMat = new THREE.MeshPhysicalMaterial({
             color: '#ffffff',
             bumpMap: furBumpMap,
-            bumpScale: 0.020,
-            roughness: 0.86,
-            metalness: 0.02,
-            sheen: 0.85,
-            sheenRoughness: 0.58,
-            sheenColor: new THREE.Color('#94a3b8'),
+            bumpScale: 0.028,
+            roughness: 0.84,
+            metalness: 0.01,
+            sheen: 0.94,
+            sheenRoughness: 0.50,
+            sheenColor: new THREE.Color('#e5e7eb'),
         });
         furMat.onBeforeCompile = (shader) => {
             shader.vertexShader = shader.vertexShader.replace(
@@ -1219,133 +1713,309 @@ export const TamagotchiModel: React.FC<Props> = ({
                 '#include <common>',
                 `#include <common>
                 varying vec3 vBodyPos;
-                varying vec3 vBodyNorm;`
+                varying vec3 vBodyNorm;
+                ${furNoiseFunctionsGLSL}`
             );
             shader.fragmentShader = shader.fragmentShader.replace(
                 '#include <color_fragment>',
                 `#include <color_fragment>
-                vec3 p = vBodyPos;
-                float angle = (abs(p.x) + abs(p.z) > 0.0001) ? atan(p.x, p.z) : 0.0;
-
-                // Short, staggered feathery fur tufts (avoids continuous vertical lines!)
-                float tuftLayer1 = sin(angle * 48.0 + sin(p.y * 36.0) * 1.8) * cos(p.y * 54.0 + angle * 12.0);
-                float tuftLayer2 = cos(angle * 78.0 - sin(p.y * 52.0) * 2.1) * sin(p.y * 82.0 - angle * 18.0);
-                float furTuft = tuftLayer1 * 0.55 + tuftLayer2 * 0.45;
-
-                // Base dark charcoal-grey coat (#1f242d to #2c3340)
-                vec3 darkCharcoal = vec3(0.13, 0.15, 0.19) + furTuft * 0.024;
-                vec3 midSlate     = vec3(0.22, 0.26, 0.32) + furTuft * 0.028;
-                vec3 ashWhite     = vec3(0.84, 0.87, 0.91) + furTuft * 0.036;
-                vec3 faceSilver   = vec3(0.70, 0.75, 0.81) + furTuft * 0.030;
-
-                vec3 col = mix(darkCharcoal, midSlate, smoothstep(-0.52, 0.28, p.y) * 0.42);
-
-                // A) Prominent Ash-White Fluffy V-Belly Patch (from under the V-mantle y = -0.10 down to y = -0.50)
-                if (p.z > 0.05 && p.y < -0.02) {
-                    float bellyY = clamp((p.y + 0.50) / 0.44, 0.0001, 1.0); // 0 at bottom, 1 under scarf
-                    float maxBellyW = mix(0.10, 0.31, pow(bellyY, 0.60));
-                    // Feathered fur-tuft border around the ash-white belly patch
-                    float tuftEdge = furTuft * 0.042 + sin(angle * 28.0) * 0.018;
-                    float horizMask = 1.0 - smoothstep(maxBellyW - 0.07, maxBellyW + 0.04, abs(p.x) + tuftEdge);
-                    float vertMask  = smoothstep(-0.52, -0.38, p.y + tuftEdge * 0.5) * (1.0 - smoothstep(-0.08, 0.0, p.y));
-                    float frontMask = smoothstep(0.14, 0.34, p.z);
-                    float bellyMask = horizMask * vertMask * frontMask;
-                    col = mix(col, ashWhite, bellyMask);
-                }
-
-                // B) Facial Mask (upper face: p.z > 0.15, p.y > +0.06)
-                if (p.z > 0.12 && p.y > 0.05) {
-                    float dLeftPatch  = length((p.xy - vec2(-0.145, 0.25)) / vec2(0.15, 0.13));
-                    float dRightPatch = length((p.xy - vec2( 0.145, 0.25)) / vec2(0.15, 0.13));
-                    float dMuzzle     = length((p.xy - vec2( 0.000, 0.16)) / vec2(0.15, 0.09));
-                    float patchDist   = min(min(dLeftPatch, dRightPatch), dMuzzle);
-                    float faceMask    = (1.0 - smoothstep(0.55, 1.15, patchDist + furTuft * 0.08))
-                                      * smoothstep(0.18, 0.35, p.z);
-                    col = mix(col, faceSilver, faceMask * 0.90);
-
-                    // Dark charcoal V-bridge streak down the center of the forehead below the horn
-                    float dBridge = abs(p.x) / (0.040 + clamp((p.y - 0.23) * 0.32, 0.0, 0.10));
-                    float bridgeMask = (1.0 - smoothstep(0.5, 1.2, dBridge + furTuft * 0.10))
-                                     * smoothstep(0.22, 0.32, p.y)
-                                     * (1.0 - smoothstep(0.46, 0.54, p.y));
-                    col = mix(col, darkCharcoal * 0.92, bridgeMask * 0.85);
-                }
-
-                diffuseColor.rgb = clamp(col, 0.0, 1.0);`
+                ${sharedFurColorGLSL}
+                diffuseColor.rgb = clamp(col * 0.96, 0.0, 1.0);`
             );
             shader.fragmentShader = shader.fragmentShader.replace(
                 '#include <lights_fragment_begin>',
                 `#include <lights_fragment_begin>
                 float rim = clamp(1.0 - max(dot(normalize(normal), normalize(vViewPosition)), 0.0), 0.0001, 1.0);
-                diffuseColor.rgb += vec3(0.10, 0.16, 0.22) * pow(rim, 3.2) * 0.42;`
+                diffuseColor.rgb += vec3(0.16, 0.17, 0.19) * pow(rim, 2.5) * 0.48;`
             );
         };
 
-        const muzMat = new THREE.MeshPhysicalMaterial({
-            color: '#b4bcc8',
+        // 1B. 6-Layer Volumetric 3D Short-Hair Fur Shell Material
+        const furShellMat = new THREE.MeshPhysicalMaterial({
+            color: '#ffffff',
             bumpMap: furBumpMap,
-            bumpScale: 0.010,
-            roughness: 0.85,
+            bumpScale: 0.024,
+            roughness: 0.82,
             metalness: 0.01,
-            sheen: 0.75,
-            sheenRoughness: 0.6,
-            sheenColor: new THREE.Color('#dce2ea'),
+            sheen: 0.96,
+            sheenRoughness: 0.46,
+            sheenColor: new THREE.Color('#f3f4f6'),
+            alphaTest: 0.35,
+            side: THREE.DoubleSide,
+        });
+        furShellMat.onBeforeCompile = (shader) => {
+            shader.vertexShader = shader.vertexShader.replace(
+                '#include <common>',
+                `#include <common>
+                attribute float aShellLayer;
+                varying float vShellLayer;
+                varying vec3 vBodyPos;`
+            );
+            shader.vertexShader = shader.vertexShader.replace(
+                '#include <begin_vertex>',
+                `#include <begin_vertex>
+                vShellLayer = aShellLayer;
+                vBodyPos = position;`
+            );
+            shader.fragmentShader = shader.fragmentShader.replace(
+                '#include <common>',
+                `#include <common>
+                varying float vShellLayer;
+                varying vec3 vBodyPos;
+                ${furNoiseFunctionsGLSL}`
+            );
+            shader.fragmentShader = shader.fragmentShader.replace(
+                '#include <color_fragment>',
+                `#include <color_fragment>
+                if (vShellLayer > 1.1) discard;
+                ${sharedFurColorGLSL}
+                if (furShellDensity < vShellLayer * 0.82) discard;
+                float tipBright = mix(0.92, 1.14, vShellLayer);
+                diffuseColor.rgb = clamp(col * tipBright, 0.0, 1.0);`
+            );
+            shader.fragmentShader = shader.fragmentShader.replace(
+                '#include <lights_fragment_begin>',
+                `#include <lights_fragment_begin>
+                float rim = clamp(1.0 - max(dot(normalize(normal), normalize(vViewPosition)), 0.0), 0.0001, 1.0);
+                diffuseColor.rgb += vec3(0.18, 0.19, 0.22) * pow(rim, 2.3) * 0.52;`
+            );
+        };
+
+        // Raccoon-Colored Red Panda Ear Materials (Dark Charcoal-Grey Raccoon Back + Snowy-White/Silver Inner Ear Tuft)
+        const earOuterMat = new THREE.MeshPhysicalMaterial({
+            color: '#262321',
+            bumpMap: furBumpMap,
+            bumpScale: 0.022,
+            roughness: 0.84,
+            metalness: 0.01,
+            sheen: 0.88,
+            sheenRoughness: 0.52,
+            sheenColor: new THREE.Color('#cbd5e1'),
         });
 
-        const limbMat = new THREE.MeshPhysicalMaterial({
-            color: '#1e232c',
+        const earInnerMat = new THREE.MeshPhysicalMaterial({
+            color: '#f5f2eb',
+            bumpMap: furBumpMap,
+            bumpScale: 0.024,
+            roughness: 0.78,
+            metalness: 0.01,
+            sheen: 0.94,
+            sheenRoughness: 0.46,
+            sheenColor: new THREE.Color('#ffffff'),
+        });
+
+        // Snowy-White Raccoon/Panda Snout Material
+        const muzMat = new THREE.MeshPhysicalMaterial({
+            color: '#f6f3ec',
             bumpMap: furBumpMap,
             bumpScale: 0.016,
-            roughness: 0.85,
-            metalness: 0.02,
-            sheen: 0.75,
-            sheenRoughness: 0.6,
-            sheenColor: new THREE.Color('#64748b'),
+            roughness: 0.82,
+            metalness: 0.01,
+            sheen: 0.88,
+            sheenRoughness: 0.52,
+            sheenColor: new THREE.Color('#ffffff'),
         });
+
+        // Fatty Raccoon Hands & Raccoon Legs Fur Material (Grizzled Raccoon Upper Arm/Thigh -> Charcoal-Black Raccoon Hands/Digits & Feet!)
+        const limbMat = new THREE.MeshPhysicalMaterial({
+            color: '#ffffff',
+            bumpMap: furBumpMap,
+            bumpScale: 0.024,
+            roughness: 0.84,
+            metalness: 0.01,
+            sheen: 0.88,
+            sheenRoughness: 0.52,
+            sheenColor: new THREE.Color('#a8a29e'),
+        });
+        limbMat.onBeforeCompile = (shader) => {
+            shader.vertexShader = shader.vertexShader.replace(
+                '#include <common>',
+                `#include <common>
+                varying vec3 vLimbPos;`
+            );
+            shader.vertexShader = shader.vertexShader.replace(
+                '#include <begin_vertex>',
+                `#include <begin_vertex>
+                vLimbPos = position;`
+            );
+            shader.fragmentShader = shader.fragmentShader.replace(
+                '#include <common>',
+                `#include <common>
+                varying vec3 vLimbPos;
+                ${furNoiseFunctionsGLSL}`
+            );
+            shader.fragmentShader = shader.fragmentShader.replace(
+                '#include <color_fragment>',
+                `#include <color_fragment>
+                float lAng = (abs(vLimbPos.x) + abs(vLimbPos.z) > 0.0001) ? atan(vLimbPos.x, vLimbPos.z) : 0.0;
+                vec2 lFur = computeAnimalFur(vec2(lAng * 0.22, -vLimbPos.y * 1.4));
+                float fStr = lFur.x;
+
+                // Upper arm / thigh haunch: grizzled raccoon grey-taupe fur
+                vec3 upperGrizzle = mix(vec3(0.10, 0.09, 0.09), vec3(0.40, 0.37, 0.34), smoothstep(0.15, 0.55, fStr));
+                upperGrizzle      = mix(upperGrizzle, vec3(0.78, 0.75, 0.70), smoothstep(0.55, 0.88, fStr));
+
+                // Raccoon hands, fingers, lower legs & toes: deep charcoal-black raccoon fur with subtle silver guard tips
+                vec3 pawDark = mix(vec3(0.05, 0.05, 0.05), vec3(0.15, 0.14, 0.13), smoothstep(0.15, 0.65, fStr));
+                pawDark      = mix(pawDark, vec3(0.28, 0.26, 0.25), smoothstep(0.72, 0.95, fStr));
+
+                float upperBlend = smoothstep(-0.042, 0.015, vLimbPos.y);
+                diffuseColor.rgb = mix(pawDark, upperGrizzle, upperBlend);`
+            );
+        };
 
         const padMat = new THREE.MeshStandardMaterial({
-            color: '#523d47',
-            roughness: 0.68,
+            color: '#2e2428',
+            roughness: 0.65,
             metalness: 0.02,
         });
 
-        // 2. Warm Ridged Metallic-Bone Horn Material
+        // 2. Single-Color Silver Metal Mecha Beast Horn Material (1 Unified Silver Metal Color + Machined Mecha Texture & Bevels!)
         const hMat = new THREE.MeshPhysicalMaterial({
-            color: '#dfd3bc',
-            roughness: 0.40,
-            metalness: 0.12,
-            clearcoat: 0.28,
-            clearcoatRoughness: 0.30,
+            color: '#f1f5f9',
+            roughness: 0.22,
+            metalness: 0.55,
+            clearcoat: 0.90,
+            clearcoatRoughness: 0.12,
         });
         hMat.onBeforeCompile = (shader) => {
             shader.vertexShader = shader.vertexShader.replace(
                 '#include <common>',
                 `#include <common>
-                varying vec3 vHornPos;`
+                varying vec3 vHornPos;
+                varying vec3 vHornNorm;`
             );
             shader.vertexShader = shader.vertexShader.replace(
                 '#include <begin_vertex>',
                 `#include <begin_vertex>
-                vHornPos = position;`
+                vHornPos = position;
+                vHornNorm = normal;`
             );
             shader.fragmentShader = shader.fragmentShader.replace(
                 '#include <common>',
                 `#include <common>
-                varying vec3 vHornPos;`
+                varying vec3 vHornPos;
+                varying vec3 vHornNorm;`
             );
             shader.fragmentShader = shader.fragmentShader.replace(
                 '#include <color_fragment>',
                 `#include <color_fragment>
-                float ht = clamp((vHornPos.y + 0.15) / 0.30, 0.0, 1.0);
-                vec3 baseBone = vec3(0.32, 0.27, 0.21);
-                vec3 midBone  = vec3(0.74, 0.67, 0.55);
-                vec3 tipIvory = vec3(0.94, 0.89, 0.79);
-                vec3 hornCol  = mix(baseBone, midBone, smoothstep(0.0, 0.42, ht));
-                hornCol       = mix(hornCol, tipIvory, smoothstep(0.42, 1.0, ht));
-                float hAng    = (abs(vHornPos.x) + abs(vHornPos.z) > 0.0001) ? atan(vHornPos.x, vHornPos.z) : 0.0;
-                float flutes  = sin(hAng * 10.0) * 0.055;
-                float rings   = sin(ht * 34.0) * 0.032;
-                diffuseColor.rgb = clamp(hornCol + flutes + rings, 0.0, 1.0);`
+                float ht = clamp(vHornPos.y / 0.32, 0.0, 1.0);
+                // 1 Unified Color: Brushed & Polished Silver Metal with Fine Anisotropic Machined Grain
+                float brushedGrain = sin(vHornPos.y * 420.0 + vHornPos.x * 80.0) * 0.025
+                                   + cos(vHornPos.y * 850.0) * 0.015;
+                vec3 silverBase   = vec3(0.84, 0.87, 0.91) + brushedGrain;
+                vec3 silverBevel  = vec3(0.98, 0.99, 1.00);
+                vec3 silverGroove = vec3(0.50, 0.54, 0.59);
+
+                // Keep the faceted mecha blade bevel texture & machined armor panel seam grooves (all in silver metal!)
+                float edgeFactor = smoothstep(0.25, 0.78, abs(normalize(vHornNorm).z)) + smoothstep(0.65, 0.98, ht) * 0.55;
+                vec3 silverCol = mix(silverBase, silverBevel, clamp(edgeFactor, 0.0, 1.0));
+
+                float segGroove = abs(fract(ht * 3.5) - 0.5);
+                float seamLine  = 1.0 - smoothstep(0.0, 0.052, segGroove);
+                float centerChannel = (1.0 - smoothstep(0.004, 0.015, abs(vHornPos.x))) * step(0.08, ht) * step(ht, 0.85);
+                float grooveMask = max(seamLine * step(ht, 0.82), centerChannel);
+
+                diffuseColor.rgb = mix(silverCol, silverGroove, grooveMask * 0.85);`
+            );
+            shader.fragmentShader = shader.fragmentShader.replace(
+                '#include <emissivemap_fragment>',
+                `#include <emissivemap_fragment>
+                totalEmissiveRadiance += diffuseColor.rgb * 0.26;`
+            );
+        };
+
+        const hCollarMat = new THREE.MeshPhysicalMaterial({
+            color: '#e2e8f0',
+            roughness: 0.24,
+            metalness: 0.55,
+            clearcoat: 0.82,
+            clearcoatRoughness: 0.14,
+            emissive: new THREE.Color('#334155'),
+            emissiveIntensity: 0.25,
+        });
+
+        // 2B. Lush Bushy Fox-Shaped Tail with Authentic Ringed Raccoon Fur Coloration & 3D Volumetric Fur Shells!
+        const fTailMat = new THREE.MeshPhysicalMaterial({
+            color: '#ffffff',
+            bumpMap: furBumpMap,
+            bumpScale: 0.028,
+            roughness: 0.82,
+            metalness: 0.01,
+            sheen: 0.94,
+            sheenRoughness: 0.48,
+            sheenColor: new THREE.Color('#e5e7eb'),
+            alphaTest: 0.35,
+            side: THREE.DoubleSide,
+        });
+        fTailMat.onBeforeCompile = (shader) => {
+            shader.vertexShader = shader.vertexShader.replace(
+                '#include <common>',
+                `#include <common>
+                attribute float aTailShell;
+                varying float vTailShell;
+                varying vec2 vTailUv;
+                varying vec3 vTailNorm;`
+            );
+            shader.vertexShader = shader.vertexShader.replace(
+                '#include <begin_vertex>',
+                `#include <begin_vertex>
+                vTailShell = aTailShell;
+                vTailUv = uv;
+                vTailNorm = normal;`
+            );
+            shader.fragmentShader = shader.fragmentShader.replace(
+                '#include <common>',
+                `#include <common>
+                varying float vTailShell;
+                varying vec2 vTailUv;
+                varying vec3 vTailNorm;
+                ${furNoiseFunctionsGLSL}`
+            );
+            shader.fragmentShader = shader.fragmentShader.replace(
+                '#include <color_fragment>',
+                `#include <color_fragment>
+                float u = clamp(vTailUv.x, 0.0, 1.0); // 0 at base, 1 at tip
+                float vAng = vTailUv.y * 6.2831853;
+
+                // Staggered short animal hair fibers flowing toward the tail tip
+                vec2 tFur = computeAnimalFur(vec2(vAng * 0.22, u * 1.35));
+                float fStrand = tFur.x;
+                float tShellMask = tFur.y;
+
+                // Volumetric 3D fur shell discard for outer tail layers (vTailShell > 0.05)
+                if (vTailShell > 0.05 && tShellMask < vTailShell * 0.80) discard;
+
+                // Authentic Raccoon Ringed Tail Coloration (6 alternating grizzled silver-taupe & charcoal-black rings + black tip!)
+                vec3 lightRingRoot   = vec3(0.14, 0.13, 0.12);
+                vec3 lightRingMid    = vec3(0.48, 0.44, 0.40);
+                vec3 lightRingSilver = vec3(0.86, 0.83, 0.78);
+                vec3 raccoonLightRing = mix(lightRingRoot, lightRingMid, smoothstep(0.14, 0.54, fStrand));
+                raccoonLightRing      = mix(raccoonLightRing, lightRingSilver, smoothstep(0.56, 0.88, fStrand));
+
+                vec3 darkRingRoot = vec3(0.04, 0.04, 0.04);
+                vec3 darkRingMid  = vec3(0.11, 0.10, 0.10);
+                vec3 darkRingTip  = vec3(0.22, 0.20, 0.19);
+                vec3 raccoonDarkRing = mix(darkRingRoot, darkRingMid, smoothstep(0.15, 0.60, fStrand));
+                raccoonDarkRing      = mix(raccoonDarkRing, darkRingTip, smoothstep(0.65, 0.92, fStrand));
+
+                // Feathered short-hair transitions between the 6 alternating raccoon tail rings + solid dark raccoon tail tip
+                float ringJitter = (furValueNoise(vec2(vAng * 4.5, u * 22.0)) - 0.5) * 0.038 + (fStrand - 0.5) * 0.028;
+                float ringWave   = sin((u + ringJitter) * 34.0);
+                float darkRingMask = smoothstep(-0.12, 0.22, ringWave);
+                float blackTipMask = smoothstep(0.78, 0.85, u + ringJitter);
+                float finalDarkMask = clamp(max(darkRingMask, blackTipMask), 0.0, 1.0);
+
+                vec3 tailCol = mix(raccoonLightRing, raccoonDarkRing, finalDarkMask);
+                float shellTipBright = mix(0.95, 1.12, vTailShell);
+                diffuseColor.rgb = clamp(tailCol * shellTipBright, 0.0, 1.0);`
+            );
+            shader.fragmentShader = shader.fragmentShader.replace(
+                '#include <lights_fragment_begin>',
+                `#include <lights_fragment_begin>
+                float rimT = clamp(1.0 - max(dot(normalize(normal), normalize(vViewPosition)), 0.0), 0.0001, 1.0);
+                diffuseColor.rgb += vec3(0.18, 0.19, 0.21) * pow(rimT, 2.4) * 0.50;`
             );
         };
 
@@ -1362,18 +2032,18 @@ export const TamagotchiModel: React.FC<Props> = ({
             side: THREE.DoubleSide,
         });
 
-        // 4. Tattered Lower Cloak Material with Procedural Tear Holes & Subtle GPU Vertex Wind Ripples
+        // 4. Open-Front Cloak Material with Random Bottom Tatters & Randomly Scattered Holes
         const cMat = new THREE.MeshPhysicalMaterial({
             map: clothColorMap,
             bumpMap: clothBumpMap,
             bumpScale: 0.016,
-            roughness: 0.88,
+            roughness: 0.87,
             metalness: 0.02,
-            sheen: 0.68,
-            sheenRoughness: 0.75,
+            sheen: 0.70,
+            sheenRoughness: 0.72,
             sheenColor: new THREE.Color('#f87171'),
+            alphaTest: 0.45,
             side: THREE.DoubleSide,
-            alphaTest: 0.5,
         });
         cMat.onBeforeCompile = (shader) => {
             shader.uniforms.uTime = clothUniforms.uTime;
@@ -1386,45 +2056,119 @@ export const TamagotchiModel: React.FC<Props> = ({
                 uniform float uTime;
                 uniform float uFlare;
                 uniform float uLiftRear;
-                varying vec3 vCloakPos;`
+                varying vec3 vCloakPos;
+                varying vec2 vCloakUv;`
             );
             shader.vertexShader = shader.vertexShader.replace(
                 '#include <begin_vertex>',
                 `#include <begin_vertex>
                 vCloakPos = position;
-                float clothWeight = clamp(1.0 - smoothstep(-0.60, -0.08, position.y), 0.0, 1.0);
+                vCloakUv = uv;
+                float clothWeight = clamp(1.0 - smoothstep(-0.63, -0.10, position.y), 0.0, 1.0);
                 if (clothWeight > 0.001) {
                     float cAng = (abs(position.x) + abs(position.z) > 0.0001) ? atan(position.x, position.z) : 0.0;
-                    float windRipple = sin(uTime * 4.0 + cAng * 5.0 + position.y * 6.0) * 0.016 * clothWeight
-                                     + cos(uTime * 6.4 - cAng * 8.0) * 0.010 * clothWeight;
-                    float radialScale = 1.0 + (uFlare * 0.32 + windRipple) * clothWeight;
+                    float windRipple = sin(uTime * 3.6 + cAng * 5.0 + position.y * 4.0) * 0.010 * clothWeight;
+                    float radialScale = 1.0 + (uFlare * 0.12 + windRipple) * clothWeight;
                     transformed.x *= radialScale;
                     transformed.z *= radialScale;
-                    transformed.y += (uFlare * 0.22 + abs(windRipple) * 0.35) * clothWeight;
+                    transformed.y += (uFlare * 0.08 + abs(windRipple) * 0.20) * clothWeight;
                     if (position.z < 0.0) {
-                        transformed.y += uLiftRear * pow(max(clothWeight, 0.0001), 1.3) * 0.88;
+                        transformed.y += uLiftRear * pow(max(clothWeight, 0.0001), 1.4) * 0.35;
                     }
                 }`
             );
             shader.fragmentShader = shader.fragmentShader.replace(
                 '#include <common>',
                 `#include <common>
-                varying vec3 vCloakPos;`
+                varying vec3 vCloakPos;
+                varying vec2 vCloakUv;
+
+                float cloakHash21(vec2 p) {
+                    p = fract(p * vec2(127.1, 311.7));
+                    p += dot(p, p + 45.32);
+                    return fract(p.x * p.y);
+                }
+
+                float cloakNoise2D(vec2 p) {
+                    vec2 i = floor(p);
+                    vec2 f = fract(p);
+                    vec2 u = f * f * (3.0 - 2.0 * f);
+                    return mix(
+                        mix(cloakHash21(i + vec2(0.0, 0.0)), cloakHash21(i + vec2(1.0, 0.0)), u.x),
+                        mix(cloakHash21(i + vec2(0.0, 1.0)), cloakHash21(i + vec2(1.0, 1.0)), u.x),
+                        u.y
+                    );
+                }`
             );
             shader.fragmentShader = shader.fragmentShader.replace(
                 '#include <color_fragment>',
                 `#include <color_fragment>
-                // Weathered teardrop fabric holes near the lower cloak hem (matching BACK & SIDE views)
-                float cAng = (abs(vCloakPos.x) + abs(vCloakPos.z) > 0.0001) ? atan(vCloakPos.x, vCloakPos.z) : 0.0;
-                float holeY = vCloakPos.y;
-                float dH1 = length(vec2((cAng - 1.55) * 4.5, (holeY + 0.48) * 6.0));
-                float dH2 = length(vec2((cAng + 1.65) * 4.5, (holeY + 0.46) * 6.0));
-                float dH3 = length(vec2((cAng - 2.45) * 4.8, (holeY + 0.50) * 5.5));
-                float dH4 = length(vec2((cAng + 2.55) * 4.8, (holeY + 0.49) * 5.5));
-                float dH5 = length(vec2((abs(cAng) - 2.90) * 4.2, (holeY + 0.42) * 6.2));
-                if (min(min(min(dH1, dH2), min(dH3, dH4)), dH5) < 0.22) {
-                    discard;
-                }`
+                float u = clamp(vCloakUv.x, 0.0, 1.0);
+                float t = clamp(vCloakUv.y, 0.0, 1.0);
+
+                // 1) Organic, Randomly Tattered Bottom Hem (No front tatters; front borders u=0 and u=1 stay smooth)
+                float frontFade = smoothstep(0.02, 0.10, min(u, 1.0 - u));
+                float n1 = cloakNoise2D(vec2(u * 8.5, 1.3));
+                float n2 = cloakNoise2D(vec2(u * 22.0, 4.7));
+                float n3 = cloakNoise2D(vec2(u * 54.0, 9.1));
+
+                float organicHem = 0.90 + (n1 - 0.5) * 0.13 + (n2 - 0.5) * 0.075 + (n3 - 0.5) * 0.032;
+
+                // Irregularly spaced random tears / V-notches along the bottom hem
+                float uJit       = u + (n1 - 0.5) * 0.048;
+                float zoneId     = floor(uJit * 14.0);
+                float zoneU      = fract(uJit * 14.0);
+                float rZone1     = cloakHash21(vec2(zoneId, 11.3));
+                float rZone2     = cloakHash21(vec2(zoneId, 37.9));
+                float notchPos   = 0.22 + 0.56 * rZone2;
+                float notchWidth = 0.15 + 0.24 * cloakHash21(vec2(zoneId, 71.1));
+                float dNotch     = abs(zoneU - notchPos) / notchWidth;
+                float notchTear  = (rZone1 > 0.36)
+                    ? max(0.0, 1.0 - pow(dNotch, 0.82)) * (0.07 + 0.14 * rZone1) * (0.82 + 0.36 * n3)
+                    : 0.0;
+
+                float hemLimit = mix(0.95, clamp(organicHem - notchTear, 0.72, 0.99), frontFade);
+                if (t > hemLimit) discard;
+
+                // 2) Randomly Scattered Organic Weathered Holes Across the Cloak
+                float holeEdgeFactor = 1.0;
+                if (t > 0.22 && t < 0.86 && min(u, 1.0 - u) > 0.06) {
+                    vec2 hGrid = vec2(u * 8.5, t * 4.2);
+                    vec2 baseCell = floor(hGrid);
+                    float holeWarp = (cloakNoise2D(vec2(u * 38.0, t * 28.0)) - 0.5) * 0.065
+                                   + (cloakNoise2D(vec2(u * 76.0, t * 56.0)) - 0.5) * 0.030;
+
+                    for (int dy = -1; dy <= 1; dy++) {
+                        for (int dx = -1; dx <= 1; dx++) {
+                            vec2 cid = baseCell + vec2(float(dx), float(dy));
+                            if (cid.y >= 1.0 && cid.y <= 3.0 && cid.x >= 0.0 && cid.x <= 7.0) {
+                                float hProb = cloakHash21(cid + vec2(19.3, 47.1));
+                                if (hProb > 0.63) {
+                                    vec2 hCenter = cid + vec2(
+                                        0.20 + 0.60 * cloakHash21(cid + vec2(5.7, 13.1)),
+                                        0.20 + 0.60 * cloakHash21(cid + vec2(29.3, 83.7))
+                                    );
+                                    vec2 diff = hGrid - hCenter;
+                                    float ang = cloakHash21(cid + vec2(41.2, 17.9)) * 3.14159;
+                                    float ca = cos(ang);
+                                    float sa = sin(ang);
+                                    vec2 rotD = vec2(ca * diff.x - sa * diff.y, sa * diff.x + ca * diff.y);
+                                    rotD.x *= 1.15 + 0.45 * cloakHash21(cid + vec2(61.1, 9.3));
+                                    float hDist = length(rotD) + holeWarp;
+                                    float hRad  = 0.13 + (hProb - 0.63) * 0.42;
+                                    if (hDist < hRad) discard;
+                                    holeEdgeFactor = min(holeEdgeFactor, clamp((hDist - hRad) / 0.11, 0.0, 1.0));
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // 3) Subtle Weathered Dark-Crimson Shading Around Holes & Random Hem Tears
+                float hemEdgeFactor = clamp((hemLimit - t) / 0.065, 0.0, 1.0);
+                float wornBorder    = min(hemEdgeFactor, holeEdgeFactor);
+                vec3 wornCrimson    = vec3(0.20, 0.028, 0.036);
+                diffuseColor.rgb    = mix(wornCrimson, diffuseColor.rgb, smoothstep(0.0, 1.0, wornBorder));`
             );
         };
 
@@ -1481,10 +2225,15 @@ export const TamagotchiModel: React.FC<Props> = ({
 
         return {
             furBodyMaterial: furMat,
+            furShellMaterial: furShellMat,
+            redPandaEarOuterMaterial: earOuterMat,
+            redPandaEarInnerMaterial: earInnerMat,
             muzzleFurMaterial: muzMat,
             darkLimbFurMaterial: limbMat,
             pawPadMaterial: padMat,
             hornMaterial: hMat,
+            hornCollarMaterial: hCollarMat,
+            foxTailMaterial: fTailMat,
             hoodScarfMaterial: hsMat,
             cloakTatterMaterial: cMat,
             leftEyeMat: lEyeMat,
@@ -1612,16 +2361,16 @@ export const TamagotchiModel: React.FC<Props> = ({
         let headRotY = 0;
         let headRotZ = 0;
 
-        // Default stubby arm & foot positions (resting clearly on the upper sides of the plump belly!)
-        let lArmPos: [number, number, number] = [-0.47, -0.16, 0.22];
-        let rArmPos: [number, number, number] = [0.47, -0.16, 0.22];
-        let lArmRot: [number, number, number] = [0.12, 0.12, 0.36];
-        let rArmRot: [number, number, number] = [0.12, -0.12, -0.36];
+        // Default fatty raccoon arm/hand & leg/foot positions anchored on the front-sides of the Fat Oval Body
+        let lArmPos: [number, number, number] = [-0.52, -0.20, 0.37];
+        let rArmPos: [number, number, number] = [0.52, -0.20, 0.37];
+        let lArmRot: [number, number, number] = [-0.28, 0.52, -0.08];
+        let rArmRot: [number, number, number] = [-0.28, -0.52, 0.08];
 
-        let lFootPos: [number, number, number] = [-0.20, -0.56, 0.10];
-        let rFootPos: [number, number, number] = [0.20, -0.56, 0.10];
-        let lFootRot: [number, number, number] = [0, 0.08, 0];
-        let rFootRot: [number, number, number] = [0, -0.08, 0];
+        let lFootPos: [number, number, number] = [-0.24, -0.55, 0.14];
+        let rFootPos: [number, number, number] = [0.24, -0.55, 0.14];
+        let lFootRot: [number, number, number] = [0, 0.10, 0];
+        let rFootRot: [number, number, number] = [0, -0.10, 0];
 
         let capeFlareTarget = 0.02;
         let capeLiftRearTarget = 0.0;
@@ -1648,13 +2397,13 @@ export const TamagotchiModel: React.FC<Props> = ({
                 scaleY = 1.0 + jumpPhase * 0.05;
                 scaleX = 1.0 - jumpPhase * 0.03;
 
-                lArmPos = [-0.48, 0.04 + jumpPhase * 0.06, 0.26];
-                rArmPos = [0.48, 0.06 + (1 - jumpPhase) * 0.06, 0.26];
-                lArmRot = [-0.65, 0.25, 1.85 + sideSwing * 0.25];
-                rArmRot = [-0.65, -0.25, -1.85 + sideSwing * 0.25];
+                lArmPos = [-0.53, -0.10 + jumpPhase * 0.05, 0.38];
+                rArmPos = [0.53, -0.08 + (1 - jumpPhase) * 0.05, 0.38];
+                lArmRot = [-0.45, 0.25, -1.65 + sideSwing * 0.25];
+                rArmRot = [-0.45, -0.25, 1.65 + sideSwing * 0.25];
 
-                lFootPos = [-0.20, -0.54, 0.16];
-                rFootPos = [0.22, -0.44 + jumpPhase * 0.06, 0.32];
+                lFootPos = [-0.22, -0.54, 0.16];
+                rFootPos = [0.24, -0.44 + jumpPhase * 0.06, 0.32];
                 lFootRot = [0.35, 0.1, -0.12];
                 rFootRot = [-1.15, -0.2, 0.25];
 
@@ -1670,13 +2419,13 @@ export const TamagotchiModel: React.FC<Props> = ({
                 rotY = t * 5.2;
                 rotZ = Math.sin(t * 6.0) * 0.14;
 
-                lArmPos = [-0.50, -0.02, 0.24];
-                rArmPos = [0.50, 0.04, 0.24];
-                lArmRot = [-0.45, 0.2, 1.45];
-                rArmRot = [-0.45, -0.2, -1.55];
+                lArmPos = [-0.53, -0.11, 0.38];
+                rArmPos = [0.53, -0.09, 0.38];
+                lArmRot = [-0.40, 0.25, -1.45];
+                rArmRot = [-0.40, -0.25, 1.55];
 
-                lFootPos = [-0.20, -0.54, 0.14];
-                rFootPos = [0.22, -0.45, 0.28];
+                lFootPos = [-0.22, -0.54, 0.14];
+                rFootPos = [0.24, -0.45, 0.28];
                 rFootRot = [-0.95, -0.15, 0.2];
 
                 mouthOpen = 0.5;
@@ -1692,13 +2441,13 @@ export const TamagotchiModel: React.FC<Props> = ({
                 scaleZ = 1.04 - breath * 0.015;
                 headRotX = 0.18 + breath * 0.04;
 
-                lArmPos = [-0.36, -0.28, 0.34];
-                rArmPos = [0.36, -0.28, 0.34];
-                lArmRot = [0.55, 0.35, 0.15];
-                rArmRot = [0.55, -0.35, -0.15];
+                lArmPos = [-0.46, -0.25, 0.44];
+                rArmPos = [0.46, -0.25, 0.44];
+                lArmRot = [-0.35, 0.55, -0.06];
+                rArmRot = [-0.35, -0.55, 0.06];
 
-                lFootPos = [-0.21, -0.50, 0.36];
-                rFootPos = [0.21, -0.50, 0.36];
+                lFootPos = [-0.22, -0.50, 0.36];
+                rFootPos = [0.22, -0.50, 0.36];
                 lFootRot = [-1.35, 0.22, 0.12];
                 rFootRot = [-1.35, -0.22, -0.12];
 
@@ -1714,13 +2463,13 @@ export const TamagotchiModel: React.FC<Props> = ({
                 scaleY = 1.05;
                 scaleX = 0.96;
 
-                lArmPos = [-0.52, -0.02, 0.22];
-                rArmPos = [0.52, -0.02, 0.22];
-                lArmRot = [0, 0.2, 1.38];
-                rArmRot = [0, -0.2, -1.38];
+                lArmPos = [-0.54, -0.10, 0.38];
+                rArmPos = [0.54, -0.10, 0.38];
+                lArmRot = [-0.30, 0.25, -1.35];
+                rArmRot = [-0.30, -0.25, 1.35];
 
-                lFootPos = [-0.22, -0.53, 0.16];
-                rFootPos = [0.22, -0.50, 0.22];
+                lFootPos = [-0.24, -0.53, 0.16];
+                rFootPos = [0.24, -0.50, 0.22];
                 lFootRot = [0.35, 0, -0.15];
                 rFootRot = [-0.35, 0, 0.15];
 
@@ -1735,8 +2484,10 @@ export const TamagotchiModel: React.FC<Props> = ({
                 rotZ = -0.06;
                 headRotZ = -0.08 + wave * 0.04;
 
-                rArmPos = [0.48, 0.10, 0.28];
-                rArmRot = [-0.75, -0.25, -2.05 + wave * 0.38];
+                lArmPos = [-0.52, -0.20, 0.37];
+                lArmRot = [-0.28, 0.52, -0.08];
+                rArmPos = [0.53, -0.10, 0.39];
+                rArmRot = [-0.35, -0.25, 1.95 + wave * 0.35];
                 mouthOpen = 0.4;
                 capeFlareTarget = 0.12;
                 break;
@@ -1746,10 +2497,10 @@ export const TamagotchiModel: React.FC<Props> = ({
                 posY = 0.02;
                 scaleY = 1.03;
                 headRotX = -0.05;
-                rArmPos = [0.35, 0.24, 0.40];
-                rArmRot = [-1.15, -0.45, -2.35];
-                lArmPos = [-0.47, -0.18, 0.20];
-                lArmRot = [0.05, 0.05, 0.18];
+                rArmPos = [0.46, 0.04, 0.42];
+                rArmRot = [-0.55, -0.35, 2.15];
+                lArmPos = [-0.52, -0.20, 0.37];
+                lArmRot = [-0.28, 0.52, -0.08];
                 capeFlareTarget = 0.08;
                 break;
             }
@@ -1760,13 +2511,13 @@ export const TamagotchiModel: React.FC<Props> = ({
                 rotY = shake * 0.24;
                 headRotY = shake * 0.30;
 
-                lArmPos = [-0.48, -0.02, 0.28];
-                rArmPos = [0.48, -0.02, 0.28];
-                lArmRot = [-0.70, 0.25, 1.35 + shake * 0.22];
-                rArmRot = [-0.70, -0.25, -1.35 + shake * 0.22];
+                lArmPos = [-0.52, -0.12, 0.40];
+                rArmPos = [0.52, -0.12, 0.40];
+                lArmRot = [-0.45, 0.30, -1.25 + shake * 0.22];
+                rArmRot = [-0.45, -0.30, 1.25 + shake * 0.22];
 
-                lFootPos = [-0.20, -0.56, 0.10];
-                rFootPos = [0.22, -0.52 + Math.abs(shake) * 0.03, 0.18];
+                lFootPos = [-0.22, -0.56, 0.12];
+                rFootPos = [0.24, -0.52 + Math.abs(shake) * 0.03, 0.18];
 
                 capeFlareTarget = 0.22;
                 break;
@@ -1781,10 +2532,10 @@ export const TamagotchiModel: React.FC<Props> = ({
                 headRotX = -0.32;
                 headRotY = 0.16;
 
-                lArmPos = [-0.22, -0.42, 0.52];
-                rArmPos = [0.22, -0.42, 0.52];
-                lArmRot = [-1.25, 0.12, 0.18];
-                rArmRot = [-1.25, -0.12, -0.18];
+                lArmPos = [-0.34, -0.36, 0.54];
+                rArmPos = [0.34, -0.36, 0.54];
+                lArmRot = [-1.15, 0.22, -0.18];
+                rArmRot = [-1.15, -0.22, 0.18];
 
                 lFootPos = [-0.24, -0.46, -0.26];
                 rFootPos = [0.24, -0.46, -0.26];
@@ -1805,10 +2556,10 @@ export const TamagotchiModel: React.FC<Props> = ({
                 headRotZ = -0.12;
                 headRotY = swing * 0.22;
 
-                lArmPos = [-0.15, -0.16, 0.44];
-                rArmPos = [0.18, -0.14, 0.44];
-                lArmRot = [-0.75, -0.35, -0.45 + swing * 0.55];
-                rArmRot = [-0.75, 0.35, 0.45 + swing * 0.55];
+                lArmPos = [-0.24, -0.18, 0.54];
+                rArmPos = [0.26, -0.16, 0.54];
+                lArmRot = [-0.75, -0.35, 0.35 + swing * 0.55];
+                rArmRot = [-0.75, 0.35, -0.35 + swing * 0.55];
 
                 if (golfClubRef.current && golfOrbRef.current) {
                     golfClubRef.current.rotation.z = -0.42 + swing * 0.85;
@@ -1826,14 +2577,14 @@ export const TamagotchiModel: React.FC<Props> = ({
 
             case 'pointing': {
                 posY = Math.sin(t * 3.0) * 0.015;
-                rotY = 0.18;
-                headRotY = -0.24;
-                headRotZ = 0.06;
+                rotY = 0.12;
+                headRotY = -0.18;
+                headRotZ = 0.05;
 
-                lArmPos = [-0.52, 0.04, 0.28];
-                lArmRot = [-0.45, 0.3, 1.52 + Math.sin(t * 5.0) * 0.06];
-                rArmPos = [0.47, -0.18, 0.20];
-                rArmRot = [0.15, -0.1, -0.28];
+                lArmPos = [-0.52, -0.15, 0.40];
+                lArmRot = [-0.62, 0.38, -0.42 + Math.sin(t * 5.0) * 0.06];
+                rArmPos = [0.52, -0.20, 0.37];
+                rArmRot = [-0.28, -0.52, 0.08];
 
                 capeFlareTarget = 0.18;
                 break;
@@ -1846,13 +2597,13 @@ export const TamagotchiModel: React.FC<Props> = ({
                 scaleY = 0.93 + clap * 0.04;
                 scaleX = 1.05 - clap * 0.03;
 
-                lArmPos = [-0.11 - clap * 0.11, -0.12, 0.50];
-                rArmPos = [0.11 + clap * 0.11, -0.12, 0.50];
-                lArmRot = [-0.95, 0.55, 0.65];
-                rArmRot = [-0.95, -0.55, -0.65];
+                lArmPos = [-0.18 - clap * 0.12, -0.16, 0.58];
+                rArmPos = [0.18 + clap * 0.12, -0.16, 0.58];
+                lArmRot = [-0.85, 0.55, 0.55];
+                rArmRot = [-0.85, -0.55, -0.55];
 
-                lFootPos = [-0.22, -0.50, 0.36];
-                rFootPos = [0.22, -0.50, 0.36];
+                lFootPos = [-0.24, -0.50, 0.36];
+                rFootPos = [0.24, -0.50, 0.36];
                 lFootRot = [-1.35, 0.22, 0.12];
                 rFootRot = [-1.35, -0.22, -0.12];
 
@@ -1870,8 +2621,10 @@ export const TamagotchiModel: React.FC<Props> = ({
                 rotY = 0.22;
                 headRotZ = Math.sin(t * 3.5) * 0.08;
 
-                lArmPos = [-0.47, -0.15, 0.22];
-                rArmPos = [0.46, -0.14, 0.24];
+                lArmPos = [-0.52, -0.18, 0.39];
+                rArmPos = [0.52, -0.17, 0.40];
+                lArmRot = [-0.36, 0.48, -0.14];
+                rArmRot = [-0.40, -0.48, 0.18];
                 mouthOpen = 0.45 + talkWave * 0.55;
                 capeFlareTarget = 0.08;
                 break;
@@ -1884,13 +2637,13 @@ export const TamagotchiModel: React.FC<Props> = ({
                 scaleY = 0.94;
                 scaleX = 1.04;
 
-                lArmPos = [-0.42, -0.16 + Math.sin(t * 5.0) * 0.03, 0.38];
-                rArmPos = [0.42, -0.16 + Math.cos(t * 5.0) * 0.03, 0.38];
-                lArmRot = [-0.85, 0.3, 0.55];
-                rArmRot = [-0.85, -0.3, -0.55];
+                lArmPos = [-0.46, -0.17 + Math.sin(t * 5.0) * 0.03, 0.45];
+                rArmPos = [0.46, -0.17 + Math.cos(t * 5.0) * 0.03, 0.45];
+                lArmRot = [-0.75, 0.35, -0.28];
+                rArmRot = [-0.75, -0.35, 0.28];
 
-                lFootPos = [-0.20, -0.50, 0.36];
-                rFootPos = [0.20, -0.50, 0.36];
+                lFootPos = [-0.22, -0.50, 0.36];
+                rFootPos = [0.22, -0.50, 0.36];
                 lFootRot = [-1.35, 0.18, 0.1];
                 rFootRot = [-1.35, -0.18, -0.1];
 
@@ -1918,13 +2671,13 @@ export const TamagotchiModel: React.FC<Props> = ({
                 headRotX = -0.06 + bounce * 0.04;
                 headRotZ = stride * 0.05;
 
-                lArmPos = [-0.48, -0.13 + rightLift * 0.04, 0.22 - stride * 0.08];
-                rArmPos = [0.48, -0.13 + leftLift * 0.04, 0.22 + stride * 0.08];
-                lArmRot = [stride * 0.55, 0.15, 0.52 + bounce * 0.12];
-                rArmRot = [-stride * 0.55, -0.15, -0.52 - bounce * 0.12];
+                lArmPos = [-0.52, -0.18 + rightLift * 0.04, 0.37 - stride * 0.07];
+                rArmPos = [0.52, -0.18 + leftLift * 0.04, 0.37 + stride * 0.07];
+                lArmRot = [-0.28 + stride * 0.45, 0.48, -0.10 - bounce * 0.06];
+                rArmRot = [-0.28 - stride * 0.45, -0.48, 0.10 + bounce * 0.06];
 
-                lFootPos = [-0.20, -0.56 + leftLift * 0.11, 0.10 + stride * 0.14];
-                rFootPos = [0.20, -0.56 + rightLift * 0.11, 0.10 - stride * 0.14];
+                lFootPos = [-0.24, -0.56 + leftLift * 0.11, 0.12 + stride * 0.14];
+                rFootPos = [0.24, -0.56 + rightLift * 0.11, 0.12 - stride * 0.14];
                 lFootRot = [-stride * 0.45, 0.08, 0];
                 rFootRot = [stride * 0.45, -0.08, 0];
 
@@ -1945,8 +2698,8 @@ export const TamagotchiModel: React.FC<Props> = ({
 
                 headRotY = ptrX * 0.22;
                 headRotX = -ptrY * 0.14;
-                lArmRot = [0.12, 0.12, 0.36 + breath * 0.04];
-                rArmRot = [0.12, -0.12, -0.36 - breath * 0.04];
+                lArmRot = [-0.28, 0.52, -0.08 - breath * 0.03];
+                rArmRot = [-0.28, -0.52, 0.08 + breath * 0.03];
                 capeFlareTarget = 0.02 + (breath * 0.5 + 0.5) * 0.02;
                 break;
             }
@@ -1990,8 +2743,12 @@ export const TamagotchiModel: React.FC<Props> = ({
             damp * 0.8
         );
 
-        leftArmRef.current.position.lerp(new THREE.Vector3(...lArmPos), damp);
-        rightArmRef.current.position.lerp(new THREE.Vector3(...rArmPos), damp);
+        // Keep fatty raccoon arms anchored on the front-sides of the fat oval body in front of the cloak
+        const safeLArm: [number, number, number] = [lArmPos[0], lArmPos[1], Math.max(0.30, lArmPos[2])];
+        const safeRArm: [number, number, number] = [rArmPos[0], rArmPos[1], Math.max(0.30, rArmPos[2])];
+
+        leftArmRef.current.position.lerp(new THREE.Vector3(...safeLArm), damp);
+        rightArmRef.current.position.lerp(new THREE.Vector3(...safeRArm), damp);
         leftArmRef.current.rotation.set(
             THREE.MathUtils.lerp(leftArmRef.current.rotation.x, lArmRot[0], damp),
             THREE.MathUtils.lerp(leftArmRef.current.rotation.y, lArmRot[1], damp),
@@ -2015,6 +2772,22 @@ export const TamagotchiModel: React.FC<Props> = ({
             THREE.MathUtils.lerp(rightFootRef.current.rotation.y, rFootRot[1], damp),
             THREE.MathUtils.lerp(rightFootRef.current.rotation.z, rFootRot[2], damp)
         );
+
+        if (tailRef.current) {
+            const isFastWag =
+                state === 'dancing' ||
+                state === 'dancing2' ||
+                state === 'running' ||
+                state === 'waving' ||
+                state === 'clapping';
+            const isSleepTail = state === 'sleeping' || effectiveExpression === 'sleepy';
+            const wagFreq = isFastWag ? 8.5 : isSleepTail ? 1.2 : 3.4;
+            const wagAmpY = isFastWag ? 0.34 : isSleepTail ? 0.06 : 0.18;
+            const wagAmpX = isFastWag ? 0.14 : isSleepTail ? 0.03 : 0.07;
+            tailRef.current.rotation.y = Math.sin(t * wagFreq) * wagAmpY;
+            tailRef.current.rotation.x = (isSleepTail ? -0.18 : 0.06) + Math.cos(t * wagFreq * 0.7) * wagAmpX;
+            tailRef.current.rotation.z = Math.sin(t * wagFreq) * 0.10;
+        }
 
         if (mouthOpenRef.current) {
             const smileBonus = effectiveExpression === 'happy' ? 0.55 : 0;
@@ -2121,18 +2894,18 @@ export const TamagotchiModel: React.FC<Props> = ({
     });
 
     const renderPawPads = (ySign: number = 1) => (
-        <group position={[0, -0.014 * ySign, 0.064]}>
-            <mesh position={[0, -0.010 * ySign, 0]} scale={[0.50, 0.40, 0.28]} material={pawPadMaterial}>
-                <sphereGeometry args={[0.052, 14, 14]} />
+        <group position={[0, ySign > 0 ? -0.048 : -0.044, 0.038]}>
+            <mesh position={[0, -0.006 * ySign, 0]} scale={[0.46, 0.36, 0.24]} material={pawPadMaterial}>
+                <sphereGeometry args={[0.036, 14, 14]} />
             </mesh>
-            <mesh position={[-0.028, 0.022 * ySign, 0.004]} scale={[0.26, 0.32, 0.24]} material={pawPadMaterial}>
-                <sphereGeometry args={[0.040, 12, 12]} />
+            <mesh position={[-0.020, 0.014 * ySign, 0.004]} scale={[0.24, 0.28, 0.22]} material={pawPadMaterial}>
+                <sphereGeometry args={[0.026, 12, 12]} />
             </mesh>
-            <mesh position={[0, 0.030 * ySign, 0.006]} scale={[0.26, 0.32, 0.24]} material={pawPadMaterial}>
-                <sphereGeometry args={[0.040, 12, 12]} />
+            <mesh position={[0, 0.020 * ySign, 0.006]} scale={[0.24, 0.28, 0.22]} material={pawPadMaterial}>
+                <sphereGeometry args={[0.026, 12, 12]} />
             </mesh>
-            <mesh position={[0.028, 0.022 * ySign, 0.004]} scale={[0.26, 0.32, 0.24]} material={pawPadMaterial}>
-                <sphereGeometry args={[0.040, 12, 12]} />
+            <mesh position={[0.020, 0.014 * ySign, 0.004]} scale={[0.24, 0.28, 0.22]} material={pawPadMaterial}>
+                <sphereGeometry args={[0.026, 12, 12]} />
             </mesh>
         </group>
     );
@@ -2196,20 +2969,28 @@ export const TamagotchiModel: React.FC<Props> = ({
                     </mesh>
                 </group>
 
-                {/* 1. Pear-Ovoid Body with 3D Feathered Fur Shader & Physical Sheen */}
+                {/* 1. Red Panda Head + Fat Raccoon Body + 4-Layer Volumetric 3D Fur Shell Coat */}
                 <group ref={bodyGroupRef}>
                     <mesh geometry={bodyGeo} material={furBodyMaterial} castShadow receiveShadow />
+                    <mesh geometry={furShellsGeo} material={furShellMaterial} castShadow receiveShadow />
 
                     {/* Head / Face Feature Group */}
                     <group ref={headLookRef}>
-                        {/* Curved, Ridged Metallic-Bone Forehead Horn (Protruding ABOVE the top of the hood!) */}
-                        <mesh
-                            geometry={hornGeo}
-                            material={hornMaterial}
-                            position={[0, 0.55, 0.27]}
-                            rotation={[0.06, 0, 0]}
-                            castShadow
-                        />
+                        {/* Left & Right Fluffy Triangular Red Panda Ears with Raccoon Coloration */}
+                        <group position={[-0.33, 0.40, 0.25]} rotation={[0.16, 0.22, 0.48]}>
+                            <mesh geometry={redPandaEarOuterGeo} material={redPandaEarOuterMaterial} castShadow />
+                            <mesh geometry={redPandaEarInnerGeo} material={redPandaEarInnerMaterial} />
+                        </group>
+                        <group position={[0.33, 0.40, 0.25]} rotation={[0.16, -0.22, -0.48]}>
+                            <mesh geometry={redPandaEarOuterGeo} material={redPandaEarOuterMaterial} castShadow />
+                            <mesh geometry={redPandaEarInnerGeo} material={redPandaEarInnerMaterial} />
+                        </group>
+
+                        {/* Conical Silver Metal Mecha Beast Horn + Conical Socket Collar at Top of Forehead */}
+                        <group position={[0, 0.425, 0.335]} rotation={[0.60, 0, 0]}>
+                            <mesh geometry={hornCollarGeo} material={hornCollarMaterial} castShadow />
+                            <mesh geometry={hornGeo} material={hornMaterial} castShadow />
+                        </group>
 
                         {/* Left Dynamic 512x512 CanvasTexture Eye */}
                         <mesh
@@ -2250,8 +3031,8 @@ export const TamagotchiModel: React.FC<Props> = ({
                             </mesh>
                         </group>
 
-                        {/* Cute Feline Muzzle, Nose & Gentle Upward Cat Mouth (ω) */}
-                        <group position={[0, 0.165, 0.422]}>
+                        {/* Cute Red Panda Snowy-White Snout, Nose & Gentle Upward Mouth (ω) */}
+                        <group position={[0, 0.165, 0.448]}>
                             <mesh
                                 geometry={muzzleBridgeGeo}
                                 material={muzzleFurMaterial}
@@ -2263,7 +3044,7 @@ export const TamagotchiModel: React.FC<Props> = ({
                                 position={[0, 0.014, 0.030]}
                                 rotation={[0.12, 0, 0]}
                             />
-                            {/* Left & Right Upward-Curving Cat Mouth (ω) */}
+                            {/* Left & Right Upward-Curving Mouth (ω) */}
                             <mesh position={[-0.016, -0.006, 0.028]} rotation={[0, 0, Math.PI + 0.15]} material={mouthMaterial}>
                                 <torusGeometry args={[0.015, 0.0038, 10, 20, Math.PI * 0.85]} />
                             </mesh>
@@ -2323,40 +3104,44 @@ export const TamagotchiModel: React.FC<Props> = ({
                         </group>
                     </group>
 
-                    {/* 2. V-Draped Neck Scarf + Prominent Jagged Chest V-Mantle + Sculpted Tattered Cloak */}
+                    {/* 2. V-Draped Neck Scarf + Open-Front Randomly Tattered Cloak (No Front Tatter) */}
                     <group ref={scarfRef}>
                         <mesh geometry={scarfCoilsGeo} material={hoodScarfMaterial} castShadow receiveShadow />
-                        <mesh geometry={frontApronGeo} material={hoodScarfMaterial} castShadow receiveShadow />
                         <mesh geometry={cloakGeo} material={cloakTatterMaterial} castShadow receiveShadow />
+                    </group>
+
+                    {/* 2B. Lush Bushy Fox-Shaped Tail with Ringed Raccoon Coloration */}
+                    <group ref={tailRef} position={[0, -0.38, -0.30]}>
+                        <mesh geometry={foxTailGeo} material={foxTailMaterial} castShadow receiveShadow />
                     </group>
                 </group>
 
-                {/* 3. Stubby CapsuleGeometry Paws + Glowing Cyan Wrist Rings (13 WORKING) */}
-                <group ref={leftArmRef} position={[-0.47, -0.16, 0.22]}>
+                {/* 3. Fatty Raccoon Arms & Hands with 5 Sculpted Raccoon Digits */}
+                <group ref={leftArmRef} position={[-0.52, -0.20, 0.37]} rotation={[-0.28, 0.52, -0.08]}>
                     <mesh geometry={pawGeo} material={darkLimbFurMaterial} castShadow />
                     {renderPawPads(1)}
-                    <mesh ref={leftPawRingRef} visible={false} position={[0, -0.04, 0.03]} rotation={[Math.PI / 2, 0, 0]}>
+                    <mesh ref={leftPawRingRef} visible={false} position={[0, -0.06, 0.03]} rotation={[Math.PI / 2, 0, 0]}>
                         <torusGeometry args={[0.13, 0.009, 10, 32]} />
                         <meshBasicMaterial color="#00e5ff" transparent opacity={0.95} toneMapped={false} />
                     </mesh>
                 </group>
 
-                <group ref={rightArmRef} position={[0.47, -0.16, 0.22]}>
+                <group ref={rightArmRef} position={[0.52, -0.20, 0.37]} rotation={[-0.28, -0.52, 0.08]}>
                     <mesh geometry={pawGeo} material={darkLimbFurMaterial} castShadow />
                     {renderPawPads(1)}
-                    <mesh ref={rightPawRingRef} visible={false} position={[0, -0.04, 0.03]} rotation={[Math.PI / 2, 0, 0]}>
+                    <mesh ref={rightPawRingRef} visible={false} position={[0, -0.06, 0.03]} rotation={[Math.PI / 2, 0, 0]}>
                         <torusGeometry args={[0.13, 0.009, 10, 32]} />
                         <meshBasicMaterial color="#00e5ff" transparent opacity={0.95} toneMapped={false} />
                     </mesh>
                 </group>
 
-                {/* 4. Stubby CapsuleGeometry Feet with Dark Paw Pads */}
-                <group ref={leftFootRef} position={[-0.20, -0.56, 0.10]}>
+                {/* 4. Fatty Raccoon Legs & Feet with Drumstick Haunches & 4 Sculpted Raccoon Toes */}
+                <group ref={leftFootRef} position={[-0.24, -0.55, 0.14]}>
                     <mesh geometry={footGeo} material={darkLimbFurMaterial} castShadow />
                     {renderPawPads(-1)}
                 </group>
 
-                <group ref={rightFootRef} position={[0.20, -0.56, 0.10]}>
+                <group ref={rightFootRef} position={[0.24, -0.55, 0.14]}>
                     <mesh geometry={footGeo} material={darkLimbFurMaterial} castShadow />
                     {renderPawPads(-1)}
                 </group>

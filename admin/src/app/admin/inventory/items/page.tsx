@@ -420,16 +420,16 @@ function ItemMasterContent() {
                     showIcon
                     message={
                         <>
-                            Tenant katalog: <Text code>{catalogTenantId}</Text>
+                            Catalog Tenant: <Text code>{catalogTenantId}</Text>
                             {searchParams.get("tenantId") ? (
                                 <>
                                     {" "}
-                                    (UMKM WA) — <Link href="/admin/ai-studio/umkm">Kelola UMKM</Link>
+                                    (Partner WA) — <Link href="/admin/ai-studio/partner">Manage Partner</Link>
                                 </>
                             ) : null}
                         </>
                     }
-                    style={{ borderRadius: 10 }}
+                    style={{ borderRadius: 0 }}
                 />
                 {/* Stats Row */}
                 <Row gutter={[12, 12]}>

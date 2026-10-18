@@ -162,11 +162,14 @@ export default function WebCrawlerPage() {
                 title="Web Crawler Studio"
                 detail={`Jobs are stored in Postgres and processed by the middleware worker (${WEB_CRAWLER_DATA_MODE} queue — seed URLs fetched over HTTP; vector ingest is separate).`}
             />
-            <Row gutter={[24, 24]}>
+            <Row gutter={[16, 16]}>
                 
                 {/* CONFIGURATION PANEL */}
                 <Col xs={24} lg={9}>
-                    <Card title={<><GlobalOutlined /> New Crawl Job</>} bordered={false} className="shadow-sm">
+                    <Card
+                        title={<span className="font-mono text-xs uppercase tracking-[0.06em]"><GlobalOutlined style={{ color: '#fb923c', marginRight: 6 }} /> New Crawl Job</span>}
+                        style={{ borderRadius: 0, borderTop: '2px solid #fb923c' }}
+                    >
                         <Form form={form} layout="vertical" onFinish={onStartCrawl} initialValues={{
                             maxDepth: 2, useJsRendering: false, authType: 'none', rps: 5, concurrency: 2,
                             proxyEnabled: false, cssSelector: 'body', autoMetadata: false, chunkSize: 1000, chunkOverlap: 200
@@ -265,7 +268,7 @@ export default function WebCrawlerPage() {
 
                             <Divider />
                             
-                            <Button type="primary" htmlType="submit" icon={<PlayCircleOutlined />} size="large" block loading={submitting} style={{ backgroundColor: themeColor }}>
+                            <Button type="primary" htmlType="submit" icon={<PlayCircleOutlined />} size="large" block loading={submitting} style={{ backgroundColor: themeColor, borderRadius: 0 }}>
                                 Start Crawling
                             </Button>
                         </Form>
@@ -274,7 +277,10 @@ export default function WebCrawlerPage() {
 
                 {/* DASHBOARD PANEL */}
                 <Col xs={24} lg={15}>
-                    <Card title={<><DatabaseOutlined /> Job History</>} bordered={false} className="shadow-sm">
+                    <Card
+                        title={<span className="font-mono text-xs uppercase tracking-[0.06em]"><DatabaseOutlined style={{ color: '#fb923c', marginRight: 6 }} /> Job History</span>}
+                        style={{ borderRadius: 0, borderTop: '2px solid #fb923c' }}
+                    >
                         <Table 
                             dataSource={jobs} 
                             columns={columns} 
@@ -286,20 +292,20 @@ export default function WebCrawlerPage() {
                     </Card>
                     
                     {/* Active Workers Simulation Metric Card */}
-                    <Row gutter={16} style={{ marginTop: 24 }}>
+                    <Row gutter={16} style={{ marginTop: 16 }}>
                         <Col span={8}>
-                            <Card bordered={false} className="shadow-sm" style={{ textAlign: 'center' }}>
+                            <Card style={{ textAlign: 'center', borderRadius: 0, borderTop: `2px solid ${themeColor}` }}>
                                 <Statistic title="Total Pages Ingested" value={jobs.reduce((acc, job) => acc + job.pagesScraped, 0)} prefix={<FileTextOutlined style={{ color: themeColor }}/>} />
                             </Card>
                         </Col>
                         <Col span={8}>
-                            <Card bordered={false} className="shadow-sm" style={{ textAlign: 'center' }}>
-                                <Statistic title="Vector Documents Generated" value={jobs.reduce((acc, job) => acc + job.documentsGenerated, 0)} prefix={<DatabaseOutlined style={{ color: '#52c41a' }}/>} />
+                            <Card style={{ textAlign: 'center', borderRadius: 0, borderTop: '2px solid #34d399' }}>
+                                <Statistic title="Vector Documents Generated" value={jobs.reduce((acc, job) => acc + job.documentsGenerated, 0)} prefix={<DatabaseOutlined style={{ color: '#34d399' }}/>} />
                             </Card>
                         </Col>
                         <Col span={8}>
-                            <Card bordered={false} className="shadow-sm" style={{ textAlign: 'center' }}>
-                                <Statistic title="Crawl Errors" value={jobs.reduce((acc, job) => acc + job.errors, 0)} valueStyle={{ color: '#cf1322' }} prefix={<BugOutlined />}/>
+                            <Card style={{ textAlign: 'center', borderRadius: 0, borderTop: '2px solid #f87171' }}>
+                                <Statistic title="Crawl Errors" value={jobs.reduce((acc, job) => acc + job.errors, 0)} valueStyle={{ color: '#f87171' }} prefix={<BugOutlined />}/>
                             </Card>
                         </Col>
                     </Row>

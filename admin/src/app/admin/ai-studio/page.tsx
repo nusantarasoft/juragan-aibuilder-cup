@@ -54,6 +54,9 @@ import {
     ApartmentOutlined,
     SettingOutlined,
     ShareAltOutlined,
+    ReloadOutlined,
+    CompressOutlined,
+    ExpandOutlined,
 } from "@ant-design/icons";
 import SourcesPanel from "./SourcesPanel";
 import StudioOutputsPanel from "./StudioOutputsPanel";
@@ -83,15 +86,13 @@ import { useStudioChat } from "./useStudioChat";
 import AIAssistantPanel from "./AIAssistantPanel";
 import { useAuth } from "@/context/AuthContext";
 import { useStudioUserId } from "./useStudioUserId";
-import ReactMarkdown from 'react-markdown';
 import { usePreferencesStore } from "@/store/usePreferencesStore";
+import { useAdminLayout } from "@/components/layout/CMSLayoutContext";
+import { getVOTheme } from "@/components/layout/voTheme";
 import { TooltipWrapper as AnimatedTooltip } from '@/components/mvpblocks/AnimatedTooltip';
 import { motion, AnimatePresence } from "framer-motion";
 
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
-
-const { Title, Text, Paragraph } = Typography;
-const glass = { background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.45)', borderRadius: 14 };
+const { Text } = Typography;
 const { TextArea } = Input;
 
 // ── Main Component ───────────────────────────────────────────────────
@@ -99,6 +100,8 @@ const { TextArea } = Input;
 export default function AIStudioPage() {
     const message = useAppMessage();
     const { themeColor } = usePreferencesStore();
+    const darkMode = useAdminLayout((s) => s.darkMode);
+    const t = getVOTheme(darkMode);
     const { loading: authLoading } = useAuth();
     const userId = useStudioUserId();
 
@@ -171,37 +174,27 @@ export default function AIStudioPage() {
     // ── Layout State ──
     const [showSources, setShowSources] = useState(true);
     const [showStudio, setShowStudio] = useState(true);
+    const [layoutResetSignal, setLayoutResetSignal] = useState(0);
+
+    const handleResetStudioLayout = useCallback(() => {
+        setShowSources(true);
+        setShowStudio(true);
+        setRightTab("studio");
+        setLayoutResetSignal((n) => n + 1);
+    }, []);
+
+    useEffect(() => {
+        const onReset = () => handleResetStudioLayout();
+        window.addEventListener("cms-reset-layout", onReset);
+        return () => window.removeEventListener("cms-reset-layout", onReset);
+    }, [handleResetStudioLayout]);
 
     // ── Poll timer ──
     const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const prevSourceStatusRef = useRef<Map<string, string>>(new Map());
     const pollNotebookIdRef = useRef<string | null>(null);
 
-    const loadNotebooks = useCallback(async () => {
-        if (!userId) {
-            setLoadingNotebooks(false);
-            return;
-        }
-        setLoadingNotebooks(true);
-        try {
-            const list = await studioService.getNotebooks(userId);
-            setNotebooks(list);
-        } catch (e) {
-            console.error("Failed to load notebooks:", e);
-            message.error("Gagal memuat notebooks");
-        } finally {
-            setLoadingNotebooks(false);
-        }
-    }, [userId, message]);
-
-    // ── Load Notebooks ──
-    useEffect(() => {
-        if (authLoading) return;
-        loadNotebooks();
-        return () => { if (pollRef.current) clearInterval(pollRef.current); };
-    }, [authLoading, loadNotebooks]);
-
-    const selectNotebook = async (notebook: StudioNotebook) => {
+    const selectNotebook = useCallback(async (notebook: StudioNotebook) => {
         if (pollRef.current) {
             clearInterval(pollRef.current);
             pollRef.current = null;
@@ -215,14 +208,50 @@ export default function AIStudioPage() {
         setPublishedGuideFlow(null);
         setSelectedSourceIds([]);
         previouslyIndexedIdsRef.current = [];
-        await loadSourceStatus(notebook.id, true);
+        try {
+            const list = await studioService.getSourceStatus(notebook.id);
+            prevSourceStatusRef.current = seedSourceStatusMap(list);
+            setSources(list);
+            const indexedIds = indexedSourceIds(list);
+            setSelectedSourceIds(indexedIds);
+            previouslyIndexedIdsRef.current = indexedIds;
+        } catch {
+            /* ignore initial load error */
+        }
         try {
             const published = await studioService.getPublishedGuideFlow(notebook.id);
             if (published) {
                 setPublishedGuideFlow(published);
             }
         } catch { /* no published flow */ }
-    };
+    }, [resetChat, setChatMode, setGuidedFlow]);
+
+    const loadNotebooks = useCallback(async () => {
+        if (!userId) {
+            setLoadingNotebooks(false);
+            return;
+        }
+        setLoadingNotebooks(true);
+        try {
+            const list = await studioService.getNotebooks(userId);
+            setNotebooks(list);
+            if (list.length > 0 && !pollNotebookIdRef.current) {
+                void selectNotebook(list[0]);
+            }
+        } catch (e) {
+            console.error("Failed to load notebooks:", e);
+            message.error("Failed to load notebooks");
+        } finally {
+            setLoadingNotebooks(false);
+        }
+    }, [userId, message, selectNotebook]);
+
+    // ── Load Notebooks ──
+    useEffect(() => {
+        if (authLoading) return;
+        loadNotebooks();
+        return () => { if (pollRef.current) clearInterval(pollRef.current); };
+    }, [authLoading, loadNotebooks]);
 
     const startPublishedGuidedFlow = async () => {
         if (!publishedGuideFlow) return;
@@ -379,10 +408,10 @@ export default function AIStudioPage() {
             });
             setActiveNotebook(updated);
             setNotebooks((prev) => prev.map((n) => (n.id === updated.id ? { ...n, ...updated } : n)));
-            message.success("Notebook diperbarui");
+            message.success("Notebook updated");
             setShowEditModal(false);
         } catch (e: unknown) {
-            message.error(e instanceof Error ? e.message : "Gagal memperbarui notebook");
+            message.error(e instanceof Error ? e.message : "Failed to update notebook");
         } finally {
             setSavingEdit(false);
         }
@@ -401,7 +430,7 @@ export default function AIStudioPage() {
             const res = await studioService.createShareLink(activeNotebook.id);
             setShareToken(res.token);
         } catch (e: unknown) {
-            message.error(e instanceof Error ? e.message : "Gagal membuat tautan berbagi");
+            message.error(e instanceof Error ? e.message : "Failed to create share link");
         } finally {
             setShareLoading(false);
         }
@@ -413,10 +442,10 @@ export default function AIStudioPage() {
         try {
             await studioService.revokeShareLink(activeNotebook.id);
             setShareToken(null);
-            message.success("Berbagi dinonaktifkan");
+            message.success("Sharing disabled");
             setShowShareModal(false);
         } catch (e: unknown) {
-            message.error(e instanceof Error ? e.message : "Gagal menonaktifkan berbagi");
+            message.error(e instanceof Error ? e.message : "Failed to disable sharing");
         } finally {
             setShareLoading(false);
         }
@@ -426,9 +455,9 @@ export default function AIStudioPage() {
         if (!shareUrl) return;
         try {
             await navigator.clipboard?.writeText(shareUrl);
-            message.success("Tautan disalin");
+            message.success("Link copied");
         } catch {
-            message.error("Gagal menyalin tautan");
+            message.error("Failed to copy link");
         }
     };
 
@@ -452,7 +481,7 @@ export default function AIStudioPage() {
         setAddingMedia(prev => new Set(prev).add(mediaId));
         try {
             await studioService.addMediaToNotebook(activeNotebook.id, mediaId);
-            message.success("Sumber ditambahkan — indeksasi dimulai");
+            message.success("Source added — indexing started");
             await loadSourceStatus(activeNotebook.id);
         } catch (e: unknown) {
             message.error(e instanceof Error ? e.message : "Failed to add source");
@@ -480,7 +509,7 @@ export default function AIStudioPage() {
         try {
             await studioService.uploadFileToNotebook(activeNotebook.id, file as File);
             onSuccess?.({}, file);
-            message.success(`"${(file as File).name}" diupload — indeksasi dimulai`);
+            message.success(`"${(file as File).name}" uploaded — indexing started`);
             await loadSourceStatus(activeNotebook.id);
         } catch (e: unknown) {
             onError?.(e as Error);
@@ -505,15 +534,15 @@ export default function AIStudioPage() {
     const handleChatSend = async (text: string) => {
         if (!activeNotebook || !text.trim()) return;
         if (sources.length === 0) {
-            message.warning("Belum ada sumber. Tambahkan file atau media terlebih dahulu.");
+            message.warning("No sources yet. Add files or media first.");
             return;
         }
         if (!sourcesIndexed && !sourcesIndexing) {
-            message.warning("Sumber belum terindeks. Tunggu proses selesai atau gunakan Reindex.");
+            message.warning("Sources are not indexed yet. Wait for indexing to finish or click Reindex.");
             return;
         }
         if (chatMode === "guided" && !waitingInput && chatHistory.length > 0) {
-            message.warning("Guided flow belum menunggu input.");
+            message.warning("Guided flow is not waiting for input yet.");
             return;
         }
         await sendMessage(text.trim());
@@ -523,7 +552,7 @@ export default function AIStudioPage() {
         if (!activeNotebook) return;
         try {
             await studioService.reindexSource(activeNotebook.id, sourceId);
-            message.success("Indeksasi ulang dimulai");
+            message.success("Reindexing started");
             await loadSourceStatus(activeNotebook.id);
         } catch (e: unknown) {
             message.error(e instanceof Error ? e.message : "Reindex failed");
@@ -542,10 +571,10 @@ export default function AIStudioPage() {
         if (!activeNotebook) return;
         try {
             await studioService.importUrl(activeNotebook.id, url);
-            message.success("URL diimport — indeksasi dimulai");
+            message.success("URL imported — indexing started");
             await loadSourceStatus(activeNotebook.id);
         } catch (e: unknown) {
-            message.error(e instanceof Error ? e.message : "Gagal import URL");
+            message.error(e instanceof Error ? e.message : "Failed to import URL");
         }
     };
 
@@ -553,10 +582,10 @@ export default function AIStudioPage() {
         if (!activeNotebook) return;
         try {
             await studioService.addTextSource(activeNotebook.id, title, content);
-            message.success("Teks ditambahkan — indeksasi dimulai");
+            message.success("Text added — indexing started");
             await loadSourceStatus(activeNotebook.id);
         } catch (e: unknown) {
-            message.error(e instanceof Error ? e.message : "Gagal menambah teks");
+            message.error(e instanceof Error ? e.message : "Failed to add text");
         }
     };
 
@@ -564,16 +593,16 @@ export default function AIStudioPage() {
         if (!activeNotebook || !content.trim()) return;
         try {
             await studioService.createNote(activeNotebook.id, {
-                title: content.trim().slice(0, 60) || "Catatan",
+                title: content.trim().slice(0, 60) || "Note",
                 content,
                 origin: "chat",
             });
-            message.success("Disimpan ke Notes");
+            message.success("Saved to Notes");
             setNotesRefresh((n) => n + 1);
             setShowStudio(true);
             setRightTab("notes");
         } catch (e: unknown) {
-            message.error(e instanceof Error ? e.message : "Gagal menyimpan catatan");
+            message.error(e instanceof Error ? e.message : "Failed to save note");
         }
     };
 
@@ -582,17 +611,21 @@ export default function AIStudioPage() {
     };
 
     const handleSaveChatInstruction = async (instruction: string) => {
-        if (!activeNotebook) return;
+        if (!activeNotebook) {
+            message.info("Select or create a notebook first to save chat instructions");
+            setConfigureChatOpen(false);
+            return;
+        }
         setSavingChatConfig(true);
         try {
             const updated = await studioService.updateNotebook(activeNotebook.id, {
                 chatInstruction: instruction,
             });
             setActiveNotebook(updated);
-            message.success("Instruksi chat disimpan");
+            message.success("Chat instructions saved");
             setConfigureChatOpen(false);
         } catch (e: unknown) {
-            message.error(e instanceof Error ? e.message : "Gagal menyimpan");
+            message.error(e instanceof Error ? e.message : "Failed to save");
         } finally {
             setSavingChatConfig(false);
         }
@@ -605,116 +638,348 @@ export default function AIStudioPage() {
 
     // ── MAIN RENDER ──
 
-    const notebookOptions = notebooks.map((nb) => ({
-        value: nb.id,
-        label: `${normalizeNotebookIcon(nb.icon)} ${nb.name}`,
-    }));
+    const notebookOptions =
+        notebooks.length > 0
+            ? notebooks.map((nb) => ({
+                  value: nb.id,
+                  label: `${normalizeNotebookIcon(nb.icon)} ${nb.name}`,
+              }))
+            : [{ value: "__empty__", label: "No notebooks yet", disabled: true }];
+
+    const panelCardStyle: React.CSSProperties = {
+        background: t.cardBg,
+        boxShadow: "none",
+        border: `1px solid ${t.border}`,
+        borderRadius: 0,
+    };
+
+    const STUDIO_QUICK_LINKS = [
+        { code: "GW", label: "Gateway", href: "/admin/ai-studio/ai-gateway" },
+        { code: "AG", label: "Agents", href: "/admin/ai-studio/agent-builder" },
+        { code: "PG", label: "Playground", href: "/admin/ai-studio/advanced/playground" },
+        { code: "KG", label: "Graph", href: "/admin/ai-studio/knowledge-graph" },
+        { code: "PTN", label: "Partner", href: "/admin/ai-studio/partner" },
+        { code: "WA", label: "WA Logs", href: "/admin/ai-studio/percakapan-wa" },
+        { code: "CFG", label: "Settings", href: "/admin/ai-studio/settings" },
+    ];
+
+    const isFocusChat = !showSources && !showStudio;
+    const isModifiedLayout = !showSources || !showStudio || rightTab !== "studio";
 
     return (
         <CMSLayout
             title="AI Studio"
-            subTitle="Sources · Chat · Studio — notebook knowledge base ala NotebookLM"
+            subTitle="Sources · Chat · Studio — Tactical RAG Command Deck"
+            extra={[
+                <div key="studio-quick-nav" className="hidden lg:flex items-center gap-1 font-mono">
+                    {STUDIO_QUICK_LINKS.map((item) => (
+                        <a
+                            key={item.code}
+                            href={item.href}
+                            className="px-1.5 py-0.5 text-[9.5px] uppercase tracking-wider border border-white/10 bg-white/[0.02] hover:border-orange-400/50 hover:text-orange-300 transition-colors"
+                            style={{ color: t.textSecondary }}
+                        >
+                            <span style={{ color: themeColor }} className="font-bold mr-0.5">
+                                {item.code}
+                            </span>
+                            · {item.label}
+                        </a>
+                    ))}
+                </div>,
+            ]}
         >
-            <div className="flex flex-col gap-3 h-full">
-                {/* Header: notebook dropdown + actions */}
-                <Card size="small" style={glass} className="dark:!bg-[rgba(15,15,23,0.6)]">
-                    <div className="flex flex-wrap items-center gap-3">
-                        <AnimatedTooltip content={showSources ? "Sembunyikan Sources" : "Tampilkan Sources"}>
-                            <Button type="text" icon={showSources ? <MenuFoldOutlined /> : <MenuUnfoldOutlined />}
-                                onClick={() => setShowSources(!showSources)} size="small" />
+            <div
+                className="flex flex-col gap-1.5 overflow-hidden"
+                style={{
+                    height: "calc(100vh - 142px)",
+                    minHeight: 460,
+                    maxHeight: "calc(100vh - 142px)",
+                }}
+            >
+                {/* Compact 36px Tactical Notebook Command Ribbon */}
+                <div
+                    style={{
+                        ...panelCardStyle,
+                        borderTop: `2px solid ${themeColor}`,
+                        padding: "4px 8px",
+                    }}
+                    className="shrink-0 flex flex-wrap items-center gap-1.5"
+                >
+                    <AnimatedTooltip
+                        content={
+                            showSources
+                                ? "Hide Sources panel (Left Dock)"
+                                : "Show Sources panel (Left Dock)"
+                        }
+                        position="bottom"
+                    >
+                        <button
+                            type="button"
+                            data-testid="toggle-sources-panel"
+                            onClick={() => setShowSources(!showSources)}
+                            className={`inline-flex items-center gap-1.5 h-6 px-2 font-mono text-[9.5px] font-bold uppercase tracking-[0.12em] border transition-colors cursor-pointer ${
+                                showSources
+                                    ? "border-orange-400/60 bg-orange-500/15 text-orange-300 hover:bg-orange-500/25"
+                                    : "border-white/15 bg-white/[0.03] text-slate-300 hover:border-orange-400/50 hover:text-orange-300"
+                            }`}
+                        >
+                            {showSources ? (
+                                <>
+                                    <MenuFoldOutlined style={{ fontSize: 10 }} />
+                                    <span>◀ HIDE SOURCES</span>
+                                </>
+                            ) : (
+                                <>
+                                    <MenuUnfoldOutlined style={{ fontSize: 10 }} />
+                                    <span>▶ SHOW SOURCES</span>
+                                </>
+                            )}
+                        </button>
+                    </AnimatedTooltip>
+                    <span className="font-mono text-[9.5px] font-bold uppercase tracking-[0.14em] text-orange-400 hidden sm:inline">
+                        NB //
+                    </span>
+                    <Select
+                        size="small"
+                        className="min-w-[160px] flex-1 max-w-xs"
+                        placeholder="Select notebook"
+                        loading={loadingNotebooks}
+                        value={activeNotebook?.id}
+                        options={notebookOptions}
+                        onChange={(id) => {
+                            const nb = notebooks.find((n) => n.id === id);
+                            if (nb) void selectNotebook(nb);
+                        }}
+                    />
+                    <Button
+                        size="small"
+                        type="primary"
+                        icon={<PlusOutlined />}
+                        onClick={() => setShowCreateModal(true)}
+                        style={{ backgroundColor: themeColor, borderColor: themeColor }}
+                        className="!text-[10.5px] !h-6 !px-2 font-mono uppercase tracking-wider"
+                    >
+                        Notebook
+                    </Button>
+                    {activeNotebook && (
+                        <AnimatedTooltip content="Edit notebook" position="bottom">
+                            <Button icon={<EditOutlined />} size="small" className="!h-6 !w-6 !p-0" onClick={openEditNotebook} />
                         </AnimatedTooltip>
-                        <Select
-                            className="min-w-[200px] flex-1 max-w-md"
-                            placeholder="Pilih notebook"
-                            loading={loadingNotebooks}
-                            value={activeNotebook?.id}
-                            options={notebookOptions}
-                            onChange={(id) => {
-                                const nb = notebooks.find((n) => n.id === id);
-                                if (nb) void selectNotebook(nb);
-                            }}
-                            disabled={!userId || notebooks.length === 0}
-                        />
-                        <Button type="primary" icon={<PlusOutlined />} onClick={() => setShowCreateModal(true)}
-                            style={{ backgroundColor: themeColor, borderColor: themeColor }}>
-                            Notebook
-                        </Button>
-                        {activeNotebook && (
-                            <AnimatedTooltip content="Edit notebook">
-                                <Button icon={<EditOutlined />} size="small" onClick={openEditNotebook} />
-                            </AnimatedTooltip>
-                        )}
-                        {activeNotebook && (
-                            <AnimatedTooltip content="Bagikan notebook">
-                                <Button icon={<ShareAltOutlined />} size="small" onClick={() => void openShareModal()} />
-                            </AnimatedTooltip>
-                        )}
-                        {activeNotebook && (
-                            <Popconfirm title="Hapus notebook?" onConfirm={() => void handleDeleteNotebook(activeNotebook.id)}>
-                                <Button danger icon={<DeleteOutlined />} size="small" />
-                            </Popconfirm>
-                        )}
-                        <AnimatedTooltip content={showStudio ? "Sembunyikan Studio" : "Tampilkan Studio"}>
-                            <Button type="text" icon={showStudio ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-                                onClick={() => setShowStudio(!showStudio)} size="small" className="ml-auto" />
+                    )}
+                    {activeNotebook && (
+                        <AnimatedTooltip content="Share notebook" position="bottom">
+                            <Button icon={<ShareAltOutlined />} size="small" className="!h-6 !w-6 !p-0" onClick={() => void openShareModal()} />
+                        </AnimatedTooltip>
+                    )}
+                    {activeNotebook && (
+                        <Popconfirm title="Delete notebook?" onConfirm={() => void handleDeleteNotebook(activeNotebook.id)}>
+                            <Button danger icon={<DeleteOutlined />} size="small" className="!h-6 !w-6 !p-0" />
+                        </Popconfirm>
+                    )}
+
+                    {/* Workspace Layout Controls: RESET LAYOUT + FOCUS CHAT */}
+                    <div className="flex items-center gap-1.5 ml-1 pl-2 border-l border-white/15">
+                        <AnimatedTooltip
+                            content="Reset AI Studio layout to default 3-pane workspace (Sources + Chat + Studio)"
+                            position="bottom"
+                        >
+                            <button
+                                type="button"
+                                data-testid="studio-reset-layout"
+                                onClick={handleResetStudioLayout}
+                                className={`inline-flex items-center gap-1.5 h-6 px-2 font-mono text-[9.5px] font-bold uppercase tracking-[0.12em] border transition-colors cursor-pointer ${
+                                    isModifiedLayout
+                                        ? "border-orange-400/70 bg-orange-500/15 text-orange-200 hover:bg-orange-500/25"
+                                        : "border-white/20 bg-white/[0.04] text-slate-300 hover:border-orange-400/60 hover:bg-orange-500/15 hover:text-orange-200"
+                                }`}
+                            >
+                                <ReloadOutlined style={{ fontSize: 10 }} />
+                                <span>RESET LAYOUT</span>
+                            </button>
+                        </AnimatedTooltip>
+                        <AnimatedTooltip
+                            content={
+                                isFocusChat
+                                    ? "Exit Focus Chat mode and restore side panels"
+                                    : "Focus Chat mode — hide side panels for full-width RAG conversation"
+                            }
+                            position="bottom"
+                        >
+                            <button
+                                type="button"
+                                data-testid="studio-focus-chat"
+                                onClick={() => {
+                                    if (isFocusChat) {
+                                        setShowSources(true);
+                                        setShowStudio(true);
+                                    } else {
+                                        setShowSources(false);
+                                        setShowStudio(false);
+                                    }
+                                }}
+                                className={`inline-flex items-center gap-1.5 h-6 px-2 font-mono text-[9.5px] font-bold uppercase tracking-[0.12em] border transition-colors cursor-pointer ${
+                                    isFocusChat
+                                        ? "border-sky-400/70 bg-sky-500/20 text-sky-200 hover:bg-sky-500/30"
+                                        : "border-sky-400/35 bg-sky-500/[0.08] text-sky-300 hover:border-sky-400/65 hover:bg-sky-500/15 hover:text-white"
+                                }`}
+                            >
+                                {isFocusChat ? (
+                                    <ExpandOutlined style={{ fontSize: 10 }} />
+                                ) : (
+                                    <CompressOutlined style={{ fontSize: 10 }} />
+                                )}
+                                <span>FOCUS CHAT</span>
+                            </button>
                         </AnimatedTooltip>
                     </div>
-                </Card>
 
-                <div className="flex gap-3 flex-1 min-h-0" style={{ minHeight: 560 }}>
-                    {/* LEFT: Sources */}
+                    <div
+                        className="hidden md:flex items-center gap-2.5 ml-auto mr-1 font-mono text-[9.5px] uppercase tracking-[0.12em]"
+                        style={{ color: t.textSecondary }}
+                    >
+                        <span className="tabular-nums">
+                            NB: <strong style={{ color: t.textPrimary }}>{notebooks.length}</strong>
+                        </span>
+                        <span className="tabular-nums">
+                            SRC:{" "}
+                            <strong style={{ color: sourceStats.anyIndexed ? "#4ade80" : t.textPrimary }}>
+                                {sourceStats.indexed}/{sourceStats.total}
+                            </strong>
+                        </span>
+                    </div>
+                    <AnimatedTooltip
+                        content={
+                            showStudio
+                                ? "Hide Studio & Notes panel (Right Dock)"
+                                : "Show Studio & Notes panel (Right Dock)"
+                        }
+                        position="bottom"
+                    >
+                        <button
+                            type="button"
+                            data-testid="toggle-studio-panel"
+                            onClick={() => setShowStudio(!showStudio)}
+                            className={`md:ml-0 ml-auto inline-flex items-center gap-1.5 h-6 px-2 font-mono text-[9.5px] font-bold uppercase tracking-[0.12em] border transition-colors cursor-pointer ${
+                                showStudio
+                                    ? "border-purple-400/60 bg-purple-500/15 text-purple-300 hover:bg-purple-500/25"
+                                    : "border-white/15 bg-white/[0.03] text-slate-300 hover:border-purple-400/50 hover:text-purple-300"
+                            }`}
+                        >
+                            {showStudio ? (
+                                <>
+                                    <span>HIDE STUDIO ▶</span>
+                                    <MenuUnfoldOutlined style={{ fontSize: 10 }} />
+                                </>
+                            ) : (
+                                <>
+                                    <MenuFoldOutlined style={{ fontSize: 10 }} />
+                                    <span>◀ SHOW STUDIO</span>
+                                </>
+                            )}
+                        </button>
+                    </AnimatedTooltip>
+                </div>
+
+                {/* Viewport-Locked 3-Column Tactical Surface (Zero outer scroll) */}
+                <div className="flex gap-1.5 flex-1 min-h-0 overflow-hidden">
+                    {/* LEFT: Sources (or Collapsed Vertical Dock Rail) */}
                     <AnimatePresence mode="wait">
-                        {showSources && (
+                        {showSources ? (
                             <motion.div
+                                key="sources-open"
                                 initial={{ width: 0, opacity: 0 }}
-                                animate={{ width: 280, opacity: 1 }}
+                                animate={{ width: 264, opacity: 1 }}
                                 exit={{ width: 0, opacity: 0 }}
-                                className="flex flex-col shrink-0 overflow-hidden"
-                                style={{ width: 280, minWidth: 280 }}
+                                className="flex flex-col shrink-0 overflow-hidden h-full"
+                                style={{ width: 264, minWidth: 264 }}
                             >
-                                <Card size="small" className="h-full flex flex-col dark:!bg-transparent"
-                                    style={{ background: "transparent", boxShadow: "none", border: `1px solid ${themeColor}22` }}
-                                    styles={{ body: { padding: 0, flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" } }}>
-                                    {activeNotebook ? (
-                                        <SourcesPanel
-                                            themeColor={themeColor}
-                                            sources={sources}
-                                            sourceStats={sourceStats}
-                                            loading={loadingSources}
-                                            selectedSourceIds={selectedSourceIds}
-                                            onToggleSource={handleToggleSource}
-                                            onSelectAll={handleSelectAllSources}
-                                            onOpenMedia={() => void openMediaModal()}
-                                            onUpload={handleUploadFile}
-                                            onImportUrl={handleImportUrl}
-                                            onAddText={handleAddText}
-                                            onRemove={(id) => void handleRemoveSource(id)}
-                                            onReindex={(id) => void handleReindexSource(id)}
-                                            onConfigureChat={() => setConfigureChatOpen(true)}
-                                            onOpenSource={(id) => setSourceDetailId(id)}
-                                        />
-                                    ) : (
-                                        <div className="flex flex-col items-center justify-center h-full p-4 gap-4">
-                                            <BookOutlined style={{ fontSize: 36, color: themeColor }} />
-                                            <Text type="secondary" className="text-xs text-center">Buat atau pilih notebook</Text>
-                                            <Button type="primary" icon={<PlusOutlined />} onClick={() => setShowCreateModal(true)}
-                                                style={{ backgroundColor: themeColor }}>Buat Notebook</Button>
-                                        </div>
-                                    )}
-                                </Card>
+                                <div
+                                    className="h-full flex flex-col min-h-0 overflow-hidden"
+                                    style={{ ...panelCardStyle, borderTop: "2px solid #fb923c" }}
+                                >
+                                    <SourcesPanel
+                                        themeColor={themeColor}
+                                        sources={sources}
+                                        sourceStats={sourceStats}
+                                        loading={loadingSources}
+                                        selectedSourceIds={selectedSourceIds}
+                                        onToggleSource={handleToggleSource}
+                                        onSelectAll={handleSelectAllSources}
+                                        onOpenMedia={() => {
+                                            if (!activeNotebook) {
+                                                setShowCreateModal(true);
+                                                return;
+                                            }
+                                            void openMediaModal();
+                                        }}
+                                        onUpload={handleUploadFile}
+                                        onImportUrl={handleImportUrl}
+                                        onAddText={handleAddText}
+                                        onRemove={(id) => void handleRemoveSource(id)}
+                                        onReindex={(id) => void handleReindexSource(id)}
+                                        onConfigureChat={() => setConfigureChatOpen(true)}
+                                        onOpenSource={(id) => setSourceDetailId(id)}
+                                        onCollapse={() => setShowSources(false)}
+                                    />
+                                </div>
                             </motion.div>
+                        ) : (
+                            <Tooltip title="Expand Sources panel" placement="right">
+                                <button
+                                    key="sources-rail"
+                                    type="button"
+                                    onClick={() => setShowSources(true)}
+                                    style={{ ...panelCardStyle, borderTop: "2px solid #fb923c", width: 26 }}
+                                    className="shrink-0 h-full flex flex-col items-center justify-between py-2.5 px-1 hover:border-orange-400/60 hover:bg-orange-500/10 transition-colors cursor-pointer group"
+                                >
+                                    <span className="font-mono text-[10px] font-bold text-orange-400">▶</span>
+                                    <span
+                                        className="font-mono text-[9.5px] font-bold uppercase tracking-[0.2em] text-slate-400 group-hover:text-orange-300 select-none"
+                                        style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}
+                                    >
+                                        SHOW SOURCES [{sources.length}]
+                                    </span>
+                                    <span className="h-1.5 w-1.5 bg-orange-400" />
+                                </button>
+                            </Tooltip>
                         )}
                     </AnimatePresence>
 
-                    {/* CENTER: Chat */}
-                    <div className="flex-1 min-w-0 flex flex-col">
-                        <Card size="small" className="h-full flex flex-col dark:!bg-transparent"
-                            style={{ background: "transparent", boxShadow: "none", border: `1px solid ${themeColor}22` }}
-                            styles={{ body: { padding: 0, flex: 1, overflow: "hidden", display: "flex", flexDirection: "column", minHeight: 0 } }}>
-                            {activeNotebook ? (
+                    {/* CENTER: Chat (Viewport-locked, top-docked composer by default) */}
+                    <div className="flex-1 min-w-0 flex flex-col h-full min-h-0 overflow-hidden">
+                        <div
+                            className="h-full flex flex-col min-h-0 overflow-hidden"
+                            style={{ ...panelCardStyle, borderTop: "2px solid #38bdf8" }}
+                        >
+                            {!activeNotebook && (
+                                <div
+                                    style={{
+                                        padding: "4px 10px",
+                                        background: t.surfaceBg,
+                                        borderBottom: `1px solid ${t.border}`,
+                                        borderLeft: "2px solid #fb923c",
+                                    }}
+                                    className="flex items-center justify-between gap-2 shrink-0"
+                                >
+                                    <Text style={{ fontSize: 10.5, color: t.textSecondary }} className="truncate">
+                                        Select or create a notebook to store sources & conversations.
+                                    </Text>
+                                    <Button
+                                        size="small"
+                                        type="primary"
+                                        icon={<PlusOutlined />}
+                                        onClick={() => setShowCreateModal(true)}
+                                        className="!text-[10px] !h-5 !px-2"
+                                        style={{ backgroundColor: themeColor, borderColor: themeColor }}
+                                    >
+                                        Create Notebook
+                                    </Button>
+                                </div>
+                            )}
+                            <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
                                 <AIAssistantPanel
                                     themeColor={themeColor}
-                                    notebookName={activeNotebook.name}
+                                    notebookName={activeNotebook?.name}
                                     briefSummary={briefSummary}
                                     sources={sources}
                                     sourceStats={sourceStats}
@@ -739,69 +1004,91 @@ export default function AIStudioPage() {
                                     onRegenerate={() => void regenerateLast()}
                                     language={chatLanguage}
                                     onSetLanguage={setChatLanguage}
+                                    layoutResetSignal={layoutResetSignal}
                                 />
-                            ) : (
-                                <div className="flex flex-col items-center justify-center h-full gap-4 opacity-80 p-6">
-                                    <Title level={4} className="!mb-0">
-                                        Pilih atau buat notebook
-                                    </Title>
-                                    <Text className="text-gray-400 text-sm text-center max-w-md">
-                                        Tambahkan sumber, chat di tengah, lalu generate artefak di panel Studio.
-                                    </Text>
-                                </div>
-                            )}
-                        </Card>
+                            </div>
+                        </div>
                     </div>
 
-                    {/* RIGHT: Studio */}
+                    {/* RIGHT: Studio / Notes (or Collapsed Vertical Dock Rail) */}
                     <AnimatePresence mode="wait">
-                        {showStudio && (
+                        {showStudio ? (
                             <motion.div
+                                key="studio-open"
                                 initial={{ width: 0, opacity: 0 }}
-                                animate={{ width: 320, opacity: 1 }}
+                                animate={{ width: 304, opacity: 1 }}
                                 exit={{ width: 0, opacity: 0 }}
-                                className="shrink-0 overflow-hidden"
-                                style={{ width: 320, minWidth: 320 }}
+                                className="shrink-0 overflow-hidden h-full"
+                                style={{ width: 304, minWidth: 304 }}
                             >
-                                <Card size="small" className="h-full dark:!bg-transparent"
-                                    style={{ background: "transparent", boxShadow: "none", border: `1px solid ${themeColor}22` }}
-                                    styles={{ body: { padding: 0, height: "100%", overflow: "hidden" } }}>
-                                    <div className="flex flex-col h-full">
-                                        <div className="px-2 pt-2">
-                                            <Segmented
-                                                block
-                                                size="small"
-                                                value={rightTab}
-                                                onChange={(v) => setRightTab(v as "studio" | "notes")}
-                                                options={[
-                                                    { label: "Studio", value: "studio" },
-                                                    { label: "Notes", value: "notes" },
-                                                ]}
-                                            />
-                                        </div>
-                                        <div className="flex-1 min-h-0">
-                                            {rightTab === "studio" ? (
-                                                <StudioOutputsPanel
-                                                    themeColor={themeColor}
-                                                    notebookId={activeNotebook?.id ?? null}
-                                                    notebookName={activeNotebook?.name}
-                                                    sourcesReady={sourceStats.anyIndexed}
-                                                    selectedSourceIds={selectedSourceIds}
-                                                    onNoteSaved={() => setNotesRefresh((n) => n + 1)}
-                                                    onAskNode={(q) => void handleChatSend(q)}
-                                                />
-                                            ) : (
-                                                <NotesPanel
-                                                    themeColor={themeColor}
-                                                    notebookId={activeNotebook?.id ?? null}
-                                                    refreshSignal={notesRefresh}
-                                                    onSourceAdded={handleNoteConvertedToSource}
-                                                />
-                                            )}
-                                        </div>
+                                <div
+                                    className="h-full flex flex-col min-h-0 overflow-hidden"
+                                    style={{ ...panelCardStyle, borderTop: "2px solid #a855f7" }}
+                                >
+                                    <div className="px-2 pt-1.5 pb-1 border-b border-white/10 shrink-0 flex items-center gap-1.5">
+                                        <Segmented
+                                            block
+                                            size="small"
+                                            className="flex-1"
+                                            value={rightTab}
+                                            onChange={(v) => setRightTab(v as "studio" | "notes")}
+                                            options={[
+                                                { label: "Studio", value: "studio" },
+                                                { label: "Notes", value: "notes" },
+                                            ]}
+                                        />
+                                        <Tooltip title="Hide Studio & Notes panel" placement="bottom">
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowStudio(false)}
+                                                className="inline-flex items-center gap-1 h-6 px-2 font-mono text-[9.5px] font-bold uppercase tracking-[0.1em] border border-purple-400/50 bg-purple-500/15 text-purple-300 hover:border-purple-400 hover:bg-purple-500/25 transition-colors cursor-pointer shrink-0"
+                                            >
+                                                <span>HIDE ▶</span>
+                                                <MenuUnfoldOutlined style={{ fontSize: 9 }} />
+                                            </button>
+                                        </Tooltip>
                                     </div>
-                                </Card>
+                                    <div className="flex-1 min-h-0 overflow-hidden">
+                                        {rightTab === "studio" ? (
+                                            <StudioOutputsPanel
+                                                themeColor={themeColor}
+                                                notebookId={activeNotebook?.id ?? null}
+                                                notebookName={activeNotebook?.name}
+                                                sourcesReady={sourceStats.anyIndexed}
+                                                selectedSourceIds={selectedSourceIds}
+                                                onNoteSaved={() => setNotesRefresh((n) => n + 1)}
+                                                onAskNode={(q) => void handleChatSend(q)}
+                                            />
+                                        ) : (
+                                            <NotesPanel
+                                                themeColor={themeColor}
+                                                notebookId={activeNotebook?.id ?? null}
+                                                refreshSignal={notesRefresh}
+                                                onSourceAdded={handleNoteConvertedToSource}
+                                            />
+                                        )}
+                                    </div>
+                                </div>
                             </motion.div>
+                        ) : (
+                            <Tooltip title="Expand Studio & Notes panel" placement="left">
+                                <button
+                                    key="studio-rail"
+                                    type="button"
+                                    onClick={() => setShowStudio(true)}
+                                    style={{ ...panelCardStyle, borderTop: "2px solid #a855f7", width: 26 }}
+                                    className="shrink-0 h-full flex flex-col items-center justify-between py-2.5 px-1 hover:border-purple-400/60 hover:bg-purple-500/10 transition-colors cursor-pointer group"
+                                >
+                                    <span className="font-mono text-[10px] font-bold text-purple-400">◀</span>
+                                    <span
+                                        className="font-mono text-[9.5px] font-bold uppercase tracking-[0.2em] text-slate-400 group-hover:text-purple-300 select-none"
+                                        style={{ writingMode: "vertical-rl" }}
+                                    >
+                                        SHOW STUDIO · NOTES
+                                    </span>
+                                    <span className="h-1.5 w-1.5 bg-purple-400" />
+                                </button>
+                            </Tooltip>
                         )}
                     </AnimatePresence>
                 </div>
@@ -820,11 +1107,11 @@ export default function AIStudioPage() {
                 okButtonProps={{ style: { backgroundColor: themeColor } }}
                 centered
             >
-                <div className="py-4 space-y-4">
+                <div className="py-2 space-y-3">
                     <div>
-                        <Text strong className="text-xs block mb-1.5">Notebook Name</Text>
+                        <Text strong className="font-mono text-[10px] uppercase tracking-wider block mb-1">Notebook Name</Text>
                         <Input
-                            size="large"
+                            size="small"
                             value={newNotebookName}
                             onChange={e => setNewNotebookName(e.target.value)}
                             placeholder="e.g. Q4 Research Analysis"
@@ -832,8 +1119,9 @@ export default function AIStudioPage() {
                         />
                     </div>
                     <div>
-                        <Text strong className="text-xs block mb-1.5">Description (optional)</Text>
+                        <Text strong className="font-mono text-[10px] uppercase tracking-wider block mb-1">Description (optional)</Text>
                         <TextArea
+                            size="small"
                             rows={3}
                             value={newNotebookDesc}
                             onChange={e => setNewNotebookDesc(e.target.value)}
@@ -845,37 +1133,38 @@ export default function AIStudioPage() {
 
             {/* Share Notebook Modal */}
             <Modal
-                title={<span><ShareAltOutlined style={{ color: themeColor, marginRight: 8 }} />Bagikan Notebook</span>}
+                title={<span><ShareAltOutlined style={{ color: themeColor, marginRight: 8 }} />Share Notebook</span>}
                 open={showShareModal}
                 onCancel={() => setShowShareModal(false)}
                 footer={[
-                    <Button key="revoke" danger loading={shareLoading} onClick={() => void handleRevokeShare()}>
-                        Nonaktifkan berbagi
+                    <Button key="revoke" size="small" danger loading={shareLoading} onClick={() => void handleRevokeShare()}>
+                        Disable sharing
                     </Button>,
-                    <Button key="close" onClick={() => setShowShareModal(false)}>Tutup</Button>,
+                    <Button key="close" size="small" onClick={() => setShowShareModal(false)}>Close</Button>,
                 ]}
                 centered
             >
-                <div className="py-2 space-y-3">
-                    <Text type="secondary" className="text-xs block">
-                        Siapa pun dengan tautan ini dapat melihat notebook (hanya-baca): output, daftar sumber,
-                        tanpa bisa mengubah apa pun. Nonaktifkan kapan saja untuk mematikan tautan.
+                <div className="py-2 space-y-2.5">
+                    <Text type="secondary" className="text-[11px] block">
+                        Anyone with this link can view the notebook (read-only): generated outputs and source list,
+                        without modifying anything. Disable sharing at any time to revoke the link.
                     </Text>
                     <Space.Compact style={{ width: "100%" }}>
-                        <Input readOnly value={shareLoading ? "Membuat tautan…" : shareUrl} />
+                        <Input size="small" readOnly value={shareLoading ? "Generating link…" : shareUrl} />
                         <Button
+                            size="small"
                             type="primary"
                             icon={<DownloadOutlined />}
                             disabled={!shareUrl || shareLoading}
                             onClick={() => void handleCopyShareLink()}
                             style={{ backgroundColor: themeColor, borderColor: themeColor }}
                         >
-                            Salin
+                            Copy
                         </Button>
                     </Space.Compact>
                     {shareUrl && (
-                        <a href={shareUrl} target="_blank" rel="noreferrer" className="text-xs" style={{ color: themeColor }}>
-                            Buka pratinjau publik →
+                        <a href={shareUrl} target="_blank" rel="noreferrer" className="font-mono text-[10.5px] uppercase" style={{ color: themeColor }}>
+                            Open public preview →
                         </a>
                     )}
                 </div>
@@ -888,19 +1177,20 @@ export default function AIStudioPage() {
                 onCancel={() => setShowEditModal(false)}
                 onOk={handleUpdateNotebook}
                 confirmLoading={savingEdit}
-                okText="Simpan"
+                okText="Save"
                 okButtonProps={{ style: { backgroundColor: themeColor }, disabled: !editName.trim() }}
                 centered
             >
-                <div className="py-4 space-y-4">
+                <div className="py-2 space-y-3">
                     <div>
-                        <Text strong className="text-xs block mb-1.5">Ikon</Text>
+                        <Text strong className="font-mono text-[10px] uppercase tracking-wider block mb-1">Icon</Text>
                         <Row gutter={[8, 8]} align="middle">
                             <Col>
                                 <Input
+                                    size="small"
                                     value={editIcon}
                                     onChange={(e) => setEditIcon(e.target.value.slice(0, 4))}
-                                    style={{ width: 64, textAlign: "center", fontSize: 20 }}
+                                    style={{ width: 52, textAlign: "center", fontSize: 15 }}
                                     maxLength={4}
                                 />
                             </Col>
@@ -922,22 +1212,23 @@ export default function AIStudioPage() {
                         </Row>
                     </div>
                     <div>
-                        <Text strong className="text-xs block mb-1.5">Nama Notebook</Text>
+                        <Text strong className="font-mono text-[10px] uppercase tracking-wider block mb-1">Notebook Name</Text>
                         <Input
-                            size="large"
+                            size="small"
                             value={editName}
                             onChange={(e) => setEditName(e.target.value)}
-                            placeholder="Nama notebook"
+                            placeholder="Notebook name"
                             onPressEnter={handleUpdateNotebook}
                         />
                     </div>
                     <div>
-                        <Text strong className="text-xs block mb-1.5">Deskripsi (opsional)</Text>
+                        <Text strong className="font-mono text-[10px] uppercase tracking-wider block mb-1">Description (optional)</Text>
                         <TextArea
+                            size="small"
                             rows={3}
                             value={editDesc}
                             onChange={(e) => setEditDesc(e.target.value)}
-                            placeholder="Tentang notebook ini?"
+                            placeholder="What is this notebook about?"
                         />
                     </div>
                 </div>
@@ -949,14 +1240,15 @@ export default function AIStudioPage() {
                 open={showAddMediaModal}
                 onCancel={() => setShowAddMediaModal(false)}
                 footer={null}
-                width={600}
+                width={560}
                 centered
             >
                 {loadingMedia ? (
-                    <div className="flex justify-center py-12"><Spin size="large" /></div>
+                    <div className="flex justify-center py-8"><Spin size="small" /></div>
                 ) : (
                     <List
-                        className="max-h-[400px] overflow-y-auto"
+                        size="small"
+                        className="max-h-[360px] overflow-y-auto"
                         dataSource={mediaFiles}
                         renderItem={item => {
                             const alreadyAdded = sources.some(s => s.media_id === item.id);
@@ -981,9 +1273,9 @@ export default function AIStudioPage() {
                                     ]}
                                 >
                                     <List.Item.Meta
-                                        avatar={<Avatar icon={<FileOutlined />} shape="square" style={{ backgroundColor: `${themeColor}22`, color: themeColor }} />}
-                                        title={<Text className="text-[13px]">{item.filename}</Text>}
-                                        description={<Text className="text-[11px] text-gray-400">{item.mime_type}</Text>}
+                                        avatar={<Avatar size="small" icon={<FileOutlined />} shape="square" style={{ backgroundColor: `${themeColor}22`, color: themeColor }} />}
+                                        title={<Text className="text-[11.5px] font-medium">{item.filename}</Text>}
+                                        description={<Text className="font-mono text-[10px] text-gray-400">{item.mime_type}</Text>}
                                     />
                                 </List.Item>
                             );
