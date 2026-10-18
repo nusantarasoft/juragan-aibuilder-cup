@@ -5,7 +5,7 @@
 #   docker compose -f docker-compose.master-production.yml --env-file .env.master-production up -d --build
 #
 # Isolation guarantees (server already runs other apps):
-#   - Host ports published publicly: 8090 (nginx), 3013 (admin), 9010 (minio S3)
+#   - Host ports published publicly: 8090 (nginx), 3013 (admin), 3014 (brochure-gallery), 9010 (minio S3)
 #   - WhatsApp transport = Hermes only
 #   - Hermes binds 127.0.0.1 only (SSH tunnel) — not on 31.97.66.39
 #   - All other services are internal-only (no host port)
@@ -580,6 +580,7 @@ services:
         NEXT_PUBLIC_SUPABASE_ANON_KEY: ${ANON_KEY}
         NEXT_PUBLIC_S3_ENDPOINT: http://31.97.66.39:9010
         NEXT_PUBLIC_S3_BUCKET: ${S3_BUCKET}
+        NEXT_PUBLIC_GALLERY_URL: http://31.97.66.39:3014
     image: nsoft3/admin:master-production
     container_name: nsoft3-admin
     restart: unless-stopped
@@ -600,12 +601,64 @@ services:
       - NEXT_PUBLIC_SUPABASE_ANON_KEY=${ANON_KEY}
       - NEXT_PUBLIC_S3_ENDPOINT=http://31.97.66.39:9010
       - NEXT_PUBLIC_S3_BUCKET=${S3_BUCKET}
+      - NEXT_PUBLIC_GALLERY_URL=http://31.97.66.39:3014
       - S3_ACCESS_KEY=${MINIO_ROOT_USER}
       - S3_SECRET_KEY=${MINIO_ROOT_PASSWORD}
       - S3_REGION=us-east-1
     networks: [nsoft3-net]
     depends_on:
       - middleware
+      - minio
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"require('http').get('http://127.0.0.1:3000', (r) => process.exit(r.statusCode < 400 ? 0 : 1)).on('error', () => process.exit(1))\""]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  brochure-gallery:
+    build:
+      context: ./brochure-gallery
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_SUPABASE_URL: http://31.97.66.39:8090/supabase
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${ANON_KEY}
+        NEXT_PUBLIC_S3_ENDPOINT: http://31.97.66.39:9010
+        NEXT_PUBLIC_S3_BUCKET: ${S3_BUCKET}
+        NEXT_PUBLIC_ADMIN_URL: http://31.97.66.39:3013
+        NEXT_PUBLIC_LANDING_URL: http://31.97.66.39:8090
+        NEXT_PUBLIC_GALLERY_URL: http://31.97.66.39:3014
+    image: nsoft3/brochure-gallery:master-production
+    container_name: nsoft3-brochure-gallery
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+    deploy:
+      resources:
+        limits: { memory: 512m }
+        reservations: { memory: 256m }
+    ports:
+      - "3014:3000"
+    environment:
+      - NODE_ENV=production
+      - SUPABASE_INTERNAL_URL=http://kong:8000
+      - NEXT_PUBLIC_SUPABASE_URL=http://31.97.66.39:8090/supabase
+      - NEXT_PUBLIC_SUPABASE_ANON_KEY=${ANON_KEY}
+      - SUPABASE_SERVICE_KEY=${SERVICE_ROLE_KEY}
+      - S3_INTERNAL_ENDPOINT=http://minio:9000
+      - NEXT_PUBLIC_S3_ENDPOINT=http://31.97.66.39:9010
+      - NEXT_PUBLIC_S3_BUCKET=${S3_BUCKET}
+      - S3_BUCKET=${S3_BUCKET}
+      - S3_ACCESS_KEY=${MINIO_ROOT_USER}
+      - S3_SECRET_KEY=${MINIO_ROOT_PASSWORD}
+      - S3_REGION=us-east-1
+      - NEXT_PUBLIC_ADMIN_URL=http://31.97.66.39:3013
+      - NEXT_PUBLIC_LANDING_URL=http://31.97.66.39:8090
+      - NEXT_PUBLIC_GALLERY_URL=http://31.97.66.39:3014
+    networks: [nsoft3-net]
+    depends_on:
+      - kong
       - minio
     healthcheck:
       test: ["CMD-SHELL", "node -e \"require('http').get('http://127.0.0.1:3000', (r) => process.exit(r.statusCode < 400 ? 0 : 1)).on('error', () => process.exit(1))\""]

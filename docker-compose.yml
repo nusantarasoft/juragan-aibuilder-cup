@@ -704,6 +704,53 @@ services:
       retries: 5
       start_period: 60s
 
+  brochure-gallery:
+    build:
+      context: ./brochure-gallery
+      dockerfile: Dockerfile
+    container_name: brochure-gallery
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+        reservations:
+          memory: 256m
+    ports:
+      - "3004:3000"
+    environment:
+      - NODE_ENV=production
+      - SUPABASE_INTERNAL_URL=http://kong:8000
+      - NEXT_PUBLIC_SUPABASE_URL=http://kong:8000
+      - NEXT_PUBLIC_SUPABASE_ANON_KEY=${ANON_KEY}
+      - SUPABASE_SERVICE_KEY=${SERVICE_ROLE_KEY}
+      - S3_INTERNAL_ENDPOINT=http://minio:9000
+      - NEXT_PUBLIC_S3_ENDPOINT=http://127.0.0.1:9000
+      - NEXT_PUBLIC_S3_BUCKET=${S3_BUCKET}
+      - S3_BUCKET=${S3_BUCKET}
+      - S3_ACCESS_KEY=${MINIO_ROOT_USER}
+      - S3_SECRET_KEY=${MINIO_ROOT_PASSWORD}
+      - S3_REGION=us-east-1
+      - NEXT_PUBLIC_ADMIN_URL=http://localhost:3003
+      - NEXT_PUBLIC_LANDING_URL=http://localhost:3000
+      - NEXT_PUBLIC_GALLERY_URL=http://localhost:3004
+    networks:
+      - management-network
+    depends_on:
+      - kong
+      - minio
+    healthcheck:
+      test: [ "CMD-SHELL", "node -e \"require('http').get('http://127.0.0.1:3000', (r) => process.exit(r.statusCode < 400 ? 0 : 1)).on('error', () => process.exit(1))\"" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
 networks:
   management-network:
     driver: bridge
