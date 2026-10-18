@@ -1462,7 +1462,6 @@ services:
       - SUPABASE_ANON_KEY=${ANON_KEY}
       - SUPABASE_SERVICE_KEY=${SERVICE_ROLE_KEY}
       - SUPABASE_DB_URL=postgresql://postgres:${POSTGRES_PASSWORD}@postgres:${POSTGRES_PORT}/${POSTGRES_DB}
-      - GOOGLE_APPLICATION_CREDENTIALS=/gcp/key.json
       # AI model/provider config: configure via Admin → AI Studio → Settings (studio_settings DB)
       # MinIO/S3 Configuration
       - S3_ENDPOINT=http://minio:9000
@@ -1487,8 +1486,6 @@ services:
     depends_on:
       - postgres
       - minio
-    volumes:
-      - ./volumes/google-credentials.json:/gcp/key.json:ro
     extra_hosts:
       - "localhost:host-gateway"
 

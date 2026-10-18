@@ -16,8 +16,8 @@ services:
         reservations:
           memory: 1g
     environment:
-      - MINIO_ROOT_USER=${MINIO_ROOT_USER}
-      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER:-minioadmin}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-minioadmin}
       - MINIO_DOMAIN=storage
       - MINIO_REGION_NAME=us-east-1
       - MINIO_REGION=us-east-1
@@ -43,7 +43,7 @@ services:
       minio:
         condition: service_healthy
     entrypoint: >
-      /bin/sh -c " /usr/bin/mc alias set supa-minio http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD}; /usr/bin/mc mb --ignore-existing supa-minio/${S3_BUCKET}; /usr/bin/mc anonymous set public supa-minio/${S3_BUCKET}; /usr/bin/mc version enable supa-minio/${S3_BUCKET}; exit 0; "
+      /bin/sh -c " /usr/bin/mc alias set supa-minio http://minio:9000 ${MINIO_ROOT_USER:-minioadmin} ${MINIO_ROOT_PASSWORD:-minioadmin}; /usr/bin/mc mb --ignore-existing supa-minio/${S3_BUCKET:-cms-media}; /usr/bin/mc anonymous set public supa-minio/${S3_BUCKET:-cms-media}; /usr/bin/mc version enable supa-minio/${S3_BUCKET:-cms-media}; exit 0; "
 
   postgres:
     image: supabase/postgres:15.8.1.085
@@ -57,14 +57,14 @@ services:
           memory: 2g
     environment:
       POSTGRES_HOST: /var/run/postgresql
-      PGPORT: ${POSTGRES_PORT}
-      POSTGRES_PORT: ${POSTGRES_PORT}
-      PGPASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      PGDATABASE: ${POSTGRES_DB}
-      POSTGRES_DB: ${POSTGRES_DB}
-      JWT_SECRET: ${JWT_SECRET}
-      JWT_EXP: ${JWT_EXPIRY}
+      PGPORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      PGDATABASE: ${POSTGRES_DB:-nusantarasoft}
+      POSTGRES_DB: ${POSTGRES_DB:-nusantarasoft}
+      JWT_SECRET: ${JWT_SECRET:-local-dev-jwt-secret-min-32-characters-long}
+      JWT_EXP: ${JWT_EXPIRY:-3600}
     networks:
       - management-network
     volumes:
@@ -108,22 +108,22 @@ services:
     environment:
       HOSTNAME: "::"
       STUDIO_PG_META_URL: http://meta:8080
-      POSTGRES_PORT: ${POSTGRES_PORT}
-      POSTGRES_HOST: ${POSTGRES_HOST}
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      PG_META_CRYPTO_KEY: ${PG_META_CRYPTO_KEY}
-      DEFAULT_ORGANIZATION_NAME: ${STUDIO_DEFAULT_ORGANIZATION}
-      DEFAULT_PROJECT_NAME: ${STUDIO_DEFAULT_PROJECT}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-nusantarasoft}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      PG_META_CRYPTO_KEY: ${PG_META_CRYPTO_KEY:-local-dev-pg-meta-crypto-key-32c}
+      DEFAULT_ORGANIZATION_NAME: ${STUDIO_DEFAULT_ORGANIZATION:-Default Organization}
+      DEFAULT_PROJECT_NAME: ${STUDIO_DEFAULT_PROJECT:-Default Project}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       SUPABASE_URL: http://kong:8000
-      SUPABASE_PUBLIC_URL: ${SUPABASE_PUBLIC_URL}
-      SUPABASE_ANON_KEY: ${ANON_KEY}
-      SUPABASE_SERVICE_KEY: ${SERVICE_ROLE_KEY}
-      AUTH_JWT_SECRET: ${JWT_SECRET}
-      LOGFLARE_API_KEY: ${LOGFLARE_PUBLIC_ACCESS_TOKEN}
-      LOGFLARE_PUBLIC_ACCESS_TOKEN: ${LOGFLARE_PUBLIC_ACCESS_TOKEN}
-      LOGFLARE_PRIVATE_ACCESS_TOKEN: ${LOGFLARE_PRIVATE_ACCESS_TOKEN}
+      SUPABASE_PUBLIC_URL: ${SUPABASE_PUBLIC_URL:-http://localhost:8000}
+      SUPABASE_ANON_KEY: ${ANON_KEY:-placeholder-anon-key}
+      SUPABASE_SERVICE_KEY: ${SERVICE_ROLE_KEY:-placeholder-service-key}
+      AUTH_JWT_SECRET: ${JWT_SECRET:-local-dev-jwt-secret-min-32-characters-long}
+      LOGFLARE_API_KEY: ${LOGFLARE_PUBLIC_ACCESS_TOKEN:-local-dev-logflare-public}
+      LOGFLARE_PUBLIC_ACCESS_TOKEN: ${LOGFLARE_PUBLIC_ACCESS_TOKEN:-local-dev-logflare-public}
+      LOGFLARE_PRIVATE_ACCESS_TOKEN: ${LOGFLARE_PRIVATE_ACCESS_TOKEN:-local-dev-logflare-private}
       LOGFLARE_URL: http://analytics:4000
       NEXT_PUBLIC_ENABLE_LOGS: true
       NEXT_ANALYTICS_BACKEND_PROVIDER: postgres
@@ -144,13 +144,13 @@ services:
       timeout: 5s
       retries: 3
     ports:
-      - ${KONG_HTTP_PORT}:8000/tcp
-      - ${KONG_HTTPS_PORT}:8443/tcp
+      - ${KONG_HTTP_PORT:-8000}:8000/tcp
+      - ${KONG_HTTPS_PORT:-8443}:8443/tcp
     volumes:
       - ./volumes/api/kong.yml:/home/kong/temp.yml:ro,z
       - ./volumes/api/kong-entrypoint.sh:/home/kong/kong-entrypoint.sh:ro,z
     depends_on:
-      analytics:
+      postgres:
         condition: service_healthy
     networks:
       - management-network
@@ -163,10 +163,10 @@ services:
       KONG_NGINX_PROXY_PROXY_BUFFER_SIZE: 160k
       KONG_NGINX_PROXY_PROXY_BUFFERS: 64 160k
       KONG_PROXY_ACCESS_LOG: /dev/stdout combined
-      SUPABASE_ANON_KEY: ${ANON_KEY}
-      SUPABASE_SERVICE_KEY: ${SERVICE_ROLE_KEY}
-      DASHBOARD_USERNAME: ${DASHBOARD_USERNAME}
-      DASHBOARD_PASSWORD: ${DASHBOARD_PASSWORD}
+      SUPABASE_ANON_KEY: ${ANON_KEY:-placeholder-anon-key}
+      SUPABASE_SERVICE_KEY: ${SERVICE_ROLE_KEY:-placeholder-service-key}
+      DASHBOARD_USERNAME: ${DASHBOARD_USERNAME:-supabase}
+      DASHBOARD_PASSWORD: ${DASHBOARD_PASSWORD:-supabase}
     entrypoint: /home/kong/kong-entrypoint.sh
 
   auth:
@@ -463,7 +463,7 @@ services:
           memory: 128m
     volumes:
       - ./volumes/logs/vector.yml:/etc/vector/vector.yml:ro,z
-      - ${DOCKER_SOCKET_LOCATION}:/var/run/docker.sock:ro,z
+      - ${DOCKER_SOCKET_LOCATION:-/var/run/docker.sock}:/var/run/docker.sock:ro,z
     healthcheck:
       test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://vector:9001/health" ]
       timeout: 5s
@@ -486,8 +486,8 @@ services:
         reservations:
           memory: 256m
     ports:
-      - ${POSTGRES_PORT}:5432
-      - ${POOLER_PROXY_PORT_TRANSACTION}:6543
+      - ${POSTGRES_PORT:-5432}:5432
+      - ${POOLER_PROXY_PORT_TRANSACTION:-6543}:6543
     volumes:
       - ./volumes/pooler/pooler.exs:/etc/pooler/pooler.exs:ro,z
     healthcheck:
@@ -551,21 +551,20 @@ services:
       - NODE_ENV=production
       - PORT=4001
       - SUPABASE_URL=http://kong:8000
-      - SUPABASE_ANON_KEY=${ANON_KEY}
-      - SUPABASE_SERVICE_KEY=${SERVICE_ROLE_KEY}
-      - GOOGLE_APPLICATION_CREDENTIALS=/gcp/key.json
+      - SUPABASE_ANON_KEY=${ANON_KEY:-}
+      - SUPABASE_SERVICE_KEY=${SERVICE_ROLE_KEY:-}
       # AI model/provider config: configure via Admin → AI Studio → Settings (studio_settings DB)
       # MinIO/S3 Configuration
       - S3_ENDPOINT=http://minio:9000
-      - S3_ACCESS_KEY=${MINIO_ROOT_USER}
-      - S3_SECRET_KEY=${MINIO_ROOT_PASSWORD}
+      - S3_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
+      - S3_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin}
       - S3_REGION=us-east-1
-      - S3_BUCKET=${S3_BUCKET}
+      - S3_BUCKET=${S3_BUCKET:-cms-media}
 
       # LabelStudio Config
       - LABELSTUDIO_URL=http://labelstudio:8080
-      - LABELSTUDIO_API_TOKEN=${LABELSTUDIO_API_TOKEN}
-      - LABELSTUDIO_PROJECT_ID=${LABELSTUDIO_PROJECT_ID}
+      - LABELSTUDIO_API_TOKEN=${LABELSTUDIO_API_TOKEN:-}
+      - LABELSTUDIO_PROJECT_ID=${LABELSTUDIO_PROJECT_ID:-}
       - LABELSTUDIO_WEBHOOK_SECRET=${LABELSTUDIO_WEBHOOK_SECRET:-}
       # WhatsApp (Hermes) + SMTP
       # WHATSAPP_WEBHOOK_HMAC_KEY for inbound webhook signing
@@ -584,8 +583,6 @@ services:
       - kong
       - minio
       - hermes
-    volumes:
-      - ./volumes/google-credentials.json:/gcp/key.json:ro
     extra_hosts:
       - "localhost:host-gateway"
 
@@ -620,11 +617,11 @@ services:
       - NEXT_PUBLIC_GRAPHQL_URL=http://localhost:4001/graphql
       - GRAPHQL_API_URL=http://middleware:4001/graphql
       - NEXT_PUBLIC_SUPABASE_URL=http://kong:8000
-      - NEXT_PUBLIC_SUPABASE_ANON_KEY=${ANON_KEY}
+      - NEXT_PUBLIC_SUPABASE_ANON_KEY=${ANON_KEY:-}
       - NEXT_PUBLIC_S3_ENDPOINT=http://127.0.0.1:9000
-      - NEXT_PUBLIC_S3_BUCKET=${S3_BUCKET}
-      - S3_ACCESS_KEY=${MINIO_ROOT_USER}
-      - S3_SECRET_KEY=${MINIO_ROOT_PASSWORD}
+      - NEXT_PUBLIC_S3_BUCKET=${S3_BUCKET:-cms-media}
+      - S3_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
+      - S3_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin}
       - S3_REGION=us-east-1
     networks:
       - management-network

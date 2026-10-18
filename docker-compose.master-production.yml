@@ -510,7 +510,6 @@ services:
       - SUPABASE_URL=http://kong:8000
       - SUPABASE_ANON_KEY=${ANON_KEY}
       - SUPABASE_SERVICE_KEY=${SERVICE_ROLE_KEY}
-      - GOOGLE_APPLICATION_CREDENTIALS=/gcp/key.json
       - GOOGLE_PROJECT_ID=${GOOGLE_PROJECT_ID:-}
       - S3_ENDPOINT=http://minio:9000
       - S3_PUBLIC_ENDPOINT=http://31.97.66.39:9010
@@ -568,8 +567,6 @@ services:
       - kong
       - minio
       - hermes
-    volumes:
-      - ./volumes/google-credentials.json:/gcp/key.json:ro
     healthcheck:
       test: ["CMD-SHELL", "node -e \"require('http').get('http://127.0.0.1:4001/graphql', (r) => process.exit(r.statusCode < 500 ? 0 : 1)).on('error', () => process.exit(1))\""]
       interval: 30s
