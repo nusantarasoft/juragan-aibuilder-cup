@@ -11,6 +11,8 @@ import * as Minio from 'minio';
 import { SupabaseService } from '../supabase/supabase.service';
 import { AiRouterService } from '../ai/ai-router.service';
 import { AiSettingsService } from '../ai/ai-settings.service';
+import type { StudioSettingsRow } from '../ai/ai-settings.types';
+import { parseGoogleServiceAccountJson } from '../ai/google-vertex-auth.util';
 import { assertNoSupabaseError } from './studio-supabase.util';
 import { normalizeAppRole } from '../auth/app-roles';
 import { tryGenerateMarketingBackground } from './studio-marketing-background.util';
@@ -417,9 +419,25 @@ export class StudioMarketingService {
         );
     }
 
+    /** Gemini API key from settings; Vertex project/SA from settings, SA JSON, or GOOGLE_PROJECT_ID env. */
+    private marketingImageGenParams(settings: StudioSettingsRow) {
+        const fromSa = parseGoogleServiceAccountJson(settings.google_service_account_json)?.project_id;
+        const projectId =
+            settings.google_project_id?.trim() ||
+            this.config.get('GOOGLE_PROJECT_ID')?.toString().trim() ||
+            fromSa?.trim() ||
+            '';
+        return {
+            projectId,
+            location: settings.google_location ?? 'us-central1',
+            serviceAccountJson: settings.google_service_account_json,
+            apiKey: settings.google_api_key,
+        };
+    }
+
     private async resolveProductPhoto(
         product: EligibleProductRow,
-        settings: Awaited<ReturnType<AiSettingsService['getRawSettings']>>,
+        settings: StudioSettingsRow,
     ): Promise<Buffer> {
         if (product.media_id?.trim()) {
             return this.loadMediaBuffer(product.media_id);
@@ -428,17 +446,14 @@ export class StudioMarketingService {
             throw new BadRequestException('Produk tidak punya foto — upload di Inventory atau aktifkan AI product image');
         }
         const generated = await tryGenerateMarketingProductImage({
-            projectId: settings?.google_project_id ?? '',
-            location: settings?.google_location ?? 'us-central1',
-            serviceAccountJson: settings?.google_service_account_json,
-            apiKey: settings?.google_api_key,
+            ...this.marketingImageGenParams(settings),
             productName: product.product_name,
             categoryName: product.category_name,
             storeLabel: product.store_label,
         });
         if (!generated?.length) {
             throw new BadRequestException(
-                'Gagal generate foto produk AI — cek Google API key atau Vertex di AI Studio Settings',
+                'Gagal generate foto produk AI. Aktifkan billing Nano Banana di Google AI Studio (API key), atau lengkapi Vertex (Google project + service account JSON) di AI Studio Settings.',
             );
         }
         return generated;
@@ -455,12 +470,7 @@ export class StudioMarketingService {
             (this.config.get('STUDIO_MARKETING_AI_BACKGROUND') ?? 'false').toString().toLowerCase() ===
             'true';
         if (aiBg) {
-            background = await tryGenerateMarketingBackground({
-                projectId: settings?.google_project_id ?? '',
-                location: settings?.google_location ?? 'us-central1',
-                serviceAccountJson: settings?.google_service_account_json,
-                apiKey: settings?.google_api_key,
-            });
+            background = await tryGenerateMarketingBackground(this.marketingImageGenParams(settings));
         }
 
         const png = await renderMarketingTemplatePng({

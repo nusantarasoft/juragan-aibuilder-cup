@@ -10,7 +10,7 @@ Diagram: [L5-konten-marketing.svg](../../../diagrams/aistudio/studio/system/L5-k
 
 1. Super admin mengaktifkan **consent marketing** per warung (`studio_whatsapp_config.marketing_consent`).
 2. **Generate sekarang** (GraphQL) atau **cron mingguan** (opsional) memilih produk eligible: consent=true, status active (foto inventory **opsional** jika AI product image aktif).
-3. **Foto di kartu:** foto asli `media_ids[0]` **atau** AI product image (Gemini Nano Banana / Flash image via API key — fallback `gemini-nano-banana-2.1`, `gemini-3.1-flash-image`; ops override `STUDIO_MARKETING_GEMINI_IMAGE_MODEL`; tanpa key → Vertex Imagen 3).
+3. **Foto di kartu:** foto asli `media_ids[0]` **atau** AI product image (Gemini Nano Banana via API key — fallback `gemini-nano-banana-2.1`, `gemini-3.1-flash-lite-image`, `gemini-3.1-flash-image`, `gemini-2.5-flash-image`; ops `STUDIO_MARKETING_GEMINI_IMAGE_MODEL`; jika Gemini gagal → Vertex Imagen 3 dengan project + SA/ADC).
 4. **Sharp** meng-composite foto + teks truthy dari DB (nama, harga Rp, nama warung) — teks **bukan** hasil AI.
 5. Opsional: background abstrak via Gemini/Imagen jika `STUDIO_MARKETING_AI_BACKGROUND=true` (fallback ke gradient template).
 6. **Caption** Bahasa Indonesia via LLM default `studio_settings`; error provider = gagal (tidak ada caption sampah).
@@ -54,6 +54,8 @@ Setelah deploy: `docker exec nsoft3-nginx nginx -t` lalu restart nginx jika conf
 Jika tidak ada base URL (dev lokal tanpa `SITE_URL`), `image_public_url` / `imageUrl` di API galeri memakai path relatif `/public/marketing/assets/<id>` (cocok untuk frontend same-origin di nginx).
 
 Provider LLM/image: kredensial **AI Studio → Settings** (`google_api_key`, `google_service_account_json`, `google_project_id`, dll.).
+
+**Foto produk AI (Gemini Nano Banana):** model image **butuh billing pay-as-you-go** di [Google AI Studio](https://aistudio.google.com/) untuk project API key. Tanpa quota image, API mengembalikan HTTP **429 RESOURCE_EXHAUSTED** — middleware lalu mencoba **Vertex Imagen** jika `google_project_id` + service account (atau ADC `/gcp/key.json` di server) valid.
 
 ## GraphQL (super_admin)
 

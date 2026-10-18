@@ -6,6 +6,7 @@ const logger = new Logger('StudioMarketingImageGen');
 /** Nano Banana / Flash image models (legacy preview IDs return HTTP 404). */
 const GEMINI_IMAGE_MODEL_FALLBACKS = [
     'gemini-nano-banana-2.1',
+    'gemini-3.1-flash-lite-image',
     'gemini-3.1-flash-image',
     'gemini-2.5-flash-image',
 ] as const;
@@ -29,11 +30,13 @@ function extractInlineImageB64(json: {
 async function generateGeminiApiKeyImage(apiKey: string, prompt: string): Promise<Buffer | null> {
     const body = JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { responseModalities: ['TEXT', 'IMAGE'] },
+        generationConfig: { responseModalities: ['IMAGE'] },
     });
     const key = encodeURIComponent(apiKey.trim());
+    let quotaExhausted = false;
 
     for (const model of geminiImageModelCandidates()) {
+        if (quotaExhausted) break;
         for (const version of ['v1', 'v1beta'] as const) {
             const url = `https://generativelanguage.googleapis.com/${version}/models/${model}:generateContent?key=${key}`;
             try {
@@ -44,6 +47,14 @@ async function generateGeminiApiKeyImage(apiKey: string, prompt: string): Promis
                 });
                 if (!res.ok) {
                     if (res.status === 404) continue;
+                    const errText = await res.text();
+                    if (res.status === 429 && /quota|RESOURCE_EXHAUSTED/i.test(errText)) {
+                        quotaExhausted = true;
+                        logger.warn(
+                            `Gemini image quota exhausted (${version}/${model}) — enable billing or use Vertex Imagen`,
+                        );
+                        break;
+                    }
                     logger.warn(`Gemini image API HTTP ${res.status} (${version}/${model})`);
                     continue;
                 }
@@ -59,6 +70,48 @@ async function generateGeminiApiKeyImage(apiKey: string, prompt: string): Promis
         }
     }
     return null;
+}
+
+async function generateVertexImagenImage(
+    params: MarketingImageGenParams,
+    prompt: string,
+): Promise<Buffer | null> {
+    const token = await getVertexAccessToken({
+        serviceAccountJson: params.serviceAccountJson,
+        projectId: params.projectId,
+    });
+    if (!token || !params.projectId?.trim()) return null;
+
+    const loc = params.location?.trim() || 'us-central1';
+    const endpoint = `https://${loc}-aiplatform.googleapis.com/v1/projects/${params.projectId}/locations/${loc}/publishers/google/models/imagen-3.0-generate-001:predict`;
+
+    try {
+        const res = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                instances: [{ prompt }],
+                parameters: { sampleCount: 1, aspectRatio: '1:1' },
+            }),
+        });
+        if (!res.ok) {
+            logger.warn(`Imagen predict HTTP ${res.status}`);
+            return null;
+        }
+        const json = (await res.json()) as {
+            predictions?: Array<{ bytesBase64Encoded?: string }>;
+        };
+        const b64 = json.predictions?.[0]?.bytesBase64Encoded;
+        if (!b64) return null;
+        logger.log('Vertex Imagen product image OK');
+        return Buffer.from(b64, 'base64');
+    } catch (e: any) {
+        logger.warn(`Imagen failed: ${e?.message}`);
+        return null;
+    }
 }
 
 export type MarketingImageGenParams = {
@@ -77,42 +130,9 @@ export async function generateMarketingImageFromPrompt(
     if (!trimmed) return null;
 
     if (params.apiKey?.trim()) {
-        return generateGeminiApiKeyImage(params.apiKey, trimmed);
+        const fromGemini = await generateGeminiApiKeyImage(params.apiKey, trimmed);
+        if (fromGemini) return fromGemini;
     }
 
-    const token = await getVertexAccessToken({
-        serviceAccountJson: params.serviceAccountJson,
-        projectId: params.projectId,
-    });
-    if (!token || !params.projectId?.trim()) return null;
-
-    const loc = params.location?.trim() || 'us-central1';
-    const endpoint = `https://${loc}-aiplatform.googleapis.com/v1/projects/${params.projectId}/locations/${loc}/publishers/google/models/imagen-3.0-generate-001:predict`;
-
-    try {
-        const res = await fetch(endpoint, {
-            method: 'POST',
-            headers: {
-                Authorization: `Bearer ${token}`,
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                instances: [{ prompt: trimmed }],
-                parameters: { sampleCount: 1, aspectRatio: '1:1' },
-            }),
-        });
-        if (!res.ok) {
-            logger.warn(`Imagen predict HTTP ${res.status}`);
-            return null;
-        }
-        const json = (await res.json()) as {
-            predictions?: Array<{ bytesBase64Encoded?: string }>;
-        };
-        const b64 = json.predictions?.[0]?.bytesBase64Encoded;
-        if (!b64) return null;
-        return Buffer.from(b64, 'base64');
-    } catch (e: any) {
-        logger.warn(`Imagen failed: ${e?.message}`);
-        return null;
-    }
+    return generateVertexImagenImage(params, trimmed);
 }
