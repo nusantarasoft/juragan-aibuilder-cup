@@ -423,22 +423,22 @@ export default function RisetKnowledgePage() {
                                 />
                             )}
 
-                            <Title level={5}>Sources</Title>
+                            <Text strong className="font-mono text-[10.5px] uppercase tracking-[0.12em] block mb-1.5">Sources</Text>
                             {(selected.sources || []).map((s) => (
                                 <Card key={s.url} size="small" style={{ marginBottom: 8 }}>
-                                    <a href={s.url} target="_blank" rel="noreferrer">
+                                    <a href={s.url} target="_blank" rel="noreferrer" className="text-[11px]">
                                         <LinkOutlined /> {s.url}
                                     </a>
-                                    <Paragraph type="secondary" style={{ marginTop: 8, marginBottom: 4 }}>
+                                    <Paragraph type="secondary" style={{ marginTop: 4, marginBottom: 2, fontSize: 10.5 }}>
                                         Fetched: {s.fetched_at}
                                     </Paragraph>
-                                    <Text italic>&ldquo;{s.quoted_snippet}&rdquo;</Text>
+                                    <Text italic style={{ fontSize: 11 }}>&ldquo;{s.quoted_snippet}&rdquo;</Text>
                                 </Card>
                             ))}
 
-                            <Title level={5} style={{ marginTop: 16 }}>
+                            <Text strong className="font-mono text-[10.5px] uppercase tracking-[0.12em] block mt-3 mb-1.5">
                                 Summary
-                            </Title>
+                            </Text>
                             <Form form={form} layout="vertical">
                                 <Form.Item name="title" label="Title" rules={[{ required: true }]}>
                                     <Input disabled={!['pending', 'approved'].includes(selected.status)} />

@@ -157,8 +157,8 @@ export default function LabelStudioPage() {
                         {[{ t: 'Projects', v: projects.length, c: '#38bdf8', i: <DatabaseOutlined /> }, { t: 'Total Tasks', v: totalTasks, c: '#a78bfa', i: <FileSearchOutlined /> }, { t: 'Completed', v: totalCompleted, c: '#34d399', i: <CheckCircleOutlined /> }, { t: 'Completion Rate', v: `${completionPct}%`, c: '#fb923c', i: <ClockCircleOutlined /> }].map((s, i) => (
                             <Col key={i} xs={12} md={6}>
                                 <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
-                                    <Card size="small" style={{ borderRadius: 0, borderTop: `2px solid ${s.c}` }}>
-                                        <Statistic title={s.t} value={s.v} prefix={s.i} valueStyle={{ color: s.c, fontSize: 20 }} />
+                                    <Card size="small" style={{ borderRadius: 0, borderTop: `2px solid ${s.c}` }} styles={{ body: { padding: '8px 10px' } }}>
+                                        <Statistic title={<span className="font-mono text-[10px] uppercase tracking-wider">{s.t}</span>} value={s.v} prefix={s.i} valueStyle={{ color: s.c, fontSize: 15, fontFamily: 'ui-monospace, monospace', fontWeight: 700 }} />
                                     </Card>
                                 </motion.div>
                             </Col>
@@ -175,13 +175,13 @@ export default function LabelStudioPage() {
                             <Col key={p.id} xs={24} md={8}>
                                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 + i * 0.06 }}>
                                     <Card size="small" hoverable style={{ borderRadius: 0, borderTop: `2px solid ${p.color}` }}>
-                                        <Text strong style={{ fontSize: 13 }}>{p.name}</Text><br />
+                                        <Text strong style={{ fontSize: 12 }}>{p.name}</Text><br />
                                         <Tag className="font-mono" style={{ fontSize: 9, borderRadius: 0, marginTop: 4 }}>{p.projectType}</Tag>
-                                        <Progress percent={p.tasks > 0 ? Math.round((p.completed / p.tasks) * 100) : 0} size="small" strokeColor={p.color} style={{ marginTop: 8 }} />
+                                        <Progress percent={p.tasks > 0 ? Math.round((p.completed / p.tasks) * 100) : 0} size="small" strokeColor={p.color} style={{ marginTop: 6 }} />
                                         <Row gutter={4} style={{ marginTop: 4 }}>
-                                            <Col span={8}><Text type="secondary" style={{ fontSize: 9 }}>Tasks</Text><br /><Text strong className="font-mono" style={{ fontSize: 14 }}>{p.tasks}</Text></Col>
-                                            <Col span={8}><Text type="secondary" style={{ fontSize: 9 }}>Done</Text><br /><Text strong className="font-mono" style={{ fontSize: 14, color: '#34d399' }}>{p.completed}</Text></Col>
-                                            <Col span={8}><Text type="secondary" style={{ fontSize: 9 }}>Annotators</Text><br /><Text strong className="font-mono" style={{ fontSize: 14 }}>{p.annotators}</Text></Col>
+                                            <Col span={8}><Text type="secondary" style={{ fontSize: 9 }}>Tasks</Text><br /><Text strong className="font-mono" style={{ fontSize: 12 }}>{p.tasks}</Text></Col>
+                                            <Col span={8}><Text type="secondary" style={{ fontSize: 9 }}>Done</Text><br /><Text strong className="font-mono" style={{ fontSize: 12, color: '#34d399' }}>{p.completed}</Text></Col>
+                                            <Col span={8}><Text type="secondary" style={{ fontSize: 9 }}>Annotators</Text><br /><Text strong className="font-mono" style={{ fontSize: 12 }}>{p.annotators}</Text></Col>
                                         </Row>
                                     </Card>
                                 </motion.div>

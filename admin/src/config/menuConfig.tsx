@@ -1254,8 +1254,8 @@ const menuConfig = {
                         isLeaf: true,
                     },
                     {
-                        path: "/admin/ai-studio/umkm",
-                        name: "SME Sales",
+                        path: "/admin/ai-studio/partner",
+                        name: "Partner",
                         icon: <ShopOutlined />,
                         isLeaf: true,
                     },

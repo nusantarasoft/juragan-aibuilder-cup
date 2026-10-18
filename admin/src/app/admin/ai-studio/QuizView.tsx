@@ -48,10 +48,10 @@ export default function QuizView({ content, themeColor }: Props) {
                         format={() => `${score}/${questions.length}`}
                     />
                     <div>
-                        <Title level={5} className="!mb-0">
+                        <Title level={5} className="!mb-0 !text-[12px] font-mono uppercase tracking-[0.08em]">
                             {pct >= 80 ? "Excellent work!" : pct >= 50 ? "Good effort" : "Needs review"}
                         </Title>
-                        <Text type="secondary" className="font-mono text-xs tabular-nums">Score {pct}%</Text>
+                        <Text type="secondary" className="font-mono text-[10.5px] tabular-nums">Score {pct}%</Text>
                     </div>
                     <Button className="ml-auto" size="small" icon={<RedoOutlined />} onClick={reset}>
                         Retry
@@ -65,10 +65,10 @@ export default function QuizView({ content, themeColor }: Props) {
                 return (
                     <div
                         key={i}
-                        className="rounded-none border border-white/10 bg-white/[0.02] p-3"
+                        className="rounded-none border border-white/10 bg-white/[0.02] p-2.5"
                         style={{ borderLeft: `2px solid ${themeColor}` }}
                     >
-                        <Text strong className="text-[13px] block mb-2">
+                        <Text strong className="text-[11.5px] block mb-1.5 leading-snug">
                             {i + 1}. {q.question}
                         </Text>
                         <Radio.Group
@@ -77,7 +77,7 @@ export default function QuizView({ content, themeColor }: Props) {
                             disabled={submitted}
                             onChange={(e) => setAnswers((prev) => ({ ...prev, [i]: e.target.value }))}
                         >
-                            <Space direction="vertical" className="w-full">
+                            <Space direction="vertical" size={4} className="w-full">
                                 {q.options.map((opt, oi) => {
                                     const isCorrect = submitted && oi === correct;
                                     const isWrongChoice = submitted && oi === chosen && chosen !== correct;
@@ -85,7 +85,7 @@ export default function QuizView({ content, themeColor }: Props) {
                                         <Radio
                                             key={oi}
                                             value={oi}
-                                            className={`!text-[12px] w-full px-2 py-1 rounded-none ${
+                                            className={`!text-[11px] w-full px-2 py-0.5 rounded-none ${
                                                 isCorrect
                                                     ? "bg-green-50 dark:bg-green-900/20"
                                                     : isWrongChoice
@@ -106,7 +106,7 @@ export default function QuizView({ content, themeColor }: Props) {
                             </Space>
                         </Radio.Group>
                         {submitted && q.explanation && (
-                            <div className="mt-2 text-[11px] text-gray-500">
+                            <div className="mt-1.5 text-[10.5px] text-gray-500">
                                 <Tag color={themeColor} className="font-mono !text-[9px] !rounded-none uppercase">
                                     Explanation
                                 </Tag>
@@ -119,6 +119,7 @@ export default function QuizView({ content, themeColor }: Props) {
 
             {!submitted && (
                 <Button
+                    size="small"
                     type="primary"
                     disabled={!allAnswered}
                     onClick={() => setSubmitted(true)}

@@ -54,6 +54,9 @@ import {
     ApartmentOutlined,
     SettingOutlined,
     ShareAltOutlined,
+    ReloadOutlined,
+    CompressOutlined,
+    ExpandOutlined,
 } from "@ant-design/icons";
 import SourcesPanel from "./SourcesPanel";
 import StudioOutputsPanel from "./StudioOutputsPanel";
@@ -171,6 +174,20 @@ export default function AIStudioPage() {
     // ── Layout State ──
     const [showSources, setShowSources] = useState(true);
     const [showStudio, setShowStudio] = useState(true);
+    const [layoutResetSignal, setLayoutResetSignal] = useState(0);
+
+    const handleResetStudioLayout = useCallback(() => {
+        setShowSources(true);
+        setShowStudio(true);
+        setRightTab("studio");
+        setLayoutResetSignal((n) => n + 1);
+    }, []);
+
+    useEffect(() => {
+        const onReset = () => handleResetStudioLayout();
+        window.addEventListener("cms-reset-layout", onReset);
+        return () => window.removeEventListener("cms-reset-layout", onReset);
+    }, [handleResetStudioLayout]);
 
     // ── Poll timer ──
     const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -641,10 +658,13 @@ export default function AIStudioPage() {
         { code: "AG", label: "Agents", href: "/admin/ai-studio/agent-builder" },
         { code: "PG", label: "Playground", href: "/admin/ai-studio/advanced/playground" },
         { code: "KG", label: "Graph", href: "/admin/ai-studio/knowledge-graph" },
-        { code: "SME", label: "SME", href: "/admin/ai-studio/umkm" },
+        { code: "PTN", label: "Partner", href: "/admin/ai-studio/partner" },
         { code: "WA", label: "WA Logs", href: "/admin/ai-studio/percakapan-wa" },
         { code: "CFG", label: "Settings", href: "/admin/ai-studio/settings" },
     ];
+
+    const isFocusChat = !showSources && !showStudio;
+    const isModifiedLayout = !showSources || !showStudio || rightTab !== "studio";
 
     return (
         <CMSLayout
@@ -700,7 +720,7 @@ export default function AIStudioPage() {
                             className={`inline-flex items-center gap-1.5 h-6 px-2 font-mono text-[9.5px] font-bold uppercase tracking-[0.12em] border transition-colors cursor-pointer ${
                                 showSources
                                     ? "border-orange-400/60 bg-orange-500/15 text-orange-300 hover:bg-orange-500/25"
-                                    : "border-white/15 bg-white/[0.03] text-slate-400 hover:border-orange-400/50 hover:text-orange-300"
+                                    : "border-white/15 bg-white/[0.03] text-slate-300 hover:border-orange-400/50 hover:text-orange-300"
                             }`}
                         >
                             {showSources ? (
@@ -721,7 +741,7 @@ export default function AIStudioPage() {
                     </span>
                     <Select
                         size="small"
-                        className="min-w-[180px] flex-1 max-w-xs"
+                        className="min-w-[160px] flex-1 max-w-xs"
                         placeholder="Select notebook"
                         loading={loadingNotebooks}
                         value={activeNotebook?.id}
@@ -737,7 +757,7 @@ export default function AIStudioPage() {
                         icon={<PlusOutlined />}
                         onClick={() => setShowCreateModal(true)}
                         style={{ backgroundColor: themeColor, borderColor: themeColor }}
-                        className="!text-[11px]"
+                        className="!text-[10.5px] !h-6 !px-2 font-mono uppercase tracking-wider"
                     >
                         Notebook
                     </Button>
@@ -757,36 +777,60 @@ export default function AIStudioPage() {
                         </Popconfirm>
                     )}
 
-                    {/* Workspace Layout Mode Presets */}
-                    <div className="hidden xl:flex items-center gap-1 ml-2 pl-2 border-l border-white/10 font-mono text-[9px] uppercase">
-                        <button
-                            type="button"
-                            onClick={() => {
-                                setShowSources(true);
-                                setShowStudio(true);
-                            }}
-                            className={`px-1.5 py-0.5 border cursor-pointer transition-colors ${
-                                showSources && showStudio
-                                    ? "border-orange-400/60 bg-orange-500/15 text-orange-300 font-bold"
-                                    : "border-transparent text-slate-400 hover:border-white/15"
-                            }`}
+                    {/* Workspace Layout Controls: RESET LAYOUT + FOCUS CHAT */}
+                    <div className="flex items-center gap-1.5 ml-1 pl-2 border-l border-white/15">
+                        <AnimatedTooltip
+                            content="Reset AI Studio layout to default 3-pane workspace (Sources + Chat + Studio)"
+                            position="bottom"
                         >
-                            3-PANE
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => {
-                                setShowSources(false);
-                                setShowStudio(false);
-                            }}
-                            className={`px-1.5 py-0.5 border cursor-pointer transition-colors ${
-                                !showSources && !showStudio
-                                    ? "border-sky-400/60 bg-sky-500/15 text-sky-300 font-bold"
-                                    : "border-transparent text-slate-400 hover:border-white/15"
-                            }`}
+                            <button
+                                type="button"
+                                data-testid="studio-reset-layout"
+                                onClick={handleResetStudioLayout}
+                                className={`inline-flex items-center gap-1.5 h-6 px-2 font-mono text-[9.5px] font-bold uppercase tracking-[0.12em] border transition-colors cursor-pointer ${
+                                    isModifiedLayout
+                                        ? "border-orange-400/70 bg-orange-500/15 text-orange-200 hover:bg-orange-500/25"
+                                        : "border-white/20 bg-white/[0.04] text-slate-300 hover:border-orange-400/60 hover:bg-orange-500/15 hover:text-orange-200"
+                                }`}
+                            >
+                                <ReloadOutlined style={{ fontSize: 10 }} />
+                                <span>RESET LAYOUT</span>
+                            </button>
+                        </AnimatedTooltip>
+                        <AnimatedTooltip
+                            content={
+                                isFocusChat
+                                    ? "Exit Focus Chat mode and restore side panels"
+                                    : "Focus Chat mode — hide side panels for full-width RAG conversation"
+                            }
+                            position="bottom"
                         >
-                            FOCUS CHAT
-                        </button>
+                            <button
+                                type="button"
+                                data-testid="studio-focus-chat"
+                                onClick={() => {
+                                    if (isFocusChat) {
+                                        setShowSources(true);
+                                        setShowStudio(true);
+                                    } else {
+                                        setShowSources(false);
+                                        setShowStudio(false);
+                                    }
+                                }}
+                                className={`inline-flex items-center gap-1.5 h-6 px-2 font-mono text-[9.5px] font-bold uppercase tracking-[0.12em] border transition-colors cursor-pointer ${
+                                    isFocusChat
+                                        ? "border-sky-400/70 bg-sky-500/20 text-sky-200 hover:bg-sky-500/30"
+                                        : "border-sky-400/35 bg-sky-500/[0.08] text-sky-300 hover:border-sky-400/65 hover:bg-sky-500/15 hover:text-white"
+                                }`}
+                            >
+                                {isFocusChat ? (
+                                    <ExpandOutlined style={{ fontSize: 10 }} />
+                                ) : (
+                                    <CompressOutlined style={{ fontSize: 10 }} />
+                                )}
+                                <span>FOCUS CHAT</span>
+                            </button>
+                        </AnimatedTooltip>
                     </div>
 
                     <div
@@ -818,7 +862,7 @@ export default function AIStudioPage() {
                             className={`md:ml-0 ml-auto inline-flex items-center gap-1.5 h-6 px-2 font-mono text-[9.5px] font-bold uppercase tracking-[0.12em] border transition-colors cursor-pointer ${
                                 showStudio
                                     ? "border-purple-400/60 bg-purple-500/15 text-purple-300 hover:bg-purple-500/25"
-                                    : "border-white/15 bg-white/[0.03] text-slate-400 hover:border-purple-400/50 hover:text-purple-300"
+                                    : "border-white/15 bg-white/[0.03] text-slate-300 hover:border-purple-400/50 hover:text-purple-300"
                             }`}
                         >
                             {showStudio ? (
@@ -960,6 +1004,7 @@ export default function AIStudioPage() {
                                     onRegenerate={() => void regenerateLast()}
                                     language={chatLanguage}
                                     onSetLanguage={setChatLanguage}
+                                    layoutResetSignal={layoutResetSignal}
                                 />
                             </div>
                         </div>
@@ -996,9 +1041,10 @@ export default function AIStudioPage() {
                                             <button
                                                 type="button"
                                                 onClick={() => setShowStudio(false)}
-                                                className="inline-flex items-center gap-1 h-6 px-1.5 font-mono text-[9px] font-bold uppercase tracking-wider border border-white/15 bg-white/[0.03] text-slate-400 hover:border-purple-400/50 hover:bg-purple-500/15 hover:text-purple-300 transition-colors cursor-pointer shrink-0"
+                                                className="inline-flex items-center gap-1 h-6 px-2 font-mono text-[9.5px] font-bold uppercase tracking-[0.1em] border border-purple-400/50 bg-purple-500/15 text-purple-300 hover:border-purple-400 hover:bg-purple-500/25 transition-colors cursor-pointer shrink-0"
                                             >
-                                                HIDE ▶
+                                                <span>HIDE ▶</span>
+                                                <MenuUnfoldOutlined style={{ fontSize: 9 }} />
                                             </button>
                                         </Tooltip>
                                     </div>
@@ -1061,11 +1107,11 @@ export default function AIStudioPage() {
                 okButtonProps={{ style: { backgroundColor: themeColor } }}
                 centered
             >
-                <div className="py-4 space-y-4">
+                <div className="py-2 space-y-3">
                     <div>
-                        <Text strong className="text-xs block mb-1.5">Notebook Name</Text>
+                        <Text strong className="font-mono text-[10px] uppercase tracking-wider block mb-1">Notebook Name</Text>
                         <Input
-                            size="large"
+                            size="small"
                             value={newNotebookName}
                             onChange={e => setNewNotebookName(e.target.value)}
                             placeholder="e.g. Q4 Research Analysis"
@@ -1073,8 +1119,9 @@ export default function AIStudioPage() {
                         />
                     </div>
                     <div>
-                        <Text strong className="text-xs block mb-1.5">Description (optional)</Text>
+                        <Text strong className="font-mono text-[10px] uppercase tracking-wider block mb-1">Description (optional)</Text>
                         <TextArea
+                            size="small"
                             rows={3}
                             value={newNotebookDesc}
                             onChange={e => setNewNotebookDesc(e.target.value)}
@@ -1090,21 +1137,22 @@ export default function AIStudioPage() {
                 open={showShareModal}
                 onCancel={() => setShowShareModal(false)}
                 footer={[
-                    <Button key="revoke" danger loading={shareLoading} onClick={() => void handleRevokeShare()}>
+                    <Button key="revoke" size="small" danger loading={shareLoading} onClick={() => void handleRevokeShare()}>
                         Disable sharing
                     </Button>,
-                    <Button key="close" onClick={() => setShowShareModal(false)}>Close</Button>,
+                    <Button key="close" size="small" onClick={() => setShowShareModal(false)}>Close</Button>,
                 ]}
                 centered
             >
-                <div className="py-2 space-y-3">
-                    <Text type="secondary" className="text-xs block">
+                <div className="py-2 space-y-2.5">
+                    <Text type="secondary" className="text-[11px] block">
                         Anyone with this link can view the notebook (read-only): generated outputs and source list,
                         without modifying anything. Disable sharing at any time to revoke the link.
                     </Text>
                     <Space.Compact style={{ width: "100%" }}>
-                        <Input readOnly value={shareLoading ? "Generating link…" : shareUrl} />
+                        <Input size="small" readOnly value={shareLoading ? "Generating link…" : shareUrl} />
                         <Button
+                            size="small"
                             type="primary"
                             icon={<DownloadOutlined />}
                             disabled={!shareUrl || shareLoading}
@@ -1115,7 +1163,7 @@ export default function AIStudioPage() {
                         </Button>
                     </Space.Compact>
                     {shareUrl && (
-                        <a href={shareUrl} target="_blank" rel="noreferrer" className="text-xs" style={{ color: themeColor }}>
+                        <a href={shareUrl} target="_blank" rel="noreferrer" className="font-mono text-[10.5px] uppercase" style={{ color: themeColor }}>
                             Open public preview →
                         </a>
                     )}
@@ -1133,15 +1181,16 @@ export default function AIStudioPage() {
                 okButtonProps={{ style: { backgroundColor: themeColor }, disabled: !editName.trim() }}
                 centered
             >
-                <div className="py-4 space-y-4">
+                <div className="py-2 space-y-3">
                     <div>
-                        <Text strong className="text-xs block mb-1.5">Icon</Text>
+                        <Text strong className="font-mono text-[10px] uppercase tracking-wider block mb-1">Icon</Text>
                         <Row gutter={[8, 8]} align="middle">
                             <Col>
                                 <Input
+                                    size="small"
                                     value={editIcon}
                                     onChange={(e) => setEditIcon(e.target.value.slice(0, 4))}
-                                    style={{ width: 64, textAlign: "center", fontSize: 20 }}
+                                    style={{ width: 52, textAlign: "center", fontSize: 15 }}
                                     maxLength={4}
                                 />
                             </Col>
@@ -1163,9 +1212,9 @@ export default function AIStudioPage() {
                         </Row>
                     </div>
                     <div>
-                        <Text strong className="text-xs block mb-1.5">Notebook Name</Text>
+                        <Text strong className="font-mono text-[10px] uppercase tracking-wider block mb-1">Notebook Name</Text>
                         <Input
-                            size="large"
+                            size="small"
                             value={editName}
                             onChange={(e) => setEditName(e.target.value)}
                             placeholder="Notebook name"
@@ -1173,8 +1222,9 @@ export default function AIStudioPage() {
                         />
                     </div>
                     <div>
-                        <Text strong className="text-xs block mb-1.5">Description (optional)</Text>
+                        <Text strong className="font-mono text-[10px] uppercase tracking-wider block mb-1">Description (optional)</Text>
                         <TextArea
+                            size="small"
                             rows={3}
                             value={editDesc}
                             onChange={(e) => setEditDesc(e.target.value)}
@@ -1190,14 +1240,15 @@ export default function AIStudioPage() {
                 open={showAddMediaModal}
                 onCancel={() => setShowAddMediaModal(false)}
                 footer={null}
-                width={600}
+                width={560}
                 centered
             >
                 {loadingMedia ? (
-                    <div className="flex justify-center py-12"><Spin size="large" /></div>
+                    <div className="flex justify-center py-8"><Spin size="small" /></div>
                 ) : (
                     <List
-                        className="max-h-[400px] overflow-y-auto"
+                        size="small"
+                        className="max-h-[360px] overflow-y-auto"
                         dataSource={mediaFiles}
                         renderItem={item => {
                             const alreadyAdded = sources.some(s => s.media_id === item.id);
@@ -1222,9 +1273,9 @@ export default function AIStudioPage() {
                                     ]}
                                 >
                                     <List.Item.Meta
-                                        avatar={<Avatar icon={<FileOutlined />} shape="square" style={{ backgroundColor: `${themeColor}22`, color: themeColor }} />}
-                                        title={<Text className="text-[13px]">{item.filename}</Text>}
-                                        description={<Text className="text-[11px] text-gray-400">{item.mime_type}</Text>}
+                                        avatar={<Avatar size="small" icon={<FileOutlined />} shape="square" style={{ backgroundColor: `${themeColor}22`, color: themeColor }} />}
+                                        title={<Text className="text-[11.5px] font-medium">{item.filename}</Text>}
+                                        description={<Text className="font-mono text-[10px] text-gray-400">{item.mime_type}</Text>}
                                     />
                                 </List.Item>
                             );

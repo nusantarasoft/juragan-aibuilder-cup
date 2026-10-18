@@ -80,27 +80,28 @@ export default function FlashcardsView({ content, themeColor }: Props) {
                 }}
             >
                 <div>
-                    <Text className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em] block mb-2" style={{ color: themeColor }}>
+                    <Text className="font-mono text-[9.5px] font-semibold uppercase tracking-[0.14em] block mb-1.5" style={{ color: themeColor }}>
                         {flipped ? "Answer" : "Question"}
                     </Text>
-                    <Text className="text-base font-medium block whitespace-pre-wrap" style={{ color: t.textPrimary }}>
+                    <Text className="text-[12.5px] font-medium block whitespace-pre-wrap leading-relaxed" style={{ color: t.textPrimary }}>
                         {flipped ? card.back : card.front}
                     </Text>
-                    <Text type="secondary" className="font-mono text-[10px] uppercase tracking-[0.1em] block mt-3">
+                    <Text type="secondary" className="font-mono text-[9.5px] uppercase tracking-[0.1em] block mt-2.5">
                         <SwapOutlined /> click to flip
                     </Text>
                 </div>
             </div>
 
             <div className="flex items-center justify-between">
-                <Button icon={<LeftOutlined />} onClick={() => go(-1)}>
+                <Button size="small" icon={<LeftOutlined />} onClick={() => go(-1)}>
                     Previous
                 </Button>
                 <Space>
-                    <Button icon={<RetweetOutlined />} onClick={doShuffle} title="Shuffle">
+                    <Button size="small" icon={<RetweetOutlined />} onClick={doShuffle} title="Shuffle">
                         Shuffle
                     </Button>
                     <Button
+                        size="small"
                         type="primary"
                         onClick={() => go(1)}
                         style={{ backgroundColor: themeColor, borderColor: themeColor }}

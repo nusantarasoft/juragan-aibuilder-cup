@@ -489,7 +489,7 @@ export default function StudioOutputsPanel({
                                     language={outputLanguage}
                                 />
                             )}
-                            <div className="prose prose-sm dark:prose-invert max-w-none">
+                            <div className="studio-markdown prose prose-sm dark:prose-invert max-w-none text-[11.5px] leading-relaxed">
                                 <ReactMarkdown>{viewOutput.content}</ReactMarkdown>
                             </div>
                         </>
@@ -505,6 +505,7 @@ export default function StudioOutputsPanel({
                 confirmLoading={generating === "report"}
             >
                 <TextArea
+                    size="small"
                     rows={3}
                     value={reportQuery}
                     onChange={(e) => setReportQuery(e.target.value)}
@@ -522,11 +523,12 @@ export default function StudioOutputsPanel({
                 confirmLoading={generating === "audio_script"}
                 okText="Generate"
             >
-                <div className="flex flex-col gap-3">
+                <div className="flex flex-col gap-2.5">
                     <div>
-                        <Text className="text-xs text-gray-500 block mb-1">Duration</Text>
+                        <Text className="font-mono text-[10px] uppercase tracking-wider text-gray-500 block mb-1">Duration</Text>
                         <Segmented
                             block
+                            size="small"
                             value={audioLength}
                             onChange={(v) => setAudioLength(v as "short" | "default" | "long")}
                             options={[
@@ -537,8 +539,9 @@ export default function StudioOutputsPanel({
                         />
                     </div>
                     <div>
-                        <Text className="text-xs text-gray-500 block mb-1">Discussion focus (optional)</Text>
+                        <Text className="font-mono text-[10px] uppercase tracking-wider text-gray-500 block mb-1">Discussion focus (optional)</Text>
                         <TextArea
+                            size="small"
                             rows={3}
                             value={audioFocus}
                             onChange={(e) => setAudioFocus(e.target.value)}

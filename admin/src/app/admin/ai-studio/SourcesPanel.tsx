@@ -98,13 +98,13 @@ export default function SourcesPanel({
     const getStatusIcon = (status: string) => {
         switch (status) {
             case "done":
-                return <CheckCircleFilled style={{ color: "#52c41a", fontSize: 14 }} />;
+                return <CheckCircleFilled style={{ color: "#52c41a", fontSize: 12 }} />;
             case "parsing":
-                return <SyncOutlined spin style={{ color: themeColor, fontSize: 14 }} />;
+                return <SyncOutlined spin style={{ color: themeColor, fontSize: 12 }} />;
             case "error":
-                return <ExclamationCircleOutlined style={{ color: "#ff4d4f", fontSize: 14 }} />;
+                return <ExclamationCircleOutlined style={{ color: "#ff4d4f", fontSize: 12 }} />;
             default:
-                return <ClockCircleOutlined style={{ color: "#8c8c8c", fontSize: 14 }} />;
+                return <ClockCircleOutlined style={{ color: "#8c8c8c", fontSize: 12 }} />;
         }
     };
 
@@ -217,9 +217,9 @@ export default function SourcesPanel({
                             <button
                                 type="button"
                                 onClick={onCollapse}
-                                className="inline-flex items-center gap-1 h-5 px-1.5 font-mono text-[9px] font-bold uppercase tracking-wider border border-white/15 bg-white/[0.03] text-slate-400 hover:border-orange-400/50 hover:bg-orange-500/15 hover:text-orange-300 transition-colors cursor-pointer"
+                                className="inline-flex items-center gap-1 h-6 px-2 font-mono text-[9.5px] font-bold uppercase tracking-[0.1em] border border-orange-400/50 bg-orange-500/15 text-orange-300 hover:border-orange-400 hover:bg-orange-500/25 transition-colors cursor-pointer"
                             >
-                                ◀ HIDE
+                                <span>◀ HIDE</span>
                             </button>
                         </Tooltip>
                     )}

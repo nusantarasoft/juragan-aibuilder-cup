@@ -133,6 +133,7 @@ type Props = {
     onRegenerate?: () => void;
     language?: string;
     onSetLanguage?: (lang: string) => void;
+    layoutResetSignal?: number;
 };
 
 export const QUICK_TACTICAL_PROMPTS: { code: string; label: string; prompt: string }[] = [
@@ -185,13 +186,24 @@ export default function AIAssistantPanel({
     onRegenerate,
     language = "en",
     onSetLanguage,
+    layoutResetSignal = 0,
 }: Props) {
     const [chatInput, setChatInput] = useState("");
     const [showReferences, setShowReferences] = useState<number | null>(null);
     const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
     const [dockTop, setDockTop] = useState<boolean>(true);
+    const [showBrief, setShowBrief] = useState<boolean>(true);
+    const [showPrompts, setShowPrompts] = useState<boolean>(true);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<any>(null);
+
+    useEffect(() => {
+        if (layoutResetSignal > 0) {
+            setDockTop(true);
+            setShowBrief(true);
+            setShowPrompts(true);
+        }
+    }, [layoutResetSignal]);
 
     // Press "/" anywhere (when not inside an input/textarea) to focus chat command bar
     useEffect(() => {
@@ -478,67 +490,89 @@ export default function AIAssistantPanel({
             {effectiveDockTop && renderCommandComposer("top")}
 
             {/* Independent Scrollable Message & Brief Surface */}
-            <div className="flex-1 overflow-y-auto px-3 py-2.5 custom-scrollbar min-h-0">
+            <div className="flex-1 overflow-y-auto px-3 py-2 custom-scrollbar min-h-0">
                 {chatHistory.length === 0 && (
-                    <div className="flex flex-col gap-2.5">
+                    <div className="flex flex-col gap-2">
                         {/* Compact Tactical Welcome Strip */}
                         <div
-                            className="flex items-center justify-between gap-3 px-3 py-2 border border-white/10 bg-white/[0.02]"
+                            className="flex items-center justify-between gap-2.5 px-2.5 py-1.5 border border-white/10 bg-white/[0.02]"
                             style={{ borderLeft: `2px solid ${themeColor}` }}
                         >
-                            <div className="flex items-center gap-2.5 min-w-0">
-                                <RobotOutlined style={{ fontSize: 18, color: themeColor }} />
+                            <div className="flex items-center gap-2 min-w-0">
+                                <RobotOutlined style={{ fontSize: 15, color: themeColor }} />
                                 <div className="min-w-0">
-                                    <Text strong className="block font-mono text-[11px] uppercase tracking-[0.12em] truncate">
+                                    <Text strong className="block font-mono text-[10.5px] uppercase tracking-[0.12em] truncate">
                                         {notebookName ? `RAG CONSOLE // ${notebookName}` : "AI STUDIO RAG CONSOLE"}
                                     </Text>
-                                    <Text className="text-[11px] text-slate-400 block">
+                                    <Text className="text-[10.5px] text-slate-400 block">
                                         {sources.length === 0
                                             ? "Add documents in the left panel (File, URL, Text, Media) to start querying."
                                             : "Type a question in the top command bar or click a suggested prompt below."}
                                     </Text>
                                 </div>
                             </div>
-                            <span className="font-mono text-[9.5px] uppercase tracking-widest px-1.5 py-0.5 border border-white/10 text-slate-400 shrink-0 hidden sm:inline">
+                            <span className="font-mono text-[9px] uppercase tracking-widest px-1.5 py-0.5 border border-white/15 text-slate-400 shrink-0 hidden sm:inline">
                                 SHORTCUT: [/]
                             </span>
                         </div>
 
                         {/* Suggested Prompts Grid (high density, 2 columns) */}
                         {chatMode === "free" && suggestedPrompts.length > 0 && canSendFree && (
-                            <div>
-                                <Text className="font-mono text-[9.5px] uppercase tracking-[0.14em] text-slate-400 block mb-1">
-                                    Contextual Suggested Prompts //
-                                </Text>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5">
-                                    {suggestedPrompts.map((p) => (
-                                        <button
-                                            key={p}
-                                            type="button"
-                                            disabled={isChatting}
-                                            onClick={() => onSend(p)}
-                                            className="text-left px-2.5 py-1.5 border border-white/10 bg-white/[0.02] hover:border-orange-400/50 hover:bg-white/[0.04] transition-colors cursor-pointer text-[11px] leading-snug"
-                                            style={{ borderLeft: `2px solid ${themeColor}` }}
-                                        >
-                                            {p}
-                                        </button>
-                                    ))}
+                            <div className="border border-white/10 bg-white/[0.015] p-2">
+                                <div className="flex items-center justify-between gap-2 mb-1">
+                                    <Text className="font-mono text-[9.5px] font-bold uppercase tracking-[0.14em] text-slate-400">
+                                        Contextual Suggested Prompts //
+                                    </Text>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPrompts((v) => !v)}
+                                        className="inline-flex items-center gap-1 h-5 px-1.5 font-mono text-[9px] font-bold uppercase tracking-[0.1em] border border-white/15 bg-white/[0.03] text-slate-300 hover:border-orange-400/60 hover:bg-orange-500/15 hover:text-orange-200 transition-colors cursor-pointer"
+                                    >
+                                        {showPrompts ? "▲ HIDE" : "▼ SHOW"}
+                                    </button>
                                 </div>
+                                {showPrompts && (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5">
+                                        {suggestedPrompts.map((p) => (
+                                            <button
+                                                key={p}
+                                                type="button"
+                                                disabled={isChatting}
+                                                onClick={() => onSend(p)}
+                                                className="text-left px-2 py-1 border border-white/10 bg-white/[0.02] hover:border-orange-400/50 hover:bg-white/[0.04] transition-colors cursor-pointer text-[11px] leading-snug"
+                                                style={{ borderLeft: `2px solid ${themeColor}` }}
+                                            >
+                                                {p}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         )}
 
-                        {/* Notebook Brief (immediately visible without pushing input off-screen) */}
+                        {/* Notebook Brief (collapsible with Tactical HUD HIDE / SHOW button) */}
                         {briefSummary && (
                             <div
-                                className="p-2.5 border border-white/10 bg-white/[0.02]"
+                                className="p-2 border border-white/10 bg-white/[0.02]"
                                 style={{ borderLeft: `2px solid ${themeColor}` }}
                             >
-                                <Text className="font-mono text-[9.5px] text-slate-400 uppercase tracking-[0.14em] block mb-1">
-                                    Notebook Executive Brief //
-                                </Text>
-                                <div className="prose prose-sm dark:prose-invert max-w-none text-xs leading-relaxed">
-                                    <ReactMarkdown>{briefSummary}</ReactMarkdown>
+                                <div className="flex items-center justify-between gap-2 mb-1">
+                                    <Text className="font-mono text-[9.5px] font-bold text-slate-400 uppercase tracking-[0.14em]">
+                                        Notebook Executive Brief //
+                                    </Text>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowBrief((v) => !v)}
+                                        className="inline-flex items-center gap-1 h-5 px-1.5 font-mono text-[9px] font-bold uppercase tracking-[0.1em] border border-white/15 bg-white/[0.03] text-slate-300 hover:border-orange-400/60 hover:bg-orange-500/15 hover:text-orange-200 transition-colors cursor-pointer"
+                                    >
+                                        {showBrief ? "▲ HIDE BRIEF" : "▼ SHOW BRIEF"}
+                                    </button>
                                 </div>
+                                {showBrief && (
+                                    <div className="studio-markdown prose prose-sm dark:prose-invert max-w-none text-[11.5px] leading-relaxed">
+                                        <ReactMarkdown>{briefSummary}</ReactMarkdown>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
@@ -548,11 +582,11 @@ export default function AIAssistantPanel({
                     if (msg.role === "assistant" && !msg.content.trim()) return null;
                     const isUser = msg.role === "user";
                     return (
-                        <div key={i} className={`flex ${isUser ? "justify-end" : "justify-start"} mb-2.5`}>
+                        <div key={i} className={`flex ${isUser ? "justify-end" : "justify-start"} mb-2`}>
                             <div className={isUser ? "max-w-[85%]" : "w-full"}>
                                 <div
                                     style={{
-                                        padding: "8px 12px",
+                                        padding: "6px 10px",
                                         borderRadius: 0,
                                         border: "1px solid rgba(148, 163, 184, 0.16)",
                                         borderLeft: !isUser ? `2px solid ${themeColor}` : undefined,
@@ -561,6 +595,8 @@ export default function AIAssistantPanel({
                                             ? `${themeColor}1f`
                                             : "rgba(148, 163, 184, 0.04)",
                                         wordBreak: "break-word",
+                                        fontSize: 11.5,
+                                        lineHeight: 1.5,
                                     }}
                                 >
                                     {/* Compact Tactical Message Header with Inline Actions */}
@@ -577,7 +613,7 @@ export default function AIAssistantPanel({
                                                     <button
                                                         type="button"
                                                         onClick={() => setShowReferences(showReferences === i ? null : i)}
-                                                        className={`inline-flex items-center gap-1 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider border transition-colors cursor-pointer tabular-nums ${
+                                                        className={`inline-flex items-center gap-1 h-5 px-1.5 font-mono text-[9px] font-bold uppercase tracking-wider border transition-colors cursor-pointer tabular-nums ${
                                                             showReferences === i
                                                                 ? "border-orange-400/60 bg-orange-500/20 text-orange-300"
                                                                 : "border-orange-400/35 bg-orange-500/10 text-orange-400 hover:bg-orange-500/20"
@@ -637,7 +673,7 @@ export default function AIAssistantPanel({
                                             onCitationClick={onCitationClick}
                                         />
                                     ) : (
-                                        <div className="prose prose-sm dark:prose-invert max-w-none text-xs [&_p]:m-0">
+                                        <div className="studio-markdown prose prose-sm dark:prose-invert max-w-none text-[11.5px] [&_p]:m-0">
                                             <ReactMarkdown>{msg.content}</ReactMarkdown>
                                         </div>
                                     )}

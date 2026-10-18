@@ -359,10 +359,10 @@ function WhatsAppGatewayPageContent() {
                     <Col xs={24} md={10} lg={8}>
                         <Card size="small" style={tacticalCard} title={<Space><QrcodeOutlined style={{ color: '#fb923c' }} /><Text strong className="font-mono text-xs uppercase tracking-[0.06em]">1. Device Connection (Hermes)</Text></Space>}>
                             {connected ? (
-                                <Space direction="vertical" size="middle" style={{ width: '100%', textAlign: 'center', padding: '24px 0' }}>
-                                    <CheckCircleOutlined style={{ fontSize: 48, color: '#25d366' }} />
-                                    <Text strong style={{ fontSize: 16 }}>WhatsApp connected via Hermes</Text>
-                                    <Paragraph type="secondary" style={{ marginBottom: 0 }}>
+                                <Space direction="vertical" size="small" style={{ width: '100%', textAlign: 'center', padding: '16px 0' }}>
+                                    <CheckCircleOutlined style={{ fontSize: 32, color: '#25d366' }} />
+                                    <Text strong className="font-mono uppercase tracking-[0.08em]" style={{ fontSize: 12 }}>WhatsApp connected via Hermes</Text>
+                                    <Paragraph type="secondary" style={{ marginBottom: 0, fontSize: 11 }}>
                                         Number <strong className="font-mono">{businessPhone || '—'}</strong> is ready to receive and reply to messages.
                                     </Paragraph>
                                     {hermesVersion && (
@@ -370,9 +370,9 @@ function WhatsAppGatewayPageContent() {
                                     )}
                                 </Space>
                             ) : loading ? (
-                                <div style={{ textAlign: 'center', padding: 40 }}><Spin size="large" /></div>
+                                <div style={{ textAlign: 'center', padding: 24 }}><Spin size="small" /></div>
                             ) : (
-                                <Space direction="vertical" size="large" style={{ width: '100%', alignItems: 'center' }}>
+                                <Space direction="vertical" size="middle" style={{ width: '100%', alignItems: 'center' }}>
                                     {qrDataUrl ? (
                                         <div style={{ padding: 16, background: '#fff', borderRadius: 0, border: '2px solid #25d366' }}>
                                             <img src={qrDataUrl} alt="WhatsApp QR Code" width={240} height={240} style={{ display: 'block' }} />

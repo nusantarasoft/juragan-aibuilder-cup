@@ -41,10 +41,10 @@ function MindMapNodeCard({ data }: NodeProps) {
                 background: t.cardBg,
                 color: t.textPrimary,
                 borderRadius: 0,
-                padding: isRoot ? "8px 12px" : "6px 10px",
-                fontSize: isRoot ? 13 : 12,
+                padding: isRoot ? "6px 10px" : "4px 8px",
+                fontSize: isRoot ? 11.5 : 11,
                 fontWeight: isRoot ? 600 : 400,
-                maxWidth: 210,
+                maxWidth: 200,
                 lineHeight: 1.3,
                 cursor: clickable ? "pointer" : "grab",
             }}

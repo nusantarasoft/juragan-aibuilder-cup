@@ -289,6 +289,205 @@ export function CMSLayoutGlobalStyles({ darkMode, vo }: { darkMode: boolean; vo:
                     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
                     font-size: 10.5px !important;
                 }
+
+                /* ---- Tactical HUD Markdown & Prose Typography (.prose / .studio-markdown) ---- */
+                .prose,
+                .studio-markdown {
+                    font-size: 11.5px !important;
+                    line-height: 1.5 !important;
+                    color: ${vo.text} !important;
+                }
+                .prose h1,
+                .studio-markdown h1 {
+                    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+                    font-size: 12.5px !important;
+                    font-weight: 700 !important;
+                    letter-spacing: 0.06em !important;
+                    text-transform: uppercase !important;
+                    line-height: 1.35 !important;
+                    margin: 6px 0 3px 0 !important;
+                    color: ${vo.text} !important;
+                }
+                .prose h2,
+                .studio-markdown h2 {
+                    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+                    font-size: 12px !important;
+                    font-weight: 700 !important;
+                    letter-spacing: 0.04em !important;
+                    line-height: 1.35 !important;
+                    margin: 5px 0 2px 0 !important;
+                    color: ${vo.text} !important;
+                }
+                .prose h3,
+                .prose h4,
+                .prose h5,
+                .prose h6,
+                .studio-markdown h3,
+                .studio-markdown h4,
+                .studio-markdown h5,
+                .studio-markdown h6 {
+                    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+                    font-size: 11.5px !important;
+                    font-weight: 600 !important;
+                    line-height: 1.35 !important;
+                    margin: 4px 0 2px 0 !important;
+                    color: ${vo.text} !important;
+                }
+                .prose p,
+                .studio-markdown p {
+                    font-size: 11.5px !important;
+                    line-height: 1.5 !important;
+                    margin: 0 0 4px 0 !important;
+                }
+                .prose p:last-child,
+                .studio-markdown p:last-child {
+                    margin-bottom: 0 !important;
+                }
+                .prose ul,
+                .prose ol,
+                .studio-markdown ul,
+                .studio-markdown ol {
+                    font-size: 11.5px !important;
+                    line-height: 1.45 !important;
+                    margin: 3px 0 !important;
+                    padding-left: 16px !important;
+                }
+                .prose li,
+                .studio-markdown li {
+                    margin: 1.5px 0 !important;
+                    line-height: 1.45 !important;
+                }
+                .prose strong,
+                .studio-markdown strong {
+                    font-weight: 600 !important;
+                    color: ${vo.text} !important;
+                }
+                .prose code,
+                .studio-markdown code {
+                    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+                    font-size: 10.5px !important;
+                    padding: 1px 4px !important;
+                    background: ${darkMode ? "rgba(255, 255, 255, 0.06)" : "rgba(15, 23, 42, 0.06)"} !important;
+                    border: 1px solid ${vo.border} !important;
+                    border-radius: 0px !important;
+                }
+                .prose pre,
+                .studio-markdown pre {
+                    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+                    font-size: 10.5px !important;
+                    line-height: 1.45 !important;
+                    padding: 6px 8px !important;
+                    margin: 4px 0 !important;
+                    background: ${darkMode ? "#07090d" : "#f8fafc"} !important;
+                    border: 1px solid ${vo.border} !important;
+                    border-left: 2px solid ${vo.accent} !important;
+                    border-radius: 0px !important;
+                    overflow-x: auto !important;
+                }
+                .prose pre code,
+                .studio-markdown pre code {
+                    padding: 0 !important;
+                    border: none !important;
+                    background: transparent !important;
+                }
+                .prose blockquote,
+                .studio-markdown blockquote {
+                    margin: 4px 0 !important;
+                    padding: 3px 8px !important;
+                    border-left: 2px solid ${vo.accent} !important;
+                    background: ${darkMode ? "rgba(255, 255, 255, 0.02)" : "rgba(15, 23, 42, 0.02)"} !important;
+                    color: ${vo.textMuted} !important;
+                    font-size: 11px !important;
+                }
+                .prose table,
+                .studio-markdown table {
+                    width: 100% !important;
+                    border-collapse: collapse !important;
+                    font-size: 10.5px !important;
+                    margin: 4px 0 !important;
+                }
+                .prose th,
+                .prose td,
+                .studio-markdown th,
+                .studio-markdown td {
+                    border: 1px solid ${vo.border} !important;
+                    padding: 3px 6px !important;
+                    text-align: left !important;
+                }
+                .prose th,
+                .studio-markdown th {
+                    background: ${darkMode ? "rgba(255, 255, 255, 0.03)" : "rgba(15, 23, 42, 0.03)"} !important;
+                    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+                    font-size: 9.5px !important;
+                    text-transform: uppercase !important;
+                    letter-spacing: 0.08em !important;
+                }
+
+                /* ---- Tactical Modals, Drawers, Forms, Alerts & Tabs ---- */
+                .ant-modal .ant-modal-content,
+                .ant-drawer .ant-drawer-content {
+                    background: ${darkMode ? "#0b0e13" : "#ffffff"} !important;
+                    border: 1px solid ${vo.borderStrong} !important;
+                    border-top: 2px solid ${vo.accent} !important;
+                    border-radius: 0px !important;
+                    box-shadow: ${darkMode ? "0 18px 48px rgba(0,0,0,0.82)" : "0 12px 32px rgba(15,23,42,0.16)"} !important;
+                }
+                .ant-modal .ant-modal-header,
+                .ant-drawer .ant-drawer-header {
+                    background: transparent !important;
+                    border-bottom: 1px solid ${vo.border} !important;
+                    padding: 8px 12px !important;
+                    margin-bottom: 8px !important;
+                }
+                .ant-modal .ant-modal-title,
+                .ant-drawer .ant-drawer-title {
+                    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+                    font-size: 11.5px !important;
+                    font-weight: 700 !important;
+                    letter-spacing: 0.1em !important;
+                    text-transform: uppercase !important;
+                    color: ${vo.text} !important;
+                }
+                .ant-modal .ant-modal-body {
+                    font-size: 11.5px !important;
+                }
+                .ant-form-item-label > label {
+                    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+                    font-size: 10px !important;
+                    font-weight: 600 !important;
+                    letter-spacing: 0.08em !important;
+                    text-transform: uppercase !important;
+                    color: ${vo.textMuted} !important;
+                    height: 22px !important;
+                }
+                .ant-form-item {
+                    margin-bottom: 10px !important;
+                }
+                .ant-alert {
+                    border-radius: 0px !important;
+                    padding: 6px 10px !important;
+                    font-size: 11px !important;
+                }
+                .ant-alert .ant-alert-message {
+                    font-size: 11.5px !important;
+                    font-weight: 600 !important;
+                }
+                .ant-alert .ant-alert-description {
+                    font-size: 10.5px !important;
+                }
+                .ant-tabs .ant-tabs-tab {
+                    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+                    font-size: 10.5px !important;
+                    letter-spacing: 0.08em !important;
+                    text-transform: uppercase !important;
+                    padding: 6px 10px !important;
+                }
+                .ant-empty .ant-empty-description {
+                    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+                    font-size: 10.5px !important;
+                    color: ${vo.textMuted} !important;
+                }
         `}</style>
     );
 }
+

@@ -274,6 +274,16 @@ export default function CMSLayoutMain({
 
     React.useEffect(() => {
         usePreferencesStore.persist.rehydrate();
+        if (typeof window !== "undefined" && "serviceWorker" in navigator) {
+            navigator.serviceWorker
+                .getRegistrations()
+                .then((regs) => {
+                    for (const reg of regs) {
+                        void reg.unregister();
+                    }
+                })
+                .catch(() => {});
+        }
     }, []);
 
     React.useEffect(() => {
@@ -374,6 +384,7 @@ export default function CMSLayoutMain({
         setInnerCollapsed(false);
         localStorage.setItem("cms-outer-collapsed", "false");
         localStorage.setItem("cms-inner-collapsed", "false");
+        window.dispatchEvent(new CustomEvent("cms-reset-layout"));
     }, [resetLayout]);
 
     const openCommandPalette = () => {

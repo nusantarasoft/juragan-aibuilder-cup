@@ -169,22 +169,22 @@ export default function VideoOverviewPlayer({ content, themeColor }: Props) {
                         className="absolute inset-0 flex flex-col justify-center px-6 py-4"
                     >
                         <div
-                            className="font-mono text-[10px] uppercase tracking-[0.16em] mb-2 font-semibold tabular-nums"
+                            className="font-mono text-[9.5px] uppercase tracking-[0.16em] mb-1.5 font-semibold tabular-nums"
                             style={{ color: themeColor }}
                         >
                             SLIDE // {index + 1} / {slides.length}
                         </div>
-                        <Title level={4} className="!mb-3 !text-base" style={{ color: themeColor }}>
+                        <Title level={4} className="!mb-2 !text-[13px] font-mono uppercase tracking-[0.06em]" style={{ color: themeColor }}>
                             {slide.heading}
                         </Title>
-                        <ul className="space-y-1.5 list-none p-0 m-0">
+                        <ul className="space-y-1 list-none p-0 m-0">
                             {slide.bullets.map((b, i) => (
                                 <motion.li
                                     key={i}
                                     initial={{ opacity: 0, y: 6 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     transition={{ delay: 0.15 + i * 0.1 }}
-                                    className="flex items-start gap-2 text-[13px] leading-snug"
+                                    className="flex items-start gap-2 text-[11.5px] leading-snug"
                                 >
                                     <span style={{ color: themeColor }}>■</span>
                                     <span>{b}</span>
@@ -212,10 +212,11 @@ export default function VideoOverviewPlayer({ content, themeColor }: Props) {
             </div>
 
             {/* Transport controls */}
-            <div className="flex items-center gap-2">
-                <Button icon={<StepBackwardOutlined />} onClick={() => goTo(index - 1)} disabled={index === 0} title="Previous" />
+            <div className="flex items-center gap-1.5">
+                <Button size="small" icon={<StepBackwardOutlined />} onClick={() => goTo(index - 1)} disabled={index === 0} title="Previous" />
                 {supported && (!playing ? (
                     <Button
+                        size="small"
                         type="primary"
                         icon={<CaretRightOutlined />}
                         onClick={handlePlay}
@@ -224,6 +225,7 @@ export default function VideoOverviewPlayer({ content, themeColor }: Props) {
                     />
                 ) : (
                     <Button
+                        size="small"
                         type="primary"
                         icon={<PauseOutlined />}
                         onClick={handlePause}
@@ -231,8 +233,8 @@ export default function VideoOverviewPlayer({ content, themeColor }: Props) {
                         title="Pause"
                     />
                 ))}
-                {supported && <Button icon={<StopOutlined />} onClick={handleStop} title="Stop" />}
-                <Button icon={<StepForwardOutlined />} onClick={() => goTo(index + 1)} disabled={index === slides.length - 1} title="Next" />
+                {supported && <Button size="small" icon={<StopOutlined />} onClick={handleStop} title="Stop" />}
+                <Button size="small" icon={<StepForwardOutlined />} onClick={() => goTo(index + 1)} disabled={index === slides.length - 1} title="Next" />
                 {supported && (
                     <>
                         <Select

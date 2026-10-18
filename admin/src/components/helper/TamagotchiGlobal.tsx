@@ -1197,31 +1197,39 @@ export const TamagotchiModel: React.FC<Props> = ({
         const fold3 = createVDrapedScarfFold(0.484, 0.046, 0.038, 0.055, 0.02, 4.3);
         const sCoilsGeo = mergeGeometries([fold1, fold2, fold3]);
 
-        // 1E. Compact Jagged V-Mantle Collar Under Chin
+        // 1E. Heavily Tattered Jagged V-Mantle Collar Under Chin (15 uneven ragged teeth)
         const apronShape = new THREE.Shape();
-        apronShape.moveTo(-0.30, 0.07);
-        apronShape.lineTo(0.30, 0.07);
-        apronShape.lineTo(0.26, -0.01);
-        apronShape.lineTo(0.21, 0.01);
-        apronShape.lineTo(0.16, -0.07);
-        apronShape.lineTo(0.11, -0.04);
-        apronShape.lineTo(0.06, -0.11);
-        apronShape.lineTo(0.03, -0.08);
-        apronShape.lineTo(0.00, -0.15);
-        apronShape.lineTo(-0.04, -0.08);
-        apronShape.lineTo(-0.08, -0.11);
-        apronShape.lineTo(-0.12, -0.05);
-        apronShape.lineTo(-0.17, -0.08);
-        apronShape.lineTo(-0.22, -0.01);
-        apronShape.lineTo(-0.27, -0.03);
+        apronShape.moveTo(-0.32, 0.075);
+        apronShape.lineTo(0.32, 0.075);
+        apronShape.lineTo(0.30, -0.02);
+        apronShape.lineTo(0.27, 0.025);
+        apronShape.lineTo(0.24, -0.065);
+        apronShape.lineTo(0.21, -0.005);
+        apronShape.lineTo(0.18, -0.095);
+        apronShape.lineTo(0.15, -0.025);
+        apronShape.lineTo(0.12, -0.125);
+        apronShape.lineTo(0.09, -0.045);
+        apronShape.lineTo(0.06, -0.145);
+        apronShape.lineTo(0.03, -0.065);
+        apronShape.lineTo(0.00, -0.175);
+        apronShape.lineTo(-0.03, -0.060);
+        apronShape.lineTo(-0.06, -0.150);
+        apronShape.lineTo(-0.09, -0.040);
+        apronShape.lineTo(-0.12, -0.120);
+        apronShape.lineTo(-0.15, -0.020);
+        apronShape.lineTo(-0.18, -0.100);
+        apronShape.lineTo(-0.21, -0.010);
+        apronShape.lineTo(-0.24, -0.070);
+        apronShape.lineTo(-0.27, 0.020);
+        apronShape.lineTo(-0.30, -0.025);
         apronShape.closePath();
 
         const apronGeo = new THREE.ExtrudeGeometry(apronShape, {
             steps: 2,
             depth: 0.026,
             bevelEnabled: true,
-            bevelThickness: 0.009,
-            bevelSize: 0.008,
+            bevelThickness: 0.008,
+            bevelSize: 0.006,
             bevelSegments: 3,
         });
         const aPos = apronGeo.attributes.position;
@@ -1237,9 +1245,9 @@ export const TamagotchiModel: React.FC<Props> = ({
         }
         apronGeo.computeVertexNormals();
 
-        // 1F. Open-Front Sculpted Tattered Cloak (Leaves the wide Fatty Raccoon belly & flanks open in front!)
-        const cSegsU = 140;
-        const cSegsV = 56;
+        // 1F. Open-Front Cloak with Organic Random Bottom Tatters (No front tatters; leaves Fat Oval Raccoon belly open!)
+        const cSegsU = 180;
+        const cSegsV = 64;
         const clkGeo = new THREE.BufferGeometry();
         const clkVerts: number[] = [];
         const clkUvs: number[] = [];
@@ -1252,38 +1260,40 @@ export const TamagotchiModel: React.FC<Props> = ({
             const t = iv / cSegsV;
             for (let iu = 0; iu <= cSegsU; iu++) {
                 const u = iu / cSegsU;
-                const edgeSweep = Math.pow(t, 1.15) * 0.10;
+                const edgeSweep = Math.pow(t, 1.15) * 0.09;
                 const ang = THREE.MathUtils.lerp(startAng + edgeSweep, endAng - edgeSweep, u);
 
                 const upperDrapeR = 0.555 + Math.sin(t * Math.PI * 0.65) * 0.155 + t * 0.16;
-                const floorFlare = Math.pow(Math.max(0, (t - 0.56) / 0.44), 2.0) * 0.24;
-                const sideWingSpread = Math.pow(Math.sin(ang), 2) * Math.pow(Math.max(0, (t - 0.25) / 0.75), 1.2) * 0.18;
+                const floorFlare = Math.pow(Math.max(0, (t - 0.54) / 0.46), 1.9) * 0.24;
+                const sideWingSpread = Math.pow(Math.sin(ang), 2) * Math.pow(Math.max(0, (t - 0.24) / 0.76), 1.18) * 0.18;
 
                 const distFromBack = Math.abs(ang - Math.PI);
-                const tailArchMask = Math.exp(-Math.pow(distFromBack * 3.2, 2.0)) * smoothstep(0.45, 0.95, t);
+                const tailArchMask = Math.exp(-Math.pow(distFromBack * 3.2, 2.0)) * smoothstep(0.44, 0.95, t);
 
+                // Natural fabric drapery folds
                 const pleats =
-                    (Math.sin(ang * 7.0) * 0.025 +
-                        Math.cos(ang * 13.0 + 0.4) * 0.014) *
+                    (Math.sin(ang * 7.0) * 0.024 +
+                        Math.cos(ang * 13.0 + 0.4) * 0.014 +
+                        Math.sin(ang * 21.0 - 1.1) * 0.007) *
                     Math.sin(t * Math.PI * 0.92);
 
-                const numStrips = 12.0;
-                const stripPhase = u * numStrips;
-                const triWave = 1.0 - 2.0 * Math.abs(stripPhase - Math.floor(stripPhase) - 0.5);
-                const hemMask = smoothstep(0.80, 1.0, t);
+                // Subtle organic random wave near the bottom hem
+                const hemMask = smoothstep(0.76, 1.0, t);
+                const randomHemWave =
+                    (Math.sin(u * 29.0 + 0.7) * 0.45 +
+                        Math.cos(u * 47.0 - 1.9) * 0.35 +
+                        Math.sin(u * 79.0 + 2.4) * 0.20) *
+                    hemMask;
 
-                const tatterTipExt = triWave * hemMask * 0.08;
-                const tatterValleyCut = (1.0 - triWave) * hemMask * 0.075;
-
-                const rad = upperDrapeR + floorFlare + sideWingSpread + pleats + tatterTipExt + tailArchMask * 0.08;
+                const rad = upperDrapeR + floorFlare + sideWingSpread + pleats + randomHemWave * 0.022 + tailArchMask * 0.08;
                 const px = Math.sin(ang) * rad;
                 const pz = Math.cos(ang) * rad;
 
-                const baseHemY = 0.06 - t * 0.68;
-                const py = Math.max(-0.62, baseHemY + tatterValleyCut + tailArchMask * 0.18);
+                const baseHemY = 0.06 - t * 0.69;
+                const py = Math.max(-0.63, baseHemY + Math.max(0, -randomHemWave) * 0.045 + tailArchMask * 0.18);
 
                 clkVerts.push(px, py, pz);
-                clkUvs.push(u * 2.0, t);
+                clkUvs.push(u, t);
             }
         }
 
@@ -2022,16 +2032,17 @@ export const TamagotchiModel: React.FC<Props> = ({
             side: THREE.DoubleSide,
         });
 
-        // 4. Open-Front Tattered Cloak Material with Gentle Drapery Motion
+        // 4. Open-Front Cloak Material with Random Bottom Tatters & Randomly Scattered Holes
         const cMat = new THREE.MeshPhysicalMaterial({
             map: clothColorMap,
             bumpMap: clothBumpMap,
             bumpScale: 0.016,
-            roughness: 0.88,
+            roughness: 0.87,
             metalness: 0.02,
-            sheen: 0.68,
-            sheenRoughness: 0.75,
+            sheen: 0.70,
+            sheenRoughness: 0.72,
             sheenColor: new THREE.Color('#f87171'),
+            alphaTest: 0.45,
             side: THREE.DoubleSide,
         });
         cMat.onBeforeCompile = (shader) => {
@@ -2045,13 +2056,15 @@ export const TamagotchiModel: React.FC<Props> = ({
                 uniform float uTime;
                 uniform float uFlare;
                 uniform float uLiftRear;
-                varying vec3 vCloakPos;`
+                varying vec3 vCloakPos;
+                varying vec2 vCloakUv;`
             );
             shader.vertexShader = shader.vertexShader.replace(
                 '#include <begin_vertex>',
                 `#include <begin_vertex>
                 vCloakPos = position;
-                float clothWeight = clamp(1.0 - smoothstep(-0.62, -0.12, position.y), 0.0, 1.0);
+                vCloakUv = uv;
+                float clothWeight = clamp(1.0 - smoothstep(-0.63, -0.10, position.y), 0.0, 1.0);
                 if (clothWeight > 0.001) {
                     float cAng = (abs(position.x) + abs(position.z) > 0.0001) ? atan(position.x, position.z) : 0.0;
                     float windRipple = sin(uTime * 3.6 + cAng * 5.0 + position.y * 4.0) * 0.010 * clothWeight;
@@ -2063,6 +2076,99 @@ export const TamagotchiModel: React.FC<Props> = ({
                         transformed.y += uLiftRear * pow(max(clothWeight, 0.0001), 1.4) * 0.35;
                     }
                 }`
+            );
+            shader.fragmentShader = shader.fragmentShader.replace(
+                '#include <common>',
+                `#include <common>
+                varying vec3 vCloakPos;
+                varying vec2 vCloakUv;
+
+                float cloakHash21(vec2 p) {
+                    p = fract(p * vec2(127.1, 311.7));
+                    p += dot(p, p + 45.32);
+                    return fract(p.x * p.y);
+                }
+
+                float cloakNoise2D(vec2 p) {
+                    vec2 i = floor(p);
+                    vec2 f = fract(p);
+                    vec2 u = f * f * (3.0 - 2.0 * f);
+                    return mix(
+                        mix(cloakHash21(i + vec2(0.0, 0.0)), cloakHash21(i + vec2(1.0, 0.0)), u.x),
+                        mix(cloakHash21(i + vec2(0.0, 1.0)), cloakHash21(i + vec2(1.0, 1.0)), u.x),
+                        u.y
+                    );
+                }`
+            );
+            shader.fragmentShader = shader.fragmentShader.replace(
+                '#include <color_fragment>',
+                `#include <color_fragment>
+                float u = clamp(vCloakUv.x, 0.0, 1.0);
+                float t = clamp(vCloakUv.y, 0.0, 1.0);
+
+                // 1) Organic, Randomly Tattered Bottom Hem (No front tatters; front borders u=0 and u=1 stay smooth)
+                float frontFade = smoothstep(0.02, 0.10, min(u, 1.0 - u));
+                float n1 = cloakNoise2D(vec2(u * 8.5, 1.3));
+                float n2 = cloakNoise2D(vec2(u * 22.0, 4.7));
+                float n3 = cloakNoise2D(vec2(u * 54.0, 9.1));
+
+                float organicHem = 0.90 + (n1 - 0.5) * 0.13 + (n2 - 0.5) * 0.075 + (n3 - 0.5) * 0.032;
+
+                // Irregularly spaced random tears / V-notches along the bottom hem
+                float uJit       = u + (n1 - 0.5) * 0.048;
+                float zoneId     = floor(uJit * 14.0);
+                float zoneU      = fract(uJit * 14.0);
+                float rZone1     = cloakHash21(vec2(zoneId, 11.3));
+                float rZone2     = cloakHash21(vec2(zoneId, 37.9));
+                float notchPos   = 0.22 + 0.56 * rZone2;
+                float notchWidth = 0.15 + 0.24 * cloakHash21(vec2(zoneId, 71.1));
+                float dNotch     = abs(zoneU - notchPos) / notchWidth;
+                float notchTear  = (rZone1 > 0.36)
+                    ? max(0.0, 1.0 - pow(dNotch, 0.82)) * (0.07 + 0.14 * rZone1) * (0.82 + 0.36 * n3)
+                    : 0.0;
+
+                float hemLimit = mix(0.95, clamp(organicHem - notchTear, 0.72, 0.99), frontFade);
+                if (t > hemLimit) discard;
+
+                // 2) Randomly Scattered Organic Weathered Holes Across the Cloak
+                float holeEdgeFactor = 1.0;
+                if (t > 0.22 && t < 0.86 && min(u, 1.0 - u) > 0.06) {
+                    vec2 hGrid = vec2(u * 8.5, t * 4.2);
+                    vec2 baseCell = floor(hGrid);
+                    float holeWarp = (cloakNoise2D(vec2(u * 38.0, t * 28.0)) - 0.5) * 0.065
+                                   + (cloakNoise2D(vec2(u * 76.0, t * 56.0)) - 0.5) * 0.030;
+
+                    for (int dy = -1; dy <= 1; dy++) {
+                        for (int dx = -1; dx <= 1; dx++) {
+                            vec2 cid = baseCell + vec2(float(dx), float(dy));
+                            if (cid.y >= 1.0 && cid.y <= 3.0 && cid.x >= 0.0 && cid.x <= 7.0) {
+                                float hProb = cloakHash21(cid + vec2(19.3, 47.1));
+                                if (hProb > 0.63) {
+                                    vec2 hCenter = cid + vec2(
+                                        0.20 + 0.60 * cloakHash21(cid + vec2(5.7, 13.1)),
+                                        0.20 + 0.60 * cloakHash21(cid + vec2(29.3, 83.7))
+                                    );
+                                    vec2 diff = hGrid - hCenter;
+                                    float ang = cloakHash21(cid + vec2(41.2, 17.9)) * 3.14159;
+                                    float ca = cos(ang);
+                                    float sa = sin(ang);
+                                    vec2 rotD = vec2(ca * diff.x - sa * diff.y, sa * diff.x + ca * diff.y);
+                                    rotD.x *= 1.15 + 0.45 * cloakHash21(cid + vec2(61.1, 9.3));
+                                    float hDist = length(rotD) + holeWarp;
+                                    float hRad  = 0.13 + (hProb - 0.63) * 0.42;
+                                    if (hDist < hRad) discard;
+                                    holeEdgeFactor = min(holeEdgeFactor, clamp((hDist - hRad) / 0.11, 0.0, 1.0));
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // 3) Subtle Weathered Dark-Crimson Shading Around Holes & Random Hem Tears
+                float hemEdgeFactor = clamp((hemLimit - t) / 0.065, 0.0, 1.0);
+                float wornBorder    = min(hemEdgeFactor, holeEdgeFactor);
+                vec3 wornCrimson    = vec3(0.20, 0.028, 0.036);
+                diffuseColor.rgb    = mix(wornCrimson, diffuseColor.rgb, smoothstep(0.0, 1.0, wornBorder));`
             );
         };
 
@@ -2998,10 +3104,9 @@ export const TamagotchiModel: React.FC<Props> = ({
                         </group>
                     </group>
 
-                    {/* 2. V-Draped Neck Scarf + Prominent Jagged Chest V-Mantle + Open-Front Sculpted Tattered Cloak */}
+                    {/* 2. V-Draped Neck Scarf + Open-Front Randomly Tattered Cloak (No Front Tatter) */}
                     <group ref={scarfRef}>
                         <mesh geometry={scarfCoilsGeo} material={hoodScarfMaterial} castShadow receiveShadow />
-                        <mesh geometry={frontApronGeo} material={hoodScarfMaterial} castShadow receiveShadow />
                         <mesh geometry={cloakGeo} material={cloakTatterMaterial} castShadow receiveShadow />
                     </group>
 

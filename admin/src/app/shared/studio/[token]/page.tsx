@@ -62,7 +62,7 @@ export default function SharedStudioPage() {
                 const res = await studioService.getSharedNotebook(token);
                 if (active) setData(res);
             } catch (e: unknown) {
-                if (active) setError(e instanceof Error ? e.message : "Gagal memuat notebook");
+                if (active) setError(e instanceof Error ? e.message : "Failed to load notebook");
             } finally {
                 if (active) setLoading(false);
             }
@@ -78,8 +78,8 @@ export default function SharedStudioPage() {
                 key: o.id,
                 label: (
                     <span className="flex items-center gap-2">
-                        <span className="font-medium text-sm">{o.title}</span>
-                        <Tag className="!text-[10px] !m-0">{o.output_type}</Tag>
+                        <span className="font-mono font-semibold text-xs">{o.title}</span>
+                        <Tag className="font-mono !text-[9.5px] !m-0 !rounded-none uppercase">{o.output_type}</Tag>
                     </span>
                 ),
                 children: <OutputBody output={o} />,
@@ -89,16 +89,16 @@ export default function SharedStudioPage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center">
-                <Spin size="large" />
+            <div className="min-h-screen flex items-center justify-center bg-[#0b0e13]">
+                <Spin size="small" />
             </div>
         );
     }
 
     if (error || !data) {
         return (
-            <div className="min-h-screen flex items-center justify-center p-6">
-                <Alert type="error" showIcon message="Tidak dapat memuat notebook" description={error ?? undefined} />
+            <div className="min-h-screen flex items-center justify-center p-6 bg-[#0b0e13]">
+                <Alert type="error" showIcon message="Could not load notebook" description={error ?? undefined} />
             </div>
         );
     }
@@ -106,30 +106,30 @@ export default function SharedStudioPage() {
     const { notebook, sources, outputs } = data;
 
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-            <div className="max-w-4xl mx-auto px-4 py-8">
-                <div className="flex items-center gap-3 mb-1">
-                    <span style={{ fontSize: 34 }}>{normalizeNotebookIcon(notebook.icon)}</span>
-                    <Title level={2} className="!mb-0">
+        <div className="min-h-screen bg-gray-50 dark:bg-[#0b0e13]">
+            <div className="max-w-4xl mx-auto px-4 py-6">
+                <div className="flex items-center gap-2.5 mb-1 border-b border-white/10 pb-2">
+                    <span style={{ fontSize: 18 }}>{normalizeNotebookIcon(notebook.icon)}</span>
+                    <Title level={4} className="!mb-0 !text-[14px] font-mono uppercase tracking-[0.08em]">
                         {notebook.name}
                     </Title>
                 </div>
                 {notebook.description && (
-                    <Paragraph type="secondary" className="!mb-2">
+                    <Paragraph type="secondary" className="!mb-1.5 !text-xs">
                         {notebook.description}
                     </Paragraph>
                 )}
-                <Text type="secondary" className="text-xs">
-                    Tampilan publik hanya-baca · Diperbarui {new Date(notebook.updated_at).toLocaleDateString()}
+                <Text type="secondary" className="font-mono text-[10px] uppercase tracking-wider">
+                    Read-only public view · Updated {new Date(notebook.updated_at).toLocaleDateString()}
                 </Text>
 
-                <Card size="small" className="!mt-6" title={`Sumber (${sources.length})`}>
+                <Card size="small" className="!mt-4 !rounded-none" title={`Sources (${sources.length})`}>
                     {sources.length === 0 ? (
-                        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Tidak ada sumber" />
+                        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No sources" />
                     ) : (
                         <ul className="m-0 pl-0 list-none space-y-1">
                             {sources.map((s) => (
-                                <li key={s.id} className="flex items-center gap-2 text-sm">
+                                <li key={s.id} className="flex items-center gap-2 text-xs">
                                     <FileTextOutlined style={{ color: THEME }} />
                                     <span className="truncate">{s.filename}</span>
                                 </li>
@@ -138,18 +138,18 @@ export default function SharedStudioPage() {
                     )}
                 </Card>
 
-                <Title level={4} className="!mt-8 !mb-3">
+                <Text strong className="font-mono text-[11px] uppercase tracking-[0.12em] block mt-5 mb-2">
                     Studio Outputs ({outputs.length})
-                </Title>
+                </Text>
                 {outputs.length === 0 ? (
-                    <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Belum ada output" />
+                    <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No outputs generated yet" />
                 ) : (
-                    <Collapse accordion items={collapseItems} />
+                    <Collapse size="small" accordion items={collapseItems} />
                 )}
 
-                <div className="text-center mt-10">
-                    <Text type="secondary" className="text-xs">
-                        Dibuat dengan Nusantarasoft AI Studio
+                <div className="text-center mt-8">
+                    <Text type="secondary" className="font-mono text-[10px] uppercase tracking-widest">
+                        Built with Nusantarasoft AI Studio
                     </Text>
                 </div>
             </div>
