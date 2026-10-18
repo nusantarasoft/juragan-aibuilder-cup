@@ -18,7 +18,7 @@ describe('formatPriceIdr', () => {
 });
 
 describe('filterEligibleProducts', () => {
-    it('keeps only consented stores with media', () => {
+    it('keeps only consented stores with media when AI product off', () => {
         const rows = filterEligibleProducts([
             {
                 tenant_id: 'a',
@@ -53,6 +53,25 @@ describe('filterEligibleProducts', () => {
         ]);
         expect(rows).toHaveLength(1);
         expect(rows[0].tenant_id).toBe('a');
+    });
+
+    it('allows consented stores without media when AI product on', () => {
+        const rows = filterEligibleProducts(
+            [
+                {
+                    tenant_id: 'b',
+                    item_id: '2',
+                    product_name: 'Y',
+                    selling_price: 2000,
+                    media_id: null,
+                    store_label: 'Toko B',
+                    category_name: null,
+                    marketing_consent: true,
+                },
+            ],
+            { allowAiProductImage: true },
+        );
+        expect(rows).toHaveLength(1);
     });
 });
 

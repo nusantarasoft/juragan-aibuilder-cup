@@ -1,13 +1,17 @@
 flowchart LR
-  A[Cron / Generate sekarang] --> B[Eligible: consent + foto produk]
-  B --> C[Sharp template + teks DB]
-  C --> D{AI background?}
-  D -->|opsional| E[Gemini/Imagen]
-  D -->|fallback| F[Gradient NS]
-  E --> G[Caption LLM ID]
-  F --> G
-  G --> H[(studio_marketing_contents pending)]
-  H --> I[Admin Konten Marketing]
-  I -->|Approve| J[API /public/marketing]
-  J --> S[brochure-gallery showcase :3014]
-  I -->|Reject| K[rejected]
+  A[Cron / Generate sekarang] --> B[Eligible: consent + produk active]
+  B --> C{Foto inventory?}
+  C -->|ya| D[Foto asli MinIO]
+  C -->|tidak| E[Gemini image / Imagen produk]
+  D --> F[Sharp template + teks DB]
+  E --> F
+  F --> G{AI background?}
+  G -->|opsional| H[Latar abstrak AI]
+  G -->|fallback| I[Gradient NS]
+  H --> J[Caption LLM ID]
+  I --> J
+  J --> K[(studio_marketing_contents pending)]
+  K --> L[Admin Konten Marketing]
+  L -->|Approve| M[API /public/marketing]
+  M --> S[brochure-gallery showcase :3014]
+  L -->|Reject| N[rejected]

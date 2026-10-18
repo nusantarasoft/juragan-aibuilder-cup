@@ -1,19 +1,22 @@
 # Konten Marketing UMKM (AI Studio)
 
-Pipeline **human-in-the-loop** untuk membuat kartu promo produk warung dari katalog `inv_items` + foto asli, lalu menampilkannya di **galeri web publik** (frontend terpisah). **Tidak ada** publish Instagram/Meta di scope ini.
+Pipeline **human-in-the-loop** untuk membuat kartu promo produk warung dari katalog `inv_items`, lalu menampilkannya di **galeri web publik** (frontend terpisah). **Tidak ada** publish Instagram/Meta di scope ini.
+
+**Foto produk:** pakai upload inventory jika ada; jika tidak, **generate foto produk AI** (Gemini image API key atau Vertex Imagen) — default **`STUDIO_MARKETING_AI_PRODUCT_IMAGE=true`**. Nama/harga/teks di kartu tetap dari DB (Sharp), bukan AI.
 
 ## Alur
 
 Diagram: [L5-konten-marketing.svg](../../../diagrams/aistudio/studio/system/L5-konten-marketing.svg)
 
 1. Super admin mengaktifkan **consent marketing** per warung (`studio_whatsapp_config.marketing_consent`).
-2. **Generate sekarang** (GraphQL) atau **cron mingguan** (opsional) memilih produk eligible: consent=true, status active, punya foto (`media_ids[0]`).
-3. **Sharp** meng-composite foto produk + teks truthy dari DB (nama, harga Rp, nama warung) — teks **bukan** hasil AI.
-4. Opsional: background abstrak via Gemini/Imagen jika `STUDIO_MARKETING_AI_BACKGROUND=true` (fallback ke gradient template).
-5. **Caption** Bahasa Indonesia via LLM default `studio_settings`; error provider = gagal (tidak ada caption sampah).
-6. Gambar disimpan MinIO (`cms-media`) dengan URL publik via proxy middleware.
-7. Admin **AI Studio → Konten Marketing**: review, edit caption, approve / reject / unpublish.
-8. Hanya `status=approved` + consent warung=true muncul di API galeri publik **dan** di **brochure-gallery** (showcase Adityo, port `:3014` prod) — kartu UMKM ditampilkan di atas brosur tenant seed.
+2. **Generate sekarang** (GraphQL) atau **cron mingguan** (opsional) memilih produk eligible: consent=true, status active (foto inventory **opsional** jika AI product image aktif).
+3. **Foto di kartu:** foto asli `media_ids[0]` **atau** AI product image (Gemini `gemini-2.0-flash-preview-image-generation` / Imagen 3).
+4. **Sharp** meng-composite foto + teks truthy dari DB (nama, harga Rp, nama warung) — teks **bukan** hasil AI.
+5. Opsional: background abstrak via Gemini/Imagen jika `STUDIO_MARKETING_AI_BACKGROUND=true` (fallback ke gradient template).
+6. **Caption** Bahasa Indonesia via LLM default `studio_settings`; error provider = gagal (tidak ada caption sampah).
+7. Gambar disimpan MinIO (`cms-media`) dengan URL publik via proxy middleware.
+8. Admin **AI Studio → Konten Marketing**: review, edit caption, approve / reject / unpublish.
+9. Hanya `status=approved` + consent warung=true muncul di API galeri publik **dan** di **brochure-gallery** (showcase Adityo, port `:3014` prod) — kartu UMKM ditampilkan di atas brosur tenant seed.
 
 Migrasi DB: `supabase/migrations/20261018150000_studio_marketing_contents.sql`.
 
@@ -40,6 +43,7 @@ Setelah deploy: `docker exec nsoft3-nginx nginx -t` lalu restart nginx jika conf
 | Env (middleware) | Default | Keterangan |
 |------------------|---------|------------|
 | `STUDIO_MARKETING_CRON_ENABLED` | `false` | `true` → cron Sen 04:00 UTC, max ~20 item |
+| `STUDIO_MARKETING_AI_PRODUCT_IMAGE` | `true` | `false` → wajib foto inventory (`media_ids[0]`) |
 | `STUDIO_MARKETING_AI_BACKGROUND` | `false` | `true` → coba Gemini/Imagen background (fallback template) |
 | `STUDIO_MARKETING_PUBLIC_BASE_URL` | fallback `SITE_URL` | **Prod:** set eksplisit `https://nusantarasoft.com` agar `image_public_url` / `imageUrl` di JSON galeri match domain publik. Compose: `${STUDIO_MARKETING_PUBLIC_BASE_URL:-${SITE_URL:-}}`. |
 | `SITE_URL` | — | Fallback (mis. `http://31.97.66.39:8090` = nginx langsung) jika override marketing kosong |

@@ -58,6 +58,12 @@ $env:PYTHONIOENCODING="utf-8"
 powershell -ExecutionPolicy Bypass -File scripts/master-production/deploy.ps1
 ```
 
+Mac/Linux (kredensial di `scripts/master-production/deploy.local.env`, gitignored):
+
+```bash
+python3 scripts/master-production/deploy.py --skip-merge --allow-dirty
+```
+
 Script melakukan:
 
 1. Checkout `master-production`, **merge** `origin/master` ke dalamnya, **push** `origin/master-production`.

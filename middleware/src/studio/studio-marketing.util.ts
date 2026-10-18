@@ -12,7 +12,7 @@ export type EligibleProductRow = {
     item_id: string;
     product_name: string;
     selling_price: number | null;
-    media_id: string;
+    media_id: string | null;
     store_label: string;
     category_name: string | null;
     marketing_consent: boolean;
@@ -31,9 +31,17 @@ export function productHasRealPhoto(mediaIds: unknown): boolean {
     return typeof first === 'string' && first.trim().length > 0;
 }
 
-/** Filter catalog rows to consenting stores with a first media id. */
-export function filterEligibleProducts(rows: EligibleProductRow[]): EligibleProductRow[] {
-    return rows.filter((r) => r.marketing_consent === true && r.media_id?.trim());
+/** Filter catalog rows to consenting stores; photo optional when AI product image is enabled. */
+export function filterEligibleProducts(
+    rows: EligibleProductRow[],
+    opts?: { allowAiProductImage?: boolean },
+): EligibleProductRow[] {
+    const allowAi = opts?.allowAiProductImage === true;
+    return rows.filter((r) => {
+        if (r.marketing_consent !== true) return false;
+        if (r.media_id?.trim()) return true;
+        return allowAi;
+    });
 }
 
 export type MarketingCaptionPayload = {

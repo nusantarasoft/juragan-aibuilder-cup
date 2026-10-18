@@ -14,6 +14,7 @@ import { AiSettingsService } from '../ai/ai-settings.service';
 import { assertNoSupabaseError } from './studio-supabase.util';
 import { normalizeAppRole } from '../auth/app-roles';
 import { tryGenerateMarketingBackground } from './studio-marketing-background.util';
+import { tryGenerateMarketingProductImage } from './studio-marketing-product-image.util';
 import { renderMarketingTemplatePng } from './studio-marketing-template.util';
 import {
     type EligibleProductRow,
@@ -309,7 +310,9 @@ export class StudioMarketingService {
     }): Promise<{ created: number; skipped: number; errors: number }> {
         const limit = Math.min(Math.max(Number(params.limit ?? 10) || 10, 1), 50);
         const candidates = await this.loadEligibleProducts(params.store, params.productId);
-        const eligible = filterEligibleProducts(candidates).slice(0, limit);
+        const eligible = filterEligibleProducts(candidates, {
+            allowAiProductImage: this.isAiProductImageEnabled(),
+        }).slice(0, limit);
 
         let created = 0;
         let skipped = 0;
@@ -387,10 +390,11 @@ export class StudioMarketingService {
 
         const rows: EligibleProductRow[] = [];
         for (const item of items ?? []) {
-            if (!productHasRealPhoto(item.media_ids)) continue;
             const cfg = configByTenant.get(item.tenant_id);
             if (!cfg) continue;
-            const mediaId = (item.media_ids as string[])[0];
+            const hasPhoto = productHasRealPhoto(item.media_ids);
+            const mediaId = hasPhoto ? (item.media_ids as string[])[0] : null;
+            if (!hasPhoto && !this.isAiProductImageEnabled()) continue;
             rows.push({
                 tenant_id: item.tenant_id,
                 item_id: item.id,
@@ -405,12 +409,47 @@ export class StudioMarketingService {
         return rows;
     }
 
+    private isAiProductImageEnabled(): boolean {
+        return (
+            (this.config.get('STUDIO_MARKETING_AI_PRODUCT_IMAGE') ?? 'true')
+                .toString()
+                .toLowerCase() !== 'false'
+        );
+    }
+
+    private async resolveProductPhoto(
+        product: EligibleProductRow,
+        settings: Awaited<ReturnType<AiSettingsService['getRawSettings']>>,
+    ): Promise<Buffer> {
+        if (product.media_id?.trim()) {
+            return this.loadMediaBuffer(product.media_id);
+        }
+        if (!this.isAiProductImageEnabled()) {
+            throw new BadRequestException('Produk tidak punya foto — upload di Inventory atau aktifkan AI product image');
+        }
+        const generated = await tryGenerateMarketingProductImage({
+            projectId: settings?.google_project_id ?? '',
+            location: settings?.google_location ?? 'us-central1',
+            serviceAccountJson: settings?.google_service_account_json,
+            apiKey: settings?.google_api_key,
+            productName: product.product_name,
+            categoryName: product.category_name,
+            storeLabel: product.store_label,
+        });
+        if (!generated?.length) {
+            throw new BadRequestException(
+                'Gagal generate foto produk AI — cek Google API key atau Vertex di AI Studio Settings',
+            );
+        }
+        return generated;
+    }
+
     private async generateOne(product: EligibleProductRow, triggeredBy: string): Promise<void> {
         if (!product.marketing_consent) {
             throw new BadRequestException('Store belum consent marketing');
         }
-        const photo = await this.loadMediaBuffer(product.media_id);
         const settings = await this.aiSettings.getRawSettings();
+        const photo = await this.resolveProductPhoto(product, settings);
         let background: Buffer | null = null;
         const aiBg =
             (this.config.get('STUDIO_MARKETING_AI_BACKGROUND') ?? 'false').toString().toLowerCase() ===
@@ -449,7 +488,7 @@ export class StudioMarketingService {
             id: contentId,
             tenant_id: product.tenant_id,
             inv_item_id: product.item_id,
-            source_media_id: product.media_id,
+            source_media_id: product.media_id?.trim() || null,
             image_s3_key: s3Key,
             image_public_url: publicUrl,
             caption: captionPayload.caption,
