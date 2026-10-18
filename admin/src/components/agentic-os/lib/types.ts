@@ -169,6 +169,7 @@ export interface OsSettings {
     defaultProvider: string | null;
     defaultModel: string | null;
     requireApprovalFor: string[];
+    uiDemoMode?: boolean;
     updatedAt: string | null;
 }
 

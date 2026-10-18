@@ -39,16 +39,10 @@ App lain di server yang **tidak** disentuh: Portainer, pustaka, andromedia, ipus
    - `SSH_HOST=31.97.66.39`
    - `SSH_USER=root`
    - `SSH_PASS=...` (jangan commit / jangan paste ke chat)
-<<<<<<< HEAD
-4. Akses GitHub di server (salah satu):
-   - `DEPLOY_GIT_URL=git@github.com:nusantarasoft/nusantarasoft-3.git` (deploy key read-only, disarankan), **atau**
-   - `GITHUB_TOKEN=ghp_...` / fine-grained dengan Contents Read (jangan commit / jangan paste ke chat)
-=======
 4. Akses GitHub di server (disarankan deploy key read-only):
    - Jalankan sekali `scripts/master-production/setup-deploy-key.sh` dari laptop (SSH ke server) — lihat [Migrasi token → deploy key](#migrasi-token--deploy-key-ssh) di bawah.
    - Setelah key terpasang di GitHub: `DEPLOY_GIT_URL=git@github-nusantarasoft-3:nusantarasoft/nusantarasoft-3.git` (alias host + `core.sshCommand` di server), **atau**
    - Legacy: `GITHUB_TOKEN=ghp_...` / fine-grained Contents Read (jangan commit / jangan paste ke chat)
->>>>>>> origin/master
 
 ## Alur standar
 

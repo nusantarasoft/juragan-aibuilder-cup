@@ -37,7 +37,7 @@ export const PlatformOverviewBar: React.FC<Props> = ({ counts, loading }) => (
                     <div
                         className="dash-card-new"
                         style={{
-                            background: '#fff',
+                            background: DASH_COLORS.surface,
                             border: DASH_CARD.border,
                             borderRadius: DASH_CARD.borderRadius,
                             padding: '14px 16px',

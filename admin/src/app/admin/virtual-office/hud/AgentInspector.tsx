@@ -34,15 +34,11 @@ import type { Agent, AgentCommand } from "../lib/types";
 import { ActivityList } from "./AgentRoster";
 import { RosterKindBadge } from "@/components/agentic-os/ui/RosterKindBadge";
 import { timeAgo } from "@/components/agentic-os/ui/kit";
-<<<<<<< HEAD
-import { AgentBadge, ModuleChip, ORANGE, OfficeSidePanel, ProgressBar, Section, StatusPill, StepList, cx, elapsed, formatTokens, useNow } from "./shared";
-=======
 import Link from "next/link";
 import { AgentBadge, ModuleChip, ORANGE, OfficeSidePanel, ProgressBar, Section, StatusPill, StepList, cx, elapsed, formatTokens, useNow } from "./shared";
 import { AgentSettingsPanel } from "@/components/tenant-agents/AgentSettingsPanel";
 import { isKasirOfficeAgent } from "@/components/agentic-os/lib/firstEmployee";
 import { useAuthStore } from "@/store/useAuthStore";
->>>>>>> origin/master
 
 function actionsFor(agent: Agent): { cmd: AgentCommand; label: string; icon: LucideIcon; tone?: "danger" | "primary" }[] {
     const list: { cmd: AgentCommand; label: string; icon: LucideIcon; tone?: "danger" | "primary" }[] = [];
@@ -228,51 +224,6 @@ export function AgentInspector() {
                         })}
                     </div>
                 </Section>
-<<<<<<< HEAD
-
-                <Section title={`Active floor tasks (${activeTasks.length})`}>
-                    {activeTasks.length === 0 ? (
-                        <div className="text-[11px] text-slate-500">No tasks currently running on the floor.</div>
-                    ) : (
-                        <div className="space-y-2">
-                            {activeTasks.map((a) => (
-                                <button
-                                    key={a.id}
-                                    type="button"
-                                    onClick={() => select(a.id)}
-                                    className="block w-full border border-white/10 bg-white/[0.02] p-2 text-left transition hover:border-white/25"
-                                >
-                                    <div className="flex items-center justify-between gap-2 text-[11px]">
-                                        <span className="font-semibold text-white">{a.name}</span>
-                                        <ModuleChip moduleId={a.task!.moduleId} />
-                                    </div>
-                                    <div className="mt-1 truncate text-[11px] text-slate-300">{a.task!.title}</div>
-                                    <div className="mt-1.5 flex items-center gap-2">
-                                        <ProgressBar value={a.task!.progress} color={STATUS_META[a.status].color} />
-                                        <span className="text-[9.5px] tabular-nums text-slate-400">{Math.round(a.task!.progress * 100)}%</span>
-                                    </div>
-                                </button>
-                            ))}
-                        </div>
-                    )}
-                </Section>
-
-                <Section title="3D navigation & keys" className="border-b-0">
-                    <div className="space-y-1.5 text-[10.5px] leading-relaxed text-slate-400">
-                        <div className="flex items-center gap-1.5 text-slate-200">
-                            <MousePointer2 className="h-3 w-3" color={ORANGE} />
-                            <span>Click any agent or desk monitor</span>
-                        </div>
-                        <div>· Drag to orbit · Right-drag to pan · Wheel zoom</div>
-                        <div>· Keys: [1] Overview · [2] Top · [F] Follow</div>
-                        <div>· Keys: [L] Labels · [N] Day/Night · [/] Delegate</div>
-                    </div>
-                </Section>
-            </OfficeSidePanel>
-        );
-    }
-=======
->>>>>>> origin/master
 
                 <Section title={`Active floor tasks (${activeTasks.length})`}>
                     {activeTasks.length === 0 ? (
@@ -399,30 +350,6 @@ export function AgentInspector() {
                 </div>
             </Section>
 
-<<<<<<< HEAD
-            {agent.rosterKind === "live" && (
-                <Section title="Live UMKM Kasir telemetry">
-                    {agent.liveUnavailable ? (
-                        <p className="text-[11px] text-amber-300">{agent.liveUnavailable}</p>
-                    ) : agent.liveMetrics ? (
-                        <ul className="space-y-1 text-[11px]">
-                            <li>
-                                <span className="text-slate-400">WA chats today:</span> <span className="font-semibold text-white">{agent.liveMetrics.waChatsToday}</span>
-                            </li>
-                            <li>
-                                <span className="text-slate-400">Transactions:</span> <span className="font-semibold text-white">{agent.liveMetrics.transactionsToday}</span>
-                            </li>
-                            <li>
-                                <span className="text-slate-400">Hermes WA:</span> <span className="font-semibold text-white">{agent.liveMetrics.waOnline ? "online" : "offline"}</span>
-                            </li>
-                            {agent.liveMetrics.lastActivityAt && (
-                                <li className="text-slate-400">Last activity {timeAgo(agent.liveMetrics.lastActivityAt, now)}</li>
-                            )}
-                        </ul>
-                    ) : (
-                        <p className="text-[11px] text-amber-300">Telemetry unavailable</p>
-                    )}
-=======
             {agent.dbId && (
                 <Section title="Pengaturan toko">
                     <div className="mb-1.5 flex items-center justify-end">
@@ -474,39 +401,23 @@ export function AgentInspector() {
                     <Link href="/admin/connect-wa" className="mt-2 inline-block text-[10px] font-semibold text-orange-200/90 hover:text-orange-100">
                         Hubungkan / kelola WhatsApp →
                     </Link>
->>>>>>> origin/master
                 </Section>
             )}
 
             <Section title="Agentic OS & metrics">
                 <div className="mb-2 flex items-center justify-between gap-2 border border-white/10 bg-white/[0.02] p-2 text-[10.5px]">
                     <div className="min-w-0 flex-1 text-slate-300">
-<<<<<<< HEAD
-                        {dataMode === "live" ? (
-                            <>
-                                <span className="text-white">{agent.queued ?? 0}</span> queued · <span className="text-white">{agent.review ?? 0}</span> review
-=======
                         {isKasir && agent.rosterKind === "live" ? (
                             <span className="text-emerald-200/90">Kasir UMKM · metrik WA live (read-only)</span>
                         ) : agent.rosterKind === "live" || dataMode === "live" ? (
                             <>
                                 <span className="text-white">{agent.queued ?? 0}</span> queued ·{" "}
                                 <span className={cx("text-white", agent.review ? "text-purple-300" : undefined)}>{agent.review ?? 0}</span> to review
->>>>>>> origin/master
                             </>
                         ) : (
                             <span className="text-slate-400">Simulated runtime</span>
                         )}
                     </div>
-<<<<<<< HEAD
-                    <button
-                        type="button"
-                        onClick={() => launchOs("studio", agent.dbId ? { agentId: agent.dbId } : {})}
-                        className="inline-flex items-center gap-1 border border-orange-400/50 bg-orange-500/10 px-2 py-0.5 text-[10px] text-orange-200 hover:border-orange-300 hover:text-white"
-                    >
-                        <SlidersHorizontal className="h-2.5 w-2.5" /> studio
-                    </button>
-=======
                     {!isTenantOwner && (
                         <button
                             type="button"
@@ -516,7 +427,6 @@ export function AgentInspector() {
                             <SlidersHorizontal className="h-2.5 w-2.5" /> studio
                         </button>
                     )}
->>>>>>> origin/master
                     <button
                         type="button"
                         onClick={() => launchOs("tasks", agent.dbId ? { agentId: agent.dbId } : {})}

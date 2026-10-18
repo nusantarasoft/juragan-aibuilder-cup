@@ -1,54 +1,61 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef, useCallback, useMemo } from "react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
+import { create } from "zustand";
+import { ThemeProvider as NextThemesProvider } from "next-themes";
+import {
+    AppWindow,
+    Box,
+    Cpu,
+    GripHorizontal,
+    Hexagon,
+    Maximize2,
+    Minus,
+    PanelLeft,
+    PanelLeftClose,
+    PanelLeftOpen,
+    PanelRight,
+    PanelRightClose,
+    PanelRightOpen,
+    Search,
+    X,
+} from "lucide-react";
 import { AnimatedThemeToggler } from "@/components/magicui/animated-theme-toggler";
 import FloatingOrbMenu from "../dock/FloatingOrbMenu";
 import {
     LogoutOutlined,
     SearchOutlined,
-    InfoCircleFilled,
-    QuestionCircleFilled,
     SettingOutlined,
     HomeOutlined,
     FileTextOutlined,
     PushpinOutlined,
-    PushpinFilled,
     StarOutlined,
-    StarFilled,
     HistoryOutlined,
     ClockCircleOutlined,
     PlusOutlined,
     FileAddOutlined,
     AppstoreOutlined,
-    RobotOutlined,
     DeleteOutlined,
     ShareAltOutlined,
     CopyOutlined,
     SwapOutlined,
     UserOutlined,
-    DownOutlined,
-    MenuOutlined,
-    CloseOutlined,
-    TeamOutlined,
-    GlobalOutlined,
-    CodeOutlined,
     DashboardOutlined,
     SafetyCertificateOutlined,
-    BellOutlined,
     CodeSandboxOutlined,
 } from "@ant-design/icons";
 import {
     PageContainer,
     ProCard,
     ProConfigProvider,
-    ProLayout,
 } from "@ant-design/pro-components";
 import {
     ConfigProvider,
     Dropdown,
     Input,
+    Menu,
     theme,
     Popover,
     Avatar,
@@ -58,16 +65,15 @@ import {
     message,
     Popconfirm,
     Divider,
-    Badge,
     Segmented,
 } from "antd";
+import type { MenuProps } from "antd";
 import AIStudioDrawer from "./AIStudioDrawer";
 import AgentSessionOverlay from "@/components/agent-session/AgentSessionOverlay";
 import CommandPalette from "../common/CommandPalette";
 import ThemeDrawer from "./ThemeDrawer";
 import { useRouter, usePathname } from "next/navigation";
 import menuConfig from "@/config/menuConfig";
-import GlitchText from "@/components/react-bits/GlitchText";
 import { usePreferencesStore, hexToRgb } from "@/store/usePreferencesStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { filterMenuTreeForAppRole } from "@/lib/tenantOwnerMenu";
@@ -79,15 +85,8 @@ import { useDockStore } from "@/store/useDockStore";
 import ModuleIllustrationCards from "./ModuleIllustrationCards";
 import OnlineUsersAvatars, { SIDER_FOOTER_ROW_HEIGHT } from "./OnlineUsersAvatars";
 import { MacWaveDock } from "../dock/MacWaveDock";
-import { getVOTheme } from "./voTheme";
+import { getVOTheme, type VOTheme } from "./voTheme";
 import { TamagotchiGlobal } from "../helper/TamagotchiGlobal";
-import LeftDockToolbar from "./LeftDockToolbar";
-// Dynamic import for MetaBalls to prevent SSR crash (ogl WebGL library requires browser)
-const MetaBalls = dynamic(
-    () => import("@/components/react-bits/MetaBalls"),
-    { ssr: false }
-);
-import { SpeedDial } from 'primereact/speeddial';
 import DockWindow from "@/components/dock/DockWindow";
 import AthanWidget from "@/components/dock/widgets/AthanWidget";
 import CalculatorWidget from "@/components/dock/widgets/CalculatorWidget";
@@ -98,103 +97,580 @@ import PongWidget from "@/components/dock/widgets/PongWidget";
 
 const { Text } = Typography;
 
-// MacDock widget data for the left dock items (Productivity)
-const LEFT_DOCK_WIDGETS = [
-    { id: 'notes', label: 'Notes', icon: '📝', width: 400, height: 500 },
-    { id: 'tasks', label: 'Tasks', icon: '✅', width: 350, height: 450 },
-    { id: 'calendar', label: 'Calendar', icon: '📅', width: 350, height: 400 },
-    { id: 'clock', label: 'Clock', icon: '⏱️', width: 300, height: 350 },
-    { id: 'contacts', label: 'Contacts', icon: '👤', width: 350, height: 500 },
-    { id: 'email', label: 'Mail', icon: '📧', width: 450, height: 600 },
-    { id: 'files', label: 'Files', icon: '📁', width: 500, height: 400 },
-    { id: 'messages', label: 'Messages', icon: '💬', width: 400, height: 550 },
-] as const;
+const ORANGE = "#fb923c";
+const SKY = "#38bdf8";
 
-// MacDock widget data for the bottom dock items
-const BOTTOM_DOCK_WIDGETS = [
-    { id: 'analytics', label: 'Analytics', icon: '📊', width: 600, height: 400 },
-    { id: 'calculator', label: 'Calculator', icon: '🧮', width: 320, height: 480 },
-    { id: 'terminal', label: 'Terminal', icon: '💻', width: 600, height: 400 },
-    { id: 'snake', label: 'Snake', icon: '🐍', width: 450, height: 600 },
-    { id: 'pong', label: 'Pong', icon: '🏓', width: 450, height: 500 },
-    { id: 'athan', label: 'Athan', icon: '🧭', width: 350, height: 450 },
-    { id: 'robot', label: 'AI Assistant', icon: '🤖', width: 400, height: 600 },
-    { id: 'weather', label: 'Weather', icon: '⛅', width: 350, height: 350 },
-    { id: 'music', label: 'Music', icon: '🎵', width: 350, height: 450 },
-    { id: 'settings', label: 'Settings', icon: '⚙️', width: 500, height: 500 },
-    { id: 'add-widget', label: 'Add Widget', icon: '➕', width: 400, height: 300 },
-] as const;
+const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(" ");
 
-// Search Input Component for Header
-const SearchInput = () => {
-    const { token } = theme.useToken();
-    return (
-        <div
-            key="SearchOutlined"
-            aria-hidden
-            style={{
-                display: "flex",
-                alignItems: "center",
-                marginInlineEnd: 24,
-            }}
-            onMouseDown={(e) => {
-                e.stopPropagation();
-                e.preventDefault();
-            }}
-        >
-            <Input
-                style={{
-                    borderRadius: 4,
-                    marginInlineEnd: 12,
-                    backgroundColor: token.colorBgTextHover,
-                }}
-                prefix={
-                    <SearchOutlined
-                        style={{
-                            color: token.colorTextLightSolid,
-                        }}
-                    />
-                }
-                placeholder="Search..."
-                variant="borderless"
-            />
-        </div>
-    );
+const SCROLL_Y =
+    "overflow-y-auto overscroll-contain [scrollbar-width:thin] [scrollbar-color:rgba(255,255,255,0.12)_transparent] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-white/10 [&::-webkit-scrollbar-thumb:hover]:bg-white/25";
+
+/* ------------------------------------------------------------------ */
+/* Agentic OS Dockable / Windowed / Minimized Side Panels for Admin    */
+/* ------------------------------------------------------------------ */
+
+export type AdminPanelId = "left" | "right";
+export type AdminPanelMode = "pinned-left" | "pinned-right" | "windowed" | "minimized";
+
+export interface AdminPanelState {
+    mode: AdminPanelMode;
+    lastPin: "pinned-left" | "pinned-right";
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+    z: number;
+}
+
+const MIN_PILL_W = 284;
+const MIN_PILL_H = 34;
+const SNAP_EDGE_PX = 56;
+const OUTER_COLLAPSED_WIDTH = 64;
+const INNER_COLLAPSED_WIDTH = 68;
+
+export const DEFAULT_ADMIN_PANELS: Record<AdminPanelId, AdminPanelState> = {
+    left: { mode: "pinned-left", lastPin: "pinned-left", x: 16, y: 12, w: 260, h: 600, z: 40 },
+    right: { mode: "pinned-left", lastPin: "pinned-left", x: 288, y: 12, w: 248, h: 600, z: 41 },
 };
 
-// AppList data
+function readInitialDarkMode(): boolean {
+    if (typeof window === "undefined") return true;
+    try {
+        if (!localStorage.getItem("ns.admin.aosDarkInit.v1")) {
+            localStorage.setItem("ns.admin.aosDarkInit.v1", "1");
+            localStorage.setItem("cms-dark-mode", "true");
+            document.documentElement.classList.add("dark");
+            return true;
+        }
+        const saved = localStorage.getItem("cms-dark-mode");
+        const isDark = saved === null ? true : saved === "true";
+        if (isDark) {
+            document.documentElement.classList.add("dark");
+        } else {
+            document.documentElement.classList.remove("dark");
+        }
+        return isDark;
+    } catch {
+        return true;
+    }
+}
+
+interface AdminLayoutState {
+    panels: Record<AdminPanelId, AdminPanelState>;
+    dropEdge: "left" | "right" | null;
+    focus: boolean;
+    darkMode: boolean;
+    setDarkMode: (dark: boolean) => void;
+    patchPanel: (id: AdminPanelId, p: Partial<AdminPanelState>) => void;
+    bringFront: (id: AdminPanelId) => void;
+    setDropEdge: (edge: "left" | "right" | null) => void;
+    toggleFocus: () => void;
+    resetLayout: () => void;
+}
+
+export const useAdminLayout = create<AdminLayoutState>((set, get) => ({
+    panels: {
+        left: { ...DEFAULT_ADMIN_PANELS.left },
+        right: { ...DEFAULT_ADMIN_PANELS.right },
+    },
+    dropEdge: null,
+    focus: false,
+    darkMode: readInitialDarkMode(),
+    setDarkMode: (darkMode) => set({ darkMode }),
+    patchPanel: (id, p) =>
+        set((s) => {
+            const cur = s.panels[id];
+            const nextMode = p.mode ?? cur.mode;
+            const lastPin =
+                nextMode === "pinned-left" || nextMode === "pinned-right"
+                    ? nextMode
+                    : p.lastPin ?? cur.lastPin;
+            return {
+                panels: {
+                    ...s.panels,
+                    [id]: { ...cur, ...p, lastPin },
+                },
+            };
+        }),
+    bringFront: (id) => {
+        const s = get();
+        const topZ = Math.max(s.panels.left.z, s.panels.right.z);
+        if (s.panels[id].z <= topZ) {
+            set({
+                panels: {
+                    ...s.panels,
+                    [id]: { ...s.panels[id], z: topZ + 1 },
+                },
+            });
+        }
+    },
+    setDropEdge: (dropEdge) => set({ dropEdge }),
+    toggleFocus: () => set((s) => ({ focus: !s.focus })),
+    resetLayout: () =>
+        set({
+            panels: {
+                left: { ...DEFAULT_ADMIN_PANELS.left },
+                right: { ...DEFAULT_ADMIN_PANELS.right },
+            },
+            dropEdge: null,
+            focus: false,
+        }),
+}));
+
+function AdminSidePanel({
+    id,
+    title,
+    summary,
+    accent,
+    collapsed,
+    onToggleCollapsed,
+    bodyRef,
+    className,
+    children,
+}: {
+    id: AdminPanelId;
+    title: string;
+    summary: string;
+    accent: string;
+    collapsed: boolean;
+    onToggleCollapsed: () => void;
+    bodyRef: React.RefObject<HTMLDivElement | null>;
+    className?: string;
+    children: React.ReactNode;
+}) {
+    const panel = useAdminLayout((s) => s.panels[id]);
+    const patchPanel = useAdminLayout((s) => s.patchPanel);
+    const bringFront = useAdminLayout((s) => s.bringFront);
+    const setDropEdge = useAdminLayout((s) => s.setDropEdge);
+
+    const dragRef = useRef<{
+        kind: "move" | "resize";
+        startX: number;
+        startY: number;
+        origX: number;
+        origY: number;
+        origW: number;
+        origH: number;
+        startedPinned: boolean;
+        currentEdge: "left" | "right" | null;
+    } | null>(null);
+
+    const getBounds = () => {
+        const el = bodyRef.current ?? (typeof document !== "undefined" ? (document.querySelector("[data-admin-body]") as HTMLElement | null) : null);
+        const r = el?.getBoundingClientRect();
+        return {
+            left: r?.left ?? 0,
+            top: r?.top ?? 36,
+            width: r?.width ?? (typeof window !== "undefined" ? window.innerWidth : 1440),
+            height: r?.height ?? (typeof window !== "undefined" ? window.innerHeight - 36 : 800),
+        };
+    };
+
+    const resolveX = (w: number, bw: number) => {
+        if (panel.x >= 0) return Math.max(8, Math.min(Math.max(8, bw - w - 8), panel.x));
+        return id === "right" ? Math.min(Math.max(8, bw - w - 8), 288) : 16;
+    };
+
+    const switchToWindowed = () => {
+        bringFront(id);
+        if (panel.mode === "windowed") {
+            patchPanel(id, { mode: panel.lastPin });
+            return;
+        }
+        const b = getBounds();
+        const w = Math.max(240, panel.w || 260);
+        const x = panel.x >= 0 ? Math.max(12, Math.min(b.width - w - 12, panel.x)) : id === "right" ? Math.min(Math.max(12, b.width - w - 12), 288) : 20;
+        const y = Math.max(10, Math.min(b.height - 260, panel.y || 14));
+        patchPanel(id, { mode: "windowed", x, y, w });
+    };
+
+    const switchToMinimized = () => {
+        bringFront(id);
+        if (panel.mode === "minimized") {
+            patchPanel(id, { mode: "windowed" });
+            return;
+        }
+        const b = getBounds();
+        const isPinned = panel.mode === "pinned-left" || panel.mode === "pinned-right";
+        const x = isPinned
+            ? panel.mode === "pinned-right"
+                ? Math.max(12, b.width - MIN_PILL_W - 16)
+                : id === "right"
+                  ? Math.min(Math.max(12, b.width - MIN_PILL_W - 16), 16 + MIN_PILL_W + 8)
+                  : 16
+            : resolveX(MIN_PILL_W, b.width);
+        const y = isPinned ? 12 : Math.max(8, Math.min(b.height - MIN_PILL_H - 16, panel.y));
+        patchPanel(id, { mode: "minimized", x, y });
+    };
+
+    const onHeaderPointerDown = (e: React.PointerEvent) => {
+        if (e.button !== 0) return;
+        e.preventDefault();
+        bringFront(id);
+        const b = getBounds();
+        const isPinned = panel.mode === "pinned-left" || panel.mode === "pinned-right";
+        const effW = panel.mode === "minimized" ? MIN_PILL_W : panel.w;
+        const startX = isPinned
+            ? panel.mode === "pinned-left"
+                ? id === "right"
+                    ? 272
+                    : 12
+                : Math.max(12, b.width - effW - 12)
+            : resolveX(effW, b.width);
+        const startY = isPinned ? 12 : panel.y;
+        dragRef.current = {
+            kind: "move",
+            startX: e.clientX,
+            startY: e.clientY,
+            origX: startX,
+            origY: startY,
+            origW: panel.w,
+            origH: panel.h,
+            startedPinned: isPinned,
+            currentEdge: null,
+        };
+        (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    };
+
+    const onHeaderPointerMove = (e: React.PointerEvent) => {
+        const d = dragRef.current;
+        if (!d || d.kind !== "move") return;
+        const dx = e.clientX - d.startX;
+        const dy = e.clientY - d.startY;
+        const b = getBounds();
+
+        if (d.startedPinned) {
+            if (Math.hypot(dx, dy) < 8) return;
+            d.startedPinned = false;
+            const newOrigX = Math.max(8, Math.min(b.width - d.origW - 8, Math.round(e.clientX - b.left - d.origW / 2)));
+            d.origX = newOrigX;
+            d.origY = 12;
+            d.startX = e.clientX;
+            d.startY = e.clientY;
+            patchPanel(id, { mode: "windowed", x: newOrigX, y: 12 });
+            return;
+        }
+
+        const effW = panel.mode === "minimized" ? MIN_PILL_W : panel.w;
+        const nx = Math.max(6, Math.min(Math.max(6, b.width - effW - 6), Math.round(d.origX + dx)));
+        const maxBottom = Math.max(MIN_PILL_H + 12, b.height - (panel.mode === "minimized" ? MIN_PILL_H + 16 : 56));
+        const ny = Math.max(6, Math.min(maxBottom, Math.round(d.origY + dy)));
+
+        const relX = e.clientX - b.left;
+        const edge: "left" | "right" | null = relX <= SNAP_EDGE_PX ? "left" : relX >= b.width - SNAP_EDGE_PX ? "right" : null;
+        if (edge !== d.currentEdge) {
+            d.currentEdge = edge;
+            setDropEdge(edge);
+        }
+        patchPanel(id, { x: nx, y: ny });
+    };
+
+    const onHeaderPointerUp = () => {
+        const d = dragRef.current;
+        if (!d) return;
+        dragRef.current = null;
+        setDropEdge(null);
+        if (d.currentEdge === "left") {
+            patchPanel(id, { mode: "pinned-left", lastPin: "pinned-left" });
+        } else if (d.currentEdge === "right") {
+            patchPanel(id, { mode: "pinned-right", lastPin: "pinned-right" });
+        }
+    };
+
+    const onResizePointerDown = (e: React.PointerEvent) => {
+        if (e.button !== 0) return;
+        e.preventDefault();
+        e.stopPropagation();
+        bringFront(id);
+        dragRef.current = {
+            kind: "resize",
+            startX: e.clientX,
+            startY: e.clientY,
+            origX: panel.x,
+            origY: panel.y,
+            origW: panel.w,
+            origH: panel.h,
+            startedPinned: false,
+            currentEdge: null,
+        };
+        (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    };
+
+    const onResizePointerMove = (e: React.PointerEvent) => {
+        const d = dragRef.current;
+        if (!d || d.kind !== "resize") return;
+        const b = getBounds();
+        const dx = e.clientX - d.startX;
+        const dy = e.clientY - d.startY;
+        const nw = Math.max(220, Math.min(480, Math.round(d.origW + dx)));
+        const nh = Math.max(240, Math.min(Math.max(260, b.height - panel.y - 16), Math.round(d.origH + dy)));
+        patchPanel(id, { w: nw, h: nh });
+    };
+
+    const onResizePointerUp = () => {
+        dragRef.current = null;
+    };
+
+    const btnCls = (active: boolean) =>
+        cx(
+            "flex h-[18px] w-[18px] items-center justify-center border transition",
+            active
+                ? "border-orange-400/70 bg-orange-500/15 text-orange-200"
+                : "border-white/15 text-slate-400 hover:border-white/40 hover:text-white",
+        );
+
+    const isPinned = panel.mode === "pinned-left" || panel.mode === "pinned-right";
+    const isCollapsedPinned = isPinned && collapsed;
+
+    const headerControls = (
+        <div className={cx("flex shrink-0 items-center gap-1", !isCollapsedPinned && "ml-auto")} onPointerDown={(e) => e.stopPropagation()}>
+            {isPinned && (
+                <button
+                    type="button"
+                    data-testid={`admin-panel-${id}-collapse`}
+                    title={collapsed ? "Expand sidebar" : "Collapse sidebar to icon rail"}
+                    onClick={onToggleCollapsed}
+                    className={btnCls(collapsed)}
+                >
+                    {panel.mode === "pinned-left" ? (
+                        collapsed ? <PanelLeftOpen className="h-2.5 w-2.5" /> : <PanelLeftClose className="h-2.5 w-2.5" />
+                    ) : (
+                        collapsed ? <PanelRightOpen className="h-2.5 w-2.5" /> : <PanelRightClose className="h-2.5 w-2.5" />
+                    )}
+                </button>
+            )}
+            {!isCollapsedPinned && (
+                <>
+                    <button
+                        type="button"
+                        data-testid={`admin-panel-${id}-pin-left`}
+                        title="Pin to left side"
+                        onClick={() => patchPanel(id, { mode: "pinned-left", lastPin: "pinned-left" })}
+                        className={btnCls(panel.mode === "pinned-left")}
+                    >
+                        <PanelLeft className="h-2.5 w-2.5" />
+                    </button>
+                    <button
+                        type="button"
+                        data-testid={`admin-panel-${id}-pin-right`}
+                        title="Pin to right side"
+                        onClick={() => patchPanel(id, { mode: "pinned-right", lastPin: "pinned-right" })}
+                        className={btnCls(panel.mode === "pinned-right")}
+                    >
+                        <PanelRight className="h-2.5 w-2.5" />
+                    </button>
+                    <button
+                        type="button"
+                        data-testid={`admin-panel-${id}-window`}
+                        title={panel.mode === "windowed" ? "Dock back to side" : "Float as draggable window"}
+                        onClick={switchToWindowed}
+                        className={btnCls(panel.mode === "windowed")}
+                    >
+                        <AppWindow className="h-2.5 w-2.5" />
+                    </button>
+                    <button
+                        type="button"
+                        data-testid={`admin-panel-${id}-minimize`}
+                        title={panel.mode === "minimized" ? "Restore window" : "Minimize to draggable bar"}
+                        onClick={switchToMinimized}
+                        className={btnCls(panel.mode === "minimized")}
+                    >
+                        {panel.mode === "minimized" ? <Maximize2 className="h-2.5 w-2.5" /> : <Minus className="h-2.5 w-2.5" />}
+                    </button>
+                </>
+            )}
+        </div>
+    );
+
+    if (panel.mode === "minimized") {
+        const b = getBounds();
+        const left = resolveX(MIN_PILL_W, b.width);
+        return (
+            <aside
+                data-testid={`admin-panel-${id}`}
+                data-mode="minimized"
+                onPointerDown={() => bringFront(id)}
+                className={cx(
+                    "pointer-events-auto absolute flex items-center overflow-hidden border border-white/25 bg-[#0b0e13]/95 font-mono text-slate-100 shadow-[0_20px_50px_-10px_rgba(0,0,0,0.92)] backdrop-blur-md",
+                    className,
+                )}
+                style={{
+                    left,
+                    top: panel.y,
+                    width: MIN_PILL_W,
+                    height: MIN_PILL_H,
+                    zIndex: panel.z,
+                    borderLeftColor: accent,
+                    borderLeftWidth: 2,
+                }}
+            >
+                <div
+                    onPointerDown={onHeaderPointerDown}
+                    onPointerMove={onHeaderPointerMove}
+                    onPointerUp={onHeaderPointerUp}
+                    onDoubleClick={() => patchPanel(id, { mode: "windowed" })}
+                    title="Drag to move or drop on left/right edge to pin · Double-click to expand"
+                    className="flex h-full w-full cursor-grab select-none items-center gap-1.5 px-2.5 active:cursor-grabbing"
+                >
+                    <GripHorizontal className="h-3 w-3 shrink-0 text-slate-500" />
+                    <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: accent }} />
+                    <span className="shrink-0 text-[9.5px] font-semibold uppercase tracking-[0.16em] text-white">{title}</span>
+                    <span className="min-w-0 flex-1 truncate text-[9px] text-slate-400">· {summary}</span>
+                    {headerControls}
+                </div>
+            </aside>
+        );
+    }
+
+    if (panel.mode === "windowed") {
+        const b = getBounds();
+        const left = resolveX(panel.w, b.width);
+        const maxH = Math.max(240, b.height - panel.y - 16);
+        return (
+            <aside
+                data-testid={`admin-panel-${id}`}
+                data-mode="windowed"
+                onPointerDown={() => bringFront(id)}
+                className={cx(
+                    "pointer-events-auto absolute flex flex-col overflow-hidden border border-white/20 bg-[#0b0e13]/95 font-mono text-slate-100 shadow-[0_28px_70px_-15px_rgba(0,0,0,0.95)] backdrop-blur-md",
+                    className,
+                )}
+                style={{
+                    left,
+                    top: panel.y,
+                    width: panel.w,
+                    height: Math.min(panel.h, maxH),
+                    zIndex: panel.z,
+                    borderTopColor: accent,
+                    borderTopWidth: 2,
+                }}
+            >
+                <div
+                    onPointerDown={onHeaderPointerDown}
+                    onPointerMove={onHeaderPointerMove}
+                    onPointerUp={onHeaderPointerUp}
+                    onDoubleClick={() => patchPanel(id, { mode: panel.lastPin })}
+                    title="Drag to move · Drop on left/right edge to pin · Double-click to dock"
+                    className="flex h-8 shrink-0 cursor-grab select-none items-center gap-2 border-b border-white/10 bg-white/[0.03] px-3 active:cursor-grabbing"
+                >
+                    <GripHorizontal className="h-3 w-3 shrink-0 text-slate-500" />
+                    <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: accent }} />
+                    <span className="truncate text-[10px] font-semibold uppercase tracking-[0.18em] text-white">{title}</span>
+                    {headerControls}
+                </div>
+                <div className="flex min-h-0 flex-1 flex-col overflow-hidden">{children}</div>
+                <div
+                    data-testid={`admin-panel-${id}-resize`}
+                    onPointerDown={onResizePointerDown}
+                    onPointerMove={onResizePointerMove}
+                    onPointerUp={onResizePointerUp}
+                    title="Drag to resize window"
+                    className="absolute bottom-0 right-0 z-[5] h-3.5 w-3.5 cursor-se-resize"
+                    style={{ background: `linear-gradient(135deg, transparent 50%, ${accent}88 50%)` }}
+                />
+            </aside>
+        );
+    }
+
+    const pinnedW = isCollapsedPinned ? (id === "left" ? OUTER_COLLAPSED_WIDTH : INNER_COLLAPSED_WIDTH) : panel.w;
+
+    return (
+        <aside
+            data-testid={`admin-panel-${id}`}
+            data-mode={panel.mode}
+            className={cx(
+                "pointer-events-auto relative z-20 flex h-full shrink-0 flex-col border-white/[0.08] bg-[#0b0e13]/95 font-mono text-slate-100 backdrop-blur-md transition-[width] duration-150",
+                panel.mode === "pinned-left" ? "order-1 border-r" : "order-3 border-l",
+                isCollapsedPinned && "ant-layout-sider-collapsed",
+                className,
+            )}
+            style={{ width: pinnedW }}
+        >
+            <div
+                onPointerDown={onHeaderPointerDown}
+                onPointerMove={onHeaderPointerMove}
+                onPointerUp={onHeaderPointerUp}
+                onDoubleClick={switchToWindowed}
+                title="Drag to undock into floating window · Double-click to float"
+                className={cx(
+                    "flex h-7 shrink-0 cursor-grab select-none items-center gap-1.5 border-b border-white/[0.07] bg-white/[0.015] active:cursor-grabbing",
+                    isCollapsedPinned ? "justify-center px-1" : "px-3",
+                )}
+            >
+                {!isCollapsedPinned && (
+                    <>
+                        <GripHorizontal className="h-3 w-3 shrink-0 text-slate-600" />
+                        <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: accent }} />
+                        <span className="truncate text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-400">{title}</span>
+                    </>
+                )}
+                {headerControls}
+            </div>
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden">{children}</div>
+        </aside>
+    );
+}
+
+/* ------------------------------------------------------------------ */
+/* Docks & Menu Helpers                                                */
+/* ------------------------------------------------------------------ */
+
+const LEFT_DOCK_WIDGETS = [
+    { id: "notes", label: "Notes", icon: "📝", width: 400, height: 500 },
+    { id: "tasks", label: "Tasks", icon: "✅", width: 350, height: 450 },
+    { id: "calendar", label: "Calendar", icon: "📅", width: 350, height: 400 },
+    { id: "clock", label: "Clock", icon: "⏱️", width: 300, height: 350 },
+    { id: "contacts", label: "Contacts", icon: "👤", width: 350, height: 500 },
+    { id: "email", label: "Mail", icon: "📧", width: 450, height: 600 },
+    { id: "files", label: "Files", icon: "📁", width: 500, height: 400 },
+    { id: "messages", label: "Messages", icon: "💬", width: 400, height: 550 },
+] as const;
+
+const BOTTOM_DOCK_WIDGETS = [
+    { id: "analytics", label: "Analytics", icon: "📊", width: 600, height: 400 },
+    { id: "calculator", label: "Calculator", icon: "🧮", width: 320, height: 480 },
+    { id: "terminal", label: "Terminal", icon: "💻", width: 600, height: 400 },
+    { id: "snake", label: "Snake", icon: "🐍", width: 450, height: 600 },
+    { id: "pong", label: "Pong", icon: "🏓", width: 450, height: 500 },
+    { id: "athan", label: "Athan", icon: "🧭", width: 350, height: 450 },
+    { id: "robot", label: "AI Assistant", icon: "🤖", width: 400, height: 600 },
+    { id: "weather", label: "Weather", icon: "⛅", width: 350, height: 350 },
+    { id: "music", label: "Music", icon: "🎵", width: 350, height: 450 },
+    { id: "settings", label: "Settings", icon: "⚙️", width: 500, height: 500 },
+    { id: "add-widget", label: "Add Widget", icon: "➕", width: 400, height: 300 },
+] as const;
+
 const appList = [
     {
         key: "cms",
         icon: "https://gw.alipayobjects.com/zos/rmsportal/KDpgvguMpGfqaHPjicRK.svg",
         title: "Nusantarasoft CMS",
         desc: "Content Management System",
-        url: "/admin",
+        url: "/admin/dashboard",
     },
     {
-        key: "pm",
-        icon: "https://gw.alipayobjects.com/zos/bmw-prod/d3e3eb39-1cd7-4aa5-827c-877deced6b7e/kvx8snxc_w283_h280.png",
-        title: "Project Management",
-        desc: "PMBOK & Agile Tracker",
-        url: "/admin/pm/dashboard",
-    },
-    {
-        key: "crm",
+        key: "aos",
         icon: "https://gw.alipayobjects.com/zos/antfincdn/upvrAjAPQX/Logo_Tech%252520UI.svg",
-        title: "CRM Suite",
-        desc: "Sales & Client Tracking",
-        url: "/admin/crm/dashboard",
+        title: "Agentic OS",
+        desc: "Mission-Control AI OS",
+        url: "/admin/agentic-os",
+    },
+    {
+        key: "vo",
+        icon: "https://gw.alipayobjects.com/zos/bmw-prod/d3e3eb39-1cd7-4aa5-827c-877deced6b7e/kvx8snxc_w283_h280.png",
+        title: "Virtual Office",
+        desc: "3D AI Agent HQ",
+        url: "/admin/virtual-office",
     },
     {
         key: "landing",
         icon: "https://gw.alipayobjects.com/zos/antfincdn/upvrAjAPQX/Logo_Tech%252520UI.svg",
         title: "Landing Page",
-        desc: "Public website",
+        desc: "Public Website",
         url: "/",
     },
 ];
 
-// Helper to find menu item by path
 const findMenuItemByPath = (routes: any[], path: string): any => {
     for (const route of routes) {
         if (route.path === path) return route;
@@ -206,14 +682,13 @@ const findMenuItemByPath = (routes: any[], path: string): any => {
     return null;
 };
 
-// Dummy inner menu routes based on selected segment
 const getInnerMenuRoutes = (segment: string, pinned: any[], starred: any[]) => {
     const normalizePath = (p: string) => p.replace(/\/$/, "");
-    
+
     const resolveIcon = (path: string, fallback: React.ReactNode) => {
         if (!menuConfig?.route?.routes) return fallback;
         const normalizedTarget = normalizePath(path);
-        
+
         const findIconByNormalizedPath = (routes: any[], target: string): React.ReactNode | null => {
             for (const route of routes) {
                 if (normalizePath(route.path) === target) return route.icon;
@@ -230,9 +705,7 @@ const getInnerMenuRoutes = (segment: string, pinned: any[], starred: any[]) => {
 
     switch (segment) {
         case "new":
-            return [
-                { path: "/admin/pages/builder", name: "Create New Page", icon: <PlusOutlined /> },
-            ];
+            return [{ path: "/admin/pages/builder", name: "Create New Page", icon: <PlusOutlined /> }];
         case "recent":
             return [
                 { path: "/admin/pages/list", name: "Homepage", icon: <FileTextOutlined /> },
@@ -245,16 +718,16 @@ const getInnerMenuRoutes = (segment: string, pinned: any[], starred: any[]) => {
                 { path: "/admin/blocks/content", name: "New Block", icon: <FileAddOutlined /> },
             ];
         case "pinned":
-            return pinned.map(item => ({
+            return pinned.map((item) => ({
                 path: item.path,
-                name: typeof item.name === 'string' ? item.name : 'Untitled Item',
-                icon: resolveIcon(item.path, <PushpinOutlined />)
+                name: typeof item.name === "string" ? item.name : "Untitled Item",
+                icon: resolveIcon(item.path, <PushpinOutlined />),
             }));
         case "starred":
-            return starred.map(item => ({
+            return starred.map((item) => ({
                 path: item.path,
-                name: typeof item.name === 'string' ? item.name : 'Untitled Item',
-                icon: resolveIcon(item.path, <StarOutlined />)
+                name: typeof item.name === "string" ? item.name : "Untitled Item",
+                icon: resolveIcon(item.path, <StarOutlined />),
             }));
         case "history":
             return [
@@ -267,27 +740,6 @@ const getInnerMenuRoutes = (segment: string, pinned: any[], starred: any[]) => {
     }
 };
 
-// Get active parent module based on current pathname
-const getActiveParentModule = (pathname: string): { name: string; path: string; icon: React.ReactNode; routes: any[] } | null => {
-    if (!menuConfig?.route?.routes) return null;
-    for (const route of menuConfig.route.routes) {
-        if (route.routes && route.routes.length > 0 && pathname.startsWith(route.path)) {
-            return {
-                name: route.name,
-                path: route.path,
-                icon: route.icon,
-                routes: route.routes.map((r: any) => ({
-                    path: r.path,
-                    name: r.name,
-                    icon: r.icon,
-                    isLeaf: r.isLeaf,
-                })),
-            };
-        }
-    }
-    return null;
-};
-
 interface CMSLayoutProps {
     children: React.ReactNode;
     title?: React.ReactNode;
@@ -296,9 +748,10 @@ interface CMSLayoutProps {
     breadcrumb?: { title: string; path?: string }[];
 }
 
-/** Product casing for AI Studio routes (and a few common CMS segments). */
 const BREADCRUMB_LABELS: Record<string, string> = {
     "ai-studio": "AI Studio",
+    "agentic-os": "Agentic OS",
+    "virtual-office": "Virtual Office",
     umkm: "UMKM",
     "ai-gateway": "WhatsApp Gateway",
     "whatsapp-setup": "Setup WhatsApp",
@@ -316,12 +769,9 @@ const BREADCRUMB_LABELS: Record<string, string> = {
     advanced: "Advanced",
 };
 
-// Generate breadcrumb items from pathname
 function generateBreadcrumb(pathname: string): { title: string; path?: string }[] {
     const segments = pathname.split("/").filter(Boolean);
-    const items: { title: string; path?: string }[] = [
-        { title: "Home", path: "/admin/dashboard" },
-    ];
+    const items: { title: string; path?: string }[] = [{ title: "Home", path: "/admin/dashboard" }];
 
     let currentPath = "";
     segments.forEach((segment) => {
@@ -336,16 +786,20 @@ function generateBreadcrumb(pathname: string): { title: string; path?: string }[
     return items;
 }
 
-// App List Popover Content
 const AppListContent = ({ darkMode }: { darkMode: boolean }) => {
     const router = useRouter();
     return (
-        <div style={{ width: 280, padding: 8 }}>
-            <div style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: 8,
-            }}>
+        <div className="font-mono" style={{ width: 280, padding: 6 }}>
+            <div className="mb-2 border-b pb-1.5 text-[9.5px] font-semibold uppercase tracking-[0.2em]" style={{ borderColor: darkMode ? "rgba(255,255,255,0.1)" : "rgba(15,23,42,0.1)", color: ORANGE }}>
+                Nusantarasoft · Surfaces
+            </div>
+            <div
+                style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: 6,
+                }}
+            >
                 {appList.map((app) => (
                     <div
                         key={app.key}
@@ -358,37 +812,36 @@ const AppListContent = ({ darkMode }: { darkMode: boolean }) => {
                         }}
                         style={{
                             cursor: "pointer",
-                            padding: 12,
-                            borderRadius: 8,
-                            background: darkMode ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.02)",
-                            transition: "all 0.2s",
-                            textAlign: "center",
+                            padding: 10,
+                            borderRadius: 0,
+                            border: `1px solid ${darkMode ? "rgba(255,255,255,0.1)" : "rgba(15,23,42,0.1)"}`,
+                            background: darkMode ? "rgba(255,255,255,0.02)" : "rgba(15,23,42,0.02)",
+                            transition: "all 0.15s",
+                            textAlign: "left",
                         }}
                         onMouseEnter={(e) => {
-                            e.currentTarget.style.background = darkMode
-                                ? "rgba(255,255,255,0.08)"
-                                : "rgba(0,0,0,0.06)";
+                            e.currentTarget.style.borderColor = "rgba(251,146,60,0.6)";
+                            e.currentTarget.style.background = "rgba(251,146,60,0.08)";
                         }}
                         onMouseLeave={(e) => {
-                            e.currentTarget.style.background = darkMode
-                                ? "rgba(255,255,255,0.04)"
-                                : "rgba(0,0,0,0.02)";
+                            e.currentTarget.style.borderColor = darkMode ? "rgba(255,255,255,0.1)" : "rgba(15,23,42,0.1)";
+                            e.currentTarget.style.background = darkMode ? "rgba(255,255,255,0.02)" : "rgba(15,23,42,0.02)";
                         }}
                     >
-                        <Avatar
-                            src={app.icon}
-                            size={36}
-                            style={{ marginBottom: 8 }}
-                        />
+                        <Avatar src={app.icon} size={28} style={{ marginBottom: 6 }} />
                         <div>
-                            <Text strong style={{
-                                display: "block",
-                                fontSize: 12,
-                                color: darkMode ? "#fff" : "#000",
-                            }}>
+                            <Text
+                                strong
+                                className="font-mono"
+                                style={{
+                                    display: "block",
+                                    fontSize: 11,
+                                    color: darkMode ? "#f1f5f9" : "#0f172a",
+                                }}
+                            >
                                 {app.title}
                             </Text>
-                            <Text type="secondary" style={{ fontSize: 10 }}>
+                            <Text type="secondary" className="font-mono" style={{ fontSize: 9.5 }}>
                                 {app.desc}
                             </Text>
                         </div>
@@ -399,11 +852,83 @@ const AppListContent = ({ darkMode }: { darkMode: boolean }) => {
     );
 };
 
-// Shared header height for alignment
-const HEADER_HEIGHT = 56;
-// Collapsed widths
-const OUTER_COLLAPSED_WIDTH = 64;
-const INNER_COLLAPSED_WIDTH = 80;
+/** Recursively convert menuConfig routes into Ant Design Menu items with Agentic OS styling. */
+function buildAntMenuItems(
+    routes: any[],
+    collapsed: boolean,
+    query: string,
+    vo: VOTheme,
+    onNavigate: (path: string) => void,
+): NonNullable<MenuProps["items"]> {
+    const q = query.trim().toLowerCase();
+
+    const routeMatches = (r: any): boolean => {
+        if (!q) return true;
+        if (r.path?.includes("divider") && !r.icon) return false;
+        const selfMatch =
+            String(r.name ?? "").toLowerCase().includes(q) ||
+            String(r.path ?? "").toLowerCase().includes(q);
+        if (selfMatch) return true;
+        const sub = r.routes || r.children;
+        return Array.isArray(sub) && sub.some(routeMatches);
+    };
+
+    const out: NonNullable<MenuProps["items"]> = [];
+
+    for (const item of routes) {
+        if (item.path === "/admin/dashboard" || item.path === "/admin/activity") continue;
+
+        if (item.path?.includes("divider") && !item.icon) {
+            if (collapsed || q) continue;
+            out.push({
+                key: item.path,
+                disabled: true,
+                className: "aos-menu-divider-item",
+                label: (
+                    <div
+                        className="vo-divider-header flex items-center gap-1.5 font-mono text-[9.5px] font-semibold uppercase tracking-[0.2em]"
+                        style={{ color: vo.accent }}
+                    >
+                        <span className="inline-block h-1.5 w-1.5 shrink-0" style={{ background: vo.accent }} />
+                        <span>{item.name}</span>
+                    </div>
+                ),
+            });
+            continue;
+        }
+
+        if (!routeMatches(item)) continue;
+
+        const subRoutes = item.routes || item.children;
+        if (Array.isArray(subRoutes) && subRoutes.length > 0 && !item.isLeaf) {
+            const children = buildAntMenuItems(subRoutes, collapsed, query, vo, onNavigate);
+            if (q && children.length === 0 && !String(item.name ?? "").toLowerCase().includes(q)) continue;
+            out.push({
+                key: item.path,
+                icon: item.icon ? (
+                    <span className="anticon submenu-icon-el" style={{ display: "inline-flex", fontSize: 15, flexShrink: 0 }}>
+                        {item.icon}
+                    </span>
+                ) : undefined,
+                label: <span className="submenu-text-el font-mono text-[12px]">{item.name}</span>,
+                children,
+            });
+        } else {
+            out.push({
+                key: item.path,
+                icon: item.icon ? (
+                    <span className="anticon menuitem-icon-el" style={{ display: "inline-flex", fontSize: 15, flexShrink: 0 }}>
+                        {item.icon}
+                    </span>
+                ) : undefined,
+                label: <span className="menuitem-text-el font-mono text-[12px]">{item.name}</span>,
+                onClick: () => onNavigate(item.path || "/admin/dashboard"),
+            });
+        }
+    }
+
+    return out;
+}
 
 export default function CMSLayoutImpl({
     children,
@@ -416,20 +941,23 @@ export default function CMSLayoutImpl({
     const currentPath = usePathname();
     const appRole = useAuthStore((s) => s.user?.role);
     const [pathname, setPathname] = useState(currentPath || "/admin/dashboard");
+    const bodyRef = useRef<HTMLDivElement>(null);
 
     React.useEffect(() => {
         if (currentPath) {
             setPathname(currentPath);
         }
     }, [currentPath]);
-    const [innerCollapsed, setInnerCollapsed] = useState(false); // Default expanded
+
+    const [innerCollapsed, setInnerCollapsed] = useState(false);
     const [outerCollapsed, setOuterCollapsed] = useState(false);
-    
-    const { 
-        pinnedItems, 
-        togglePinned, 
-        isPinned, 
-        setStarred, 
+    const [menuQuery, setMenuQuery] = useState("");
+
+    const {
+        pinnedItems,
+        togglePinned,
+        isPinned,
+        setStarred,
         starredItems,
         isStarred,
         toggleStarred,
@@ -437,23 +965,27 @@ export default function CMSLayoutImpl({
         setSelectedSegment,
     } = usePreferencesStore();
 
-    const { dockMode, setDockMode, windows: dockWindows, openWindow: openDockWindow } = useDockStore();
+    const { windows: dockWindows, openWindow: openDockWindow } = useDockStore();
 
-    const [darkMode, setDarkMode] = useState(false);
+    const panels = useAdminLayout((s) => s.panels);
+    const dropEdge = useAdminLayout((s) => s.dropEdge);
+    const focus = useAdminLayout((s) => s.focus);
+    const toggleFocus = useAdminLayout((s) => s.toggleFocus);
+    const resetLayout = useAdminLayout((s) => s.resetLayout);
+    const darkMode = useAdminLayout((s) => s.darkMode);
+    const setDarkMode = useAdminLayout((s) => s.setDarkMode);
+
     const [appListOpen, setAppListOpen] = useState(false);
-    const [showBackground, setShowBackground] = useState(true);
     const [aiStudioVisible, setAIStudioVisible] = useState(false);
     const [themeDrawerVisible, setThemeDrawerVisible] = useState(false);
     const { themePalette } = usePreferencesStore();
     const themeColor = themePalette.primary;
-    // Virtual Office HUD look for sidemenus / docks / orb menu
     const vo = getVOTheme(darkMode);
-    const { cursors } = useWebSocketStore();
+    useWebSocketStore();
 
     // Controlled openKeys to prevent submenu collapse on navigation
     const [openKeys, setOpenKeys] = useState<string[]>(() => {
-        // Compute initial open keys from current path
-        const path = currentPath || '/admin/dashboard';
+        const path = currentPath || "/admin/dashboard";
         const keys: string[] = [];
         if (menuConfig?.route?.routes) {
             for (const route of menuConfig.route.routes) {
@@ -470,7 +1002,7 @@ export default function CMSLayoutImpl({
     const fetchStars = React.useCallback(async () => {
         if (!authUserId) return;
         try {
-            const { gql } = await import('@/lib/graphql');
+            const { gql } = await import("@/lib/graphql");
             const result = await gql<{ userStars: { id: string; path: string; name: string; icon?: string }[] }>(
                 `query GetUserStars($userId: String!) {
                     userStars(userId: $userId) { id path name icon }
@@ -491,15 +1023,15 @@ export default function CMSLayoutImpl({
 
     const handleToggleStar = async () => {
         const menuItem = findMenuItemByPath(menuConfig.route.routes, pathname);
-        const name = (typeof title === 'string' ? title : menuItem?.name) || "Untitled Page";
-        
+        const name = (typeof title === "string" ? title : menuItem?.name) || "Untitled Page";
+
         if (!authUserId) {
             message.warning("Sign in to save favorites");
             return;
         }
         try {
-            const isStarredNow = starredItems.some(i => i.path === pathname);
-            const { gql } = await import('@/lib/graphql');
+            const isStarredNow = starredItems.some((i) => i.path === pathname);
+            const { gql } = await import("@/lib/graphql");
             await gql(
                 `mutation ToggleStar($userId: String!, $input: ToggleStarInput!) {
                     toggleStar(userId: $userId, input: $input) { id path name icon }
@@ -518,245 +1050,51 @@ export default function CMSLayoutImpl({
 
     const handleTogglePin = () => {
         const menuItem = findMenuItemByPath(menuConfig.route.routes, pathname);
-        const name = (typeof title === 'string' ? title : menuItem?.name) || "Untitled Page";
+        const name = (typeof title === "string" ? title : menuItem?.name) || "Untitled Page";
         togglePinned({ path: pathname, name });
         message.success(isPinned(pathname) ? "Unpinned from sidebar" : "Pinned to sidebar");
     };
-
-    // Sidebar Actions Component (Language, Notification, Theme) - for outer ProLayout actionsRender
-    const SidebarActions = () => (
-        <div style={{ display: "flex", alignItems: "center", justifyContent: outerCollapsed ? "center" : "space-evenly", flexDirection: outerCollapsed ? "column" : "row", gap: outerCollapsed ? 12 : 0, width: "100%" }}>
-            <LanguageSwitcher isDark={darkMode} />
-            <div onClick={() => setThemeDrawerVisible(true)} style={{ width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: vo.textMuted, borderRadius: 10 }} className="vo-icon-btn">
-                <SettingOutlined style={{ fontSize: 16 }} />
-            </div>
-            <NotificationBell />
-            <Dropdown
-                key="account-menu"
-                menu={{
-                    items: [
-                        {
-                            key: 'settings',
-                            icon: <SettingOutlined />,
-                            label: 'Account Settings',
-                        },
-                        {
-                            key: 'switch',
-                            icon: <SwapOutlined />,
-                            label: 'Sign in another account',
-                        },
-                        {
-                            type: 'divider',
-                        },
-                        {
-                            key: 'logout',
-                            icon: <LogoutOutlined />,
-                            label: 'Sign Out',
-                            danger: true,
-                        },
-                    ],
-                    onClick: ({ key }) => {
-                        if (key === 'logout') {
-                            message.success('Signed out successfully');
-                        } else if (key === 'settings') {
-                            message.info('Navigating to settings...');
-                        } else if (key === 'switch') {
-                            message.info('Switching account...');
-                        }
-                    }
-                }}
-                trigger={['click']}
-                placement="bottomRight"
-            >
-                <div style={{
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    width: 32,
-                    height: 32,
-                    borderRadius: 10,
-                    transition: 'all 0.2s',
-                    color: vo.textMuted,
-                }}
-                className="vo-icon-btn"
-                >
-                    <Avatar icon={<UserOutlined />} size="small" style={{ background: vo.accentGradient, width: 24, height: 24, lineHeight: "24px", border: `1px solid ${vo.border}` }} />
-                </div>
-            </Dropdown>
-        </div>
-    );
-
-    // Pin/Star/Share Actions Component - for PageContainer extra
-    const PinStarShareActions = () => (
-        <div style={{ display: "flex", alignItems: "center", gap: 4, marginLeft: 16 }}>
-            <Tooltip title={isPinned(pathname) ? "Unpin from sidebar" : "Pin to sidebar"}>
-                <Button
-                    type="text"
-                    className="flex items-center justify-center"
-                    style={{ width: 32, height: 32 }}
-                    icon={
-                        <PushpinOutlined 
-                            style={{ 
-                                color: isPinned(pathname) ? "#52c41a" : undefined, 
-                                fontSize: 18 
-                            }} 
-                        />
-                    }
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        handleTogglePin();
-                    }}
-                />
-            </Tooltip>
-            <Divider orientation="vertical" style={{ height: 16, margin: '0 2px', background: darkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)' }} />
-            <Tooltip title={isStarred(pathname) ? "Remove from favorites" : "Add to favorites"}>
-                <Button
-                    type="text"
-                    className="flex items-center justify-center"
-                    style={{ width: 32, height: 32 }}
-                    icon={
-                        <StarOutlined 
-                            style={{ 
-                                color: isStarred(pathname) ? "#fadb14" : undefined, 
-                                fontSize: 18 
-                            }} 
-                        />
-                    }
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        handleToggleStar();
-                    }}
-                />
-            </Tooltip>
-            <Divider orientation="vertical" style={{ height: 16, margin: '0 2px', background: darkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)' }} />
-            <Popover
-                content={
-                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }} onClick={(e) => e.stopPropagation()}>
-                        <Input 
-                            value={typeof window !== "undefined" ? window.location.href : pathname} 
-                            readOnly 
-                            style={{ width: 250 }} 
-                        />
-                        <Button 
-                            icon={<CopyOutlined />} 
-                            onClick={async (e) => {
-                                e.stopPropagation();
-                                try {
-                                    await navigator.clipboard.writeText(typeof window !== 'undefined' ? window.location.href : '');
-                                    message.success("Link copied to clipboard!");
-                                } catch (err) {
-                                    message.error("Failed to copy link");
-                                }
-                            }}
-                        >
-                            Copy
-                        </Button>
-                    </div>
-                }
-                title="Share this page"
-                trigger="click"
-                placement="bottomRight"
-            >
-                <Tooltip title="Share">
-                    <Button
-                        type="text"
-                        className="flex items-center justify-center"
-                        style={{ width: 32, height: 32 }}
-                        icon={
-                            <ShareAltOutlined 
-                                style={{ 
-                                    color: themeColor,
-                                    fontSize: 18 
-                                }} 
-                            />
-                        }
-                        onClick={(e) => e.stopPropagation()}
-                    />
-                </Tooltip>
-            </Popover>
-        </div>
-    );
-
-    // Entry point to the 3D Virtual Office (AI Agents) — rendered at the far right of the page header
-    const virtualOfficeButton = (
-        <Tooltip key="virtual-office" title="Enter the 3D Virtual Office (AI Agents)" placement="bottomRight">
-            <Button
-                type="primary"
-                icon={<CodeSandboxOutlined />}
-                onClick={(e) => {
-                    e.stopPropagation();
-                    router.push("/admin/virtual-office");
-                }}
-                style={{
-                    marginLeft: 8,
-                    height: 32,
-                    borderRadius: 10,
-                    fontWeight: 600,
-                    border: "none",
-                    background: "linear-gradient(135deg, #6366f1 0%, #22d3ee 100%)",
-                    boxShadow: "0 6px 18px -6px rgba(99, 102, 241, 0.6)",
-                }}
-            >
-                Virtual Office
-            </Button>
-        </Tooltip>
-    );
 
     React.useEffect(() => {
         usePreferencesStore.persist.rehydrate();
     }, []);
 
-    // Initialize preferences from localStorage and system preferences
     React.useEffect(() => {
-        // Get saved preferences from localStorage
         const savedInnerCollapsed = localStorage.getItem("cms-inner-collapsed");
         const savedOuterCollapsed = localStorage.getItem("cms-outer-collapsed");
-        const savedDarkMode = localStorage.getItem("cms-dark-mode");
-        const savedShowBackground = localStorage.getItem("cms-show-background");
 
-        // Inner sidebar: use saved preference, default to collapsed (true)
         if (savedInnerCollapsed !== null) {
             setInnerCollapsed(savedInnerCollapsed === "true");
         }
-        // If no saved preference, keep the default (true = collapsed)
-
-        // Outer sidebar: use saved preference, default to expanded (false)
         if (savedOuterCollapsed !== null) {
             setOuterCollapsed(savedOuterCollapsed === "true");
         }
+        setDarkMode(readInitialDarkMode());
+    }, [setDarkMode]);
 
-        // Dark mode: use saved preference, or fall back to system preference
-        if (savedDarkMode !== null) {
-            setDarkMode(savedDarkMode === "true");
-        } else {
-            // Check system preference
-            const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-            setDarkMode(prefersDark);
-        }
-
-        // Background toggle: use saved preference, default to true
-        if (savedShowBackground !== null) {
-            setShowBackground(savedShowBackground === "true");
-        }
-    }, []);
-
-    // Listen for system theme changes
     React.useEffect(() => {
         const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
         const handleChange = (e: MediaQueryListEvent) => {
-            // Only auto-switch if user hasn't set a preference
             const savedDarkMode = localStorage.getItem("cms-dark-mode");
             if (savedDarkMode === null) {
                 setDarkMode(e.matches);
             }
         };
-
         mediaQuery.addEventListener("change", handleChange);
         return () => mediaQuery.removeEventListener("change", handleChange);
-    }, []);
+    }, [setDarkMode]);
 
-    // Listen for custom events from CommandPalette quick actions and Agentic OS theme toggle
+    const handleDarkModeChange = useCallback((dark: boolean) => {
+        setDarkMode(dark);
+        localStorage.setItem("cms-dark-mode", String(dark));
+        if (dark) {
+            document.documentElement.classList.add("dark");
+        } else {
+            document.documentElement.classList.remove("dark");
+        }
+        window.dispatchEvent(new CustomEvent("cms-theme-sync", { detail: dark }));
+    }, [setDarkMode]);
+
     React.useEffect(() => {
         const handleToggleTheme = () => handleDarkModeChange(!darkMode);
         const handleSetTheme = (e: Event) => {
@@ -772,66 +1110,8 @@ export default function CMSLayoutImpl({
             document.removeEventListener("cms-set-dark-mode", handleSetTheme);
             document.removeEventListener("open-ai-studio", handleOpenAI);
         };
-    }, [darkMode]);
+    }, [darkMode, handleDarkModeChange]);
 
-    // Ref to track if initial ProLayout setup has completed
-    // ProLayout calls onCollapse during mount, so we delay allowing saves
-    const hasInitialized = React.useRef(false);
-
-    // Set hasInitialized after a delay to let ProLayout finish its initial render
-    React.useEffect(() => {
-        const timer = setTimeout(() => {
-            hasInitialized.current = true;
-        }, 500);
-        return () => clearTimeout(timer);
-    }, []);
-
-    // Ref to track theme transitions (blocks onCollapse during dark mode change)
-    const isTransitioning = React.useRef(false);
-
-    // Handler for inner sidebar collapse - ignores calls during initialization and theme transitions
-    const handleInnerCollapse = React.useCallback((collapsed: boolean) => {
-        if (!hasInitialized.current || isTransitioning.current) {
-            // Ignore ProLayout's initialization and theme transition calls
-            return;
-        }
-        setInnerCollapsed(collapsed);
-        localStorage.setItem("cms-inner-collapsed", String(collapsed));
-    }, []);
-
-    // Handler for outer sidebar collapse - ignores calls during initialization and theme transitions
-    const handleOuterCollapse = React.useCallback((collapsed: boolean) => {
-        if (!hasInitialized.current || isTransitioning.current) {
-            // Ignore ProLayout's initialization and theme transition calls
-            return;
-        }
-        setOuterCollapsed(collapsed);
-        localStorage.setItem("cms-outer-collapsed", String(collapsed));
-    }, []);
-
-    // Handler for dark mode toggle - saves to localStorage and updates document class
-    // Uses isTransitioning ref to block ProLayout's onCollapse calls during theme change
-    const handleDarkModeChange = (dark: boolean) => {
-        // Block onCollapse calls during theme transition  
-        isTransitioning.current = true;
-
-        setDarkMode(dark);
-        localStorage.setItem("cms-dark-mode", String(dark));
-        // Toggle dark class on documentElement for Tailwind CSS
-        if (dark) {
-            document.documentElement.classList.add("dark");
-        } else {
-            document.documentElement.classList.remove("dark");
-        }
-        window.dispatchEvent(new CustomEvent("cms-theme-sync", { detail: dark }));
-
-        // Re-enable onCollapse after ProLayout re-renders
-        setTimeout(() => {
-            isTransitioning.current = false;
-        }, 500);
-    };
-
-    // Sync dark class and theme color CSS variable on initial hydration
     React.useEffect(() => {
         if (darkMode) {
             document.documentElement.classList.add("dark");
@@ -840,167 +1120,75 @@ export default function CMSLayoutImpl({
         }
     }, [darkMode]);
 
-    // Sync full theme palette as CSS variables on documentElement
     React.useEffect(() => {
         const root = document.documentElement;
-        root.style.setProperty('--theme-color', themePalette.primary);
-        root.style.setProperty('--theme-secondary', themePalette.secondary);
-        root.style.setProperty('--theme-accent', themePalette.accent);
-        root.style.setProperty('--theme-sidebar-bg', themePalette.sidebarBg);
-        root.style.setProperty('--theme-header-bg', themePalette.headerBg);
-        // RGB variants for rgba() usage
+        root.style.setProperty("--theme-color", themePalette.primary);
+        root.style.setProperty("--theme-secondary", themePalette.secondary);
+        root.style.setProperty("--theme-accent", themePalette.accent);
+        root.style.setProperty("--theme-sidebar-bg", themePalette.sidebarBg);
+        root.style.setProperty("--theme-header-bg", themePalette.headerBg);
         const pRgb = hexToRgb(themePalette.primary);
-        root.style.setProperty('--theme-color-rgb', `${pRgb.r}, ${pRgb.g}, ${pRgb.b}`);
+        root.style.setProperty("--theme-color-rgb", `${pRgb.r}, ${pRgb.g}, ${pRgb.b}`);
         const sRgb = hexToRgb(themePalette.secondary);
-        root.style.setProperty('--theme-secondary-rgb', `${sRgb.r}, ${sRgb.g}, ${sRgb.b}`);
+        root.style.setProperty("--theme-secondary-rgb", `${sRgb.r}, ${sRgb.g}, ${sRgb.b}`);
         const aRgb = hexToRgb(themePalette.accent);
-        root.style.setProperty('--theme-accent-rgb', `${aRgb.r}, ${aRgb.g}, ${aRgb.b}`);
+        root.style.setProperty("--theme-accent-rgb", `${aRgb.r}, ${aRgb.g}, ${aRgb.b}`);
     }, [themePalette]);
 
-    // Force sticky sidebar for inner layout (Removed custom hack, using fixSiderbar)
-    React.useEffect(() => {
-        // We let ProLayout handle its own fixed layout
-    }, [pathname, innerCollapsed]);
-    // Force menu icons visible in collapsed mode for OUTER sidebar.
-    // Ant's CSS-in-JS hides .ant-menu-title-content (opacity:0, max-width:0px, overflow:hidden)
-    // for collapsed menus. We override with element.style.setProperty which beats all CSS.
-    const collapsedFixProps = ['overflow', 'display', 'align-items', 'justify-content', 'padding-inline', 'opacity', 'max-width', 'gap'];
-    React.useEffect(() => {
-        if (!outerCollapsed) {
-            // Clean up only the properties we added, not React inline styles
-            document.querySelectorAll('[data-collapsed-fix]').forEach(el => {
-                const s = (el as HTMLElement).style;
-                collapsedFixProps.forEach(p => s.removeProperty(p));
-                (el as HTMLElement).removeAttribute('data-collapsed-fix');
-            });
-            // Also clean up child elements
-            document.querySelectorAll('[data-collapsed-child-fix]').forEach(el => {
-                const s = (el as HTMLElement).style;
-                collapsedFixProps.forEach(p => s.removeProperty(p));
-                s.removeProperty('width');
-                (el as HTMLElement).removeAttribute('data-collapsed-child-fix');
-            });
-            return;
-        }
+    const toggleOuterCollapsed = useCallback(() => {
+        setOuterCollapsed((prev) => {
+            const next = !prev;
+            localStorage.setItem("cms-outer-collapsed", String(next));
+            return next;
+        });
+    }, []);
 
-        const fixTitleContent = (tc: HTMLElement) => {
-            tc.style.setProperty('opacity', '1', 'important');
-            tc.style.setProperty('max-width', 'none', 'important');
-            tc.style.setProperty('overflow', 'visible', 'important');
-            tc.style.setProperty('display', 'inline-flex', 'important');
-            tc.style.setProperty('align-items', 'center', 'important');
-            tc.style.setProperty('justify-content', 'center', 'important');
-            tc.dataset.collapsedChildFix = '1';
-        };
+    const toggleInnerCollapsed = useCallback(() => {
+        setInnerCollapsed((prev) => {
+            const next = !prev;
+            localStorage.setItem("cms-inner-collapsed", String(next));
+            return next;
+        });
+    }, []);
 
-        const fix = () => {
-            const root = document.getElementById('cms-pro-layout');
-            if (!root) return;
+    const handleResetAllLayouts = useCallback(() => {
+        resetLayout();
+        setOuterCollapsed(false);
+        setInnerCollapsed(false);
+        localStorage.setItem("cms-outer-collapsed", "false");
+        localStorage.setItem("cms-inner-collapsed", "false");
+    }, [resetLayout]);
 
-            // Fix SUBMENU items (parents with children)
-            root.querySelectorAll('.ant-menu-submenu > .ant-menu-submenu-title').forEach(title => {
-                const t = title as HTMLElement;
-                if (t.closest('.cms-inner-sider')) return;
-                t.style.setProperty('overflow', 'visible', 'important');
-                t.style.setProperty('display', 'flex', 'important');
-                t.style.setProperty('align-items', 'center', 'important');
-                t.style.setProperty('justify-content', 'center', 'important');
-                t.style.setProperty('padding-inline', 'calc(50% - 8px)', 'important');
-                t.dataset.collapsedFix = '1';
+    const openCommandPalette = () => {
+        window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", ctrlKey: true, bubbles: true }));
+    };
 
-                t.querySelectorAll('.ant-menu-title-content').forEach(tc => fixTitleContent(tc as HTMLElement));
-                t.querySelectorAll('.submenu-text-el').forEach(txt => {
-                    (txt as HTMLElement).style.setProperty('display', 'none', 'important');
-                    (txt as HTMLElement).dataset.collapsedChildFix = '1';
-                });
-                t.querySelectorAll('.submenu-item-wrapper').forEach(w => {
-                    const s = (w as HTMLElement).style;
-                    s.setProperty('justify-content', 'center', 'important');
-                    s.setProperty('gap', '0', 'important');
-                    (w as HTMLElement).dataset.collapsedChildFix = '1';
-                });
-                t.querySelectorAll('.ant-menu-submenu-arrow').forEach(a => {
-                    (a as HTMLElement).style.setProperty('display', 'none', 'important');
-                    (a as HTMLElement).dataset.collapsedChildFix = '1';
-                });
-            });
+    const navigateTo = useCallback(
+        (targetPath: string) => {
+            setPathname(targetPath);
+            router.push(targetPath);
+        },
+        [router],
+    );
 
-            // Fix LEAF menu items (no children, e.g. Dashboard, Media Library, AI Studio)
-            root.querySelectorAll('.cms-outer-sider .ant-menu-item').forEach(menuItem => {
-                const mi = menuItem as HTMLElement;
-                if (mi.closest('.cms-inner-sider')) return;
-                mi.style.setProperty('overflow', 'visible', 'important');
-                mi.style.setProperty('display', 'flex', 'important');
-                mi.style.setProperty('align-items', 'center', 'important');
-                mi.style.setProperty('justify-content', 'center', 'important');
-                mi.style.setProperty('padding-inline', 'calc(50% - 8px)', 'important');
-                mi.dataset.collapsedFix = '1';
+    const isLeftPinned = panels.left.mode === "pinned-left" || panels.left.mode === "pinned-right";
+    const isRightPinned = panels.right.mode === "pinned-left" || panels.right.mode === "pinned-right";
+    const isOuterRail = isLeftPinned && outerCollapsed;
+    const isInnerRail = isRightPinned && innerCollapsed;
 
-                mi.querySelectorAll('.ant-menu-title-content').forEach(tc => fixTitleContent(tc as HTMLElement));
-                mi.querySelectorAll('.menuitem-text-el').forEach(txt => {
-                    (txt as HTMLElement).style.setProperty('display', 'none', 'important');
-                    (txt as HTMLElement).dataset.collapsedChildFix = '1';
-                });
-                mi.querySelectorAll('.menuitem-wrapper').forEach(w => {
-                    const s = (w as HTMLElement).style;
-                    s.setProperty('justify-content', 'center', 'important');
-                    s.setProperty('gap', '0', 'important');
-                    (w as HTMLElement).dataset.collapsedChildFix = '1';
-                });
-            });
-        };
+    const filteredTree = useMemo(
+        () => filterMenuTreeForAppRole(menuConfig?.route?.routes ?? [], appRole),
+        [appRole],
+    );
 
-        const id = setInterval(fix, 300);
-        fix();
-        return () => clearInterval(id);
-    }, [outerCollapsed]);
+    const antMenuItems = useMemo(
+        () => buildAntMenuItems(filteredTree, isOuterRail, menuQuery, vo, navigateTo),
+        [filteredTree, isOuterRail, menuQuery, vo, navigateTo],
+    );
 
-    // Force inner sidebar icons visible in collapsed mode
-    React.useEffect(() => {
-        if (!innerCollapsed) {
-            document.querySelectorAll('[data-inner-collapsed-fix]').forEach(el => {
-                const s = (el as HTMLElement).style;
-                collapsedFixProps.forEach(p => s.removeProperty(p));
-                (el as HTMLElement).removeAttribute('data-inner-collapsed-fix');
-            });
-            return;
-        }
-
-        const fixInner = () => {
-            const innerSider = document.querySelector('.cms-inner-sider');
-            if (!innerSider) return;
-            innerSider.querySelectorAll('.ant-menu-item').forEach(menuItem => {
-                const mi = menuItem as HTMLElement;
-                mi.style.setProperty('overflow', 'visible', 'important');
-                mi.style.setProperty('display', 'flex', 'important');
-                mi.style.setProperty('align-items', 'center', 'important');
-                mi.style.setProperty('justify-content', 'center', 'important');
-                mi.dataset.innerCollapsedFix = '1';
-                mi.querySelectorAll('.ant-menu-title-content').forEach(tc => {
-                    const s = (tc as HTMLElement).style;
-                    s.setProperty('opacity', '1', 'important');
-                    s.setProperty('max-width', 'none', 'important');
-                    s.setProperty('overflow', 'visible', 'important');
-                    s.setProperty('display', 'inline-flex', 'important');
-                    s.setProperty('align-items', 'center', 'important');
-                    s.setProperty('justify-content', 'center', 'important');
-                    (tc as HTMLElement).dataset.innerCollapsedFix = '1';
-                });
-            });
-        };
-
-        const id = setInterval(fixInner, 300);
-        fixInner();
-        return () => clearInterval(id);
-    }, [innerCollapsed]);
-
-    // Auto-generate breadcrumb if not provided
     const breadcrumbItems = breadcrumb || generateBreadcrumb(currentPath || "/admin/dashboard");
-
-    // Get inner menu based on selected segment
     const innerRoutes = getInnerMenuRoutes(selectedSegment, pinnedItems, starredItems);
 
-    // Segmented options
     const segmentedOptions = [
         { value: "new", icon: <PlusOutlined /> },
         { value: "recent", icon: <ClockCircleOutlined /> },
@@ -1009,527 +1197,531 @@ export default function CMSLayoutImpl({
         { value: "history", icon: <HistoryOutlined /> },
     ];
 
-    // Dynamic logo based on theme
     const logoSrc = darkMode ? "/logo-white.png" : "/logo-black.png";
+    const isDashboard = pathname === "/admin/dashboard";
+    const isActivity = pathname === "/admin/activity";
+
+    const activeModuleName = useMemo(() => {
+        const segs = pathname.split("/").filter(Boolean);
+        const mod = segs[1] || "dashboard";
+        return BREADCRUMB_LABELS[mod] ?? mod.replace(/-/g, " ");
+    }, [pathname]);
+
+    // Calculate left offset for the floating vertical widget dock so it never overlaps left-pinned panels
+    const leftPinnedWidth = useMemo(() => {
+        if (focus) return 0;
+        let w = 0;
+        if (panels.left.mode === "pinned-left") w += outerCollapsed ? OUTER_COLLAPSED_WIDTH : panels.left.w;
+        if (panels.right.mode === "pinned-left") w += innerCollapsed ? INNER_COLLAPSED_WIDTH : panels.right.w;
+        return w;
+    }, [focus, panels.left.mode, panels.left.w, panels.right.mode, panels.right.w, outerCollapsed, innerCollapsed]);
+
+    const accountMenuProps = {
+        items: [
+            {
+                key: "settings",
+                icon: <SettingOutlined />,
+                label: "Account Settings",
+            },
+            {
+                key: "switch",
+                icon: <SwapOutlined />,
+                label: "Sign in another account",
+            },
+            {
+                type: "divider" as const,
+            },
+            {
+                key: "logout",
+                icon: <LogoutOutlined />,
+                label: "Sign Out",
+                danger: true,
+            },
+        ],
+        onClick: ({ key }: { key: string }) => {
+            if (key === "logout") {
+                message.success("Signed out successfully");
+            } else if (key === "settings") {
+                router.push("/admin/settings/general");
+            } else if (key === "switch") {
+                message.info("Switching account...");
+            }
+        },
+    };
+
+    const SidebarActions = () => (
+        <div
+            style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: isOuterRail ? "center" : "space-evenly",
+                flexDirection: isOuterRail ? "column" : "row",
+                gap: isOuterRail ? 8 : 0,
+                width: "100%",
+                padding: isOuterRail ? "8px 0" : "0 8px",
+                minHeight: isOuterRail ? undefined : SIDER_FOOTER_ROW_HEIGHT,
+                borderTop: `1px solid ${vo.border}`,
+            }}
+        >
+            <LanguageSwitcher isDark={darkMode} />
+            <div
+                onClick={() => setThemeDrawerVisible(true)}
+                title="Theme Customizer"
+                style={{
+                    width: 26,
+                    height: 26,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: "pointer",
+                    color: vo.textMuted,
+                    border: `1px solid ${vo.border}`,
+                }}
+                className="vo-icon-btn"
+            >
+                <SettingOutlined style={{ fontSize: 13 }} />
+            </div>
+            <NotificationBell />
+            <Dropdown key="account-menu" menu={accountMenuProps} trigger={["click"]} placement="bottomRight">
+                <div
+                    style={{
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        width: 26,
+                        height: 26,
+                        border: `1px solid ${vo.border}`,
+                        color: vo.textMuted,
+                    }}
+                    className="vo-icon-btn"
+                >
+                    <Avatar
+                        icon={<UserOutlined />}
+                        size="small"
+                        style={{
+                            background: vo.accentGradient,
+                            width: 18,
+                            height: 18,
+                            lineHeight: "18px",
+                            borderRadius: 0,
+                        }}
+                    />
+                </div>
+            </Dropdown>
+        </div>
+    );
+
+    const PinStarShareActions = () => (
+        <div className="flex items-center gap-1 font-mono" style={{ marginLeft: 8 }}>
+            <Tooltip title={isPinned(pathname) ? "Unpin from workspace" : "Pin to workspace"}>
+                <button
+                    type="button"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        handleTogglePin();
+                    }}
+                    className={cx(
+                        "flex h-[24px] w-[24px] items-center justify-center border transition",
+                        isPinned(pathname)
+                            ? "border-emerald-400/70 bg-emerald-500/15 text-emerald-300"
+                            : "border-white/15 text-slate-400 hover:border-white/35 hover:text-white",
+                    )}
+                >
+                    <PushpinOutlined style={{ fontSize: 12 }} />
+                </button>
+            </Tooltip>
+            <Tooltip title={isStarred(pathname) ? "Remove from favorites" : "Add to favorites"}>
+                <button
+                    type="button"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        void handleToggleStar();
+                    }}
+                    className={cx(
+                        "flex h-[24px] w-[24px] items-center justify-center border transition",
+                        isStarred(pathname)
+                            ? "border-amber-400/70 bg-amber-500/15 text-amber-300"
+                            : "border-white/15 text-slate-400 hover:border-white/35 hover:text-white",
+                    )}
+                >
+                    <StarOutlined style={{ fontSize: 12 }} />
+                </button>
+            </Tooltip>
+            <Popover
+                content={
+                    <div style={{ display: "flex", gap: 8, alignItems: "center" }} onClick={(e) => e.stopPropagation()}>
+                        <Input
+                            value={typeof window !== "undefined" ? window.location.href : pathname}
+                            readOnly
+                            style={{ width: 240, borderRadius: 0 }}
+                        />
+                        <Button
+                            icon={<CopyOutlined />}
+                            style={{ borderRadius: 0 }}
+                            onClick={async (e) => {
+                                e.stopPropagation();
+                                try {
+                                    await navigator.clipboard.writeText(
+                                        typeof window !== "undefined" ? window.location.href : "",
+                                    );
+                                    message.success("Link copied to clipboard!");
+                                } catch {
+                                    message.error("Failed to copy link");
+                                }
+                            }}
+                        >
+                            Copy
+                        </Button>
+                    </div>
+                }
+                title={<span className="font-mono text-[10px] uppercase tracking-wider">Share this page</span>}
+                trigger="click"
+                placement="bottomRight"
+            >
+                <Tooltip title="Share">
+                    <button
+                        type="button"
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex h-[24px] w-[24px] items-center justify-center border border-white/15 text-slate-400 transition hover:border-orange-400/60 hover:text-orange-200"
+                    >
+                        <ShareAltOutlined style={{ fontSize: 12 }} />
+                    </button>
+                </Tooltip>
+            </Popover>
+        </div>
+    );
+
+    const virtualOfficeButton = (
+        <Tooltip key="virtual-office" title="Enter the 3D Virtual Office (AI Agents)" placement="bottomRight">
+            <button
+                type="button"
+                onClick={(e) => {
+                    e.stopPropagation();
+                    router.push("/admin/virtual-office");
+                }}
+                className="ml-2 inline-flex h-[24px] items-center gap-1.5 border border-orange-400/50 bg-orange-500/15 px-2.5 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-orange-200 transition hover:border-orange-300 hover:bg-orange-500/25 hover:text-white"
+            >
+                <CodeSandboxOutlined style={{ fontSize: 12 }} />
+                <span>Virtual Office</span>
+            </button>
+        </Tooltip>
+    );
 
     return (
         <div
             id="cms-pro-layout"
-            style={{
-                height: "100vh",
-            }}
+            data-theme={darkMode ? "dark" : "light"}
+            className={cx(
+                "aos-root flex h-screen w-screen flex-col overflow-hidden bg-[#0b0e13] font-mono text-slate-100 selection:bg-orange-500/30",
+                !darkMode && "aos-light",
+            )}
         >
+            <NextThemesProvider
+                attribute="class"
+                defaultTheme="dark"
+                forcedTheme={darkMode ? "dark" : "light"}
+                enableSystem={false}
+                disableTransitionOnChange
+            >
             <ProConfigProvider hashed={false} dark={darkMode}>
                 <ConfigProvider
-                    getTargetContainer={() => {
-                        return document.getElementById("cms-pro-layout") || document.body;
-                    }}
+                    getTargetContainer={() => document.getElementById("cms-pro-layout") || document.body}
                     theme={{
                         algorithm: darkMode ? theme.darkAlgorithm : theme.defaultAlgorithm,
-                        cssVar: { prefix: 'cms' },
+                        cssVar: { prefix: "cms" },
                         hashed: false,
                         token: {
                             colorPrimary: themePalette.primary,
                             colorLink: themePalette.accent,
                             colorInfo: themePalette.secondary,
+                            borderRadius: 0,
+                            borderRadiusSM: 0,
+                            borderRadiusLG: 0,
+                            borderRadiusXS: 0,
+                            colorBgBase: darkMode ? "#081414" : "#f8fafc",
+                            colorBgContainer: darkMode ? "#141414" : "#ffffff",
+                            colorBgElevated: darkMode ? "#141414" : "#ffffff",
+                            colorBgLayout: darkMode ? "#080a0f" : "#f1f5f9",
+                            colorBorder: darkMode ? "rgba(255, 255, 255, 0.12)" : "rgba(15, 23, 42, 0.12)",
+                            colorBorderSecondary: darkMode ? "rgba(255, 255, 255, 0.07)" : "rgba(15, 23, 42, 0.08)",
+                            fontFamily:
+                                'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
                         },
                     }}
                 >
-                    {/* OUTER PROLAYOUT - Main section navigation */}
-                    <ProLayout
-                        prefixCls="cms-outer"
-                        title={false}
-                        logo={false}
-                        {...menuConfig}
-                        location={{
-                            pathname,
-                        }}
-                        fixSiderbar
-                        collapsed={outerCollapsed}
-                        breakpoint={false}
-                        onCollapse={handleOuterCollapse}
-                        headerRender={false}
-                        siderWidth={260}
-                        navTheme={darkMode ? "realDark" : "light"}
-                        token={{ sider: { colorMenuBackground: 'transparent', colorTextMenu: vo.text, colorTextMenuSelected: vo.text, colorBgMenuItemSelected: vo.selectedBg, colorTextMenuItemHover: vo.text, colorBgMenuItemHover: vo.hoverBg, colorTextMenuSecondary: vo.textDim, colorTextMenuTitle: vo.text } }}
-                        layout="side"
-                        contentStyle={{
-                            padding: 0,
-                            margin: 0,
-                        }}
-                        menuHeaderRender={false}
+                    {/* ========================================================= */}
+                    {/* AGENTIC OS TOP STATUS BAR (36px / h-9)                    */}
+                    {/* ========================================================= */}
+                    <header
+                        data-testid="admin-topbar"
+                        className="pointer-events-auto relative z-30 flex h-9 shrink-0 items-center justify-between gap-3 whitespace-nowrap border-b border-white/[0.08] bg-[#0b0e13]/95 px-3 font-mono text-[10px] tracking-[0.14em] backdrop-blur-md"
+                    >
+                        {/* Left: App Switcher + Brand Identity + Live Status Telemetry */}
+                        <div className="flex min-w-0 items-center gap-3 overflow-hidden">
+                            <Popover
+                                content={<AppListContent darkMode={darkMode} />}
+                                trigger="click"
+                                placement="bottomLeft"
+                                open={appListOpen}
+                                onOpenChange={setAppListOpen}
+                            >
+                                <button
+                                    type="button"
+                                    title="Switch NusantaraSoft Surface"
+                                    className="flex h-[22px] w-[22px] shrink-0 items-center justify-center border border-orange-400/60 bg-orange-500/15 text-orange-200 transition hover:border-orange-300 hover:text-white"
+                                >
+                                    <AppstoreOutlined style={{ fontSize: 12 }} />
+                                </button>
+                            </Popover>
 
-                        menuDataRender={(menuData) => {
-                            // Ensure icons from menuConfig are preserved on all items
-                            // ProLayout may strip icons from submenu parents during transformation
-                            const attachIcons = (items: any[]): any[] => {
-                                return items.map(item => {
-                                    const route = findMenuItemByPath(menuConfig.route.routes, item.path || '');
-                                    const result = { ...item };
-                                    if (route?.icon && !result.icon) {
-                                        result.icon = route.icon;
-                                    }
-                                    if (result.children) {
-                                        result.children = attachIcons(result.children);
-                                    }
-                                    if (result.routes) {
-                                        result.routes = attachIcons(result.routes);
-                                    }
-                                    return result;
-                                });
-                            };
-                            const stripTenantPlatformOnly = (items: any[]): any[] =>
-                                filterMenuTreeForAppRole(items, appRole);
+                            <div
+                                onClick={() => navigateTo("/admin/dashboard")}
+                                className="flex cursor-pointer items-center gap-1.5"
+                            >
+                                <Hexagon className="h-3.5 w-3.5 shrink-0" color={ORANGE} strokeWidth={2.2} />
+                                <span className="font-semibold tracking-[0.22em] text-white">NUSANTARASOFT</span>
+                                <span className="hidden text-[9.5px] tracking-normal sm:inline" style={{ color: ORANGE }}>
+                                    · ADMIN OS
+                                </span>
+                            </div>
 
-                            return stripTenantPlatformOnly(
-                                attachIcons(menuData).filter(
-                                    (item) => item.path !== "/admin/dashboard" && item.path !== "/admin/activity",
-                                ),
-                            );
-                        }}
-                        menuProps={{
-                            openKeys,
-                            onOpenChange: (keys) => setOpenKeys(keys as string[]),
-                        }}
-                        menuExtraRender={() => {
-                            const isDashboard = pathname === "/admin/dashboard";
-                            const isActivity = pathname === "/admin/activity";
-                            return (
-                            <>
-                            <div style={{
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: outerCollapsed ? "center" : "space-between",
-                                minHeight: 52,
-                                padding: outerCollapsed ? "8px 4px" : "0 12px",
-                                gap: outerCollapsed ? 6 : 0,
-                                borderBottom: `1px solid ${vo.border}`,
-                                boxSizing: "border-box",
-                                flexDirection: outerCollapsed ? "column" : "row",
-                            }}>
-                                {/* Left: App Switcher + Logo + NS */}
-                                <div style={{ display: "flex", alignItems: "center", gap: 8, flexDirection: outerCollapsed ? "column" : "row" }}>
-                                    <Popover
-                                        content={<AppListContent darkMode={darkMode} />}
-                                        trigger="click"
-                                        placement={outerCollapsed ? "rightTop" : "bottomLeft"}
-                                        open={appListOpen}
-                                        onOpenChange={setAppListOpen}
-                                    >
-                                        {/* VO identity tile (same as the Virtual Office TopBar logo tile) */}
-                                        <div style={{
-                                            cursor: "pointer",
-                                            width: 28,
-                                            height: 28,
-                                            borderRadius: 10,
-                                            display: "flex",
-                                            alignItems: "center",
-                                            justifyContent: "center",
-                                            background: vo.accentGradient,
-                                            color: "#ffffff",
-                                            boxShadow: vo.accentGlow,
-                                            transition: "transform 0.2s, filter 0.2s",
-                                        }}
-                                        onMouseEnter={(e) => { e.currentTarget.style.filter = "brightness(1.15)"; e.currentTarget.style.transform = "scale(1.05)"; }}
-                                        onMouseLeave={(e) => { e.currentTarget.style.filter = "none"; e.currentTarget.style.transform = "scale(1)"; }}
+                            <span className="h-3.5 w-px bg-white/10" />
+
+                            <span className="flex items-center gap-1.5">
+                                <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+                                <span className="text-slate-500">CORE</span>·
+                                <span className="text-slate-100">ONLINE</span>
+                            </span>
+
+                            <span className="hidden items-center gap-1.5 md:flex">
+                                <span className="inline-block h-1.5 w-1.5 rounded-full bg-sky-400" />
+                                <span className="text-slate-500">MODULE</span>·
+                                <span className="truncate uppercase text-slate-100">{activeModuleName}</span>
+                            </span>
+
+                            <span className="hidden items-center gap-1.5 lg:flex">
+                                <span className="inline-block h-1.5 w-1.5 rounded-full bg-orange-400" />
+                                <span className="text-slate-500">ROLE</span>·
+                                <span className="uppercase text-slate-100">{appRole || "ADMIN"}</span>
+                            </span>
+
+                            <span className="hidden items-center gap-1.5 xl:flex">
+                                <span className="text-slate-500">PINNED</span>·
+                                <span className="tabular-nums text-slate-100">{pinnedItems.length}</span>
+                                <span className="text-slate-500">· STARRED</span>·
+                                <span className="tabular-nums text-slate-100">{starredItems.length}</span>
+                            </span>
+                        </div>
+
+                        {/* Right: Search + Theme Toggle + Layout Controls + Agentic OS & Virtual Office Launch */}
+                        <div className="flex shrink-0 items-center gap-1.5">
+                            <button
+                                type="button"
+                                onClick={openCommandPalette}
+                                title="Open Command Palette (Ctrl+K)"
+                                className="flex h-[22px] items-center gap-1.5 border border-white/15 px-2 text-[9.5px] tracking-normal text-slate-300 transition hover:border-white/35 hover:text-white"
+                            >
+                                <Search className="h-3 w-3" />
+                                <span className="hidden sm:inline">search</span>
+                                <kbd className="hidden text-[8.5px] text-slate-500 md:inline">Ctrl K</kbd>
+                            </button>
+
+                            <span
+                                data-testid="admin-theme-toggle"
+                                title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+                                className="inline-flex"
+                            >
+                                <AnimatedThemeToggler
+                                    isDark={darkMode}
+                                    onThemeChange={handleDarkModeChange}
+                                    size={13}
+                                    className="!p-0 flex h-[22px] w-[22px] items-center justify-center !rounded-none border border-white/15 text-slate-300 transition hover:border-white/35 hover:text-white"
+                                />
+                            </span>
+
+                            <button
+                                type="button"
+                                data-testid="admin-reset-layout"
+                                title="Reset panel positions and layout"
+                                onClick={handleResetAllLayouts}
+                                className="hidden h-[22px] items-center border border-white/15 px-2 text-[9.5px] tracking-normal text-slate-300 transition hover:border-white/35 hover:text-white md:flex"
+                            >
+                                reset layout
+                            </button>
+
+                            <button
+                                type="button"
+                                data-testid="admin-focus"
+                                title="Hide or show side panels"
+                                onClick={toggleFocus}
+                                className={cx(
+                                    "flex h-[22px] items-center border px-2 text-[9.5px] tracking-normal transition",
+                                    focus
+                                        ? "border-orange-400/70 bg-orange-500/15 text-orange-200"
+                                        : "border-white/15 text-slate-300 hover:border-white/35 hover:text-white",
+                                )}
+                            >
+                                focus
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={() => navigateTo("/admin/agentic-os")}
+                                className="hidden h-[22px] items-center gap-1 border border-sky-400/40 bg-sky-500/10 px-2 text-[9.5px] tracking-normal text-sky-200 transition hover:border-sky-300/70 hover:text-white sm:flex"
+                            >
+                                <Cpu className="h-3 w-3" />
+                                <span>agentic os</span>
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={() => navigateTo("/admin/virtual-office")}
+                                className="flex h-[22px] items-center gap-1 border border-orange-400/40 bg-orange-500/10 px-2 text-[9.5px] tracking-normal text-orange-100 transition hover:border-orange-300/70 hover:text-white"
+                            >
+                                <Box className="h-3 w-3" />
+                                <span className="hidden sm:inline">virtual office</span>
+                            </button>
+                        </div>
+                    </header>
+
+                    {/* ========================================================= */}
+                    {/* AGENTIC OS BODY: LEFT PANEL + MAIN + RIGHT PANEL          */}
+                    {/* ========================================================= */}
+                    <div
+                        ref={bodyRef}
+                        data-admin-body
+                        className="relative flex min-h-0 flex-1 overflow-hidden"
+                    >
+                        {/* 1. LEFT PANEL: Primary Module Navigation (cms-outer-sider) */}
+                        {!focus && (
+                            <AdminSidePanel
+                                id="left"
+                                title="Navigation · Modules"
+                                summary={activeModuleName}
+                                accent={ORANGE}
+                                collapsed={outerCollapsed}
+                                onToggleCollapsed={toggleOuterCollapsed}
+                                bodyRef={bodyRef}
+                                className="cms-outer-sider"
+                            >
+                                {/* Brand & Quick Filter Row */}
+                                {!isOuterRail && (
+                                    <div className="shrink-0 border-b border-white/[0.07] px-2.5 py-2">
+                                        <div className="relative flex items-center border border-white/15 bg-white/[0.02] px-2 py-1">
+                                            <SearchOutlined className="mr-1.5 text-[11px] text-slate-500" />
+                                            <input
+                                                value={menuQuery}
+                                                onChange={(e) => setMenuQuery(e.target.value)}
+                                                placeholder="FILTER MODULES…"
+                                                className="w-full bg-transparent font-mono text-[10px] tracking-wider text-slate-100 placeholder:text-slate-500 focus:outline-none"
+                                            />
+                                            {menuQuery && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setMenuQuery("")}
+                                                    className="text-slate-500 hover:text-white"
+                                                >
+                                                    <X className="h-3 w-3" />
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Dashboard & Activity Feed Quick Card */}
+                                <div
+                                    className={cx(
+                                        "shrink-0 border-b border-white/[0.07]",
+                                        isOuterRail ? "p-1.5" : "p-2",
+                                    )}
+                                >
+                                    <div className="flex flex-col gap-1">
+                                        <div
+                                            onClick={() => navigateTo("/admin/dashboard")}
+                                            title="Dashboard"
+                                            className={cx(
+                                                "flex cursor-pointer items-center gap-2.5 border px-2.5 py-1.5 transition",
+                                                isOuterRail && "justify-center px-1",
+                                                isDashboard
+                                                    ? "border-orange-400/60 bg-orange-500/15 text-white"
+                                                    : "border-transparent text-slate-400 hover:border-white/15 hover:bg-white/[0.03] hover:text-slate-100",
+                                            )}
                                         >
-                                            <AppstoreOutlined style={{ fontSize: 14 }} />
+                                            <DashboardOutlined
+                                                style={{ fontSize: 14, color: isDashboard ? ORANGE : "inherit" }}
+                                            />
+                                            {!isOuterRail && (
+                                                <div className="flex flex-1 items-center justify-between">
+                                                    <span className="text-[11px] font-semibold uppercase tracking-[0.14em]">
+                                                        Dashboard
+                                                    </span>
+                                                    <span className="flex h-4 w-4 items-center justify-center border border-orange-400/40 bg-orange-500/15">
+                                                        <SafetyCertificateOutlined
+                                                            style={{ fontSize: 10, color: ORANGE }}
+                                                        />
+                                                    </span>
+                                                </div>
+                                            )}
                                         </div>
-                                    </Popover>
-                                    <Image
-                                        src={logoSrc}
-                                        alt="Logo"
-                                        width={22}
-                                        height={22}
-                                        style={{ objectFit: "contain", cursor: "pointer" }}
-                                        onClick={() => router.push("/admin/dashboard")}
+
+                                        <div
+                                            onClick={() => navigateTo("/admin/activity")}
+                                            title="Activity Feed"
+                                            className={cx(
+                                                "flex cursor-pointer items-center gap-2.5 border px-2.5 py-1.5 transition",
+                                                isOuterRail && "justify-center px-1",
+                                                isActivity
+                                                    ? "border-orange-400/60 bg-orange-500/15 text-white"
+                                                    : "border-transparent text-slate-400 hover:border-white/15 hover:bg-white/[0.03] hover:text-slate-100",
+                                            )}
+                                        >
+                                            <ClockCircleOutlined
+                                                style={{ fontSize: 14, color: isActivity ? ORANGE : "inherit" }}
+                                            />
+                                            {!isOuterRail && (
+                                                <span className="text-[11px] font-semibold uppercase tracking-[0.14em]">
+                                                    Activity Feed
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Scrollable Module Navigation Tree */}
+                                <div className={cx("min-h-0 flex-1", SCROLL_Y)}>
+                                    <Menu
+                                        mode="inline"
+                                        theme={darkMode ? "dark" : "light"}
+                                        inlineCollapsed={isOuterRail}
+                                        selectedKeys={[pathname]}
+                                        openKeys={isOuterRail ? undefined : openKeys}
+                                        onOpenChange={(keys) => {
+                                            if (!isOuterRail) setOpenKeys(keys as string[]);
+                                        }}
+                                        items={antMenuItems}
+                                        style={{
+                                            background: "transparent",
+                                            borderInlineEnd: "none",
+                                        }}
                                     />
-                                    {!outerCollapsed && (
-                                        <div style={{ fontSize: 16, fontWeight: 900, letterSpacing: '1.5px', lineHeight: '20px', display: 'flex', alignItems: 'center', color: vo.text }}>
-                                            NS
-                                        </div>
-                                    )}
-                                    {outerCollapsed && (
-                                        <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '0.5px', lineHeight: '14px', color: vo.text }}>
-                                            NS
-                                        </div>
-                                    )}
                                 </div>
-                                {/* Right: Quick-action icon circles */}
-                                <div style={{ display: "flex", alignItems: "center", gap: 4, flexDirection: outerCollapsed ? "column" : "row", marginTop: outerCollapsed ? 4 : 0 }}>
-                                    <AnimatedThemeToggler isDark={darkMode} onThemeChange={handleDarkModeChange} size={14} style={{ color: vo.textMuted }} />
-                                </div>
-                            </div>
-                            {/* Dashboard & Activity Feed Card (VO glass card) */}
-                            <div style={{
-                                background: vo.hoverBg,
-                                borderRadius: 16,
-                                padding: "6px",
-                                border: `1px solid ${vo.border}`,
-                                boxShadow: "none",
-                                margin: outerCollapsed ? "8px 4px" : "12px 8px",
-                                display: "flex",
-                                flexDirection: "column",
-                                gap: 2
-                            }}>
-                                {/* Dashboard Item */}
-                                <div 
-                                    onClick={() => { setPathname("/admin/dashboard"); router.push("/admin/dashboard"); }}
-                                    style={{
-                                        padding: "9px 11px",
-                                        borderRadius: 12,
-                                        cursor: "pointer",
-                                        display: "flex",
-                                        alignItems: "center",
-                                        gap: 12,
-                                        background: isDashboard ? vo.selectedBg : "transparent",
-                                        border: `1px solid ${isDashboard ? vo.selectedBorder : "transparent"}`,
-                                        color: isDashboard ? vo.text : vo.textMuted,
-                                        transition: "all 0.2s"
-                                    }}
-                                    onMouseEnter={(e) => { if (!isDashboard) { e.currentTarget.style.background = vo.hoverBg; e.currentTarget.style.borderColor = vo.border; e.currentTarget.style.color = vo.text; } }}
-                                    onMouseLeave={(e) => { if (!isDashboard) { e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderColor = "transparent"; e.currentTarget.style.color = vo.textMuted; } }}
-                                >
-                                    <DashboardOutlined style={{ fontSize: 16, color: isDashboard ? vo.accent : "inherit" }} />
-                                    {!outerCollapsed && (
-                                        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                                            <span style={{ fontSize: 13, fontWeight: isDashboard ? 600 : 500 }}>Dashboard</span>
-                                            <div style={{ width: 22, height: 22, background: vo.accentSoft, border: `1px solid ${vo.border}`, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                                <SafetyCertificateOutlined style={{ fontSize: 11, color: vo.accent }} />
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                                {/* Activity Feed Item */}
-                                <div 
-                                    onClick={() => { setPathname("/admin/activity"); router.push("/admin/activity"); }}
-                                    style={{
-                                        padding: "9px 11px",
-                                        borderRadius: 12,
-                                        cursor: "pointer",
-                                        display: "flex",
-                                        alignItems: "center",
-                                        gap: 12,
-                                        background: isActivity ? vo.selectedBg : "transparent",
-                                        border: `1px solid ${isActivity ? vo.selectedBorder : "transparent"}`,
-                                        color: isActivity ? vo.text : vo.textMuted,
-                                        transition: "all 0.2s"
-                                    }}
-                                    onMouseEnter={(e) => { if (!isActivity) { e.currentTarget.style.background = vo.hoverBg; e.currentTarget.style.borderColor = vo.border; e.currentTarget.style.color = vo.text; } }}
-                                    onMouseLeave={(e) => { if (!isActivity) { e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderColor = "transparent"; e.currentTarget.style.color = vo.textMuted; } }}
-                                >
-                                    <ClockCircleOutlined style={{ fontSize: 16, color: isActivity ? vo.accent : "inherit" }} />
-                                    {!outerCollapsed && (
-                                        <span style={{ fontSize: 13, fontWeight: isActivity ? 600 : 500 }}>Activity Feed</span>
-                                    )}
-                                </div>
-                            </div>
-                            </>
-                            );
-                        }}
-                        actionsRender={(props) => {
-                            return [
-                                <div key="sidebar-actions-wrap" style={{ boxSizing: 'border-box', width: '100%', display: 'flex' }}>
+
+                                {/* Footer Actions Row */}
+                                <div className="shrink-0">
                                     <SidebarActions />
                                 </div>
-                            ];
-                        }}
-                        menuRender={(props, defaultDom) => {
-                            return (
-                            <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-                                <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden" }}>
-                                    {defaultDom}
-                                </div>
-                            </div>
-                        )}}
-                        menuItemRender={(item, dom) => {
-                            // Render section dividers (e.g., 'BUSINESS') as non-clickable headers with cyan dot
-                            if (item.path?.includes('divider') && !item.icon) {
-                                return (
-                                    <div
-                                        className="vo-divider-header"
-                                        style={{
-                                            fontSize: '10px',
-                                            fontWeight: 700,
-                                            color: vo.accent,
-                                            padding: '16px 12px 8px 12px',
-                                            letterSpacing: '0.14em',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '6px',
-                                            textTransform: 'uppercase',
-                                            pointerEvents: 'none'
-                                        }}
-                                    >
-                                        <span style={{ display: 'block', width: 6, height: 6, borderRadius: '50%', background: vo.accent }} />
-                                        {item.name}
-                                    </div>
-                                );
-                            }
+                            </AdminSidePanel>
+                        )}
 
-                            // Unified rendering for both collapsed and expanded modes.
-                            // Uses classes so the useEffect can target elements precisely.
-                            const route = findMenuItemByPath(menuConfig.route.routes, item.path || '');
-                            const icon = route?.icon;
-
-                            if (icon) {
-                                return (
-                                    <div
-                                        className="menuitem-wrapper"
-                                        onClick={(e) => {
-                                            e.preventDefault();
-                                            e.stopPropagation();
-                                            const targetPath = item.path || "/admin/dashboard";
-                                            setPathname(targetPath);
-                                            router.push(targetPath);
-                                        }}
-                                        onClickCapture={(e) => {
-                                            const target = e.target as HTMLElement;
-                                            if (target.tagName === 'A' || target.closest('a')) {
-                                                e.preventDefault();
-                                            }
-                                        }}
-                                        style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}
-                                    >
-                                        <span className="anticon menuitem-icon-el" style={{ display: 'inline-flex', fontSize: 16, flexShrink: 0 }}>{icon}</span>
-                                        <span className="menuitem-text-el">{item.name}</span>
-                                    </div>
-                                );
-                            }
-
-                            return (
-                                <div
-                                    onClick={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        const targetPath = item.path || "/admin/dashboard";
-                                        setPathname(targetPath);
-                                        router.push(targetPath);
-                                    }}
-                                    onClickCapture={(e) => {
-                                        const target = e.target as HTMLElement;
-                                        if (target.tagName === 'A' || target.closest('a')) {
-                                            e.preventDefault();
-                                        }
-                                    }}
-                                    style={{ cursor: 'pointer' }}
-                                >
-                                    {dom}
-                                </div>
-                            );
-                        }}
-                        subMenuItemRender={(item, dom) => {
-                            const route = findMenuItemByPath(menuConfig.route.routes, item.path || '');
-                            const icon = route?.icon;
-
-                            // Render a consistent structure for both collapsed and expanded modes.
-                            // The useEffect handles hiding text in collapsed mode via inline styles.
-                            if (icon) {
-                                return (
-                                    <div
-                                        className="submenu-item-wrapper"
-                                        onClickCapture={(e) => {
-                                            const target = e.target as HTMLElement;
-                                            if (target.tagName === 'A' || target.closest('a')) {
-                                                e.preventDefault();
-                                            }
-                                        }}
-                                        style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0, overflow: 'hidden' }}
-                                    >
-                                        <span className="anticon submenu-icon-el" style={{ display: 'inline-flex', fontSize: 16, flexShrink: 0 }}>{icon}</span>
-                                        <span className="submenu-text-el">{item.name}</span>
-                                    </div>
-                                );
-                            }
-
-                            return (
-                                <div
-                                    onClickCapture={(e) => {
-                                        const target = e.target as HTMLElement;
-                                        if (target.tagName === 'A' || target.closest('a')) {
-                                            e.preventDefault();
-                                        }
-                                    }}
-                                >
-                                    {dom}
-                                </div>
-                            );
-                        }}
-
-
-                    >
-                        {/* INNER PROLAYOUT - Sub-navigation with segmented header */}
-                        <ProLayout
-                            prefixCls="cms-inner"
-                            title={false}
-                            logo={false}
-                            style={{ minHeight: '100vh', width: '100%' }}
-                            location={{
-                                pathname,
-                            }}
-                            route={{
-                                path: "/",
-                                routes: innerRoutes,
-                            }}
-                            hasSiderMenu={true}
-                            fixSiderbar={true}
-                            collapsed={innerCollapsed}
-                            breakpoint={false}
-                            onCollapse={handleInnerCollapse}
-                            siderWidth={240}
-                            navTheme={darkMode ? "realDark" : "light"}
-                            token={{ sider: { colorMenuBackground: 'transparent', colorTextMenu: vo.text, colorTextMenuSelected: vo.text, colorBgMenuItemSelected: vo.selectedBg, colorTextMenuItemHover: vo.text, colorBgMenuItemHover: vo.hoverBg, colorTextMenuSecondary: vo.textDim, colorTextMenuTitle: vo.text } }}
-                            layout="side"
-                            contentStyle={{
-                                padding: 0,
-                                margin: 0,
-                            }}
-                            menuDataRender={() => innerRoutes.length > 0 ? innerRoutes : [{ path: '/dummy', name: 'No items' }]}
-                            menuHeaderRender={false}
-                            menuFooterRender={(props) => (
-                                <>
-                                    <ModuleIllustrationCards collapsed={innerCollapsed} darkMode={darkMode} />
-                                    <OnlineUsersAvatars collapsed={innerCollapsed} darkMode={darkMode} />
-                                </>
+                        {/* 2. MAIN WORKSPACE CONTENT AREA (order-2 flex-1 min-w-0) */}
+                        <main
+                            data-testid="admin-main"
+                            className={cx(
+                                "cms-outer-layout relative order-2 flex min-w-0 flex-1 flex-col overflow-x-hidden",
+                                SCROLL_Y,
                             )}
-                            menuExtraRender={() => (
-                                <div style={{
-                                    minHeight: 48,
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    padding: innerCollapsed ? "12px 8px" : "0 16px",
-                                    borderBottom: "none",
-                                    boxSizing: "border-box",
-                                }}>
-                                    <Segmented
-                                        value={selectedSegment}
-                                        onChange={(value) => setSelectedSegment(value as string)}
-                                        block={!innerCollapsed}
-                                        size={innerCollapsed ? "large" : "middle"}
-                                        vertical={innerCollapsed}
-                                        options={segmentedOptions}
-                                        style={{
-                                            background: vo.hoverBg,
-                                            border: `1px solid ${vo.border}`,
-                                            borderRadius: 12,
-                                            padding: 2,
-                                        }}
-                                    />
-                                </div>
-                            )}
-                            actionsRender={(props) => {
-                                return [];
-                            }}
-                            menuItemRender={(item, dom) => {
-                                const isPinnedOrStarred = selectedSegment === "pinned" || selectedSegment === "starred";
-                                
-                                return (
-                                    <div style={{ display: 'flex', alignItems: 'center', width: '100%', justifyContent: 'space-between' }}>
-                                        {item.icon ? (
-                                            <div
-                                                onClick={(e) => {
-                                                    e.preventDefault();
-                                                    e.stopPropagation();
-                                                    setPathname(item.path || "/admin/dashboard");
-                                                    if (item.path) {
-                                                        router.push(item.path);
-                                                    }
-                                                }}
-                                                onClickCapture={(e) => {
-                                                    const target = e.target as HTMLElement;
-                                                    if (target.tagName === 'A' || target.closest('a')) {
-                                                        e.preventDefault();
-                                                    }
-                                                }}
-                                                style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: "pointer", flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                                            >
-                                                <span className="anticon menuitem-icon-el" style={{ display: 'inline-flex', fontSize: 16, flexShrink: 0 }}>{item.icon}</span>
-                                                <span className="menuitem-text-el">{item.name}</span>
-                                            </div>
-                                        ) : (
-                                            <div
-                                                onClick={(e) => {
-                                                    e.preventDefault();
-                                                    e.stopPropagation();
-                                                    setPathname(item.path || "/admin/dashboard");
-                                                    if (item.path) {
-                                                        router.push(item.path);
-                                                    }
-                                                }}
-                                                onClickCapture={(e) => {
-                                                    const target = e.target as HTMLElement;
-                                                    if (target.tagName === 'A' || target.closest('a')) {
-                                                        e.preventDefault();
-                                                    }
-                                                }}
-                                                style={{ cursor: "pointer", flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                                            >
-                                                {dom}
-                                            </div>
-                                        )}
-                                        {isPinnedOrStarred && !innerCollapsed && (
-                                            <Popconfirm
-                                                title={`Remove from ${selectedSegment}?`}
-                                                onConfirm={(e) => {
-                                                    e?.stopPropagation();
-                                                    if (selectedSegment === "pinned") {
-                                                        togglePinned({ path: item.path!, name: (item.name as string) || "" });
-                                                        message.success("Removed from pinned");
-                                                    } else {
-                                                        toggleStarred({ path: item.path!, name: (item.name as string) || "" });
-                                                        message.success("Removed from favorites");
-                                                    }
-                                                }}
-                                                onCancel={(e) => e?.stopPropagation()}
-                                                okText="Yes"
-                                                cancelText="No"
-                                            >
-                                                <Button
-                                                    type="text"
-                                                    size="small"
-                                                    danger
-                                                    icon={<DeleteOutlined style={{ fontSize: 12 }} />}
-                                                    onClick={(e) => e.stopPropagation()}
-                                                    style={{ marginLeft: 4 }}
-                                                />
-                                            </Popconfirm>
-                                        )}
-                                    </div>
-                                );
-                            }}
-                            subMenuItemRender={(item, dom) => {
-                                if (item.icon) {
-                                    return (
-                                        <div
-                                            className="submenu-item-wrapper"
-                                            onClickCapture={(e) => {
-                                                const target = e.target as HTMLElement;
-                                                if (target.tagName === 'A' || target.closest('a')) {
-                                                    e.preventDefault();
-                                                }
-                                            }}
-                                            style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0, overflow: 'hidden' }}
-                                        >
-                                            <span className="anticon submenu-icon-el" style={{ display: 'inline-flex', fontSize: 16, flexShrink: 0 }}>{item.icon}</span>
-                                            <span className="submenu-text-el">{item.name}</span>
-                                        </div>
-                                    );
-                                }
-                                return (
-                                    <div
-                                        onClickCapture={(e) => {
-                                            const target = e.target as HTMLElement;
-                                            if (target.tagName === 'A' || target.closest('a')) {
-                                                e.preventDefault();
-                                            }
-                                        }}
-                                        style={{ cursor: 'pointer' }}
-                                    >
-                                        {dom}
-                                    </div>
-                                );
-                            }}
+                            style={{ background: vo.canvas }}
                         >
                             <PageContainer
                                 title={title}
@@ -1539,75 +1731,236 @@ export default function CMSLayoutImpl({
                                     items: breadcrumbItems.map((item, index) => ({
                                         key: index,
                                         title: index === 0 ? <HomeOutlined /> : item.title,
-                                        onClick: item.path ? () => router.push(item.path!) : undefined,
+                                        onClick: item.path ? () => navigateTo(item.path!) : undefined,
                                         className: item.path ? "cursor-pointer" : "",
                                     })),
                                 }}
                                 breadcrumbRender={(props, defaultDom) => (
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                                         {defaultDom}
                                         {virtualOfficeButton}
                                     </div>
                                 )}
                             >
-                                <ProCard>
-                                    {children}
-                                </ProCard>
+                                <ProCard>{children}</ProCard>
                             </PageContainer>
-                        </ProLayout>
-                    </ProLayout>
+                        </main>
+
+                        {/* 3. RIGHT PANEL: Contextual Workspace / Shortcuts / Tamagotchi (cms-inner-sider) */}
+                        {!focus && (
+                            <AdminSidePanel
+                                id="right"
+                                title="Workspace · Context"
+                                summary={`${selectedSegment} · ${innerRoutes.length} items`}
+                                accent={SKY}
+                                collapsed={innerCollapsed}
+                                onToggleCollapsed={toggleInnerCollapsed}
+                                bodyRef={bodyRef}
+                                className="cms-inner-sider"
+                            >
+                                {/* Segmented Workspace Switcher */}
+                                <div
+                                    className="shrink-0 border-b border-white/[0.07]"
+                                    style={{
+                                        padding: isInnerRail ? "8px 6px" : "8px 10px",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                    }}
+                                >
+                                    <Segmented
+                                        value={selectedSegment}
+                                        onChange={(value) => setSelectedSegment(value as string)}
+                                        block={!isInnerRail}
+                                        size={isInnerRail ? "middle" : "small"}
+                                        vertical={isInnerRail}
+                                        options={segmentedOptions}
+                                        style={{
+                                            background: vo.hoverBg,
+                                            border: `1px solid ${vo.border}`,
+                                            borderRadius: 0,
+                                            padding: 2,
+                                        }}
+                                    />
+                                </div>
+
+                                {/* Contextual Items List */}
+                                <div className={cx("min-h-0 flex-1 px-2 py-2", SCROLL_Y)}>
+                                    {!isInnerRail && (
+                                        <div className="mb-1.5 flex items-center justify-between px-1.5 text-[9.5px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                                            <span className="flex items-center gap-1.5">
+                                                <span className="h-1.5 w-1.5" style={{ background: SKY }} />
+                                                {selectedSegment}
+                                            </span>
+                                            <span className="tabular-nums text-slate-500">{innerRoutes.length}</span>
+                                        </div>
+                                    )}
+                                    <div className="flex flex-col gap-1">
+                                        {innerRoutes.length === 0 ? (
+                                            <div className="px-2 py-4 text-center text-[10px] text-slate-500">
+                                                {isInnerRail ? "—" : `No ${selectedSegment} items`}
+                                            </div>
+                                        ) : (
+                                            innerRoutes.map((item) => {
+                                                const active = pathname === item.path;
+                                                const isPinnedOrStarred =
+                                                    selectedSegment === "pinned" || selectedSegment === "starred";
+                                                return (
+                                                    <div
+                                                        key={item.path}
+                                                        onClick={() => item.path && navigateTo(item.path)}
+                                                        title={item.name}
+                                                        className={cx(
+                                                            "group flex cursor-pointer items-center justify-between border px-2.5 py-1.5 transition",
+                                                            isInnerRail && "justify-center px-1",
+                                                            active
+                                                                ? "border-sky-400/60 bg-sky-500/15 text-white"
+                                                                : "border-transparent text-slate-300 hover:border-white/15 hover:bg-white/[0.03] hover:text-white",
+                                                        )}
+                                                    >
+                                                        <div className="flex min-w-0 flex-1 items-center gap-2">
+                                                            <span
+                                                                className="anticon shrink-0"
+                                                                style={{
+                                                                    fontSize: 14,
+                                                                    color: active ? SKY : vo.textDim,
+                                                                }}
+                                                            >
+                                                                {item.icon}
+                                                            </span>
+                                                            {!isInnerRail && (
+                                                                <span className="truncate text-[11.5px]">
+                                                                    {item.name}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        {isPinnedOrStarred && !isInnerRail && (
+                                                            <Popconfirm
+                                                                title={`Remove from ${selectedSegment}?`}
+                                                                onConfirm={(e) => {
+                                                                    e?.stopPropagation();
+                                                                    if (selectedSegment === "pinned") {
+                                                                        togglePinned({
+                                                                            path: item.path!,
+                                                                            name: (item.name as string) || "",
+                                                                        });
+                                                                        message.success("Removed from pinned");
+                                                                    } else {
+                                                                        toggleStarred({
+                                                                            path: item.path!,
+                                                                            name: (item.name as string) || "",
+                                                                        });
+                                                                        message.success("Removed from favorites");
+                                                                    }
+                                                                }}
+                                                                onCancel={(e) => e?.stopPropagation()}
+                                                                okText="Yes"
+                                                                cancelText="No"
+                                                            >
+                                                                <Button
+                                                                    type="text"
+                                                                    size="small"
+                                                                    danger
+                                                                    icon={<DeleteOutlined style={{ fontSize: 11 }} />}
+                                                                    onClick={(e) => e.stopPropagation()}
+                                                                    style={{ marginLeft: 4 }}
+                                                                />
+                                                            </Popconfirm>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Telemetry Cards & Tamagotchi + Online Presence Footer */}
+                                <div className="shrink-0 border-t border-white/[0.07]">
+                                    <ModuleIllustrationCards collapsed={isInnerRail} darkMode={darkMode} />
+                                    <OnlineUsersAvatars collapsed={isInnerRail} darkMode={darkMode} />
+                                </div>
+                            </AdminSidePanel>
+                        )}
+
+                        {/* Drop-zone edge indicator when dragging a panel */}
+                        {dropEdge && (
+                            <div
+                                data-testid={`admin-drop-${dropEdge}`}
+                                className={cx(
+                                    "pointer-events-none absolute inset-y-0 z-[60] flex w-14 items-center justify-center border-orange-400/80 bg-orange-500/15 font-mono backdrop-blur-[1px] transition-opacity",
+                                    dropEdge === "left" ? "left-0 border-r-2" : "right-0 border-l-2",
+                                )}
+                            >
+                                <span className="-rotate-90 whitespace-nowrap text-[10px] font-semibold uppercase tracking-[0.25em] text-orange-200">
+                                    {dropEdge === "left" ? "Drop to pin left" : "Drop to pin right"}
+                                </span>
+                            </div>
+                        )}
+                    </div>
                 </ConfigProvider>
             </ProConfigProvider>
+            </NextThemesProvider>
 
-            <div className="hidden md:flex" style={{
-                position: 'fixed',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                left: (outerCollapsed ? OUTER_COLLAPSED_WIDTH : 260) + (innerCollapsed ? 48 : 240) + 16,
-                zIndex: 50,
-            }}>
-                <MacWaveDock 
-                    items={LEFT_DOCK_WIDGETS as any} 
-                    direction="vertical" 
-                    darkMode={darkMode} 
-                    onItemClick={openDockWindow as any} 
-                    dockWindows={dockWindows} 
+            {/* Left Productivity Dock (automatically offsets past left-pinned panels) */}
+            <div
+                className="hidden md:flex"
+                style={{
+                    position: "fixed",
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    left: leftPinnedWidth + 12,
+                    zIndex: 50,
+                    transition: "left 0.15s ease",
+                }}
+            >
+                <MacWaveDock
+                    items={LEFT_DOCK_WIDGETS as any}
+                    direction="vertical"
+                    darkMode={darkMode}
+                    onItemClick={openDockWindow as any}
+                    dockWindows={dockWindows}
                 />
             </div>
 
             {/* Dock Widget Windows */}
-            {dockWindows.map(win => !win.minimized && (
-                <DockWindow
-                    key={win.id}
-                    id={win.id}
-                    title={win.title}
-                    width={win.width}
-                    height={win.height}
-                    zIndex={win.zIndex}
-                >
-                    {win.widgetType === 'athan' && <AthanWidget />}
-                    {win.widgetType === 'calculator' && <CalculatorWidget />}
-                    {win.widgetType === 'notes' && <NotesWidget />}
-                    {win.widgetType === 'calendar' && <CalendarWidget />}
-                    {win.widgetType === 'snake' && <SnakeWidget />}
-                    {win.widgetType === 'pong' && <PongWidget />}
-                </DockWindow>
-            ))}
+            {dockWindows.map(
+                (win) =>
+                    !win.minimized && (
+                        <DockWindow
+                            key={win.id}
+                            id={win.id}
+                            title={win.title}
+                            width={win.width}
+                            height={win.height}
+                            zIndex={win.zIndex}
+                        >
+                            {win.widgetType === "athan" && <AthanWidget />}
+                            {win.widgetType === "calculator" && <CalculatorWidget />}
+                            {win.widgetType === "notes" && <NotesWidget />}
+                            {win.widgetType === "calendar" && <CalendarWidget />}
+                            {win.widgetType === "snake" && <SnakeWidget />}
+                            {win.widgetType === "pong" && <PongWidget />}
+                        </DockWindow>
+                    ),
+            )}
 
-            {/* Bottom Dock Footer — Floating Icons */}
-            <div className="hidden md:flex" style={{
-                position: 'fixed',
-                bottom: 0,
-                left: '50%',
-                transform: 'translateX(-50%)',
-                zIndex: 9999,
-            }}>
-                <MacWaveDock 
-                    items={BOTTOM_DOCK_WIDGETS as any} 
-                    direction="horizontal" 
-                    darkMode={darkMode} 
-                    onItemClick={openDockWindow as any} 
-                    dockWindows={dockWindows} 
+            {/* Bottom Dock Footer */}
+            <div
+                className="hidden md:flex"
+                style={{
+                    position: "fixed",
+                    bottom: 8,
+                    left: "50%",
+                    transform: "translateX(-50%)",
+                    zIndex: 9999,
+                }}
+            >
+                <MacWaveDock
+                    items={BOTTOM_DOCK_WIDGETS as any}
+                    direction="horizontal"
+                    darkMode={darkMode}
+                    onItemClick={openDockWindow as any}
+                    dockWindows={dockWindows}
                 />
             </div>
 
@@ -1619,343 +1972,130 @@ export default function CMSLayoutImpl({
 
             {/* Global Command Palette (Ctrl+K / Cmd+K) */}
             <CommandPalette isDark={darkMode} themeColor={themeColor} />
-            <TamagotchiGlobal darkMode={darkMode} />
+            <TamagotchiGlobal />
             <LiveCursors />
 
             {/* Theme Customizer Drawer */}
-            <ThemeDrawer visible={themeDrawerVisible} onClose={() => setThemeDrawerVisible(false)} darkMode={darkMode} />
+            <ThemeDrawer
+                visible={themeDrawerVisible}
+                onClose={() => setThemeDrawerVisible(false)}
+                darkMode={darkMode}
+            />
 
             {/* Floating Action Button Cluster - Bottom Right */}
-            <div className="hidden md:block" style={{
-                position: 'fixed',
-                bottom: 32,
-                right: 32,
-                zIndex: 50,
-            }}>
-                {/* MetaBalls animation behind cluster */}
-                {/* Main Glassmorphic SpeedDial - Replaced with FloatingOrbMenu */}
+            <div
+                className="hidden md:block"
+                style={{
+                    position: "fixed",
+                    bottom: 32,
+                    right: 32,
+                    zIndex: 50,
+                }}
+            >
                 <FloatingOrbMenu darkMode={darkMode} />
             </div>
 
-            {/* CSS for sidebar alignment */}
+            {/* Agentic OS Styling for Menus, PageContainer, ProCard, Tables, and Controls */}
             <style jsx global>{`
-                /* Nuke the 64px ProLayout default header block and ALL phantom top margins */
-                .cms-outer-sider .ant-pro-sider-logo,
-                .cms-inner-sider .ant-pro-sider-logo,
-                .cms-outer-sider [class*="-sider-logo"],
-                .cms-inner-sider [class*="-sider-logo"] {
-                    display: none !important;
-                    height: 0 !important;
-                    margin: 0 !important;
-                    padding: 0 !important;
-                }
-                
-                /* Force all immediate children of the sider to have NO top margin or padding */
-                .cms-outer-sider .ant-layout-sider-children > *,
-                .cms-inner-sider .ant-layout-sider-children > * {
-                    margin-top: 0 !important;
-                    padding-top: 0 !important;
-                    margin-block-start: 0 !important;
-                    padding-block-start: 0 !important;
-                }
-                
-                .cms-outer-sider .ant-pro-sider-menu,
-                .cms-inner-sider .ant-pro-sider-menu,
-                .cms-outer-sider .ant-menu,
-                .cms-inner-sider .ant-menu {
-                    margin-top: 0 !important;
-                    padding-top: 0 !important;
-                    margin-block-start: 0 !important;
-                    padding-block-start: 0 !important;
-                }
-                
-                /* Fix margin-inline for sider-extra */
-                .cms-outer-sider-extra.cms-outer-sider-extra-no-logo,
-                .cms-inner-sider-extra {
-                    margin-inline: 0 !important;
-                }
-                
-                /* Adjust collapsed widths */
-                .cms-outer-layout .cms-outer-sider.ant-layout-sider-collapsed {
-                    width: ${OUTER_COLLAPSED_WIDTH}px !important;
-                    min-width: ${OUTER_COLLAPSED_WIDTH}px !important;
-                    max-width: ${OUTER_COLLAPSED_WIDTH}px !important;
-                }
-                
-                .cms-inner-layout .cms-inner-sider.ant-layout-sider-collapsed {
-                    width: ${INNER_COLLAPSED_WIDTH}px !important;
-                    min-width: ${INNER_COLLAPSED_WIDTH}px !important;
-                    max-width: ${INNER_COLLAPSED_WIDTH}px !important;
-                }
-                
-                
-
-                
-                /* --- VIRTUAL OFFICE THEME (see components/layout/voTheme.ts) --- */
-                
-                /* Layout background - apply canvas backdrop */
                 .cms-outer-layout {
                     background: ${vo.canvas} !important;
                 }
-
-                /* Outer Menu (Primary Sidebar) — VO glass, strongest surface */
-                .cms-outer-sider {
-                    background: transparent !important;
-                    border: none !important;
+                .cms-outer-sider,
+                .cms-inner-sider {
+                    background: ${darkMode ? "rgba(11, 14, 19, 0.96)" : "rgba(255, 255, 255, 0.97)"} !important;
+                    border-color: ${vo.border} !important;
                     box-shadow: none !important;
-                    z-index: 100 !important;
                 }
-                .cms-outer-sider .ant-layout-sider-children {
-                    background: ${vo.glass} !important;
-                    backdrop-filter: ${vo.blur} !important;
-                    -webkit-backdrop-filter: ${vo.blur} !important;
-                    box-shadow: ${vo.shadow} !important;
-                    border: 1px solid ${vo.border} !important;
-                    margin: 16px 8px 16px 16px !important;
-                    border-radius: 20px !important;
-                    height: calc(100vh - 32px) !important;
-                    overflow: visible !important;
-                    display: flex;
-                    flex-direction: column;
-                }
-                /* Footer hairline, like the VO panel dividers */
-                .cms-outer-sider .cms-outer-sider-actions {
-                    border-top: 1px solid ${vo.border} !important;
-                }
-                /* Outer sider footer actions (actionsRender).
-                   DOM: .cms-outer-sider-actions > .ant-space.cms-outer-sider-actions-list
-                        > .ant-space-item > .cms-outer-sider-actions-list-item > SidebarActions
-                   Stretch every level to the full outer sider width so space-evenly works. */
-                .cms-outer-sider .cms-outer-sider-actions {
-                    display: flex !important;
-                    align-items: center !important;
-                    width: 100% !important;
-                    height: ${SIDER_FOOTER_ROW_HEIGHT}px !important;
-                    margin: 0 !important;
-                    padding: 0 !important;
-                    box-sizing: border-box !important;
-                }
-                .cms-outer-sider .cms-outer-sider-actions-collapsed {
-                    height: auto !important;
-                    padding: 8px 0 !important;
-                }
-                /* Inner footer: drop ProLayout's 16px bottom padding so the online-users
-                   row sits on the same baseline as the outer footer buttons. */
-                .cms-inner-sider .cms-inner-sider-footer {
-                    padding-block-end: 0 !important;
-                    margin-block-end: 0 !important;
-                }
-                .cms-outer-sider .cms-outer-sider-actions-list,
-                .cms-outer-sider .cms-outer-sider-actions-list > .ant-space-item,
-                .cms-outer-sider .cms-outer-sider-actions-list-item {
-                    display: flex !important;
-                    flex: 1 1 100% !important;
-                    width: 100% !important;
-                    min-width: 0 !important;
-                    margin: 0 !important;
-                    padding: 0 !important;
-                }
-                .cms-outer-sider .cms-outer-sider-actions-list-item,
-                .cms-outer-sider .cms-outer-sider-actions-list-item:hover {
-                    background: transparent !important;
-                    cursor: default !important;
-                }
-                /* ---- Menus (both siders): base ---- */
+
+                /* ---- Menus (Agentic OS square rows, monospace, orange active border) ---- */
                 .cms-outer-sider .ant-menu,
                 .cms-inner-sider .ant-menu {
                     background: transparent !important;
                     color: ${vo.textMuted} !important;
                     border-inline-end: none !important;
+                    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
                 }
                 .cms-outer-sider .ant-menu-sub,
                 .cms-inner-sider .ant-menu-sub {
-                    background: transparent !important;
+                    background: rgba(255, 255, 255, 0.015) !important;
                 }
                 .cms-outer-sider .ant-menu-item,
-                .cms-inner-sider .ant-menu-item {
-                    padding-left: 12px !important;
-                    padding-right: 12px !important;
-                }
-                
-                .cms-outer-sider .ant-menu-submenu-title,
-                .cms-inner-sider .ant-menu-submenu-title {
-                    padding-left: 12px !important;
-                    padding-right: 34px !important;
-                }
-                
-                .cms-outer-sider .ant-menu-item,
-                .cms-outer-sider .ant-menu-submenu-title,
-                .cms-inner-sider .ant-menu-item,
-                .cms-inner-sider .ant-menu-submenu-title {
+                .cms-outer-sider .ant-menu-submenu-title {
                     color: ${vo.text} !important;
-                    font-size: 13px !important;
-                    font-weight: 600 !important;
+                    font-size: 12px !important;
+                    font-weight: 500 !important;
                     border: 1px solid transparent !important;
-                    border-radius: 12px !important;
-                    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease !important;
-                    margin-inline: 8px !important;
-                    margin-top: 2px !important;
-                    margin-bottom: 2px !important;
-                    height: auto !important;
-                    line-height: normal !important;
-                    padding-block: 8px !important;
+                    border-radius: 0px !important;
+                    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease !important;
+                    margin-inline: 6px !important;
+                    margin-top: 1px !important;
+                    margin-bottom: 1px !important;
+                    width: calc(100% - 12px) !important;
+                    height: 32px !important;
+                    line-height: 32px !important;
+                    padding-inline: 10px !important;
                 }
-                
-                /* Freeze item widths so they don't shrink when a scrollbar appears, which caused the arrow to jump */
-                .cms-outer-sider:not(.ant-layout-sider-collapsed) .ant-menu-item,
-                .cms-outer-sider:not(.ant-layout-sider-collapsed) .ant-menu-submenu-title {
-                    width: 214px !important;
+                .cms-outer-sider .ant-menu-sub .ant-menu-item {
+                    height: 29px !important;
+                    line-height: 29px !important;
+                    font-size: 11.5px !important;
+                    padding-left: 28px !important;
                 }
-                
-                .cms-inner-sider:not(.ant-layout-sider-collapsed) .ant-menu-item,
-                .cms-inner-sider:not(.ant-layout-sider-collapsed) .ant-menu-submenu-title {
-                    width: 194px !important;
-                }
-                
-                /* Completely remove styling from wrapper li if it's a divider */
-                .cms-outer-sider .ant-menu-item:has(.vo-divider-header),
-                .cms-inner-sider .ant-menu-item:has(.vo-divider-header) {
+                /* Non-clickable domain group header items */
+                .cms-outer-sider .ant-menu-item.aos-menu-divider-item,
+                .cms-outer-sider .ant-menu-item:has(.vo-divider-header) {
                     background: transparent !important;
                     border: none !important;
                     box-shadow: none !important;
-                    padding: 0 !important;
+                    padding: 12px 10px 4px 10px !important;
                     margin: 0 !important;
                     height: auto !important;
+                    line-height: 1.2 !important;
                     pointer-events: none !important;
+                    cursor: default !important;
+                    opacity: 1 !important;
                 }
-                
                 .cms-outer-sider .ant-menu-item .anticon,
-                .cms-outer-sider .ant-menu-submenu-title .anticon,
-                .cms-inner-sider .ant-menu-item .anticon,
-                .cms-inner-sider .ant-menu-submenu-title .anticon {
+                .cms-outer-sider .ant-menu-submenu-title .anticon {
                     color: ${vo.textDim} !important;
-                    transition: color 0.2s ease !important;
+                    transition: color 0.15s ease !important;
                 }
-                .cms-outer-sider .ant-menu-submenu-arrow,
-                .cms-inner-sider .ant-menu-submenu-arrow {
+                .cms-outer-sider .ant-menu-submenu-arrow {
                     color: ${vo.textDim} !important;
                 }
-                /* VO section labels: 10px bold uppercase, wide tracking, with cyan dot */
-                .cms-outer-sider .ant-menu-item-group-title,
-                .cms-inner-sider .ant-menu-item-group-title {
-                    color: ${vo.accent} !important;
-                    font-size: 10px !important;
-                    font-weight: 700 !important;
-                    text-transform: uppercase !important;
-                    letter-spacing: 0.14em !important;
-                    display: flex !important;
-                    align-items: center !important;
-                    gap: 6px !important;
-                }
-                .cms-outer-sider .ant-menu-item-group-title::before,
-                .cms-inner-sider .ant-menu-item-group-title::before {
-                    content: '';
-                    display: block;
-                    width: 6px;
-                    height: 6px;
-                    border-radius: 50%;
-                    background: ${vo.accent};
-                }
-                
-                /* Inner Menu (Contextual Sidebar) — VO glass, secondary surface */
-                .cms-inner-sider {
-                    background: transparent !important;
-                    border: none !important;
-                    box-shadow: none !important;
-                    overflow: visible !important;
-                    left: ${outerCollapsed ? OUTER_COLLAPSED_WIDTH : 260}px !important;
-                    z-index: 99 !important;
-                }
-                .cms-inner-sider .ant-layout-sider-children {
-                    background: ${vo.glass} !important;
-                    backdrop-filter: ${vo.blur} !important;
-                    -webkit-backdrop-filter: ${vo.blur} !important;
-                    box-shadow: ${vo.shadow} !important;
-                    border: 1px solid ${vo.border} !important;
-                    margin: 16px 16px 16px 8px !important;
-                    border-radius: 20px !important;
-                    height: calc(100vh - 32px) !important;
-                    overflow: visible !important;
-                    display: flex;
-                    flex-direction: column;
-                }
-                
-                /* ---- Hover (VO AgentRow: white/5 fill + white/10 hairline) ---- */
                 .cms-outer-sider .ant-menu-item:hover,
-                .cms-outer-sider .ant-menu-submenu-title:hover,
-                .cms-inner-sider .ant-menu-item:hover,
-                .cms-inner-sider .ant-menu-submenu-title:hover {
+                .cms-outer-sider .ant-menu-submenu-title:hover {
                     background: ${vo.hoverBg} !important;
                     border-color: ${vo.border} !important;
                     color: ${vo.text} !important;
-                    box-shadow: none !important;
                 }
                 .cms-outer-sider .ant-menu-item:hover .anticon,
-                .cms-outer-sider .ant-menu-submenu-title:hover .anticon,
-                .cms-inner-sider .ant-menu-item:hover .anticon,
-                .cms-inner-sider .ant-menu-submenu-title:hover .anticon {
-                    color: ${vo.text} !important;
+                .cms-outer-sider .ant-menu-submenu-title:hover .anticon {
+                    color: ${vo.accent} !important;
                 }
-                
-                /* ---- Selected (VO AgentRow selected: white/10 fill + white/25 border) ---- */
-                .cms-outer-sider .ant-menu-item.ant-menu-item-selected,
-                .cms-inner-sider .ant-menu-item.ant-menu-item-selected {
+                .cms-outer-sider .ant-menu-item.ant-menu-item-selected {
                     background: ${vo.selectedBg} !important;
                     border-color: ${vo.selectedBorder} !important;
+                    border-left: 2px solid ${vo.accent} !important;
                     color: ${vo.text} !important;
                     font-weight: 600 !important;
-                    box-shadow: none !important;
                 }
                 .cms-outer-sider .ant-menu-item.ant-menu-item-selected .anticon,
-                .cms-inner-sider .ant-menu-item.ant-menu-item-selected .anticon {
-                    color: ${vo.accent} !important;
-                }
                 .cms-outer-sider .ant-menu-submenu-selected > .ant-menu-submenu-title,
-                .cms-inner-sider .ant-menu-submenu-selected > .ant-menu-submenu-title {
-                    color: ${vo.text} !important;
-                }
-                .cms-outer-sider .ant-menu-submenu-selected > .ant-menu-submenu-title .anticon,
-                .cms-inner-sider .ant-menu-submenu-selected > .ant-menu-submenu-title .anticon {
+                .cms-outer-sider .ant-menu-submenu-selected > .ant-menu-submenu-title .anticon {
                     color: ${vo.accent} !important;
                 }
-                
-                /* Force the exact ProLayout scrolling wrapper to always show the scrollbar */
-                .cms-outer-sider .ant-pro-sider-menu,
-                .cms-inner-sider .ant-pro-sider-menu,
-                .cms-outer-sider div:has(> .ant-menu),
-                .cms-inner-sider div:has(> .ant-menu),
-                .cms-outer-sider div[style*="overflow: hidden auto"],
-                .cms-inner-sider div[style*="overflow: hidden auto"] {
-                    overflow-y: scroll !important;
-                }
-                
-                /* Ensure text truncates properly */
-                .submenu-text-el, .menuitem-text-el {
-                    overflow: hidden;
-                    text-overflow: ellipsis;
-                    white-space: nowrap;
-                    flex: 1;
-                    min-width: 0;
-                }
-                
-                .cms-inner-sider .ant-menu {
-                    overflow-x: hidden !important;
-                }
-                
-                .cms-inner-sider .cms-inner-sider-extra {
-                    overflow-x: hidden !important;
-                }
-                
-                /* Fix segmented control to fit within sidebar */
+
+                /* ---- Segmented Control (Workspace · Context) ---- */
                 .cms-inner-sider .ant-segmented {
                     max-width: 100% !important;
                     box-sizing: border-box !important;
+                    border-radius: 0px !important;
                 }
-                /* VO tab look: muted items, white/10 selected pill */
                 .cms-inner-sider .ant-segmented .ant-segmented-item {
                     color: ${vo.textMuted} !important;
-                    border-radius: 9px !important;
-                    transition: color 0.2s ease !important;
+                    border-radius: 0px !important;
+                    transition: color 0.15s ease !important;
                 }
                 .cms-inner-sider .ant-segmented .ant-segmented-item:hover:not(.ant-segmented-item-selected) {
                     color: ${vo.text} !important;
@@ -1965,125 +2105,122 @@ export default function CMSLayoutImpl({
                 .cms-inner-sider .ant-segmented .ant-segmented-thumb {
                     background: ${vo.selectedBg} !important;
                     color: ${vo.text} !important;
-                    box-shadow: inset 0 0 0 1px ${vo.border} !important;
-                    border-radius: 9px !important;
+                    box-shadow: inset 0 0 0 1px ${vo.selectedBorder} !important;
+                    border-radius: 0px !important;
                 }
                 .cms-inner-sider .ant-segmented .ant-segmented-item-selected .anticon {
                     color: ${vo.accent} !important;
                 }
-                
+
+                /* ---- Agentic OS PageContainer, ProCard, Ant Cards, Tables, Inputs ---- */
+                #cms-pro-layout .ant-pro-page-container {
+                    background: transparent !important;
+                }
+                #cms-pro-layout .ant-page-header {
+                    background: ${darkMode ? "rgba(11, 14, 19, 0.92)" : "rgba(255, 255, 255, 0.92)"} !important;
+                    border-bottom: 1px solid ${vo.border} !important;
+                    padding: 12px 20px !important;
+                    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+                }
+                #cms-pro-layout .ant-page-header-heading-title {
+                    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+                    font-size: 16px !important;
+                    font-weight: 700 !important;
+                    letter-spacing: 0.08em !important;
+                    text-transform: uppercase !important;
+                    color: ${vo.text} !important;
+                }
+                #cms-pro-layout .ant-page-header-heading-sub-title {
+                    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+                    font-size: 11px !important;
+                    color: ${vo.textMuted} !important;
+                }
+                #cms-pro-layout .ant-breadcrumb {
+                    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+                    font-size: 10px !important;
+                    letter-spacing: 0.12em !important;
+                    text-transform: uppercase !important;
+                }
+                #cms-pro-layout .ant-pro-page-container-children-container,
+                #cms-pro-layout .ant-pro-page-container-warp-page-header {
+                    padding-inline: 16px !important;
+                    padding-block: 14px !important;
+                }
+                #cms-pro-layout .ant-pro-card,
+                #cms-pro-layout .ant-card {
+                    background: ${darkMode ? "#0b0e13" : "#ffffff"} !important;
+                    border: 1px solid ${vo.border} !important;
+                    border-radius: 0px !important;
+                    box-shadow: none !important;
+                    backdrop-filter: none !important;
+                    -webkit-backdrop-filter: none !important;
+                    transform: none !important;
+                }
+                #cms-pro-layout .ant-card-head,
+                #cms-pro-layout .ant-pro-card-header {
+                    border-bottom: 1px solid ${vo.border} !important;
+                    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+                }
+                #cms-pro-layout .ant-card-head-title,
+                #cms-pro-layout .ant-pro-card-title {
+                    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+                    font-size: 11px !important;
+                    font-weight: 600 !important;
+                    letter-spacing: 0.16em !important;
+                    text-transform: uppercase !important;
+                }
+                #cms-pro-layout .ant-table-wrapper .ant-table {
+                    background: transparent !important;
+                    border-radius: 0px !important;
+                }
+                #cms-pro-layout .ant-table-thead > tr > th {
+                    background: ${darkMode ? "rgba(255, 255, 255, 0.025)" : "rgba(15, 23, 42, 0.03)"} !important;
+                    color: ${vo.textMuted} !important;
+                    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+                    font-size: 10px !important;
+                    font-weight: 600 !important;
+                    letter-spacing: 0.16em !important;
+                    text-transform: uppercase !important;
+                    border-bottom: 1px solid ${vo.borderStrong} !important;
+                    border-radius: 0px !important;
+                }
+                #cms-pro-layout .ant-table-tbody > tr > td {
+                    border-bottom: 1px solid ${vo.border} !important;
+                    font-size: 12px !important;
+                }
+                #cms-pro-layout .ant-table-tbody > tr:hover > td {
+                    background: ${vo.hoverBg} !important;
+                }
+                #cms-pro-layout .ant-btn,
+                #cms-pro-layout .ant-input,
+                #cms-pro-layout .ant-input-affix-wrapper,
+                #cms-pro-layout .ant-select-selector,
+                #cms-pro-layout .ant-tag,
+                #cms-pro-layout .ant-modal-content {
+                    border-radius: 0px !important;
+                }
+                #cms-pro-layout .ant-tag {
+                    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+                    font-size: 10px !important;
+                    letter-spacing: 0.08em !important;
+                    text-transform: uppercase !important;
+                }
+
                 /* VO IconButton (footer actions) */
                 .vo-icon-btn {
-                    transition: background 0.2s ease, color 0.2s ease !important;
+                    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease !important;
                 }
                 .vo-icon-btn:hover {
                     background: ${vo.selectedBg} !important;
+                    border-color: ${vo.selectedBorder} !important;
                     color: ${vo.text} !important;
-                }
-                
-                /* Slim VO scrollbars inside the siders */
-                .cms-outer-sider ::-webkit-scrollbar,
-                .cms-inner-sider ::-webkit-scrollbar {
-                    width: 6px;
-                    height: 6px;
-                }
-                .cms-outer-sider ::-webkit-scrollbar-thumb,
-                .cms-inner-sider ::-webkit-scrollbar-thumb {
-                    background: ${vo.border};
-                    border-radius: 999px;
-                }
-                .cms-outer-sider ::-webkit-scrollbar-track,
-                .cms-inner-sider ::-webkit-scrollbar-track {
-                    background: transparent;
-                }
-                
-                /* Collapse buttons: VO glass chip */
-                .cms-outer-sider-collapsed-button,
-                .cms-inner-sider-collapsed-button {
-                    background: ${vo.glass} !important;
-                    backdrop-filter: ${vo.blur} !important;
-                    -webkit-backdrop-filter: ${vo.blur} !important;
-                    border: 1px solid ${vo.border} !important;
-                    color: ${vo.textMuted} !important;
-                    box-shadow: ${vo.shadow} !important;
-                }
-                .cms-outer-sider-collapsed-button:hover,
-                .cms-inner-sider-collapsed-button:hover {
-                    color: ${vo.text} !important;
-                }
-                
-                /* Ensure collapse buttons are fully visible and above other elements */
-                .cms-outer-sider-collapsed-button,
-                .cms-outer-layout .ant-layout-sider-trigger,
-                .cms-outer-layout .ant-pro-sider-collapsed-button,
-                .ant-layout-sider-trigger,
-                .ant-pro-sider-collapsed-button {
-                    z-index: 250 !important;
                 }
 
-                .cms-inner-sider-collapsed-button {
-                    z-index: 200 !important;
-                }
-                
-                /* SpeedDial button styling - glassmorphic matching docks */
-                .speeddial-glass-btn {
-                    width: 3.5rem !important;
-                    height: 3.5rem !important;
-                    background: ${darkMode ? 'rgba(30,30,40,0.72)' : 'rgba(255, 255, 255, 0.72)'} !important;
-                    backdrop-filter: blur(20px) saturate(180%) !important;
-                    -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
-                    border: ${darkMode ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(255,255,255,0.5)'} !important;
-                    box-shadow: ${darkMode ? '0 8px 32px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.2)' : '0 8px 32px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04)'} !important;
-                    transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
-                    border-radius: 18px !important;
-                }
-                
-                .speeddial-glass-btn:hover {
-                    transform: scale(1.15) translateY(-4px) !important;
-                }
-                
-                .speeddial-glass-btn .pi {
-                    font-size: 1.5rem !important;
-                    color: ${darkMode ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.6)'} !important;
-                    filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.1)) !important;
-                }
-                
-                /* SpeedDial action buttons - pastel gradient circles */
-                .p-speeddial-action {
-                    width: 2.5rem !important;
-                    height: 2.5rem !important;
-                    background: linear-gradient(135deg, rgba(var(--theme-color-rgb), 0.12), rgba(var(--theme-color-rgb), 0.06)) !important;
-                    border: 1px solid rgba(var(--theme-color-rgb), 0.15) !important;
-                    box-shadow: 0 3px 12px rgba(var(--theme-color-rgb), 0.15) !important;
-                    color: ${themeColor} !important;
-                    transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
-                    backdrop-filter: blur(8px) !important;
-                }
-                
-                .p-speeddial-action:hover {
-                    transform: scale(1.15) !important;
-                    background: linear-gradient(135deg, rgba(var(--theme-color-rgb), 0.22), rgba(var(--theme-color-rgb), 0.12)) !important;
-                    box-shadow: 0 6px 20px rgba(var(--theme-color-rgb), 0.25) !important;
-                }
-                
-                .p-speeddial-action .pi {
-                    font-size: 1rem !important;
-                    color: ${themeColor} !important;
-                }
                 /* Align PageContainer title and subtitle by baseline */
                 .ant-page-header-heading-left {
                     align-items: baseline !important;
-                }
-
-                /* Left Dock Toolbar */
-                .left-dock-toolbar {
-                    scrollbar-width: none;
-                }
-                .left-dock-toolbar::-webkit-scrollbar {
-                    display: none;
                 }
             `}</style>
         </div>
     );
 }
-

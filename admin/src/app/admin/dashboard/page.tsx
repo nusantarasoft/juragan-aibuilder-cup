@@ -285,25 +285,25 @@ export default function DashboardPage() {
         <CMSLayout title={<AuroraText colors={[themeColor, "var(--theme-secondary, #6366f1)", "var(--theme-accent, #a78bfa)"]}>Dashboard</AuroraText>}
             subTitle={<DecryptedText text="NusantaraSoft Enterprise Platform" animateOn="view" revealDirection="center" speed={40} maxIterations={15} sequential />}>
         <DashboardStyles />
-        <div style={{ padding: 24, background: DASH_COLORS.background, minHeight: '100vh' }}>
+        <div className="dash-page-wrapper" style={{ padding: 20, background: 'transparent', minHeight: '100vh' }}>
             {contextHolder}
 
             {/* ══════ HEADER ══════ */}
             <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
                 <div style={{ marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
                     <Space align="center" size={12}>
-                        <div style={{ width: 40, height: 40, borderRadius: 12, background: `${themeColor}14`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <DashboardOutlined style={{ fontSize: 22, color: themeColor }} />
+                        <div style={{ width: 38, height: 38, borderRadius: 0, border: `1px solid ${themeColor}55`, background: `${themeColor}14`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <DashboardOutlined style={{ fontSize: 20, color: themeColor }} />
                         </div>
                         <div>
-                            <Title level={3} style={{ margin: 0, fontSize: 22, color: DASH_COLORS.textPrimary }}>Enterprise Command Center</Title>
-                            <Text type="secondary" style={{ fontSize: 13 }}>Real-time overview of all platform modules</Text>
+                            <Title level={3} className="dash-main-title" style={{ margin: 0, fontSize: 20, color: DASH_COLORS.textPrimary, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace', letterSpacing: '0.04em' }}>Enterprise Command Center</Title>
+                            <Text type="secondary" style={{ fontSize: 12, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace' }}>Real-time overview of all platform modules</Text>
                         </div>
                     </Space>
                     <Space size={8}>
-                        <Tag style={{ borderRadius: 8, border: '1px solid #bfdbfe', background: '#eff6ff', color: '#3b82f6', fontWeight: 500 }}>{platformCounts.tables} Tables</Tag>
-                        <Tag style={{ borderRadius: 8, border: '1px solid #a5f3fc', background: '#ecfeff', color: '#06b6d4', fontWeight: 500 }}>{platformCounts.modules} Modules</Tag>
-                        <Tag style={{ borderRadius: 8, border: '1px solid #bbf7d0', background: '#f0fdf4', color: '#16a34a', fontWeight: 500 }}>All Systems Operational</Tag>
+                        <Tag style={{ borderRadius: 0, border: '1px solid rgba(56,189,248,0.45)', background: 'rgba(56,189,248,0.12)', color: '#38bdf8', fontWeight: 600 }}>{platformCounts.tables} Tables</Tag>
+                        <Tag style={{ borderRadius: 0, border: '1px solid rgba(251,146,60,0.45)', background: 'rgba(251,146,60,0.12)', color: '#fb923c', fontWeight: 600 }}>{platformCounts.modules} Modules</Tag>
+                        <Tag style={{ borderRadius: 0, border: '1px solid rgba(16,185,129,0.45)', background: 'rgba(16,185,129,0.12)', color: '#10b981', fontWeight: 600 }}>All Systems Operational</Tag>
                     </Space>
                 </div>
             </motion.div>
@@ -623,10 +623,10 @@ export default function DashboardPage() {
                                     { name: 'BIM', count: '3D Models', color: DASH_COLORS.purple, href: '/admin/bim' },
                                 ].map(m => (
                                     <Col span={12} key={m.name}>
-                                        <div onClick={() => router.push(m.href)} style={{
-                                            padding: '8px 12px', borderRadius: 10, cursor: 'pointer',
-                                            border: `1px solid rgba(0,0,0,0.06)`, borderLeft: `3px solid ${m.color}`,
-                                            transition: 'all 0.2s', background: '#fff',
+                                        <div className="dash-module-tile" onClick={() => router.push(m.href)} style={{
+                                            padding: '8px 12px', borderRadius: 0, cursor: 'pointer',
+                                            border: `1px solid rgba(148,163,184,0.18)`, borderLeft: `3px solid ${m.color}`,
+                                            transition: 'all 0.2s', background: 'rgba(255,255,255,0.025)',
                                         }}>
                                             <Text strong style={{ color: m.color, fontSize: 13 }}>{m.name}</Text>
                                             <br /><Text type="secondary" style={{ fontSize: 11 }}>{m.count}</Text>

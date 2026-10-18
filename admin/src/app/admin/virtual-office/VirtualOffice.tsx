@@ -41,12 +41,9 @@ export default function VirtualOffice() {
     const { isDark, setTheme } = useAosTheme();
     const focus = useVoLayout((s) => s.focus);
     const dropEdge = useVoLayout((s) => s.dropEdge);
-<<<<<<< HEAD
-=======
     const agents = useOfficeStore((s) => s.agents);
     const dataMode = useOfficeStore((s) => s.dataMode);
     const showEmptyLive = dataMode === "live" && isEmptyLiveOffice(agents);
->>>>>>> origin/master
 
     // Keep 3D scene lighting synchronized with Agentic OS / Nusantarasoft theme
     useEffect(() => {
@@ -112,8 +109,6 @@ export default function VirtualOffice() {
             {/* Hide outer CMS floating dock while Virtual Office is mounted */}
             <style>{'div.md\\:flex[style*="translateX(-50%)"]{display:none!important}div:has(> .mac-dock-container){display:none!important}'}</style>
             <TopBar />
-<<<<<<< HEAD
-=======
             {showEmptyLive && (
                 <div className="pointer-events-none absolute inset-x-0 top-10 z-40 flex justify-center px-4">
                     <div className="pointer-events-auto max-w-lg">
@@ -121,7 +116,6 @@ export default function VirtualOffice() {
                     </div>
                 </div>
             )}
->>>>>>> origin/master
             <div data-vo-body className="relative flex min-h-0 flex-1 overflow-hidden">
                 {!focus && <AgentRoster />}
                 <main data-testid="vo-main" className="relative order-2 min-w-0 flex-1 overflow-hidden">
