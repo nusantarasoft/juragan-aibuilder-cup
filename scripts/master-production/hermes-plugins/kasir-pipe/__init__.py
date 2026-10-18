@@ -314,10 +314,42 @@ def _on_pre_gateway_dispatch(event, gateway=None, session_store=None, **kwargs):
                 "reason": "kasir-pipe chat-only: media refused",
             }
         if _sender_allowed(sender):
+            phone = ""
+            try:
+                phone = _resolve_sender_phone(event)
+            except Exception:
+                logger.exception("kasir-pipe: resolve sender phone failed")
+            inbound_text = str(getattr(event, "text", None) or "").strip()
+            if len(phone) >= 8 and inbound_text:
+                try:
+                    from .wa_sync import record_turn_async
+
+                    record_turn_async(
+                        phone=phone,
+                        chat_id=sender,
+                        author_kind="owner",
+                        body_text=inbound_text,
+                    )
+                except Exception:
+                    logger.exception("kasir-pipe: wa-turn owner mirror failed")
+            if len(phone) >= 8:
+                try:
+                    from .wa_sync import handoff_active
+
+                    if handoff_active(phone):
+                        logger.info(
+                            "kasir-pipe: handoff active chat=%s → skip agent",
+                            sender,
+                        )
+                        return {
+                            "action": "skip",
+                            "reason": "kasir-pipe human takeover",
+                        }
+                except Exception:
+                    logger.exception("kasir-pipe: handoff check failed")
             logger.info("kasir-pipe: allowlist ok chat=%s → agent", sender)
             # Stamp identity for kasir-tools (tool hooks often omit chat JID).
             try:
-                phone = _resolve_sender_phone(event)
                 if len(phone) >= 8:
                     _stamp_active_sender(chat_id=sender, phone=phone)
             except Exception:
@@ -624,6 +656,60 @@ def _run_registration(event: Any, gateway: Any = None) -> str:
     return reply
 
 
+def _resolve_transform_wa_context(**kwargs: Any) -> tuple[str, str]:
+    """Derive owner phone + chat JID from transform_llm_output hook kwargs."""
+    event = kwargs.get("event")
+    chat_id = str(kwargs.get("chat_id") or "").strip()
+    phone = ""
+
+    if event is not None:
+        try:
+            phone = _resolve_sender_phone(event)
+        except Exception:
+            logger.exception("kasir-pipe: transform resolve sender from event failed")
+        if not chat_id:
+            chat_id = _chat_id(event)
+
+    if not phone and chat_id:
+        local = chat_id.split("@")[0].split(":")[0]
+        phone = _digits(local)
+
+    session = kwargs.get("session")
+    if (not phone or len(phone) < 8) and session is not None:
+        for attr in ("chat_id", "user_id", "sender_id"):
+            raw = getattr(session, attr, None)
+            if raw:
+                if not chat_id:
+                    chat_id = str(raw)
+                phone = _digits(str(raw).split("@")[0].split(":")[0])
+                if len(phone) >= 8:
+                    break
+
+    if len(phone) < 8:
+        try:
+            import importlib.util
+            from pathlib import Path
+
+            for path in (
+                Path(__file__).resolve().parent.parent / "kasir-tools" / "identity.py",
+                Path("/opt/data/plugins/kasir-tools/identity.py"),
+            ):
+                if not path.is_file():
+                    continue
+                spec = importlib.util.spec_from_file_location("kasir_tools_identity", path)
+                if spec and spec.loader:
+                    mod = importlib.util.module_from_spec(spec)
+                    spec.loader.exec_module(mod)
+                    phone = _digits(str(mod.read_sender() or ""))
+                    break
+        except Exception:
+            phone = ""
+
+    if not chat_id and len(phone) >= 8:
+        chat_id = f"{phone}@s.whatsapp.net"
+    return phone, chat_id
+
+
 def _on_transform_llm_output(
     response_text: Any = None,
     platform: Any = None,
@@ -634,10 +720,25 @@ def _on_transform_llm_output(
     Hermes ``transform_llm_output``: return a string to replace, or None to keep.
     First non-empty string wins — return None when text is already clean.
     """
-    del kwargs
     text = response_text if isinstance(response_text, str) else ""
     if not text.strip():
         return None
+    try:
+        from .wa_sync import handoff_active, record_turn_async
+
+        phone, chat_id = _resolve_transform_wa_context(**kwargs)
+        if len(phone) >= 8:
+            if handoff_active(phone):
+                logger.info("kasir-pipe: transform blocked (handoff) phone=%s", phone)
+                return ""
+            record_turn_async(
+                phone=phone,
+                chat_id=chat_id or phone,
+                author_kind="ai",
+                body_text=text,
+            )
+    except Exception:
+        logger.exception("kasir-pipe: wa-turn ai mirror failed")
     plat = str(getattr(platform, "value", platform) or "").lower()
     allowed = _platforms()
     # Kasir Hermes is WhatsApp-first; sanitize when platform is whatsapp or unset.

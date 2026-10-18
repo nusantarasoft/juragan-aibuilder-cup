@@ -26,6 +26,9 @@ import { StudioUmkmAgenticAskService } from './studio-umkm-agentic-ask.service';
 import { StudioUmkmPendampingService } from './studio-umkm-pendamping.service';
 import { StudioOutputService } from './studio-output.service';
 import { InternalKasirConsultController } from './internal-kasir-consult.controller';
+import { InternalWaTurnController } from './internal-wa-turn.controller';
+import { StudioWaConversationsService } from './studio-wa-conversations.service';
+import { StudioWaConversationsResolver } from './studio-wa-conversations.resolver';
 import { KasirConsultAosTaskService } from './kasir-consult-aos-task.service';
 import { AgenticOsModule } from '../agentic-os/agentic-os.module';
 import { OnboardingModule } from '../onboarding/onboarding.module';
@@ -38,6 +41,13 @@ import { StudioAgentBuilderService } from './studio-agent-builder.service';
 import { StudioAgentBuilderResolver } from './studio-agent-builder.resolver';
 import { StudioLabelStudioService } from './studio-label-studio.service';
 import { StudioLabelStudioResolver } from './studio-label-studio.resolver';
+import { StudioResearchService } from './studio-research.service';
+import { StudioResearchCronService } from './studio-research.cron';
+import { StudioResearchResolver } from './studio-research.resolver';
+import { StudioMarketingService } from './studio-marketing.service';
+import { StudioMarketingCronService } from './studio-marketing.cron';
+import { StudioMarketingResolver } from './studio-marketing.resolver';
+import { StudioMarketingPublicController } from './studio-marketing-public.controller';
 
 @Module({
     imports: [
@@ -58,6 +68,8 @@ import { StudioLabelStudioResolver } from './studio-label-studio.resolver';
         StudioShareController,
         StudioWhatsAppController,
         InternalKasirConsultController,
+        InternalWaTurnController,
+        StudioMarketingPublicController,
     ],
     providers: [
         GqlAuthGuard,
@@ -84,6 +96,14 @@ import { StudioLabelStudioResolver } from './studio-label-studio.resolver';
         StudioAgentBuilderResolver,
         StudioLabelStudioService,
         StudioLabelStudioResolver,
+        StudioWaConversationsService,
+        StudioWaConversationsResolver,
+        StudioResearchService,
+        StudioResearchCronService,
+        StudioResearchResolver,
+        StudioMarketingService,
+        StudioMarketingCronService,
+        StudioMarketingResolver,
     ],
     exports: [
         StudioService,

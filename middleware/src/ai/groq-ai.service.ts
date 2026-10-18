@@ -11,8 +11,14 @@ export class GroqAiService {
 
     constructor(private readonly aiSettings: AiSettingsService) {}
 
-    async generateText(prompt: string, tenantId?: string, inlineData?: AiInlineData): Promise<string> {
+    async generateText(
+        prompt: string,
+        tenantId?: string,
+        inlineData?: AiInlineData,
+        modelOverride?: string,
+    ): Promise<string> {
         const config = await this.aiSettings.getGroqConfig(tenantId);
+        const model = (modelOverride || config.model).trim();
         if (!config.apiKey) {
             return 'Groq is not configured. Add an API key in AI Studio Settings.';
         }
@@ -29,7 +35,7 @@ export class GroqAiService {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    model: config.model,
+                    model,
                     messages: [{ role: 'user', content: prompt }],
                 }),
             });

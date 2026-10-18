@@ -10,8 +10,10 @@ export async function loginAsAdmin(page: Page) {
             regs.forEach((r) => void r.unregister());
         });
     });
-    await page.goto('/login');
-    await page.getByLabel('Email').fill(E2E_ADMIN_EMAIL);
+    await page.goto('/login', { waitUntil: 'domcontentloaded' });
+    const email = page.getByLabel('Email');
+    await expect(email).toBeVisible({ timeout: 60_000 });
+    await email.fill(E2E_ADMIN_EMAIL);
     await page.getByLabel('Password').fill(E2E_ADMIN_PASSWORD);
     await page.getByRole('button', { name: /sign in/i }).click();
     await expect(page).toHaveURL(/\/admin\//, { timeout: 30_000 });

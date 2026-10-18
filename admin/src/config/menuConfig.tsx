@@ -1260,6 +1260,24 @@ const menuConfig = {
                         isLeaf: true,
                     },
                     {
+                        path: "/admin/ai-studio/riset-knowledge",
+                        name: "Riset Knowledge",
+                        icon: <ExperimentOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/ai-studio/konten-marketing",
+                        name: "Konten Marketing",
+                        icon: <PictureOutlined />,
+                        isLeaf: true,
+                    },
+                    {
+                        path: "/admin/ai-studio/percakapan-wa",
+                        name: "Percakapan WA",
+                        icon: <MessageOutlined />,
+                        isLeaf: true,
+                    },
+                    {
                         path: "/admin/ai-studio/ai-gateway",
                         name: "WhatsApp Gateway",
                         icon: <NodeIndexOutlined />,

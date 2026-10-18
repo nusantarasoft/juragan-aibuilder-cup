@@ -1,0 +1,41 @@
+
+Running 24 tests using 1 worker
+
+[1A[2K(node:66202) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:66202) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[1/24] [chromium] › tests/e2e/d9-deck-fullstack.spec.ts:44:9 › D-9 Command Deck + Live/Demo — full stack (live GraphQL) › Command Deck views + Live badge
+[1A[2K[2/24] [chromium] › tests/e2e/d9-deck-fullstack.spec.ts:64:9 › D-9 Command Deck + Live/Demo — full stack (live GraphQL) › Virtual Office Live then Demo
+[1A[2K[3/24] [chromium] › tests/e2e/f1-4-live-demo-fullstack.spec.ts:60:9 › F1-4 Live vs Demo — full stack (live GraphQL) › AI Studio routes
+[1A[2K[4/24] [chromium] › tests/e2e/f1-4-live-demo-fullstack.spec.ts:107:9 › F1-4 Live vs Demo — full stack (live GraphQL) › Agentic OS routes
+[1A[2K[5/24] [chromium] › tests/e2e/f1-4-live-demo-fullstack.spec.ts:129:9 › F1-4 Live vs Demo — full stack (live GraphQL) › Virtual Office Live + Demo
+[1A[2K[6/24] [chromium] › tests/e2e/studio-wa-conversations-fullstack.spec.ts:82:9 › Percakapan WA — super admin inbox › GraphQL lists seeded conversation
+[1A[2K[7/24] [chromium] › tests/e2e/studio-wa-conversations-fullstack.spec.ts:93:9 › Percakapan WA — super admin inbox › non-super-admin blocked on studioWaConversations
+[1A[2K[chromium] › tests/e2e/studio-wa-conversations-fullstack.spec.ts:93:9 › Percakapan WA — super admin inbox › non-super-admin blocked on studioWaConversations
+
+
+[1A[2K
+
+[1A[2K[8/24] [chromium] › tests/e2e/studio-wa-conversations-fullstack.spec.ts:114:9 › Percakapan WA — super admin inbox › UI list, thread, takeover, human reply (mock bridge), release, auto-release
+[1A[2K[9/24] [chromium] › tests/e2e/studio-wa-conversations-fullstack.spec.ts:154:9 › Percakapan WA — super admin inbox › empty state copy when no rows (graphql mock)
+[1A[2K[10/24] [chromium] › tests/e2e/ui-wave-1-recruit-deeplinks.spec.ts:12:9 › UI wave 1 — recruit post-success links › recruit page loads catalog and coming-soon SKUs
+[1A[2K[11/24] [chromium] › tests/e2e/ui-wave-1-recruit-deeplinks.spec.ts:20:9 › UI wave 1 — recruit post-success links › documented module hrefs are under /admin
+[1A[2K[12/24] [chromium] › tests/e2e/ui-wave-1-vo-inspector.spec.ts:10:9 › UI wave 1 — VO agent inspector (after) › Service Desk shows queue copy; Kasir shows WA metrics + connect link
+[1A[2K[13/24] [chromium] › tests/e2e/ui-wave-2-admin-buttons.spec.ts:7:9 › UI wave 2 — admin buttons & honesty › Agentic OS Settings exposes UI demo mode toggle
+[1A[2K[14/24] [chromium] › tests/e2e/ui-wave-2-admin-buttons.spec.ts:13:9 › UI wave 2 — admin buttons & honesty › Label Studio Open is disabled while UI demo mode is on
+[1A[2K[15/24] [chromium] › tests/e2e/ui-wave-2-admin-buttons.spec.ts:24:9 › UI wave 2 — admin buttons & honesty › DevOps GitLab refresh button is wired
+[1A[2K[16/24] [chromium] › tests/e2e/ui-wave-2-admin-buttons.spec.ts:31:9 › UI wave 2 — admin buttons & honesty › connect-wa wizard loads primary CTA copy
+[1A[2K[17/24] [chromium] › tests/e2e/ui-wave-2-admin-buttons.spec.ts:37:9 › UI wave 2 — admin buttons & honesty › BMS dashboard shows live or sample honesty banner
+[1A[2K[18/24] [chromium] › tests/e2e/ui-wave-2-admin-buttons.spec.ts:45:9 › UI wave 2 — admin buttons & honesty › Web Crawler jobs table exposes Stop for queued/running rows
+[1A[2K[19/24] [chromium] › tests/e2e/ui-wave-2-admin-buttons.spec.ts:56:9 › UI wave 2 — admin buttons & honesty › screenshot — AOS Settings UI demo toggle (after)
+[1A[2K[20/24] [chromium] › tests/e2e/ui-wave-2-admin-buttons.spec.ts:66:9 › UI wave 2 — admin buttons & honesty › screenshot — BMS honesty banner (after)
+[1A[2K[21/24] [chromium] › tests/e2e/ui-wave-3-admin-buttons.spec.ts:7:9 › UI wave 3 — admin buttons & honesty › dataset embed MinIO refresh is wired
+[1A[2K[22/24] [chromium] › tests/e2e/ui-wave-3-admin-buttons.spec.ts:14:9 › UI wave 3 — admin buttons & honesty › BMS shows live or sample honesty banner
+[1A[2K[23/24] [chromium] › tests/e2e/ui-wave-3-admin-buttons.spec.ts:26:9 › UI wave 3 — admin buttons & honesty › SCADA overview refresh loads honesty banner
+[1A[2K[24/24] [chromium] › tests/e2e/ui-wave-3-admin-buttons.spec.ts:35:9 › UI wave 3 — admin buttons & honesty › SCADA trends export CSV button responds
+[1A[2K  24 passed (2.7m)

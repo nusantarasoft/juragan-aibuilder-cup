@@ -3,22 +3,23 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-COMPOSE="sudo docker compose -f docker-compose.local.yml -f docker-compose.qa-override.yml"
+DOCKER="${DOCKER:-sudo docker}"
+COMPOSE="$DOCKER compose -f docker-compose.local.yml -f docker-compose.qa-override.yml"
 PG=postgres
 DB="${POSTGRES_DB:-nusantarasoft}"
 
 echo "==> Postgres"
 $COMPOSE up -d postgres
 for i in $(seq 1 60); do
-  if sudo docker exec "$PG" pg_isready -U postgres -h localhost >/dev/null 2>&1; then break; fi
+  if $DOCKER exec "$PG" pg_isready -U postgres -h localhost >/dev/null 2>&1; then break; fi
   sleep 2
 done
 
 echo "==> DB fixes (_supabase, graphql_public, auth ownership)"
-sudo docker exec -i "$PG" psql -U postgres -d "$DB" -v ON_ERROR_STOP=0 <<'SQL'
+$DOCKER exec -i "$PG" psql -U postgres -d "$DB" -v ON_ERROR_STOP=0 <<'SQL'
 SELECT 'CREATE DATABASE _supabase' WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = '_supabase')\gexec
 SQL
-sudo docker exec -i "$PG" psql -U postgres -d nusantarasoft -v ON_ERROR_STOP=0 <<'SQL'
+$DOCKER exec -i "$PG" psql -U postgres -d nusantarasoft -v ON_ERROR_STOP=0 <<'SQL'
 CREATE SCHEMA IF NOT EXISTS graphql_public;
 CREATE SCHEMA IF NOT EXISTS storage;
 CREATE SCHEMA IF NOT EXISTS _realtime;
@@ -26,7 +27,7 @@ CREATE SCHEMA IF NOT EXISTS realtime;
 GRANT ALL ON SCHEMA _realtime TO supabase_admin;
 GRANT ALL ON SCHEMA realtime TO supabase_admin;
 SQL
-sudo docker exec -i "$PG" psql -U postgres -d "$DB" <<'SQL'
+$DOCKER exec -i "$PG" psql -U postgres -d "$DB" <<'SQL'
 DO $$
 DECLARE r record;
 BEGIN
@@ -48,7 +49,7 @@ SQL
 echo "==> Auth, REST, Realtime (skip analytics dependency)"
 $COMPOSE up -d --no-deps auth rest realtime 2>/dev/null || true
 sleep 5
-sudo docker restart supabase-auth supabase-rest realtime-dev.supabase-realtime 2>/dev/null || $COMPOSE up -d --no-deps auth rest realtime
+$DOCKER restart supabase-auth supabase-rest realtime-dev.supabase-realtime 2>/dev/null || $COMPOSE up -d --no-deps auth rest realtime
 for i in $(seq 1 30); do
   if curl -sf http://127.0.0.1:8000/rest/v1/ -H "apikey: ${ANON_KEY:-x}" >/dev/null 2>&1; then break; fi
   sleep 2
@@ -57,8 +58,8 @@ for i in $(seq 1 45); do
   if curl -sf http://127.0.0.1:8000/realtime/v1/api/tenants/realtime-dev/health -H "apikey: ${ANON_KEY:-x}" >/dev/null 2>&1; then break; fi
   sleep 2
 done
-$COMPOSE up -d --no-deps kong 2>/dev/null || sudo docker start supabase-kong
-sudo docker restart supabase-kong 2>/dev/null || true
+$COMPOSE up -d --no-deps kong 2>/dev/null || $DOCKER start supabase-kong
+$DOCKER restart supabase-kong 2>/dev/null || true
 
 echo "==> CMS admin user"
 node scripts/init-cms-admin.mjs

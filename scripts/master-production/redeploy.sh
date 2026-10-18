@@ -26,8 +26,8 @@ echo "==> [1/10] make entrypoints executable"
 chmod +x volumes/api/kong-entrypoint.sh 2>/dev/null || true
 chmod +x "$SCRIPTS"/*.sh 2>/dev/null || true
 
-echo "==> [2/10] build app images (serial: middleware, landing-page, admin)"
-for svc in middleware landing-page admin; do
+echo "==> [2/10] build app images (serial: middleware, landing-page, admin, brochure-gallery)"
+for svc in middleware landing-page admin brochure-gallery; do
   echo "    building $svc ..."
   docker compose -f "$CF" --env-file "$EF" build "$svc"
 done

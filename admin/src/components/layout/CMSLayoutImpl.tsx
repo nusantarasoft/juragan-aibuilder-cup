@@ -931,6 +931,8 @@ const BREADCRUMB_LABELS: Record<string, string> = {
     "agent-builder": "Agent Builder",
     "knowledge-graph": "Knowledge Graph",
     "label-studio": "Label Studio",
+    "riset-knowledge": "Riset Knowledge",
+    "konten-marketing": "Konten Marketing",
     "connect-wa": "Hubungkan WhatsApp",
     "my-agents": "Karyawan AI saya",
     usage: "Pemakaian",

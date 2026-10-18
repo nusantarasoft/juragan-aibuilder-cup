@@ -80,7 +80,16 @@ export default function LabelStudioPage() {
     const completionPct = totalTasks > 0 ? Math.round((totalCompleted / totalTasks) * 100) : 0;
     const openUrl = dashboard?.openUrl || 'http://localhost:8080';
 
-    const modeTag = isDemo ? <StudioDemoModeTag key="mode" /> : <StudioLiveModeTag key="mode" />;
+    const configured = dashboard?.configured === true;
+    const modeTag = isDemo ? (
+        <StudioDemoModeTag key="mode" />
+    ) : configured ? (
+        <StudioLiveModeTag key="mode" />
+    ) : loading ? null : (
+        <Tag key="mode" color="default" style={{ margin: 0, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            Not connected
+        </Tag>
+    );
 
     const tableRows = useMemo(
         () =>
@@ -119,13 +128,25 @@ export default function LabelStudioPage() {
                     title="Label Studio dashboard"
                     detail="Sample project stats — turn off Agentic OS UI demo mode to load live Label Studio API data (P2-4)."
                 />
-            ) : (
+            ) : configured ? (
                 <StudioLiveBanner
                     title="Label Studio dashboard"
                     detail="Project stats and recent annotations are loaded via middleware from the Label Studio API (tokens stay server-side)."
                 />
-            )}
-            {error && !isDemo ? (
+            ) : !loading ? (
+                <Alert
+                    type="info"
+                    showIcon
+                    message="Label Studio not connected on this environment"
+                    description={
+                        error ||
+                        dashboard?.message ||
+                        'Set LABELSTUDIO_URL and LABELSTUDIO_API_TOKEN on middleware to load live project stats (P2-4).'
+                    }
+                    style={{ marginBottom: 16 }}
+                />
+            ) : null}
+            {error && !isDemo && configured ? (
                 <Alert type="warning" showIcon message={error} style={{ marginBottom: 16 }} closable />
             ) : null}
             <Spin spinning={loading && !isDemo}>

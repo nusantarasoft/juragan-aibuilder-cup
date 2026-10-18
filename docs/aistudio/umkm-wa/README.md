@@ -10,6 +10,6 @@ Satu nomor WhatsApp bisnis shared; banyak toko dipisah by nomor pemilik. Pemilik
 | **Owner usaha mikro (penawaran + contoh)** | [business/penawaran-usaha-mikro.md](./business/penawaran-usaha-mikro.md) |
 | **Landing `/kasir`** | [`landing-page/src/app/kasir`](../../../landing-page/src/app/kasir/) |
 | **Tim internal** (trial) | [business/ops/](./business/ops/) — termasuk [consult-kurikulum.md](./business/ops/consult-kurikulum.md) |
-| **Development** | [system/](./system/) — [model-stack.md](./system/model-stack.md) (GLM Flash Hermes / Qwen3-VL vision / Qwen consult / Whisper) · architecture · gaps · local |
+| **Development** | [system/](./system/) — [model-stack.md](./system/model-stack.md) (GLM Flash Hermes / Qwen3-VL vision / Qwen consult / Whisper) · architecture · [**percakapan-wa.md**](./system/percakapan-wa.md) (super-admin inbox) · gaps · local |
 
 Diagram: [diagrams/aistudio/umkm-wa](../../../diagrams/aistudio/umkm-wa/README.md) — pitch L0–L2 (+ L0b ritual, **L0c** chat-only, **L0d** tanya vs stok); system L5–**L11** (period RPC).

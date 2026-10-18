@@ -21,6 +21,7 @@ Runbook untuk deploy `nusantarasoft-3` ke server production **tanpa mengganggu c
 |------|---------|
 | `8090` | nginx (landing, `/graphql`, supabase proxy) |
 | `3013` | admin |
+| `3014` | brochure-gallery (tenant brochure showcase) |
 | `9010` | MinIO S3 API |
 
 WhatsApp transport = **Hermes only** (`nsoft3-hermes`). Binds **`127.0.0.1:8652` / `127.0.0.1:9129` only** (SSH tunnel) — not on the public IP. `WHATSAPP_PROVIDER=hermes`. Architecture: `docs/aistudio/umkm-wa/system/hermes-architecture.md`. Ops: `docs/aistudio/umkm-wa/system/hermes-local.md`. Gaps/status: `docs/aistudio/umkm-wa/system/hermes-gaps.md`. AI Studio hub: `docs/aistudio/README.md`.
@@ -109,6 +110,7 @@ Setelah putus: `deploy.ps1 -Attach` (tail sampai selesai) atau `-Status` (snapsh
 Di server (atau dari laptop ke IP publik):
 
 - Admin: `http://31.97.66.39:3013` (sering `307` redirect = OK)
+- Brochure gallery: `http://31.97.66.39:3014` → diharapkan `200`
 - Landing/nginx: `http://31.97.66.39:8090` → diharapkan `200`
 - GraphQL: `POST http://31.97.66.39:8090/graphql` dengan `{"query":"{ __typename }"}` → `200`
 - Di server: `bash scripts/master-production/smoke-umkm.sh` (sama dengan step akhir `redeploy.sh`) → exit 0
