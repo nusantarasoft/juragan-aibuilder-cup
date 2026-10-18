@@ -12,6 +12,8 @@ Hub AI Studio (semua modul): [../README.md](../README.md)
 | [use-case-diagram.puml](./use-case-diagram.puml) | Sumber PlantUML untuk diedit / diekspor ulang |
 | [TESTING.md](./TESTING.md) | Panduan unit, integration, dan E2E test Studio |
 | [system/rag-architecture.md](./system/rag-architecture.md) | RAG: ingest / retrieve / embed vs LLM / konsumen WA |
+| [riset-knowledge-umkm.md](./riset-knowledge-umkm.md) | Riset Knowledge: cron/review/merge ke kurikulum WA |
+| [konten-marketing-umkm.md](./konten-marketing-umkm.md) | Konten Marketing: generate/review + API galeri publik |
 | Diagrams RAG | [diagrams/aistudio/studio/system/](../../../diagrams/aistudio/studio/system/) L1–L4 |
 
 ## Aktor

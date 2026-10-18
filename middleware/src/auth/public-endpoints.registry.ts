@@ -24,6 +24,8 @@ export const PUBLIC_HTTP_ROUTES = [
 
 export const ALTERNATIVE_AUTH_HTTP_ROUTES = [
     'POST /internal/kasir-consult',
+    'POST /internal/wa-turn',
+    'GET /internal/wa-handoff',
     'POST /webhooks/labelstudio',
     'POST /api/studio/whatsapp/webhook',
     'POST /ml/setup',

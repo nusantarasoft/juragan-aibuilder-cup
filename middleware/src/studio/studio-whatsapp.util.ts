@@ -8,6 +8,12 @@ export type StudioWhatsAppConfigLookup = {
     notebook_id?: string | null;
 };
 
+/** Phone fields only — enough for owner/staff collection without full tenant row. */
+export type StudioWhatsAppConfigPhones = Pick<
+    StudioWhatsAppConfigLookup,
+    'business_phone' | 'allowlist_phones'
+>;
+
 /** Extract WhatsApp admin account phone from webhook payload (`me`, etc.). */
 export function extractBusinessPhoneFromPayload(payload: Record<string, unknown>): string | null {
     const me = payload.me as Record<string, unknown> | undefined;
@@ -74,7 +80,7 @@ export function phonesMatch(phoneA: string, phoneB: string): boolean {
 }
 
 /** Owner + staff phones registered for one UMKM tenant. */
-export function collectUmkmOwnerPhones(config: StudioWhatsAppConfigLookup): string[] {
+export function collectUmkmOwnerPhones(config: StudioWhatsAppConfigPhones): string[] {
     const phones: string[] = [];
     if (config.business_phone) {
         phones.push(normalizePhoneDigits(config.business_phone));
@@ -84,6 +90,38 @@ export function collectUmkmOwnerPhones(config: StudioWhatsAppConfigLookup): stri
         if (d.length >= 8) phones.push(d);
     }
     return [...new Set(phones)];
+}
+
+/** D-40: count distinct owner/staff WA numbers on one store config. */
+export function countUmkmWaPhones(config: StudioWhatsAppConfigPhones): number {
+    return collectUmkmOwnerPhones(config).length;
+}
+
+/** Hermes + middleware shared allowlist: match sender on resolved config row. */
+export function isSenderOnUmkmWaConfig(
+    config: StudioWhatsAppConfigLookup,
+    phoneRaw: string,
+): boolean {
+    return collectUmkmOwnerPhones(config).some((p) => phonesMatch(p, phoneRaw));
+}
+
+/** Collapse to a single owner phone on business_phone (allowlist cleared). */
+export function normalizeSingleUmkmWaConfigPhones(
+    businessPhone?: string | null,
+    allowlistPhones?: string[] | null,
+): { businessPhone: string | null; allowlistPhones: string[] } {
+    const phones = collectUmkmOwnerPhones({
+        business_phone: businessPhone,
+        allowlist_phones: allowlistPhones,
+    });
+    if (!phones.length) {
+        const bp = businessPhone ? normalizePhoneDigits(businessPhone) : '';
+        return {
+            businessPhone: bp.length >= 8 ? bp : null,
+            allowlistPhones: [],
+        };
+    }
+    return { businessPhone: phones[0], allowlistPhones: [] };
 }
 
 /**

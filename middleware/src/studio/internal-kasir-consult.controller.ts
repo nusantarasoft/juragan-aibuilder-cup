@@ -21,6 +21,7 @@ import { StudioUmkmPendampingService } from './studio-umkm-pendamping.service';
 import { KasirConsultAosTaskService } from './kasir-consult-aos-task.service';
 import { StudioUmkmService } from './studio-umkm.service';
 import { AosTenantAgentSettingsService } from '../agentic-os/aos-tenant-agent-settings.service';
+import { StudioWaConversationsService } from './studio-wa-conversations.service';
 
 type ConsultBody = {
     question?: string;
@@ -48,6 +49,7 @@ export class InternalKasirConsultController {
         private readonly kasirTasks: KasirConsultAosTaskService,
         private readonly umkm: StudioUmkmService,
         private readonly tenantAgentSettings: AosTenantAgentSettingsService,
+        private readonly waConversations: StudioWaConversationsService,
     ) {}
 
     @Post('kasir-consult')
@@ -110,6 +112,15 @@ export class InternalKasirConsultController {
             this.logger.log('path=kasir_consult status=consult_off');
             finishMirror(startMirror('off'), 'off');
             return { status: 'off' as const, text: CONSULT_OFF_COPY };
+        }
+
+        if (phone?.trim()) {
+            const handoff = await this.waConversations.handoffForPhone(phone);
+            if (handoff.active) {
+                this.logger.log('path=kasir_consult status=human_handoff');
+                finishMirror(startMirror('off'), 'human_handoff');
+                return { status: 'human_handoff' as const, text: '' };
+            }
         }
 
         if (tenantIdForGate) {

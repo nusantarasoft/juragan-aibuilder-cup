@@ -1,0 +1,22 @@
+flowchart LR
+  subgraph WA["WhatsApp owner"]
+    IN[Inbound text]
+  end
+  subgraph Hermes["Hermes kasir-pipe"]
+    GATE[Allowlist gate]
+    REC[POST /internal/wa-turn owner]
+    HO{Takeover active?}
+    AI[Hermes agent + kasir-tools]
+    OUT[POST /internal/wa-turn ai]
+  end
+  subgraph Nest["Middleware"]
+    TURN[(studio_wa_messages)]
+    ADM[Percakapan WA UI super_admin]
+    SEND[HermesProvider.sendText + suffix]
+  end
+  IN --> GATE --> REC --> TURN
+  GATE --> HO
+  HO -->|yes| TURN
+  HO -->|no| AI --> OUT --> TURN
+  ADM --> SEND --> WA
+  ADM --> TURN

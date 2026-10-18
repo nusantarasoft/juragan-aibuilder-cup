@@ -1,8 +1,11 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { WA_WHITELIST_MAX_STAFF } from './wa-connection.constants';
 import { SupabaseService } from '../supabase/supabase.service';
 import { StudioWhatsAppService } from '../studio/studio-whatsapp.service';
-import { normalizePhoneDigits } from '../studio/studio-whatsapp.util';
+import {
+    collectUmkmOwnerPhones,
+    normalizePhoneDigits,
+    phonesMatch,
+} from '../studio/studio-whatsapp.util';
 
 @Injectable()
 export class WaWhitelistService {
@@ -28,11 +31,10 @@ export class WaWhitelistService {
     async syncStudioAllowlist(storeId: string): Promise<void> {
         const store = await this.getStore(storeId);
         const rows = await this.listForStore(storeId);
-        const owner = rows.find((r) => r.is_owner);
-        const staff = rows.filter((r) => !r.is_owner).map((r) => r.phone);
+        const owner = rows.find((r) => r.is_owner) ?? rows[0];
         await this.whatsapp.updateConfig(
             {
-                allowlistPhones: staff,
+                allowlistPhones: [],
                 businessPhone: owner?.phone ?? null,
             },
             store.studio_slug,
@@ -42,15 +44,16 @@ export class WaWhitelistService {
     async addPhone(storeId: string, phoneRaw: string, opts?: { label?: string; isOwner?: boolean }) {
         const phone = normalizePhoneDigits(phoneRaw);
         if (phone.length < 8) throw new Error('Invalid phone number');
-        if (!opts?.isOwner) {
-            const rows = await this.listForStore(storeId);
-            const staffCount = rows.filter((r) => !r.is_owner).length;
-            const exists = rows.some((r) => normalizePhoneDigits(String(r.phone)) === phone);
-            if (!exists && staffCount >= WA_WHITELIST_MAX_STAFF) {
-                throw new BadRequestException(
-                    `Maksimal ${WA_WHITELIST_MAX_STAFF} nomor staff per toko`,
-                );
-            }
+        const rows = await this.listForStore(storeId);
+        if (rows.length > 0 && !rows.some((r) => normalizePhoneDigits(String(r.phone)) === phone)) {
+            throw new BadRequestException(
+                'Satu toko hanya boleh punya satu nomor WhatsApp pemilik (D-40).',
+            );
+        }
+        if (!opts?.isOwner && rows.length > 0) {
+            throw new BadRequestException(
+                'Satu toko hanya boleh punya satu nomor WhatsApp pemilik (D-40).',
+            );
         }
         const { data, error } = await this.admin()
             .from('tenant_wa_whitelist')
@@ -83,19 +86,13 @@ export class WaWhitelistService {
     }
 
     async isPhoneAllowed(studioSlug: string, phoneRaw: string): Promise<boolean> {
-        const phone = normalizePhoneDigits(phoneRaw);
-        const { data: store } = await this.admin()
-            .from('tenant_stores')
-            .select('id')
-            .eq('studio_slug', studioSlug)
+        const { data: cfg } = await this.admin()
+            .from('studio_whatsapp_config')
+            .select('tenant_id,business_phone,allowlist_phones')
+            .eq('tenant_id', studioSlug)
             .maybeSingle();
-        if (!store?.id) return false;
-        const { data } = await this.admin()
-            .from('tenant_wa_whitelist')
-            .select('phone')
-            .eq('store_id', store.id);
-        const list = (data ?? []).map((r) => normalizePhoneDigits(String(r.phone)));
-        return list.some((p) => p === phone || p.endsWith(phone) || phone.endsWith(p));
+        if (!cfg) return false;
+        return collectUmkmOwnerPhones(cfg).some((p) => phonesMatch(p, phoneRaw));
     }
 
     private async getStore(storeId: string) {

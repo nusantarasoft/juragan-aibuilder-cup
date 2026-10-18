@@ -1014,6 +1014,174 @@ export const studioService = {
         return data.studioRejectUmkmRegistration;
     },
 
+    // ── Riset Knowledge UMKM (super admin) ─────────────────────
+
+    async getResearchLastRun(): Promise<StudioResearchLastRun | null> {
+        const data = await graphqlRequest(`query { studioResearchLastRun }`);
+        return data.studioResearchLastRun ?? null;
+    },
+
+    async listResearchItems(
+        status: StudioResearchItemStatus | 'all' = 'pending',
+        category?: string,
+    ): Promise<StudioResearchItem[]> {
+        const data = await graphqlRequest(
+            `query($status: String, $category: String) {
+                studioResearchItems(status: $status, category: $category)
+            }`,
+            { status, category: category ?? null },
+        );
+        return data.studioResearchItems || [];
+    },
+
+    async getResearchItem(id: string): Promise<StudioResearchItem> {
+        const data = await graphqlRequest(
+            `query($id: String!) { studioResearchItem(id: $id) }`,
+            { id },
+        );
+        return data.studioResearchItem;
+    },
+
+    async updateResearchItem(
+        id: string,
+        patch: { title?: string; summary?: string },
+    ): Promise<StudioResearchItem> {
+        const data = await graphqlRequest(
+            `mutation($id: String!, $title: String, $summary: String) {
+                studioResearchUpdateItem(id: $id, title: $title, summary: $summary)
+            }`,
+            { id, title: patch.title ?? null, summary: patch.summary ?? null },
+        );
+        return data.studioResearchUpdateItem;
+    },
+
+    async approveResearchItem(id: string): Promise<StudioResearchItem> {
+        const data = await graphqlRequest(
+            `mutation($id: String!) { studioResearchApprove(id: $id) }`,
+            { id },
+        );
+        return data.studioResearchApprove;
+    },
+
+    async rejectResearchItem(id: string, reason?: string): Promise<StudioResearchItem> {
+        const data = await graphqlRequest(
+            `mutation($id: String!, $reason: String) {
+                studioResearchReject(id: $id, reason: $reason)
+            }`,
+            { id, reason: reason ?? null },
+        );
+        return data.studioResearchReject;
+    },
+
+    async unmergeResearchItem(id: string): Promise<StudioResearchItem> {
+        const data = await graphqlRequest(
+            `mutation($id: String!) { studioResearchUnmerge(id: $id) }`,
+            { id },
+        );
+        return data.studioResearchUnmerge;
+    },
+
+    async runResearchNow(): Promise<{ runId: string; itemsCreated: number }> {
+        const data = await graphqlRequest(`mutation { studioResearchRunNow }`);
+        return data.studioResearchRunNow;
+    },
+
+    // ── Konten Marketing UMKM (super admin) ───────────────────
+
+    async listMarketingContents(
+        status: StudioMarketingContentStatus | 'all' = 'pending',
+        tenantId?: string,
+    ): Promise<StudioMarketingContent[]> {
+        const data = await graphqlRequest(
+            `query($status: String, $tenantId: String) {
+                studioMarketingContents(status: $status, tenantId: $tenantId)
+            }`,
+            { status, tenantId: tenantId ?? null },
+        );
+        return data.studioMarketingContents || [];
+    },
+
+    async getMarketingContent(id: string): Promise<StudioMarketingContent> {
+        const data = await graphqlRequest(
+            `query($id: String!) { studioMarketingContent(id: $id) }`,
+            { id },
+        );
+        return data.studioMarketingContent;
+    },
+
+    async updateMarketingCaption(
+        id: string,
+        caption: string,
+        headline?: string,
+    ): Promise<StudioMarketingContent> {
+        const data = await graphqlRequest(
+            `mutation($id: String!, $caption: String!, $headline: String) {
+                studioMarketingUpdateCaption(id: $id, caption: $caption, headline: $headline)
+            }`,
+            { id, caption, headline: headline ?? null },
+        );
+        return data.studioMarketingUpdateCaption;
+    },
+
+    async approveMarketingContent(id: string): Promise<StudioMarketingContent> {
+        const data = await graphqlRequest(
+            `mutation($id: String!) { studioMarketingApprove(id: $id) }`,
+            { id },
+        );
+        return data.studioMarketingApprove;
+    },
+
+    async rejectMarketingContent(id: string, reason?: string): Promise<StudioMarketingContent> {
+        const data = await graphqlRequest(
+            `mutation($id: String!, $reason: String) {
+                studioMarketingReject(id: $id, reason: $reason)
+            }`,
+            { id, reason: reason ?? null },
+        );
+        return data.studioMarketingReject;
+    },
+
+    async unpublishMarketingContent(id: string): Promise<StudioMarketingContent> {
+        const data = await graphqlRequest(
+            `mutation($id: String!) { studioMarketingUnpublish(id: $id) }`,
+            { id },
+        );
+        return data.studioMarketingUnpublish;
+    },
+
+    async listMarketingStores(): Promise<StudioMarketingStore[]> {
+        const data = await graphqlRequest(`query { studioMarketingStores }`);
+        return data.studioMarketingStores || [];
+    },
+
+    async setMarketingStoreConsent(tenantId: string, consent: boolean): Promise<StudioMarketingStore> {
+        const data = await graphqlRequest(
+            `mutation($tenantId: String!, $consent: Boolean!) {
+                studioMarketingSetStoreConsent(tenantId: $tenantId, consent: $consent)
+            }`,
+            { tenantId, consent },
+        );
+        return data.studioMarketingSetStoreConsent;
+    },
+
+    async generateMarketingNow(params?: {
+        store?: string;
+        productId?: string;
+        limit?: number;
+    }): Promise<{ created: number; skipped: number; errors: number }> {
+        const data = await graphqlRequest(
+            `mutation($store: String, $productId: String, $limit: Float) {
+                studioMarketingGenerate(store: $store, productId: $productId, limit: $limit)
+            }`,
+            {
+                store: params?.store ?? null,
+                productId: params?.productId ?? null,
+                limit: params?.limit ?? null,
+            },
+        );
+        return data.studioMarketingGenerate;
+    },
+
     /** Simulasi inbound WA tanpa transport live (pipeline sama webhook). */
     async whatsAppSimChat(params: {
         tenantId: string;
@@ -1143,6 +1311,117 @@ export interface StudioWhatsAppConfig {
     allowlist_phones: string[];
     use_guided_flow: boolean;
     updated_at?: string;
+}
+
+export type StudioMarketingContentStatus =
+    | 'draft'
+    | 'pending'
+    | 'approved'
+    | 'rejected'
+    | 'unpublished';
+
+export interface StudioMarketingContent {
+    id: string;
+    tenant_id: string;
+    inv_item_id: string;
+    image_public_url: string;
+    caption: string;
+    headline: string;
+    price_snapshot?: number | null;
+    product_name_snapshot: string;
+    store_label_snapshot: string;
+    category_name_snapshot?: string | null;
+    status: StudioMarketingContentStatus;
+    generated_by?: string | null;
+    model?: string | null;
+    reject_reason?: string | null;
+    reviewer_id?: string | null;
+    decided_at?: string | null;
+    published_at?: string | null;
+    created_at: string;
+}
+
+export interface StudioMarketingStore {
+    tenant_id: string;
+    label?: string | null;
+    enabled?: boolean | null;
+    marketing_consent: boolean;
+    marketing_consent_at?: string | null;
+    marketing_consent_by?: string | null;
+}
+
+export type StudioResearchItemStatus =
+    | 'pending'
+    | 'approved'
+    | 'rejected'
+    | 'merged'
+    | 'expired';
+
+export interface StudioResearchSource {
+    url: string;
+    fetched_at: string;
+    content_sha256?: string;
+    quoted_snippet: string;
+    excerpt_window?: string;
+    fetch_error?: string;
+}
+
+export interface StudioResearchDedupeHit {
+    chunk_id: string;
+    source_id: string;
+    filename: string;
+    score: number;
+    flag: 'mirip/duplikat' | 'mungkin bertentangan';
+    content_preview: string;
+}
+
+export type StudioResearchRunStatus = 'running' | 'completed' | 'failed' | 'partial';
+
+export interface StudioResearchLastRun {
+    id: string;
+    trigger_type: 'cron' | 'manual';
+    triggered_by?: string | null;
+    status: StudioResearchRunStatus;
+    stats?: {
+        topics?: number;
+        fetched?: number;
+        skipped?: number;
+        errors?: number;
+        itemsCreated?: number;
+        topic_errors?: Record<string, number>;
+    };
+    error_message?: string | null;
+    started_at: string;
+    finished_at?: string | null;
+}
+
+export interface StudioResearchItem {
+    id: string;
+    status: StudioResearchItemStatus;
+    category: string;
+    topic_key: string;
+    target_notebook_id: string;
+    title: string;
+    summary: string;
+    effective_date?: string | null;
+    supersedes_url?: string | null;
+    sources: StudioResearchSource[];
+    dedupe_hits?: {
+        flags?: string[];
+        hits?: StudioResearchDedupeHit[];
+    } | null;
+    validation_flags?: {
+        quote_validation_failed?: boolean;
+        dedupe_unchecked?: boolean;
+        invalid_quotes?: { url: string; reason: string }[];
+    } | null;
+    research_run_id?: string | null;
+    reject_reason?: string | null;
+    reviewer_id?: string | null;
+    decided_at?: string | null;
+    merged_source_id?: string | null;
+    created_at: string;
+    updated_at: string;
 }
 
 export interface StudioUmkmRegistration {

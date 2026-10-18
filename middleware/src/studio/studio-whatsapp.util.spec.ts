@@ -8,6 +8,9 @@ import {
     pickWhatsAppConfigForWebhook,
     resolveInboundWaConfig,
     collectUmkmOwnerPhones,
+    countUmkmWaPhones,
+    normalizeSingleUmkmWaConfigPhones,
+    isSenderOnUmkmWaConfig,
     phonesMatch,
     StudioWhatsAppRateLimiter,
     stripWhatsAppMediaAnnotations,
@@ -148,14 +151,36 @@ describe('shared inbox routing', () => {
 
     it('collects phones without business_phone and ignores short allowlist entries', () => {
         expect(
-            collectUmkmOwnerPhones({ tenant_id: 't', allowlist_phones: ['123', '6284444444444'] }),
+            collectUmkmOwnerPhones({ allowlist_phones: ['123', '6284444444444'] }),
         ).toEqual(['6284444444444']);
     });
 
     it('collects only the business phone when allowlist is absent', () => {
-        expect(collectUmkmOwnerPhones({ tenant_id: 't', business_phone: '6281111111111' })).toEqual([
+        expect(collectUmkmOwnerPhones({ business_phone: '6281111111111' })).toEqual([
             '6281111111111',
         ]);
+    });
+
+    it('D-40 counts distinct owner phones', () => {
+        expect(
+            countUmkmWaPhones({
+                business_phone: '6281111111111',
+                allowlist_phones: ['6282222222222'],
+            }),
+        ).toBe(2);
+        expect(
+            normalizeSingleUmkmWaConfigPhones('6281111111111', ['6282222222222']),
+        ).toEqual({ businessPhone: '6281111111111', allowlistPhones: [] });
+    });
+
+    it('isSenderOnUmkmWaConfig matches Hermes allowlist', () => {
+        const cfg = {
+            tenant_id: 't',
+            business_phone: '6281111111111',
+            allowlist_phones: [] as string[],
+        };
+        expect(isSenderOnUmkmWaConfig(cfg, '6281111111111')).toBe(true);
+        expect(isSenderOnUmkmWaConfig(cfg, '6289999999999')).toBe(false);
     });
 
     it('single tenant fallback for dev', () => {

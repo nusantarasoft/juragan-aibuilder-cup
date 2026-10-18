@@ -1,5 +1,5 @@
 # NS3 Backlog — Superapp "rekrut agen AI seperti karyawan"
-Updated: 2026-10-16. Owner: PO-NS3. Status: TODO / DOING / REVIEW (await Akbar) / DONE / BLOCKED / SKIPPED.
+Updated: 2026-10-17. Owner: PO-NS3. Status: TODO / DOING / REVIEW (await Akbar) / DONE / BLOCKED / SKIPPED.
 Rule: one DOING task at Cursor at a time (plus deploy). Gate: scope → PR → QA (backend + browser, build) → Akbar approve → merge → release → deploy → verify. New findings get appended as NEW items with a source.
 
 ## Fase 0 — Fondasi stabil
@@ -41,9 +41,13 @@ Rule: one DOING task at Cursor at a time (plus deploy). Gate: scope → PR → Q
 - [DONE] P2-3 Visual Agent Builder persisted workflows — PR [#57](https://github.com/nusantarasoft/nusantarasoft-3/pull/57); QA PASS `.gstack/qa-reports/qa-p2-3-agent-builder-2026-10-15.md`; screenshots `/cursor/stores/self/media/p2-3-builder-*.png`; ops [docs/ops/p2-3-agent-builder-persistence.md](ops/p2-3-agent-builder-persistence.md)
 - [DONE] P2-4 Label Studio admin dashboard reads real project stats from Label Studio API — QA PASS `.gstack/qa-reports/qa-p2-4-label-studio-2026-10-15.md`; screenshots `/cursor/stores/self/media/p2-4-label-studio-*.png`
 - [DONE] P2-5 Per-tenant dedicated WhatsApp business number (optional Hermes session per store) — PR [#59](https://github.com/nusantarasoft/nusantarasoft-3/pull/59) `cursor/p2-5-dedicated-wa-c20f`; design [docs/design/p2-5-dedicated-wa.md](design/p2-5-dedicated-wa.md); ops [docs/ops/p2-5-dedicated-wa.md](ops/p2-5-dedicated-wa.md); QA **PASS** (full gate) `.gstack/qa-reports/qa-p2-5-dedicated-wa-2026-10-15.md`; screenshots `/cursor/stores/self/media/p2-5-dedicated-wa-*.png`
+- [DONE] **AI Studio — Percakapan WA** (Akbar TOP) — branch `cursor/aistudio-percakapan-wa-3969`; system [docs/aistudio/umkm-wa/system/percakapan-wa.md](aistudio/umkm-wa/system/percakapan-wa.md)
+  - **Product locks:** (1) balasan manusia admin → suffix `\n\n— Admin Nusantarasoft` on send + DB; (2) riwayat chat **tanpa batas** — no purge/TTL; (3) history **kosong** saat aktivasi — **no** import Hermes `state.db` / legacy WAHA tables.
+  - Scope: `studio_wa_*` tables + RLS service_role; Hermes `POST /internal/wa-turn`; super-admin UI `/admin/ai-studio/percakapan-wa`; Ambil alih / Kembalikan ke AI (+ auto-release 30m idle human); audit human + takeover.
 
 ## Discovered
 (append here)
+- [TODO] D-40 (Akbar 2026-10-17) **One store = one WhatsApp owner number** — migration `20261017210000_d40_one_wa_number_per_store.sql` (skips constraints when duplicates exist); middleware + admin single-field; report `scripts/report-wa-duplicate-numbers.sql`. **Decision:** prod duplicate `umkm-warung-klontong-bahagia` (2× `allowlist_phones`) — Akbar picks number to keep before constraint applies.
 - [DONE] D-16 (UI-wave-2 @ `dc8fdd4`) Full Wave 1+2 browser audit on live stack — `.gstack/qa-reports/qa-ui-wave-2-admin-buttons-2026-10-16.md`; Wave 1 specs + `ui-wave-2-admin-buttons.spec.ts`
 - [DONE] D-17 (UI-wave-2) Sidebar **Hubungkan WhatsApp** + wedge links under AI Studio for `tenant_owner` — `menuConfig.tsx`, `tenantOwnerMenu.ts`
 - [DONE] D-19 (UI-wave-3 @ `5ebe69c`) Embed dashboards Refresh icons wired (`window.location.reload` + title) across datasets, infra, automation, collaboration, audit, tenants, messaging — `.gstack/qa-reports/qa-ui-wave-3-admin-buttons-2026-10-16.md`
@@ -53,7 +57,11 @@ Rule: one DOING task at Cursor at a time (plus deploy). Gate: scope → PR → Q
 - [DONE] D-23 (UI-wave-4) Full admin menuConfig + VO route crawl Playwright spec + coverage JSON (`.gstack/qa-reports/ui-wave-4-route-coverage.json`)
 - [DONE] D-24 (UI-wave-4) HR `hr_*` schema in `supabase/migrations/20261016170000_hr_module.sql`; GraphQL field aliases on `hr.resolver.ts`
 - [DONE] D-25 (UI-wave-4 PO #74) PM `tenant_users`↔`individuals` FK + `pmMembers`/owner/assignee embeds — migration `20261016170300_tenant_users_individual_fk.sql`
-- **Adityo last-seen integrated (`development-adityo`):** `861a6588fe93594528f1079b7e58cc624a6550de` (2026-10-16 13:03 WIB) — VO HUD + Command Deck panels via D-9-style PR on `master` @ Wave 4 #74 tip; deploy docs / `pull-on-server.sh` **not** taken from his branch.
+- **Adityo last-seen integrated (`development-adityo`):** `701f473` (2026-10-18) — brochure gallery module + dock/CMS polish after `d33d630` (#89); `database_dump_*.sql` / deploy docs **not** taken.
+- [DONE] D-42 Integrate Adityo `development-adityo` @ `701f473` (2026-10-18): `brochure-gallery` (:3004 / prod `:3014`), admin `/admin/tenants/brochures`, migration `20261018100000_tenant_brochures_gallery.sql`, dock/CMS updates — PR [#97](https://github.com/nusantarasoft/nusantarasoft-3/pull/97).
+- [DONE] D-41 Integrate Adityo `development-adityo` @ `d33d630` (2026-10-18): three.js skills, VO/dashboard UI — PR [#89](https://github.com/nusantarasoft/nusantarasoft-3/pull/89).
+- [DONE] D-39 Integrate Adityo `development-adityo` @ `b10d239` (2026-10-17): AOS light mode CSS + theme toggler, Playbooks deep links — PR [#82](https://github.com/nusantarasoft/nusantarasoft-3/pull/82); QA `.gstack/qa-reports/qa-d39-adityo-aos-light-2026-10-17.md`
+- [DONE] D-39-FU Label Studio F1-4 gate — **Live** tag only when `studioLabelStudioDashboard.configured`; QA stack without LS shows **Not connected** (no fake Live/Demo stats)
 - [DONE] D-26 (Adityo branch review @ `861a658`) Conflict markers + encoding garbage in `scripts/master-production/pull-on-server.sh` / `docs/deploy-master-production.md` on `development-adityo` — **master deploy-key version kept** in integration PR (no import from his branch).
 - [DONE] D-27 (Adityo branch review @ `861a658`) VO HUD rewrite integrated with Wave 1 honesty preserved (Kasir-only metrics, ID copy, demo labels, connect-wa, tenant settings).
 - [DONE] D-28 (Adityo branch review @ `861a658`) `database_dump_*.sql` **not** imported — remains on `development-adityo` only; tied to **F0-3** branch scrub.

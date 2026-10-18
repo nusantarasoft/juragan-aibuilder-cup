@@ -164,6 +164,8 @@ def handle_consult(params: dict[str, Any] | None = None, **kwargs: Any) -> str:
         with urllib.request.urlopen(req, timeout=_TIMEOUT_SEC) as resp:
             raw = resp.read().decode("utf-8", errors="replace")
         data = json.loads(raw) if raw.strip() else {}
+        if isinstance(data, dict) and data.get("status") == "human_handoff":
+            return ""
         text = (data.get("text") if isinstance(data, dict) else "") or ""
         text = str(text).strip()
         if not text:

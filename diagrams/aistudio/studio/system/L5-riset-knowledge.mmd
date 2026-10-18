@@ -1,0 +1,14 @@
+flowchart LR
+  CRON[Cron mingguan / tombol admin] --> FETCH[Fetch allowlist .go.id]
+  FETCH --> LLM[LLM ringkas JSON + kutip wajib]
+  LLM -->|error / JSON invalid| RUNFAIL[(studio_research_runs failed/partial)]
+  LLM --> VAL[Validasi substring kutip]
+  VAL --> DEDUPE[Embedding vs match_studio_chunks]
+  DEDUPE -->|embed gagal| UNCHK[dedupe_unchecked flag]
+  DEDUPE -->|OK| PENDING[(studio_research_items pending)]
+  UNCHK --> PENDING
+  PENDING --> ADMIN[Admin Riset Knowledge super_admin]
+  ADMIN -->|Approve| MERGE[addTextSource + ingestSource]
+  ADMIN -->|Reject| REJ[rejected]
+  MERGE --> NB[(KASIR_CONSULT_NOTEBOOK_ID)]
+  ADMIN -->|Unmerge| DEL[removeSource + approved]

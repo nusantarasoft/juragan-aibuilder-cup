@@ -30,6 +30,9 @@ describe('InternalKasirConsultController', () => {
         findRecruitedAgentForAutoGate: vi.fn(async () => null),
         assertAutoWorkAllowed: vi.fn(async () => ({ allowed: true as const })),
     };
+    const waConversations = {
+        handoffForPhone: vi.fn(async () => ({ active: false })),
+    };
     const config = {
         get: vi.fn((key: string) => {
             if (key === 'KASIR_CONSULT_KEY') return 'secret-test';
@@ -46,6 +49,7 @@ describe('InternalKasirConsultController', () => {
             kasirTasks as any,
             umkm as any,
             tenantAgentSettings as any,
+            waConversations as any,
         );
 
     beforeEach(() => {
@@ -190,6 +194,17 @@ describe('InternalKasirConsultController', () => {
             expect.objectContaining({ kind: 'consult', questionChars: 11 }),
         );
         expect(complete).toHaveBeenCalledWith('hit');
+    });
+
+    it('human_handoff when takeover active for phone', async () => {
+        umkm.resolveUmkmContextByOwnerPhone.mockResolvedValue({ tenantId: 'tenant-1' });
+        waConversations.handoffForPhone.mockResolvedValue({ active: true });
+        const res = await ctrl.kasirConsult(
+            { question: 'tanya modal', phone: '6281111111111' },
+            'secret-test',
+        );
+        expect(res).toEqual({ status: 'human_handoff', text: '' });
+        expect(pendamping.consultFromNotebook).not.toHaveBeenCalled();
     });
 
     it('KASIR_CONSULT=0 still blocks coach mode', async () => {
