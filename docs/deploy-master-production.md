@@ -134,8 +134,8 @@ bash scripts/master-production/deploy-marketing-showcase.sh
 |--------|----------|
 | SSH / port 22, 9000, 8090 timeout | Server/network down; jangan ulang merge; tunggu lalu `-SkipMerge -SkipPush` |
 | Mac sleep / SSH putus saat build | Redeploy tetap jalan di server; `-Attach` atau `-Status` (bukan deploy penuh kecuali pull sudah selesai) |
-| Admin `next build` macet / ~1 jam “Creating…” | Penyebab umum: monolit **`CMSLayout`** (~2500 baris) — sudah di-split (`CMSLayoutMain`, dll.). Prod: **`npm run build`** = webpack + `NODE_OPTIONS=--max-old-space-size=4096`. Cek cepat: **`npm run build:verify`** (Turbopack, `DISABLE_PWA=1`) |
-| Admin webpack + PWA hang di compile lama | Verifikasi: `npm run build:verify` (`DISABLE_PWA=1`). Ops prod: `ENV DISABLE_PWA=1` di stage builder jika PWA build tidak selesai (SW lama di `public/` sementara) |
+| Admin `next build` macet / ~1 jam “Creating…” | Monolit **`CMSLayout`** sudah di-split. **Prod Docker** (`admin/Dockerfile`): **`npm run build:turbo`** (Turbopack default). Lokal webpack: **`npm run build`** + `NODE_OPTIONS=--max-old-space-size=4096`. Cek cepat: **`npm run build:verify`**. |
+| Admin prod “This page couldn’t load” / `__next_error__` setelah deploy | **next-pwa** dihapus dari `next.config.ts` (2026-10-18); auth edge = **`admin/src/proxy.ts`** (bukan `middleware.ts`). Setelah deploy lama: hard refresh / hapus site data `:3013` jika SW lama masih ter-cache. |
 | Build admin terasa “diam” (tanpa %) | `npm run build:smoke:webpack` atau `BUILD_MODULE_LOG=1 npm run build:module-log`. Progress: `npm run build:progress:webpack` |
 | Preflight `Local deploy aborted — working tree is not clean` | Commit/revert, pakai worktree bersih, atau `-AllowDirty` jika hanya redeploy server (tanpa sync lokal) |
 | nginx `502` setelah recreate app | `docker restart nsoft3-nginx` (sudah otomatis di `redeploy.sh` terbaru) |

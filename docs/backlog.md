@@ -57,7 +57,7 @@ Rule: one DOING task at Cursor at a time (plus deploy). Gate: scope → PR → Q
 - [DONE] D-23 (UI-wave-4) Full admin menuConfig + VO route crawl Playwright spec + coverage JSON (`.gstack/qa-reports/ui-wave-4-route-coverage.json`)
 - [DONE] D-24 (UI-wave-4) HR `hr_*` schema in `supabase/migrations/20261016170000_hr_module.sql`; GraphQL field aliases on `hr.resolver.ts`
 - [DONE] D-25 (UI-wave-4 PO #74) PM `tenant_users`↔`individuals` FK + `pmMembers`/owner/assignee embeds — migration `20261016170300_tenant_users_individual_fk.sql`
-- **Adityo last-seen integrated (`development-adityo`):** tip merged to `master` (2026-10-18) — VO HUD + dep bumps from `decdb8c8`; `database_dump_*.sql` / scratch submodule **not** on `master` (D-28).
+- **Adityo last-seen integrated (`development-adityo`):** tip merged to `master` (2026-10-18) @ `8c463f75` — admin dashboard hotfix (no next-pwa, `proxy.ts`, Turbopack prod build), VO mascot/HUD; `database_dump_*.sql` / scratch submodule **not** on `master` (D-28).
 - [DONE] D-42 Integrate Adityo `development-adityo` @ `701f473` (2026-10-18): `brochure-gallery` (:3004 / prod `:3014`), admin `/admin/tenants/brochures`, migration `20261018100000_tenant_brochures_gallery.sql`, dock/CMS updates — PR [#97](https://github.com/nusantarasoft/nusantarasoft-3/pull/97).
 - [DONE] D-41 Integrate Adityo `development-adityo` @ `d33d630` (2026-10-18): three.js skills, VO/dashboard UI — PR [#89](https://github.com/nusantarasoft/nusantarasoft-3/pull/89).
 - [DONE] D-39 Integrate Adityo `development-adityo` @ `b10d239` (2026-10-17): AOS light mode CSS + theme toggler, Playbooks deep links — PR [#82](https://github.com/nusantarasoft/nusantarasoft-3/pull/82); QA `.gstack/qa-reports/qa-d39-adityo-aos-light-2026-10-17.md`
