@@ -38,14 +38,14 @@ is_done(){ [ "$(psql_q "SELECT 1 FROM public.schema_migrations WHERE id='$1';")"
 "$DOCKER" exec "$PG" psql -U "$U" -d "$DB" -q -c \
   "CREATE TABLE IF NOT EXISTS public.schema_migrations (id text PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now());" >/dev/null
 
-echo "==> module schemas (middleware/sql)"
+echo "==> module schemas (supabase/modules)"
 for rel in \
-  middleware/sql/inventory_schema.sql \
-  middleware/sql/procurement_schema.sql \
-  middleware/sql/wms_putaway_pick_schema.sql \
-  middleware/sql/acct_phase1.sql \
-  middleware/sql/acct_phase3_apar.sql \
-  middleware/sql/pm_pmbok7_8_schema.sql ; do
+  supabase/modules/inventory_schema.sql \
+  supabase/modules/procurement_schema.sql \
+  supabase/modules/wms_putaway_pick_schema.sql \
+  supabase/modules/acct_phase1.sql \
+  supabase/modules/acct_phase3_apar.sql \
+  supabase/modules/pm_pmbok7_8_schema.sql ; do
   is_done "$rel" && { echo "   skip $rel"; continue; }
   [ -f "$DIR/$rel" ] || { echo "   miss $rel (not present)"; continue; }
   printf '   apply %-45s ' "$rel"

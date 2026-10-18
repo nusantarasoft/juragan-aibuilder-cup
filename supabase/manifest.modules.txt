@@ -8,16 +8,16 @@ supabase/archive/itsm_full_schema.sql
 supabase/archive/pm_schema_v2.sql
 supabase/archive/ecommerce_schema.sql
 
-# WMS / inventory / procurement (not yet in supabase/migrations/)
-middleware/sql/inventory_schema.sql
-middleware/sql/procurement_schema.sql
-middleware/sql/wms_putaway_pick_schema.sql
+# WMS / inventory / procurement
+supabase/modules/inventory_schema.sql
+supabase/modules/procurement_schema.sql
+supabase/modules/wms_putaway_pick_schema.sql
 
 # Accounting phases (superseded partly by 00000000000066_accounting_v2.sql)
-middleware/sql/acct_phase1.sql
-middleware/sql/acct_phase3_apar.sql
+supabase/modules/acct_phase1.sql
+supabase/modules/acct_phase3_apar.sql
 
 # PM PMBOK schema
-middleware/sql/pm_pmbok7_8_schema.sql
+supabase/modules/pm_pmbok7_8_schema.sql
 
 supabase/migrations/20260506999999_reload_postgrest.sql

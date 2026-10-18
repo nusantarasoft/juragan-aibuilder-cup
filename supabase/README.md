@@ -12,7 +12,11 @@ Semua SQL schema + seed ada di **`supabase/migrations/`**, dijalankan **beruruta
 
 Docker (`docker-compose.yml`, `docker-compose.local.yml`, `docker-compose.full.yml`) mem-mount **hanya** `./supabase/migrations` ke `/docker-entrypoint-initdb.d/migrations`.
 
-Folder `volumes/db/*.sql` dan `middleware/sql/studio_*.sql` adalah **salinan sumber** — jangan apply manual; ubah file di `supabase/migrations/` lalu sync dari sumber jika perlu.
+Seluruh file `.sql` di repositori telah dikonsolidasi ke dalam direktori `supabase/`:
+- `supabase/migrations/` — Schema utama & seed berurutan (golden path)
+- `supabase/modules/` — Schema & seed modul opsional (inventory, procurement, WMS, accounting phases, PMBOK)
+- `supabase/qa-seeds/` — Seed & query utilitas QA
+- `supabase/archive/` — Arsip SQL legacy & ad-hoc lama
 
 ## Urutan migrasi (prefix)
 

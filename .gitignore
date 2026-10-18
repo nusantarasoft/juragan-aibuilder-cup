@@ -65,6 +65,12 @@ admin/lint-output.txt
 admin/tsc_output.txt
 admin/build_err.txt
 admin/build_log.txt
+*.tsbuildinfo
+.pnpm-store/
+playwright-report/
+test-results/
+middleware/cov-*/
+tmp/
 
 # Production secrets (never commit)
 .env.master-production
