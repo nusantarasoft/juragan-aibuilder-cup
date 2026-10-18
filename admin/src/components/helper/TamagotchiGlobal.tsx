@@ -768,8 +768,8 @@ export const TamagotchiModel: React.FC<Props> = ({
         const hPos = hGeo.attributes.position;
         for (let i = 0; i < hPos.count; i++) {
             v.fromBufferAttribute(hPos, i);
-            const t = (v.y + 0.15) / 0.30; // 0 at base, 1 at tip
-            const radiusScale = Math.pow(1 - t * 0.92, 0.76);
+            const t = Math.max(0, Math.min(1, (v.y + 0.15) / 0.30)); // 0 at base, 1 at tip
+            const radiusScale = Math.pow(Math.max(0, 1 - t * 0.92), 0.76);
             const currentR = Math.hypot(v.x, v.z);
             const angle = Math.atan2(v.x, v.z);
             if (currentR > 0.0001) {
