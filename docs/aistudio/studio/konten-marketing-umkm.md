@@ -10,7 +10,7 @@ Diagram: [L5-konten-marketing.svg](../../../diagrams/aistudio/studio/system/L5-k
 
 1. Super admin mengaktifkan **consent marketing** per warung (`studio_whatsapp_config.marketing_consent`).
 2. **Generate sekarang** (GraphQL) atau **cron mingguan** (opsional) memilih produk eligible: consent=true, status active (foto inventory **opsional** jika AI product image aktif).
-3. **Foto di kartu:** foto asli `media_ids[0]` **atau** AI product image (Gemini `gemini-2.0-flash-preview-image-generation` / Imagen 3).
+3. **Foto di kartu:** foto asli `media_ids[0]` **atau** AI product image (Gemini Nano Banana / Flash image via API key — fallback `gemini-nano-banana-2.1`, `gemini-3.1-flash-image`; ops override `STUDIO_MARKETING_GEMINI_IMAGE_MODEL`; tanpa key → Vertex Imagen 3).
 4. **Sharp** meng-composite foto + teks truthy dari DB (nama, harga Rp, nama warung) — teks **bukan** hasil AI.
 5. Opsional: background abstrak via Gemini/Imagen jika `STUDIO_MARKETING_AI_BACKGROUND=true` (fallback ke gradient template).
 6. **Caption** Bahasa Indonesia via LLM default `studio_settings`; error provider = gagal (tidak ada caption sampah).
