@@ -2,7 +2,7 @@
 
 Pipeline **human-in-the-loop** untuk membuat kartu promo produk warung dari katalog `inv_items`, lalu menampilkannya di **galeri web publik** (frontend terpisah). **Tidak ada** publish Instagram/Meta di scope ini.
 
-**Visual kartu showcase:** upload inventory (`media_ids[0]`) dipakai sebagai hero di kartu jika ada; jika tidak, **generate hero visual AI** (Gemini / Cloudflare FLUX / Vertex) lalu di-**composite** Sharp jadi **kartu promo persegi** (bukan foto katalog mentah). Nama/harga/teks di kartu tetap dari DB, bukan AI.
+**Visual kartu showcase:** DNA visual **HUD share-card** (seperti brochure-gallery): dark grid, corner frame, header initials, tag chips, highlight + harga, CTA — digambar **Sharp/SVG** dari data DB. Hero di lingkaran: foto inventory **atau** AI stilized (Gemini / Cloudflare FLUX / Vertex). Teks/harga **bukan** hasil AI di kanvas.
 
 **Anti-duplikat iklan:** satu produk tidak di-generate lagi selama masih ada baris **`pending`** atau **`approved`** untuk `inv_item_id` yang sama. Setelah **reject** / **unpublish**, produk boleh masuk batch lagi. Batch/cron **rotasi**: prioritas produk yang belum pernah iklan, lalu yang paling lama sejak iklan terakhir — supaya limit kecil tidak stuck di produk pertama yang sudah live.
 
@@ -12,8 +12,8 @@ Diagram: [L5-konten-marketing.svg](../../../diagrams/aistudio/studio/system/L5-k
 
 1. Super admin mengaktifkan **consent marketing** per warung (`studio_whatsapp_config.marketing_consent`).
 2. **Generate sekarang** (GraphQL) atau **cron mingguan** (opsional) memilih produk eligible: consent=true, status active (foto inventory **opsional** jika AI product image aktif).
-3. **Hero di kartu showcase:** foto inventory **atau** AI showcase hero (prompt promo/brochure, bukan packshot katalog) → Gemini Nano Banana (fallback model; ops `STUDIO_MARKETING_GEMINI_IMAGE_MODEL`) → Cloudflare FLUX → Vertex Imagen 3.
-4. **Sharp** meng-composite foto + teks truthy dari DB (nama, harga Rp, nama warung) — teks **bukan** hasil AI.
+3. **Hero di lingkaran HUD:** foto inventory **atau** AI stilized (prompt HUD icon, bukan packshot) → Gemini → Cloudflare FLUX → Vertex Imagen.
+4. **Sharp/SVG HUD chrome** (header, tags, highlight harga, CTA) + composite hero — teks dari DB + headline caption LLM.
 5. Opsional: background abstrak via Gemini/Imagen jika `STUDIO_MARKETING_AI_BACKGROUND=true` (fallback ke gradient template).
 6. **Caption** Bahasa Indonesia via LLM default `studio_settings`; error provider = gagal (tidak ada caption sampah).
 7. Gambar disimpan MinIO (`cms-media`) dengan URL publik via proxy middleware.

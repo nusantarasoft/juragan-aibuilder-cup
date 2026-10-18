@@ -25,11 +25,13 @@ export async function tryGenerateMarketingProductImage(
         .filter(Boolean)
         .join(' ');
 
-    const prompt = `Hero visual for a square social-media showcase card (UMKM warung Indonesia).
+    const prompt = `Stylized technical HUD illustration for Indonesian UMKM tenant showcase brochure.
 Product theme: ${name}. ${context}
-Appetizing, inviting promo still-life or lifestyle food/retail scene — feels like a brochure hero image, not a sterile packshot.
-Warm natural lighting, shallow depth of field, clean uncluttered composition suitable for overlay text below.
-Strict rules: no text, no logos, no price tags, no watermarks, no people faces, no invented brand packaging labels.`;
+Dark charcoal background (#0b0e13), faint tech grid, single neon accent (orange or rose).
+Centered circular badge with dashed neon ring; inside: flat vector / line-art of the product
+(minimal geometry, soft neon glow) — cyberpunk brochure aesthetic like a digital share-card icon,
+NOT a photoreal packshot and NOT a full UI chrome layout.
+Strict rules: no text, no logos, no price tags, no watermarks, no people faces, no QR codes.`;
 
     return generateMarketingImageFromPrompt(params, prompt);
 }

@@ -2,15 +2,10 @@ flowchart LR
   A[Cron / Generate sekarang] --> B[Eligible: consent + produk active]
   B --> C{Foto inventory?}
   C -->|ya| D[Foto asli MinIO]
-  C -->|tidak| E[AI hero showcase → Sharp kartu]
-  D --> F[Sharp template + teks DB]
+  C -->|tidak| E[AI hero stilized HUD icon]
+  D --> F[Caption LLM + Sharp HUD chrome]
   E --> F
-  F --> G{AI background?}
-  G -->|opsional| H[Latar abstrak AI]
-  G -->|fallback| I[Gradient NS]
-  H --> J[Caption LLM ID]
-  I --> J
-  J --> K[(studio_marketing_contents pending)]
+  F --> K[(studio_marketing_contents pending)]
   K --> L[Admin Konten Marketing]
   L -->|Approve| M[API /public/marketing]
   M --> S[brochure-gallery showcase :3014]

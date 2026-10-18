@@ -494,15 +494,17 @@ export class StudioMarketingService {
             background = await tryGenerateMarketingBackground(this.marketingImageGenParams(settings));
         }
 
+        const captionPayload = await this.generateCaption(product);
         const png = await renderMarketingTemplatePng({
             productName: product.product_name,
             priceIdr: product.selling_price,
             storeLabel: product.store_label,
             productPhoto: photo,
+            headline: captionPayload.headline,
+            categoryName: product.category_name,
             background,
         });
 
-        const captionPayload = await this.generateCaption(product);
         const provider = await this.aiSettings.getLlmProvider();
         const model = settings?.[`${provider}_model`] ?? provider;
 

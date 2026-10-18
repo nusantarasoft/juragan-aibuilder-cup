@@ -274,7 +274,7 @@ export default function KontenMarketingPage() {
                     type="info"
                     showIcon
                     style={{ marginBottom: 16 }}
-                    message="Generate = kartu showcase (Sharp + caption). Tanpa foto inventory, AI isi hero visual kartu — bukan foto katalog. Produk dengan iklan pending/approved dilewati; batch rotasi ke produk lain / iklan lama."
+                    message="Generate = kartu HUD showcase (layout seperti brochure share-card + hero di lingkaran). Tanpa foto inventory, AI isi ikon stilized. Produk pending/approved dilewati; batch rotasi."
                     action={
                         <Button size="small" type="link" href={SHOWCASE_GALLERY_URL} target="_blank">
                             Buka showcase
