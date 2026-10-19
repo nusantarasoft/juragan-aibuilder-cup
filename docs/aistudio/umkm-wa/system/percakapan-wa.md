@@ -1,8 +1,8 @@
-# Percakapan WA — super-admin inbox (AI Studio)
+# Messages — super-admin inbox (`/admin/ai-studio/messages`, AI Studio)
 
 **Audience:** eng + ops · **Pitch:** [`../business/pitch.md`](../business/pitch.md) · **Hermes runtime:** [`hermes-architecture.md`](./hermes-architecture.md)
 
-Nusantarasoft **super admin** can watch WhatsApp threads between store owners (whitelist on the shared NS business number) and Kasir/Pendamping (Hermes), reply as a human, and **Ambil alih** / **Kembalikan ke AI** with a 30-minute idle auto-release on human takeover (not on message retention).
+Nusantarasoft **super admin** can watch WhatsApp threads between store owners (whitelist on the shared NS business number) and Kasir/Pendamping (Hermes), reply as a human, and **Take over** / **Return to AI** with a 30-minute idle auto-release on human takeover (not on message retention). Legacy route `/admin/ai-studio/percakapan-wa` automatically redirects to `/admin/ai-studio/messages`.
 
 ---
 
@@ -39,10 +39,10 @@ Owner WA inbound
   → else Hermes agent + kasir-tools
   → transform_llm_output → POST wa-turn { author_kind: ai }
 
-Super admin /admin/ai-studio/percakapan-wa
+Super admin /admin/ai-studio/messages
   → GraphQL studioWa* (super_admin only)
   → Poll list + open thread every ~5s while tab visible (pause when hidden)
-  → Ambil alih → takeover_active + takeover_until (+30m per human reply)
+  → Take over → takeover_active + takeover_until (+30m per human reply)
   → Human reply → sendText(suffixed) + wa-turn human + audit_logs
 
 kasir_consult + phone during takeover
@@ -70,9 +70,9 @@ Do **not** commit or copy live `state.db`, `config.yaml`, `channel_directory.jso
 
 ## Admin UI
 
-- Menu: **AI Studio → Percakapan WA** (`/admin/ai-studio/percakapan-wa`)
-- Indonesian copy; empty state: **Belum ada percakapan WA**
-- Thread labels: **AI** / **Manusia** (+ admin name on human rows)
+- Menu: **AI Studio → Messages** (`/admin/ai-studio/messages`; legacy `/admin/ai-studio/percakapan-wa` redirects)
+- English Tactical HUD copy; empty state: **No WA conversations yet**
+- Thread labels: **AI** / **Human** (+ admin name on human rows) / **Owner**
 - Auto-refresh ~5s (visible tab) so inbound owner messages appear during takeover without manual reload
 
 Access: **super_admin** only (server-enforced on every query/mutation).

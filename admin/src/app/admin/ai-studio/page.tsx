@@ -655,10 +655,9 @@ export default function AIStudioPage() {
 
     const STUDIO_QUICK_LINKS = [
         { code: "PTN", label: "Partner", href: "/admin/ai-studio/partner" },
-        { code: "RK", label: "Research", href: "/admin/ai-studio/riset-knowledge" },
-        { code: "MK", label: "Marketing", href: "/admin/ai-studio/konten-marketing" },
-        { code: "WA", label: "WA Logs", href: "/admin/ai-studio/percakapan-wa" },
-        { code: "GW", label: "Gateway", href: "/admin/ai-studio/ai-gateway" },
+        { code: "KR", label: "Research", href: "/admin/ai-studio/knowledge-research" },
+        { code: "SHW", label: "Showcase", href: "/admin/ai-studio/showcase" },
+        { code: "MSG", label: "Messages", href: "/admin/ai-studio/messages" },
         { code: "CFG", label: "Settings", href: "/admin/ai-studio/settings" },
     ];
 

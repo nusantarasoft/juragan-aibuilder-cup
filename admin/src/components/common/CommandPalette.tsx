@@ -30,11 +30,10 @@ interface ActionItem {
 const PAGES: PageItem[] = [
     { name: 'Studio', path: '/admin/ai-studio', icon: '🤖', group: 'AI Studio', keywords: 'ai studio notebook home overview' },
     { name: 'Partner', path: '/admin/ai-studio/partner', icon: '🏪', group: 'AI Studio', keywords: 'partner umkm store' },
-    { name: 'Knowledge Research', path: '/admin/ai-studio/riset-knowledge', icon: '🔬', group: 'AI Studio', keywords: 'riset knowledge research' },
-    { name: 'Marketing Content', path: '/admin/ai-studio/konten-marketing', icon: '🎨', group: 'AI Studio', keywords: 'konten marketing content' },
-    { name: 'WA Conversations', path: '/admin/ai-studio/percakapan-wa', icon: '💭', group: 'AI Studio', keywords: 'percakapan wa whatsapp chat' },
-    { name: 'WhatsApp Gateway', path: '/admin/ai-studio/ai-gateway', icon: '🔌', group: 'AI Studio', keywords: 'ai gateway whatsapp' },
-    { name: 'Settings & Models', path: '/admin/ai-studio/settings', icon: '⚙️', group: 'AI Studio', keywords: 'settings models llm' },
+    { name: 'Knowledge Research', path: '/admin/ai-studio/knowledge-research', icon: '🔬', group: 'AI Studio', keywords: 'knowledge research riset' },
+    { name: 'Showcase', path: '/admin/ai-studio/showcase', icon: '🎨', group: 'AI Studio', keywords: 'showcase generate material marketing content brochure' },
+    { name: 'Messages', path: '/admin/ai-studio/messages', icon: '💭', group: 'AI Studio', keywords: 'messages percakapan wa whatsapp chat conversations' },
+    { name: 'Settings', path: '/admin/ai-studio/settings', icon: '⚙️', group: 'AI Studio', keywords: 'settings models llm whatsapp gateway hermes' },
     { name: 'Virtual Office', path: '/admin/virtual-office', icon: '🏢', group: 'Surfaces', keywords: 'virtual office 3d hq' },
     { name: 'Agentic OS', path: '/admin/agentic-os', icon: '🖥️', group: 'Surfaces', keywords: 'agentic os command deck' },
 ];

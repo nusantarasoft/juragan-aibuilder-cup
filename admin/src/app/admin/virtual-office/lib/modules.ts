@@ -45,42 +45,42 @@ export const MODULES: Record<ModuleId, ModuleInfo> = {
     knowledge: {
         id: "knowledge",
         name: "Knowledge Research",
-        route: "/admin/ai-studio/riset-knowledge",
+        route: "/admin/ai-studio/knowledge-research",
         color: "#2dd4bf",
         keywords: ["knowledge", "research", "riset", "kb", "article", "faq", "source", "scrape", "crawl", "docs"],
         steps: ["Open Knowledge Research", "Crawl & verify reference sources", "Synthesize key findings", "Index chunks into notebook KB"],
     },
     marketing: {
         id: "marketing",
-        name: "Marketing Content",
-        route: "/admin/ai-studio/konten-marketing",
+        name: "Showcase",
+        route: "/admin/ai-studio/showcase",
         color: "#fb7185",
-        keywords: ["marketing", "konten", "content", "copywriting", "campaign", "brochure", "social", "post", "promo"],
-        steps: ["Open Marketing Content", "Review brand voice & audience", "Draft campaign copy & visuals", "Queue content for review"],
+        keywords: ["showcase", "material", "marketing", "konten", "content", "copywriting", "campaign", "brochure", "social", "post", "promo"],
+        steps: ["Open Showcase", "Review store consent & audience", "Synthesize HUD showcase cards & copy", "Queue showcase material for review"],
     },
     "wa-conversations": {
         id: "wa-conversations",
-        name: "WA Conversations",
-        route: "/admin/ai-studio/percakapan-wa",
+        name: "Messages",
+        route: "/admin/ai-studio/messages",
         color: "#60a5fa",
-        keywords: ["wa", "whatsapp", "percakapan", "chat", "inbox", "customer", "reply", "conversation", "handover"],
-        steps: ["Open WA Conversations inbox", "Triage unread customer threads", "Search KB for accurate answer", "Draft customer reply for approval"],
+        keywords: ["messages", "wa", "whatsapp", "percakapan", "chat", "inbox", "customer", "reply", "conversation", "handover"],
+        steps: ["Open Messages inbox", "Triage unread customer threads", "Search KB for accurate answer", "Draft customer reply for approval"],
     },
     "whatsapp-gateway": {
         id: "whatsapp-gateway",
-        name: "WhatsApp Gateway",
-        route: "/admin/ai-studio/ai-gateway",
+        name: "Settings (WhatsApp Gateway)",
+        route: "/admin/ai-studio/settings?tab=whatsapp",
         color: "#38bdf8",
         keywords: ["gateway", "waha", "session", "qr", "webhook", "pairing", "connection", "number"],
-        steps: ["Open WhatsApp Gateway", "Check active WAHA sessions", "Verify webhook delivery & latency", "Confirm session health"],
+        steps: ["Open Settings → WhatsApp Gateway", "Check active Hermes sessions", "Verify webhook delivery & latency", "Confirm session health"],
     },
     settings: {
         id: "settings",
-        name: "Settings & Models",
+        name: "Settings",
         route: "/admin/ai-studio/settings",
         color: "#f43f5e",
         keywords: ["setting", "model", "provider", "gemini", "openai", "api key", "embedding", "quota", "guardrail"],
-        steps: ["Open Settings & Models", "Check LLM provider connectivity", "Audit token usage & latency", "Update model fallback order"],
+        steps: ["Open Settings", "Check LLM provider connectivity", "Audit token usage & latency", "Update model fallback order"],
     },
     "agentic-os": {
         id: "agentic-os",
@@ -136,55 +136,55 @@ export const TASK_TEMPLATES: TaskTemplate[] = [
     // Knowledge Research
     {
         moduleId: "knowledge",
-        route: "/admin/ai-studio/riset-knowledge",
+        route: "/admin/ai-studio/knowledge-research",
         title: "Deep research: UMKM market trends & FAQ",
         steps: ["Open Knowledge Research", "Collect verified industry sources", "Synthesize FAQ knowledge article", "Publish to shared notebook"],
     },
     {
         moduleId: "knowledge",
-        route: "/admin/ai-studio/riset-knowledge",
+        route: "/admin/ai-studio/knowledge-research",
         title: "Curate KB articles from recent WA chats",
         steps: ["Review resolved WA questions", "Extract recurring customer topics", "Draft structured KB entry", "Submit for human review"],
     },
-    // Marketing Content
+    // Showcase
     {
         moduleId: "marketing",
-        route: "/admin/ai-studio/konten-marketing",
-        title: "Draft weekly WhatsApp & social promo campaign",
-        steps: ["Open Marketing Content", "Select target partner persona", "Generate campaign copy & visual brief", "Queue draft for approval"],
+        route: "/admin/ai-studio/showcase",
+        title: "Synthesize weekly HUD showcase cards & promo copy",
+        steps: ["Open Showcase", "Select target partner store", "Generate HUD showcase card & copy", "Queue card for gallery approval"],
     },
     {
         moduleId: "marketing",
-        route: "/admin/ai-studio/konten-marketing",
-        title: "Generate digital brochure copy for new catalog",
-        steps: ["Load top-selling partner products", "Write headline & benefit bullets", "Attach product media", "Save brochure draft"],
+        route: "/admin/ai-studio/showcase",
+        title: "Generate digital brochure showcase material for new catalog",
+        steps: ["Load top-selling partner products", "Write headline & promotional caption", "Render HUD showcase asset", "Publish to brochure gallery"],
     },
-    // WA Conversations
+    // Messages
     {
         moduleId: "wa-conversations",
-        route: "/admin/ai-studio/percakapan-wa",
+        route: "/admin/ai-studio/messages",
         title: "Triage 6 unread WhatsApp customer chats",
-        steps: ["Open WA Conversations shared inbox", "Classify customer intent", "Retrieve answers from Knowledge Base", "Draft replies for human handover"],
+        steps: ["Open Messages shared inbox", "Classify customer intent", "Retrieve answers from Knowledge Base", "Draft replies for human handover"],
     },
     {
         moduleId: "wa-conversations",
-        route: "/admin/ai-studio/percakapan-wa",
+        route: "/admin/ai-studio/messages",
         title: "Follow up pending order confirmations on WA",
         steps: ["Filter awaiting-confirmation threads", "Verify stock in Partner catalog", "Draft polite follow-up message", "Request human send approval"],
     },
-    // WhatsApp Gateway
+    // WhatsApp Gateway (in Settings)
     {
         moduleId: "whatsapp-gateway",
-        route: "/admin/ai-studio/ai-gateway",
-        title: "Verify WAHA session health & webhook latency",
-        steps: ["Open WhatsApp Gateway", "Check session connection status", "Inspect webhook delivery logs", "Confirm 0 dropped messages"],
+        route: "/admin/ai-studio/settings?tab=whatsapp",
+        title: "Verify Hermes session health & webhook latency",
+        steps: ["Open Settings → WhatsApp Gateway", "Check session connection status", "Inspect webhook delivery logs", "Confirm 0 dropped messages"],
     },
-    // Settings & Models
+    // Settings
     {
         moduleId: "settings",
         route: "/admin/ai-studio/settings",
         title: "Audit LLM provider latency & token guardrails",
-        steps: ["Open Settings & Models", "Test Gemini & fallback model latency", "Review daily token consumption", "Record health status"],
+        steps: ["Open Settings", "Test Gemini & fallback model latency", "Review daily token consumption", "Record health status"],
     },
     // Agentic OS
     {

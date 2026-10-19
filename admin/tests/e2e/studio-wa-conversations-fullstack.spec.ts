@@ -115,8 +115,8 @@ test.describe('Percakapan WA — super admin inbox', () => {
         page,
     }) => {
         await loginAsAdmin(page);
-        await page.goto('/admin/ai-studio/percakapan-wa', { waitUntil: 'domcontentloaded' });
-        await expect(page.getByRole('heading', { name: 'WA Conversations' })).toBeVisible({
+        await page.goto('/admin/ai-studio/messages', { waitUntil: 'domcontentloaded' });
+        await expect(page.getByRole('heading', { name: 'Messages' })).toBeVisible({
             timeout: 60_000,
         });
         await expect(page.getByText('6289990000001', { exact: true }).first()).toBeVisible({
@@ -171,7 +171,7 @@ test.describe('Percakapan WA — super admin inbox', () => {
             }
             await route.continue();
         });
-        await page.goto('/admin/ai-studio/percakapan-wa', { waitUntil: 'domcontentloaded' });
+        await page.goto('/admin/ai-studio/messages', { waitUntil: 'domcontentloaded' });
         await expect(page.getByText('No WA conversations yet')).toBeVisible({ timeout: 30_000 });
     });
 });

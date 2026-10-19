@@ -2,7 +2,6 @@ import React from "react";
 import {
     ExperimentOutlined,
     MessageOutlined,
-    NodeIndexOutlined,
     PictureOutlined,
     RobotOutlined,
     SettingOutlined,
@@ -33,32 +32,26 @@ const menuConfig = {
                         isLeaf: true,
                     },
                     {
-                        path: "/admin/ai-studio/riset-knowledge",
+                        path: "/admin/ai-studio/knowledge-research",
                         name: "Knowledge Research",
                         icon: <ExperimentOutlined />,
                         isLeaf: true,
                     },
                     {
-                        path: "/admin/ai-studio/konten-marketing",
-                        name: "Marketing Content",
+                        path: "/admin/ai-studio/showcase",
+                        name: "Showcase",
                         icon: <PictureOutlined />,
                         isLeaf: true,
                     },
                     {
-                        path: "/admin/ai-studio/percakapan-wa",
-                        name: "WA Conversations",
+                        path: "/admin/ai-studio/messages",
+                        name: "Messages",
                         icon: <MessageOutlined />,
                         isLeaf: true,
                     },
                     {
-                        path: "/admin/ai-studio/ai-gateway",
-                        name: "WhatsApp Gateway",
-                        icon: <NodeIndexOutlined />,
-                        isLeaf: true,
-                    },
-                    {
                         path: "/admin/ai-studio/settings",
-                        name: "Settings & Models",
+                        name: "Settings",
                         icon: <SettingOutlined />,
                         isLeaf: true,
                     },
@@ -72,4 +65,3 @@ const menuConfig = {
 };
 
 export default menuConfig;
-

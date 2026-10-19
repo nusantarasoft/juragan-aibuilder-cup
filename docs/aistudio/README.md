@@ -8,11 +8,10 @@ Admin UI (default `/admin/ai-studio`):
 AI Studio (/admin/ai-studio)
 ├── Studio (notebook)         /admin/ai-studio
 ├── Partner (UMKM WA)         /admin/ai-studio/partner
-├── Knowledge Research        /admin/ai-studio/riset-knowledge
-├── Marketing Content         /admin/ai-studio/konten-marketing
-├── WA Conversations          /admin/ai-studio/percakapan-wa
-├── WhatsApp Gateway          /admin/ai-studio/ai-gateway
-└── Settings & Models         /admin/ai-studio/settings
+├── Knowledge Research        /admin/ai-studio/knowledge-research
+├── Showcase                  /admin/ai-studio/showcase
+├── Messages                  /admin/ai-studio/messages
+└── Settings                  /admin/ai-studio/settings (LLM Models + Embeddings + WhatsApp Gateway)
 
 Top Bar / Surface Launcher (outside AI Studio submenu):
 ├── Agentic OS                /admin/agentic-os

@@ -213,8 +213,8 @@ export const BOTTOM_DOCK_WIDGETS = [
 export const ALL_DOCK_META: Record<string, { color: string; code: string; route?: string; desc: string }> = {
     notes: { color: "#fb923c", code: "NT", route: "/admin/ai-studio", desc: "Persistent scratchpad & operator notes" },
     tasks: { color: "#10b981", code: "TK", route: "/admin/agentic-os", desc: "Tactical task queue & sprint checklist" },
-    files: { color: "#38bdf8", code: "FL", route: "/admin/ai-studio/riset-knowledge", desc: "Knowledge vault & workspace asset browser" },
-    messages: { color: "#a855f7", code: "MG", route: "/admin/ai-studio/percakapan-wa", desc: "Realtime WA channels & operator dispatch" },
+    files: { color: "#38bdf8", code: "FL", route: "/admin/ai-studio/knowledge-research", desc: "Knowledge vault & workspace asset browser" },
+    messages: { color: "#a855f7", code: "MG", route: "/admin/ai-studio/messages", desc: "Realtime WA channels & operator dispatch" },
     analytics: { color: "#38bdf8", code: "AN", route: "/admin/ai-studio", desc: "Live telemetry & usage stream" },
     calculator: { color: "#fb923c", code: "CL", desc: "Precision numeric evaluator" },
     terminal: { color: "#10b981", code: "TM", route: "/admin/ai-studio", desc: "AI Studio & prompt runner" },
@@ -224,7 +224,7 @@ export const ALL_DOCK_META: Record<string, { color: string; code: string; route?
     athan: { color: "#f59e0b", code: "AT", desc: "Prayer schedule & Qibla telemetry" },
     weather: { color: "#38bdf8", code: "WX", desc: "Atmospheric & region conditions" },
     music: { color: "#ec4899", code: "MU", desc: "Ambient focus synthesizer" },
-    settings: { color: "#94a3b8", code: "CF", route: "/admin/ai-studio/settings", desc: "AI Studio configuration & models" },
+    settings: { color: "#94a3b8", code: "CF", route: "/admin/ai-studio/settings", desc: "AI Studio settings, models & WhatsApp gateway" },
     "add-widget": { color: "#fb923c", code: "OS", route: "/admin/virtual-office", desc: "Quick module & surface launcher" },
 };
 
@@ -310,7 +310,7 @@ export const getInnerMenuRoutes = (segment: string, pinned: any[], starred: any[
         case "newfile":
             return [
                 { path: "/admin/ai-studio", name: "New Notebook", icon: <FileAddOutlined /> },
-                { path: "/admin/ai-studio/konten-marketing", name: "New Marketing Content", icon: <FileAddOutlined /> },
+                { path: "/admin/ai-studio/showcase", name: "Showcase", icon: <FileAddOutlined /> },
             ];
         case "pinned":
             return pinned.map((item) => ({
@@ -341,11 +341,16 @@ export const BREADCRUMB_LABELS: Record<string, string> = {
     "virtual-office": "Virtual Office",
     partner: "Partner",
     umkm: "Partner",
-    "ai-gateway": "WhatsApp Gateway",
+    "ai-gateway": "Settings",
+    "knowledge-research": "Knowledge Research",
     "riset-knowledge": "Knowledge Research",
-    "konten-marketing": "Marketing Content",
-    "percakapan-wa": "WA Conversations",
-    settings: "Settings & Models",
+    showcase: "Showcase",
+    "generate-showcase-material": "Showcase",
+    "showcase-material": "Showcase",
+    "konten-marketing": "Showcase",
+    messages: "Messages",
+    "percakapan-wa": "Messages",
+    settings: "Settings",
 };
 
 export function generateBreadcrumb(pathname: string): { title: string; path?: string }[] {

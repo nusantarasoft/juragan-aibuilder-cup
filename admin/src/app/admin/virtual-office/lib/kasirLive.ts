@@ -52,8 +52,8 @@ export function buildKasirAgent(snap: OsKasirLiveSnapshot): Agent {
                       progress: 0.35,
                       startedAt: snap.lastActivityAt ? new Date(snap.lastActivityAt).getTime() : Date.now(),
                       moduleId: "wa-conversations",
-                      route: "/admin/ai-studio/percakapan-wa",
-                      steps: ["Terima chat WA", "Catat transaksi", "Update stok"],
+                      route: "/admin/ai-studio/messages",
+                      steps: ["Receive WA chat", "Record transaction", "Update stock"],
                   }
                 : undefined,
     };

@@ -32,11 +32,11 @@ All agents, playbooks, task templates, memory map signposts, routines, workflows
 |-----------|-------|-------|-----------------|
 | `ai-studio` | Studio | `/admin/ai-studio` | Nakula, Yudhistira |
 | `partner` | Partner | `/admin/ai-studio/partner` | Kresna, Petruk |
-| `knowledge` | Knowledge Research | `/admin/ai-studio/riset-knowledge` | Yudhistira, Drupadi, Semar |
-| `marketing` | Marketing Content | `/admin/ai-studio/konten-marketing` | Drupadi, Kresna |
-| `wa-conversations` | WA Conversations | `/admin/ai-studio/percakapan-wa` | Semar, Petruk |
-| `whatsapp-gateway` | WhatsApp Gateway | `/admin/ai-studio/ai-gateway` | Arjuna |
-| `settings` | Settings & Models | `/admin/ai-studio/settings` | Nakula, Arjuna, Gatotkaca |
+| `knowledge` | Knowledge Research | `/admin/ai-studio/knowledge-research` | Yudhistira, Drupadi, Semar |
+| `marketing` | Showcase | `/admin/ai-studio/showcase` | Drupadi, Kresna |
+| `wa-conversations` | Messages | `/admin/ai-studio/messages` | Semar, Petruk |
+| `whatsapp-gateway` | Settings (WhatsApp Gateway) | `/admin/ai-studio/settings?tab=whatsapp` | Arjuna |
+| `settings` | Settings | `/admin/ai-studio/settings` | Nakula, Arjuna, Gatotkaca |
 | `agentic-os` | Agentic OS | `/admin/agentic-os` | Gatotkaca, Petruk |
 
 `STUDIO_UMKM_DAILY_REPORT_ENABLED` stays `false`; this slice does not enable daily report cron or change Hermes/WA routing.

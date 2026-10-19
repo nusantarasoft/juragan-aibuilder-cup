@@ -1,18 +1,15 @@
 "use client";
 
 import React from "react";
-import { Form, Tag, Typography } from "antd";
+import { Form } from "antd";
 import { CheckCircleOutlined, CloseCircleOutlined } from "@ant-design/icons";
 import { useAdminLayout } from "@/components/layout/CMSLayout";
 import { getVOTheme } from "@/components/layout/voTheme";
 import type { LlmProvider, StudioAiStatus } from "../types";
 import { PROVIDER_LABELS } from "../types";
 
-const { Text } = Typography;
-
 const PROVIDERS: LlmProvider[] = ["anthropic", "google", "openai", "groq", "openrouter", "ollama"];
 
-/** Short labels for compact cards (full name still in title attr). */
 const SHORT_LABELS: Record<LlmProvider, string> = {
     anthropic: "Anthropic",
     google: "Google",
@@ -22,104 +19,147 @@ const SHORT_LABELS: Record<LlmProvider, string> = {
     ollama: "Ollama",
 };
 
+const PROVIDER_CODES: Record<LlmProvider, string> = {
+    anthropic: "ANT",
+    google: "GGL",
+    openai: "OAI",
+    groq: "GRQ",
+    openrouter: "ORT",
+    ollama: "OLM",
+};
+
 type Props = {
     status: StudioAiStatus | null;
 };
 
 export default function ActiveProviderSelector({ status }: Props) {
-    const { darkMode } = useAdminLayout();
+    const { darkMode, themeColor = "#fb923c" } = useAdminLayout();
     const t = getVOTheme(darkMode);
     const form = Form.useFormInstance();
     const active = Form.useWatch("default_llm_provider") as LlmProvider | undefined;
+
+    const selectProvider = (p: LlmProvider) => {
+        form.setFieldValue("default_llm_provider", p);
+        if (p === "ollama") {
+            form.setFieldValue("default_embedding_provider", "ollama");
+        }
+    };
 
     return (
         <div
             style={{
                 display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))",
-                gap: 12,
+                gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+                gap: 5,
             }}
         >
             {PROVIDERS.map((p) => {
                 const meta = status?.providers.find((x) => x.provider === p);
                 const selected = active === p;
+                const ready = !!meta?.configured;
+
                 return (
                     <div
                         key={p}
                         role="button"
                         tabIndex={0}
                         title={PROVIDER_LABELS[p]}
-                        onClick={() => {
-                            form.setFieldValue("default_llm_provider", p);
-                            if (p === "ollama") {
-                                form.setFieldValue("default_embedding_provider", "ollama");
-                            }
-                        }}
+                        onClick={() => selectProvider(p)}
                         onKeyDown={(e) => {
                             if (e.key === "Enter" || e.key === " ") {
-                                form.setFieldValue("default_llm_provider", p);
-                                if (p === "ollama") {
-                                    form.setFieldValue("default_embedding_provider", "ollama");
-                                }
+                                e.preventDefault();
+                                selectProvider(p);
                             }
                         }}
                         style={{
-                            padding: "12px 14px",
+                            padding: "6px 8px",
                             borderRadius: 0,
-                            border: selected ? "1px solid #fb923c" : `1px solid ${t.cardBorder}`,
-                            borderTop: selected ? "2px solid #fb923c" : `1px solid ${t.cardBorder}`,
-                            background: selected ? "rgba(251,146,60,0.08)" : t.surfaceBg,
+                            border: `1px solid ${selected ? themeColor : t.border}`,
+                            borderTop: `2px solid ${selected ? themeColor : ready ? "#22c55e" : t.border}`,
+                            background: selected
+                                ? `${themeColor}14`
+                                : darkMode
+                                  ? "rgba(255,255,255,0.015)"
+                                  : "#f8fafc",
                             cursor: "pointer",
-                            minHeight: 96,
                             display: "flex",
                             flexDirection: "column",
-                            gap: 8,
-                            transition: "border-color 0.15s, background 0.15s",
+                            gap: 4,
+                            transition: "all 0.12s ease",
                         }}
                     >
-                        <Text
-                            strong
-                            className="font-mono uppercase tracking-[0.04em]"
-                            style={{
-                                fontSize: 12,
-                                lineHeight: 1.3,
-                                color: selected ? "#fb923c" : t.textPrimary,
-                            }}
-                        >
-                            {SHORT_LABELS[p]}
-                        </Text>
-
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-                            {selected && (
-                                <Tag color="orange" style={{ margin: 0, borderRadius: 0 }}>
-                                    Active
-                                </Tag>
-                            )}
-                            <Tag
-                                color={meta?.configured ? "success" : "default"}
-                                icon={
-                                    meta?.configured ? (
-                                        <CheckCircleOutlined />
-                                    ) : (
-                                        <CloseCircleOutlined />
-                                    )
-                                }
-                                style={{ margin: 0, borderRadius: 0 }}
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 4 }}>
+                            <span
+                                className="font-mono uppercase"
+                                style={{
+                                    fontSize: 10.5,
+                                    fontWeight: 700,
+                                    color: selected ? themeColor : t.textPrimary,
+                                    letterSpacing: "0.04em",
+                                }}
                             >
-                                {meta?.configured ? "Ready" : "Setup"}
-                            </Tag>
+                                {SHORT_LABELS[p]}
+                            </span>
+                            <span
+                                className="font-mono"
+                                style={{
+                                    fontSize: 8.5,
+                                    padding: "0px 3px",
+                                    background: selected ? `${themeColor}25` : "rgba(148,163,184,0.12)",
+                                    color: selected ? themeColor : t.textMuted,
+                                }}
+                            >
+                                {PROVIDER_CODES[p]}
+                            </span>
                         </div>
 
-                        {meta?.model && (
-                            <Text
-                                ellipsis
-                                className="font-mono"
-                                style={{ fontSize: 11, lineHeight: 1.3, maxWidth: "100%", color: t.textMuted }}
-                                title={meta.model}
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 4 }}>
+                            <span
+                                className="font-mono uppercase"
+                                style={{
+                                    fontSize: 8.5,
+                                    padding: "0px 4px",
+                                    background: ready ? "rgba(34,197,94,0.12)" : "rgba(148,163,184,0.12)",
+                                    border: `1px solid ${ready ? "rgba(34,197,94,0.35)" : t.border}`,
+                                    color: ready ? "#22c55e" : t.textMuted,
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: 3,
+                                }}
                             >
-                                {meta.model}
-                            </Text>
-                        )}
+                                {ready ? <CheckCircleOutlined /> : <CloseCircleOutlined />}
+                                {ready ? "READY" : "SETUP"}
+                            </span>
+                            {selected && (
+                                <span
+                                    className="font-mono uppercase"
+                                    style={{
+                                        fontSize: 8.5,
+                                        padding: "0px 4px",
+                                        background: `${themeColor}22`,
+                                        border: `1px solid ${themeColor}55`,
+                                        color: themeColor,
+                                        fontWeight: 700,
+                                    }}
+                                >
+                                    ACTIVE
+                                </span>
+                            )}
+                        </div>
+
+                        <div
+                            className="font-mono"
+                            style={{
+                                fontSize: 9.5,
+                                color: t.textMuted,
+                                whiteSpace: "nowrap",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                            }}
+                            title={meta?.model || "Default model"}
+                        >
+                            {meta?.model || "—"}
+                        </div>
                     </div>
                 );
             })}

@@ -162,11 +162,11 @@ export function Overview({ onOpen }: { onOpen: (app: string, params?: Record<str
                             <Button size="sm" onClick={() => onOpen("studio")}>
                                 Agent roster
                             </Button>
-                            <a href="/admin/ai-studio/ai-gateway" className="rounded-lg border border-white/10 px-2.5 py-1.5 text-center text-[11px] font-semibold text-emerald-200 hover:bg-white/5">
-                                Hubungkan WhatsApp
+                            <a href="/admin/ai-studio/settings?tab=whatsapp" className="rounded-lg border border-white/10 px-2.5 py-1.5 text-center text-[11px] font-semibold text-emerald-200 hover:bg-white/5">
+                                Connect WhatsApp
                             </a>
-                            <a href="/admin/ai-studio/percakapan-wa" className="rounded-lg border border-white/10 px-2.5 py-1.5 text-center text-[11px] font-semibold text-sky-200 hover:bg-white/5">
-                                Percakapan WA
+                            <a href="/admin/ai-studio/messages" className="rounded-lg border border-white/10 px-2.5 py-1.5 text-center text-[11px] font-semibold text-sky-200 hover:bg-white/5">
+                                Messages
                             </a>
                         </div>
                     </div>

@@ -799,13 +799,13 @@ export default function PartnerStudioPage() {
                             {showInspectorPane ? 'HIDE INSPECTOR ▶' : '◀ SHOW INSPECTOR'}
                         </button>
 
-                        <Link href="/admin/ai-studio/ai-gateway">
+                        <Link href="/admin/ai-studio/settings?tab=whatsapp">
                             <Button
                                 size="small"
                                 icon={<WhatsAppOutlined />}
                                 style={{ borderRadius: 0, fontSize: 10.5, height: 24 }}
                             >
-                                WA Gateway
+                                WA Settings
                             </Button>
                         </Link>
                         <Button
@@ -1577,7 +1577,7 @@ export default function PartnerStudioPage() {
                                                         </Button>
                                                     </Link>
                                                     <Link
-                                                        href={`/admin/ai-studio/ai-gateway?tenant=${encodeURIComponent(
+                                                        href={`/admin/ai-studio/settings?tab=whatsapp&tenant=${encodeURIComponent(
                                                             selectedPartner.tenant_id,
                                                         )}`}
                                                     >
@@ -1586,7 +1586,7 @@ export default function PartnerStudioPage() {
                                                             icon={<WhatsAppOutlined />}
                                                             style={{ borderRadius: 0, fontSize: 10.5 }}
                                                         >
-                                                            WA Session Gateway
+                                                            WA Session Settings
                                                         </Button>
                                                     </Link>
                                                 </div>

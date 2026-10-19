@@ -1,6 +1,6 @@
-# Konten Marketing UMKM (AI Studio)
+# Showcase UMKM (AI Studio — `/admin/ai-studio/showcase`)
 
-Pipeline **human-in-the-loop** untuk membuat kartu promo produk warung dari katalog `inv_items`, lalu menampilkannya di **galeri web publik** (frontend terpisah). **Tidak ada** publish Instagram/Meta di scope ini.
+Pipeline **human-in-the-loop** untuk membuat kartu promo produk warung dari katalog `inv_items`, lalu menampilkannya di **galeri web publik** (frontend terpisah). **Tidak ada** publish Instagram/Meta di scope ini. (Legacy routes `/admin/ai-studio/konten-marketing`, `/admin/ai-studio/generate-showcase-material`, and `/admin/ai-studio/showcase-material` redirect automatically to `/admin/ai-studio/showcase`.)
 
 **Visual kartu showcase:** DNA visual **HUD share-card** (seperti brochure-gallery): dark grid, corner frame, header initials, tag chips, highlight + harga, CTA — digambar **Sharp/SVG** dari data DB. Hero di lingkaran: foto inventory **atau** AI stilized (Gemini / Cloudflare FLUX / Vertex). Teks/harga **bukan** hasil AI di kanvas.
 
@@ -11,13 +11,13 @@ Pipeline **human-in-the-loop** untuk membuat kartu promo produk warung dari kata
 Diagram: [L5-konten-marketing.svg](../../../diagrams/aistudio/studio/system/L5-konten-marketing.svg)
 
 1. Super admin mengaktifkan **consent marketing** per warung (`studio_whatsapp_config.marketing_consent`).
-2. **Generate sekarang** (GraphQL) atau **cron mingguan** (opsional) memilih produk eligible: consent=true, status active (foto inventory **opsional** jika AI product image aktif).
+2. **Generate Showcase** (GraphQL) atau **cron mingguan** (opsional) memilih produk eligible: consent=true, status active (foto inventory **opsional** jika AI product image aktif).
 3. **Hero di lingkaran HUD:** foto inventory **atau** AI stilized (prompt HUD icon, bukan packshot) → Gemini → Cloudflare FLUX → Vertex Imagen.
 4. **Sharp/SVG HUD chrome** (header, tags, highlight harga, CTA) + composite hero — teks dari DB + headline caption LLM.
 5. Opsional: background abstrak via Gemini/Imagen jika `STUDIO_MARKETING_AI_BACKGROUND=true` (fallback ke gradient template).
 6. **Caption** Bahasa Indonesia via LLM default `studio_settings`; error provider = gagal (tidak ada caption sampah).
 7. Gambar disimpan MinIO (`cms-media`) dengan URL publik via proxy middleware.
-8. Admin **AI Studio → Konten Marketing**: review, edit caption, approve / reject / unpublish.
+8. Admin **AI Studio → Showcase** (`/admin/ai-studio/showcase`): review di 2-pane Tactical Showcase Card Studio, edit headline & caption, approve / reject / unpublish.
 9. Hanya `status=approved` + consent warung=true muncul di API galeri publik **dan** di **brochure-gallery** (showcase Adityo, port `:3014` prod) — kartu UMKM ditampilkan di atas brosur tenant seed.
 
 Migrasi DB: `supabase/migrations/20261018150000_studio_marketing_contents.sql`.

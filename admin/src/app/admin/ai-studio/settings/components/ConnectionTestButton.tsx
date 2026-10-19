@@ -1,9 +1,11 @@
 "use client";
 
 import React, { useState } from "react";
-import { Button, Form, Tag } from "antd";
-import { ThunderboltOutlined } from "@ant-design/icons";
+import { Button, Form } from "antd";
+import { ThunderboltOutlined, CheckCircleOutlined, CloseCircleOutlined } from "@ant-design/icons";
 import { studioService } from "@/lib/studioService";
+import { useAdminLayout } from "@/components/layout/CMSLayout";
+import { getVOTheme } from "@/components/layout/voTheme";
 import type { LlmProvider } from "../types";
 
 type Props = {
@@ -12,6 +14,8 @@ type Props = {
 };
 
 export default function ConnectionTestButton({ provider, label }: Props) {
+    const { darkMode } = useAdminLayout();
+    const t = getVOTheme(darkMode);
     const form = Form.useFormInstance();
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState<{ success: boolean; message: string; latencyMs?: number } | null>(null);
@@ -41,20 +45,39 @@ export default function ConnectionTestButton({ provider, label }: Props) {
     };
 
     return (
-        <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-            <Button icon={<ThunderboltOutlined />} loading={loading} onClick={runTest}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <Button
+                size="small"
+                icon={<ThunderboltOutlined />}
+                loading={loading}
+                onClick={runTest}
+                style={{ borderRadius: 0, fontSize: 10.5, height: 24 }}
+            >
                 {label || "Test Connection"}
             </Button>
-            {provider === "ollama" && (
-                <span style={{ fontSize: 12, color: "#888" }}>
-                    Tests the URL in the form (save after changing)
+            {provider === "ollama" && !result && (
+                <span className="font-mono" style={{ fontSize: 10, color: t.textMuted }}>
+                    Probes form URL directly
                 </span>
             )}
             {result && (
-                <Tag color={result.success ? "success" : "error"}>
+                <span
+                    className="font-mono"
+                    style={{
+                        fontSize: 10,
+                        padding: "2px 6px",
+                        background: result.success ? "rgba(34,197,94,0.12)" : "rgba(239,68,68,0.12)",
+                        border: `1px solid ${result.success ? "rgba(34,197,94,0.4)" : "rgba(239,68,68,0.4)"}`,
+                        color: result.success ? "#22c55e" : "#ef4444",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 4,
+                    }}
+                >
+                    {result.success ? <CheckCircleOutlined /> : <CloseCircleOutlined />}
                     {result.message}
                     {result.latencyMs != null ? ` (${result.latencyMs}ms)` : ""}
-                </Tag>
+                </span>
             )}
         </div>
     );

@@ -721,8 +721,8 @@ export function AgentInspector() {
                     ) : (
                         <p className="text-[11px] text-amber-200">data tidak tersedia</p>
                     )}
-                    <Link href="/admin/ai-studio/ai-gateway" className="mt-2 inline-block text-[10px] font-semibold text-orange-200/90 hover:text-orange-100">
-                        Hubungkan / kelola WhatsApp →
+                    <Link href="/admin/ai-studio/settings?tab=whatsapp" className="mt-2 inline-block text-[10px] font-semibold text-orange-200/90 hover:text-orange-100">
+                        Connect / manage WhatsApp →
                     </Link>
                 </Section>
             )}

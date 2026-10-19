@@ -1,16 +1,16 @@
-# Riset Knowledge UMKM (AI Studio)
+# Knowledge Research UMKM (AI Studio — `/admin/ai-studio/knowledge-research`)
 
-Pipeline **human-in-the-loop** untuk memperbarui notebook kurikulum WA (`KASIR_CONSULT_NOTEBOOK_ID`) dari sumber regulasi pemerintah — tanpa merge otomatis.
+Pipeline **human-in-the-loop** untuk memperbarui notebook kurikulum WA (`KASIR_CONSULT_NOTEBOOK_ID`) dari sumber regulasi pemerintah — tanpa merge otomatis. (Legacy route `/admin/ai-studio/riset-knowledge` redirects automatically to `/admin/ai-studio/knowledge-research`.)
 
 ## Alur
 
 Diagram: [L5-riset-knowledge.svg](../../../diagrams/aistudio/studio/system/L5-riset-knowledge.svg)
 
-1. **Cron mingguan** (default off) atau tombol admin **Jalankan riset sekarang** menjalankan batch fetch + ringkasan LLM.
+1. **Cron mingguan** (default off) atau tombol admin **Run Research Now** menjalankan batch fetch + ringkasan LLM.
 2. Setiap URL seed di-allowlist (domain `.go.id` resmi + `jdih.*.go.id`), dengan guard SSRF yang sama seperti `importUrl`.
 3. LLM (`studio_settings` default provider, opsional override `STUDIO_RESEARCH_PROVIDER` / `STUDIO_RESEARCH_MODEL`) menghasilkan ringkasan JSON; jika provider mengembalikan teks error atau JSON tidak valid, URL itu **gagal** (retry 1× + backoff) — **tidak** ada fallback ringkasan dari potongan sumber. Run batch mencatat `failed` / `partial` + `error_message` di `studio_research_runs`.
-4. Embedding ringkasan dibandingkan ke chunk notebook (`match_studio_chunks`) → flag **mirip/duplikat** atau **mungkin bertentangan** (tidak auto-drop). Jika embedding gagal → `validation_flags.dedupe_unchecked` (UI: **dedupe belum dicek**), bukan “tampak baru”.
-5. Super admin membuka **AI Studio → Riset Knowledge**, review, edit ringkasan, lalu **Approve (merge)** atau **Tolak**.
+4. Embedding ringkasan dibandingkan ke chunk notebook (`match_studio_chunks`) → flag **mirip/duplikat** atau **mungkin bertentangan** (tidak auto-drop). Jika embedding gagal → `validation_flags.dedupe_unchecked` (UI: **DEDUPE UNCHECKED**), bukan “tampak baru”.
+5. Super admin membuka **AI Studio → Knowledge Research** (`/admin/ai-studio/knowledge-research`), review di 2-pane Tactical Triage & Dossier Deck, edit ringkasan, lalu **Approve & Merge** atau **Reject**.
 6. Merge membuat sumber teks via `addTextSource` + provenance header (URL, kutipan, id riset, reviewer) → `ingestSource`.
 7. **Unmerge** menghapus source (chunk cascade) dan mengembalikan status ke `approved`.
 8. Item `pending` > 30 hari → status `expired` (cron harian).

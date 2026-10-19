@@ -100,9 +100,9 @@ export const MEETING_TOPICS = [
 export function initialActivity(): ActivityEntry[] {
     const now = Date.now();
     return [
-        { id: "a1", ts: now - 40_000, agentId: "semar", level: "info", moduleId: "wa-conversations", route: "/admin/ai-studio/percakapan-wa", message: "Semar triaged 6 unread WhatsApp customer threads" },
-        { id: "a2", ts: now - 95_000, agentId: "yudhis", level: "success", moduleId: "knowledge", route: "/admin/ai-studio/riset-knowledge", message: "Yudhistira indexed new UMKM FAQ sources into Knowledge Research" },
-        { id: "a3", ts: now - 160_000, agentId: "drupadi", level: "info", moduleId: "marketing", route: "/admin/ai-studio/konten-marketing", message: "Drupadi drafted weekly WhatsApp & social promo campaign" },
+        { id: "a1", ts: now - 40_000, agentId: "semar", level: "info", moduleId: "wa-conversations", route: "/admin/ai-studio/messages", message: "Semar triaged 6 unread WhatsApp customer threads in Messages" },
+        { id: "a2", ts: now - 95_000, agentId: "yudhis", level: "success", moduleId: "knowledge", route: "/admin/ai-studio/knowledge-research", message: "Yudhistira indexed new UMKM FAQ sources into Knowledge Research" },
+        { id: "a3", ts: now - 160_000, agentId: "drupadi", level: "info", moduleId: "marketing", route: "/admin/ai-studio/showcase", message: "Drupadi synthesized new HUD showcase cards in Showcase" },
         { id: "a4", ts: now - 300_000, agentId: "kresna", level: "success", moduleId: "partner", route: "/admin/ai-studio/partner", message: "Kresna verified Partner store catalog and Kasir WA summary" },
     ];
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Card, Col, Form, Input, InputNumber, Row, Typography } from "antd";
+import { Col, Form, Input, InputNumber, Row } from "antd";
 import { useAdminLayout } from "@/components/layout/CMSLayout";
 import { getVOTheme } from "@/components/layout/voTheme";
 import ApiKeyField from "./ApiKeyField";
@@ -11,8 +11,6 @@ import VertexServiceAccountField from "./VertexServiceAccountField";
 import type { LlmProvider } from "../types";
 import { PROVIDER_LABELS } from "../types";
 
-const { Text } = Typography;
-
 type Props = {
     provider: LlmProvider;
     isActive?: boolean;
@@ -20,7 +18,7 @@ type Props = {
 };
 
 export default function ProviderPanel({ provider, isActive = true, configured }: Props) {
-    const { darkMode } = useAdminLayout();
+    const { darkMode, themeColor = "#fb923c" } = useAdminLayout();
     const t = getVOTheme(darkMode);
     const anthropicKeyConfigured = Form.useWatch("anthropic_api_key_configured");
     const googleKeyConfigured = Form.useWatch("google_api_key_configured");
@@ -31,69 +29,92 @@ export default function ProviderPanel({ provider, isActive = true, configured }:
 
     const req = isActive ? [{ required: true, message: "Required for active provider" }] : [];
 
+    const labelSpan = (txt: string) => (
+        <span className="font-mono uppercase" style={{ fontSize: 10, color: t.textSecondary, letterSpacing: "0.05em" }}>
+            {txt}
+        </span>
+    );
+
     const inner = (
-        <>
+        <div>
             {provider === "anthropic" && (
                 <>
                     <ApiKeyField
                         name="anthropic_api_key"
-                        label="API Key"
+                        label="Anthropic API Key"
                         configured={!!anthropicKeyConfigured}
                         clearFieldName="clear_anthropic_api_key"
                         placeholder="sk-ant-api03-..."
                     />
-                    <ModelSelect
-                        name="anthropic_model"
-                        label="Chat Model"
-                        provider="anthropic"
-                        rules={req}
-                    />
-                    <Form.Item name="anthropic_max_tokens" label="Max Output Tokens" preserve>
-                        <InputNumber min={64} max={8192} style={{ width: "100%" }} />
-                    </Form.Item>
+                    <Row gutter={8}>
+                        <Col xs={24} sm={16}>
+                            <ModelSelect
+                                name="anthropic_model"
+                                label="Chat Model"
+                                provider="anthropic"
+                                rules={req}
+                            />
+                        </Col>
+                        <Col xs={24} sm={8}>
+                            <Form.Item
+                                name="anthropic_max_tokens"
+                                label={labelSpan("Max Output Tokens")}
+                                preserve
+                                style={{ marginBottom: 8 }}
+                            >
+                                <InputNumber size="small" min={64} max={8192} style={{ width: "100%", borderRadius: 0 }} />
+                            </Form.Item>
+                        </Col>
+                    </Row>
                 </>
             )}
 
             {provider === "google" && (
-                <Row gutter={16}>
-                    <Col span={24}>
-                        <ApiKeyField
-                            name="google_api_key"
-                            label="Google AI Studio API Key"
-                            configured={!!googleKeyConfigured}
-                            clearFieldName="clear_google_api_key"
-                            placeholder="AIzaSy..."
-                        />
-                    </Col>
-                    <Col span={24}>
-                        <VertexServiceAccountField configured={!!googleSaConfigured} />
-                    </Col>
-                    <Col xs={24} md={12}>
-                        <Form.Item name="google_project_id" label="Vertex Project ID" preserve>
-                            <Input placeholder="my-gcp-project" />
-                        </Form.Item>
-                    </Col>
-                    <Col xs={24} md={12}>
-                        <Form.Item name="google_location" label="Vertex Location" preserve>
-                            <Input placeholder="us-central1" />
-                        </Form.Item>
-                    </Col>
-                    <Col span={24}>
-                        <ModelSelect
-                            name="google_model"
-                            label="Generative Model"
-                            provider="google"
-                            rules={req}
-                        />
-                    </Col>
-                </Row>
+                <>
+                    <ApiKeyField
+                        name="google_api_key"
+                        label="Google AI Studio API Key"
+                        configured={!!googleKeyConfigured}
+                        clearFieldName="clear_google_api_key"
+                        placeholder="AIzaSy..."
+                    />
+                    <Row gutter={8}>
+                        <Col xs={24} sm={12}>
+                            <Form.Item
+                                name="google_project_id"
+                                label={labelSpan("Vertex Project ID")}
+                                preserve
+                                style={{ marginBottom: 8 }}
+                            >
+                                <Input size="small" placeholder="my-gcp-project" style={{ borderRadius: 0, fontSize: 11.5 }} />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={24} sm={12}>
+                            <Form.Item
+                                name="google_location"
+                                label={labelSpan("Vertex Location")}
+                                preserve
+                                style={{ marginBottom: 8 }}
+                            >
+                                <Input size="small" placeholder="us-central1" style={{ borderRadius: 0, fontSize: 11.5 }} />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+                    <ModelSelect
+                        name="google_model"
+                        label="Generative Model"
+                        provider="google"
+                        rules={req}
+                    />
+                    <VertexServiceAccountField configured={!!googleSaConfigured} />
+                </>
             )}
 
             {provider === "openai" && (
                 <>
                     <ApiKeyField
                         name="openai_api_key"
-                        label="API Key"
+                        label="OpenAI API Key"
                         configured={!!openaiKeyConfigured}
                         clearFieldName="clear_openai_api_key"
                         placeholder="sk-..."
@@ -111,7 +132,7 @@ export default function ProviderPanel({ provider, isActive = true, configured }:
                 <>
                     <ApiKeyField
                         name="groq_api_key"
-                        label="API Key"
+                        label="Groq API Key"
                         configured={!!groqKeyConfigured}
                         clearFieldName="clear_groq_api_key"
                         placeholder="gsk_..."
@@ -122,13 +143,13 @@ export default function ProviderPanel({ provider, isActive = true, configured }:
                         provider="groq"
                         rules={req}
                     />
-                    <Text type="secondary" style={{ display: "block", marginBottom: 8, fontSize: 12 }}>
-                        Get a key at{" "}
-                        <a href="https://console.groq.com/keys" target="_blank" rel="noreferrer">
+                    <div className="font-mono" style={{ fontSize: 10, color: t.textMuted, marginBottom: 6 }}>
+                        Key from{" "}
+                        <a href="https://console.groq.com/keys" target="_blank" rel="noreferrer" style={{ color: "#38bdf8" }}>
                             console.groq.com/keys
-                        </a>
-                        . Embeddings continue to use a separate provider (Google / OpenAI / Ollama).
-                    </Text>
+                        </a>{" "}
+                        · Embeddings use Google / OpenAI / Ollama.
+                    </div>
                 </>
             )}
 
@@ -136,7 +157,7 @@ export default function ProviderPanel({ provider, isActive = true, configured }:
                 <>
                     <ApiKeyField
                         name="openrouter_api_key"
-                        label="API Key"
+                        label="OpenRouter API Key"
                         configured={!!openrouterKeyConfigured}
                         clearFieldName="clear_openrouter_api_key"
                         placeholder="sk-or-..."
@@ -147,31 +168,35 @@ export default function ProviderPanel({ provider, isActive = true, configured }:
                         provider="openrouter"
                         rules={req}
                     />
-                    <Text type="secondary" style={{ display: "block", marginBottom: 8, fontSize: 12 }}>
+                    <div className="font-mono" style={{ fontSize: 10, color: t.textMuted, marginBottom: 6 }}>
                         Key from{" "}
-                        <a href="https://openrouter.ai/keys" target="_blank" rel="noreferrer">
+                        <a href="https://openrouter.ai/keys" target="_blank" rel="noreferrer" style={{ color: "#38bdf8" }}>
                             openrouter.ai/keys
-                        </a>
-                        . Can also be set via env <code>OPENROUTER_API_KEY</code>. Default consult
-                        model: <code>qwen/qwen3.7-flash</code> (see model-stack docs).
-                    </Text>
+                        </a>{" "}
+                        or env <code>OPENROUTER_API_KEY</code>.
+                    </div>
                 </>
             )}
 
             {provider === "ollama" && (
-                <Row gutter={16}>
-                    <Col xs={24} md={12}>
+                <Row gutter={8}>
+                    <Col xs={24} sm={12}>
                         <Form.Item
                             name="ollama_base_url"
-                            label="Ollama Endpoint"
+                            label={labelSpan("Ollama Endpoint")}
                             rules={req}
                             preserve
-                            extra="Local Windows/Mac: http://127.0.0.1:11434"
+                            style={{ marginBottom: 8 }}
+                            extra={
+                                <span className="font-mono" style={{ fontSize: 10, color: t.textMuted }}>
+                                    Local default: http://127.0.0.1:11434
+                                </span>
+                            }
                         >
-                            <Input placeholder="http://127.0.0.1:11434" />
+                            <Input size="small" placeholder="http://127.0.0.1:11434" style={{ borderRadius: 0, fontSize: 11.5 }} />
                         </Form.Item>
                     </Col>
-                    <Col xs={24} md={12}>
+                    <Col xs={24} sm={12}>
                         <ModelSelect
                             name="ollama_model"
                             label="Chat Model"
@@ -183,11 +208,11 @@ export default function ProviderPanel({ provider, isActive = true, configured }:
             )}
 
             {isActive && (
-                <div style={{ marginTop: 16 }}>
+                <div style={{ marginTop: 8, paddingTop: 8, borderTop: `1px solid ${t.border}` }}>
                     <ConnectionTestButton provider={provider} />
                 </div>
             )}
-        </>
+        </div>
     );
 
     if (!isActive) {
@@ -195,29 +220,44 @@ export default function ProviderPanel({ provider, isActive = true, configured }:
     }
 
     return (
-        <Card
-            title={
-                <span className="font-mono text-xs uppercase tracking-[0.06em]" style={{ color: t.textPrimary }}>
+        <div
+            style={{
+                marginTop: 8,
+                background: darkMode ? "rgba(255,255,255,0.015)" : "#f8fafc",
+                border: `1px solid ${t.border}`,
+                borderLeft: `2px solid ${themeColor}`,
+                padding: "8px 10px",
+            }}
+        >
+            <div
+                style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 8,
+                    paddingBottom: 6,
+                    marginBottom: 8,
+                    borderBottom: `1px solid ${t.border}`,
+                }}
+            >
+                <span className="font-mono uppercase" style={{ fontSize: 10.5, fontWeight: 700, color: t.textPrimary, letterSpacing: "0.06em" }}>
                     {PROVIDER_LABELS[provider]} Configuration
                 </span>
-            }
-            extra={
-                configured ? (
-                    <Text type="success" className="font-mono text-xs">Ready to use</Text>
-                ) : (
-                    <Text type="warning" className="font-mono text-xs">Complete then Save</Text>
-                )
-            }
-            style={{
-                marginTop: 16,
-                background: t.surfaceBg,
-                border: `1px solid ${t.cardBorder}`,
-                borderLeft: "2px solid #fb923c",
-                borderRadius: 0,
-            }}
-            styles={{ header: { borderBottom: `1px solid ${t.cardBorder}` } }}
-        >
+                <span
+                    className="font-mono uppercase"
+                    style={{
+                        fontSize: 9,
+                        padding: "1px 5px",
+                        background: configured ? "rgba(34,197,94,0.12)" : "rgba(245,158,11,0.14)",
+                        border: `1px solid ${configured ? "rgba(34,197,94,0.4)" : "rgba(245,158,11,0.4)"}`,
+                        color: configured ? "#22c55e" : "#f59e0b",
+                        fontWeight: 700,
+                    }}
+                >
+                    {configured ? "READY TO USE" : "COMPLETE THEN SAVE"}
+                </span>
+            </div>
             {inner}
-        </Card>
+        </div>
     );
 }

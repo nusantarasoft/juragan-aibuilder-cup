@@ -1,38 +1,41 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { Suspense, useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import CMSLayout, { useAdminLayout } from "@/components/layout/CMSLayout";
 import { getVOTheme } from "@/components/layout/voTheme";
 import {
     Button,
-    Card,
     Form,
-    Tabs,
-    Typography,
-    message,
     Skeleton,
-    Space,
+    Tabs,
+    Tooltip,
+    message,
 } from "antd";
 import {
-    SaveOutlined,
+    AppstoreOutlined,
+    CheckCircleOutlined,
+    CloseCircleOutlined,
+    DatabaseOutlined,
     ReloadOutlined,
     RobotOutlined,
-    GlobalOutlined,
-    DatabaseOutlined,
+    SaveOutlined,
     SettingOutlined,
+    UndoOutlined,
+    WhatsAppOutlined,
 } from "@ant-design/icons";
 import { studioService } from "@/lib/studioService";
+import { useAuth } from "@/context/AuthContext";
+import { useStudioUserId } from "../useStudioUserId";
 import SettingsOverview from "./components/SettingsOverview";
 import ActiveProviderSelector from "./components/ActiveProviderSelector";
 import ProviderPanel from "./components/ProviderPanel";
 import OptionalProvidersPanel from "./components/OptionalProvidersPanel";
 import EmbeddingPanel from "./components/EmbeddingPanel";
-import IntegrationsPanel from "./components/IntegrationsPanel";
+import WhatsAppGatewayPanel, { type WaGatewaySummary } from "./components/WhatsAppGatewayPanel";
 import type { LlmProvider, StudioAiStatus, StudioSettingsFormValues } from "./types";
 import { PROVIDER_LABELS } from "./types";
 import { buildSavePayload, validateActiveProvider } from "./utils/buildSavePayload";
-
-const { Title, Text } = Typography;
 
 const DEFAULT_VALUES: Partial<StudioSettingsFormValues> = {
     default_llm_provider: "google",
@@ -52,22 +55,54 @@ const DEFAULT_VALUES: Partial<StudioSettingsFormValues> = {
 };
 
 function AiStudioSettingsInner() {
-    const { darkMode } = useAdminLayout();
+    const searchParams = useSearchParams();
+    const tabFromUrl = searchParams.get("tab");
+    const tenantFromUrl = searchParams.get("tenant") || "default";
+
+    const { darkMode, themeColor = "#fb923c" } = useAdminLayout();
     const t = getVOTheme(darkMode);
+    const { loading: authLoading } = useAuth();
+    const userId = useStudioUserId();
+
     const [form] = Form.useForm<StudioSettingsFormValues>();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [status, setStatus] = useState<StudioAiStatus | null>(null);
     const [dirty, setDirty] = useState(false);
+    const [waSummary, setWaSummary] = useState<WaGatewaySummary | null>(null);
+
+    const [activeTab, setActiveTab] = useState<string>(() => {
+        if (tabFromUrl === "whatsapp" || searchParams.get("tenant")) return "whatsapp";
+        if (tabFromUrl === "chat_llm" || tabFromUrl === "embeddings" || tabFromUrl === "overview") {
+            return tabFromUrl;
+        }
+        return "overview";
+    });
+
+    // Layout visibility controls
+    const [showLeftPane, setShowLeftPane] = useState(true);
+    const [showRightPane, setShowRightPane] = useState(true);
+
     const activeProvider = Form.useWatch("default_llm_provider", form) as LlmProvider | undefined;
 
-    const panelCard: React.CSSProperties = {
-        background: t.cardBg,
-        border: `1px solid ${t.cardBorder}`,
-        borderTop: "2px solid #fb923c",
-        borderRadius: 0,
-        boxShadow: t.cardShadow,
-    };
+    useEffect(() => {
+        if (tabFromUrl === "whatsapp" || searchParams.get("tenant")) {
+            setActiveTab("whatsapp");
+        } else if (tabFromUrl && ["overview", "chat_llm", "embeddings"].includes(tabFromUrl)) {
+            setActiveTab(tabFromUrl);
+        }
+    }, [tabFromUrl, searchParams]);
+
+    const handleResetLayout = useCallback(() => {
+        setShowLeftPane(true);
+        setShowRightPane(true);
+    }, []);
+
+    useEffect(() => {
+        const onGlobalReset = () => handleResetLayout();
+        window.addEventListener("cms-reset-layout", onGlobalReset);
+        return () => window.removeEventListener("cms-reset-layout", onGlobalReset);
+    }, [handleResetLayout]);
 
     const loadAll = useCallback(async () => {
         setLoading(true);
@@ -89,7 +124,7 @@ function AiStudioSettingsInner() {
     }, [form]);
 
     useEffect(() => {
-        loadAll();
+        void loadAll();
     }, [loadAll]);
 
     useEffect(() => {
@@ -121,15 +156,51 @@ function AiStudioSettingsInner() {
         }
     };
 
+    const activeProviderReady = status?.providers.find((p) => p.provider === activeProvider)?.configured;
+
     const tabItems = [
         {
             key: "overview",
-            label: "Overview",
-            children: <SettingsOverview status={status} loading={loading} />,
+            label: (
+                <span className="font-mono uppercase" style={{ fontSize: 10.5, letterSpacing: "0.05em" }}>
+                    <AppstoreOutlined style={{ marginRight: 5 }} />
+                    Overview
+                </span>
+            ),
+            children: (
+                <SettingsOverview
+                    status={status}
+                    loading={loading}
+                    waSummary={waSummary}
+                    onOpenTab={(k) => setActiveTab(k)}
+                />
+            ),
+        },
+        {
+            key: "whatsapp",
+            label: (
+                <span className="font-mono uppercase" style={{ fontSize: 10.5, letterSpacing: "0.05em" }}>
+                    <WhatsAppOutlined style={{ color: "#22c55e", marginRight: 5 }} />
+                    WhatsApp Gateway
+                </span>
+            ),
+            children: (
+                <WhatsAppGatewayPanel
+                    initialTenant={tenantFromUrl}
+                    userId={userId}
+                    authLoading={authLoading}
+                    onSummaryChange={setWaSummary}
+                />
+            ),
         },
         {
             key: "chat_llm",
-            label: <span><RobotOutlined /> Chat LLM</span>,
+            label: (
+                <span className="font-mono uppercase" style={{ fontSize: 10.5, letterSpacing: "0.05em" }}>
+                    <RobotOutlined style={{ color: themeColor, marginRight: 5 }} />
+                    Chat LLM
+                </span>
+            ),
             children: loading ? (
                 <Skeleton active paragraph={{ rows: 3 }} />
             ) : (
@@ -138,75 +209,264 @@ function AiStudioSettingsInner() {
         },
         {
             key: "embeddings",
-            label: <span><DatabaseOutlined /> Embeddings</span>,
+            label: (
+                <span className="font-mono uppercase" style={{ fontSize: 10.5, letterSpacing: "0.05em" }}>
+                    <DatabaseOutlined style={{ color: "#38bdf8", marginRight: 5 }} />
+                    Embeddings
+                </span>
+            ),
             children: loading ? (
                 <Skeleton active paragraph={{ rows: 4 }} />
             ) : (
                 <EmbeddingPanel activeProvider={activeProvider} />
             ),
         },
-        {
-            key: "integrations",
-            label: <span><GlobalOutlined /> Integrations</span>,
-            children: loading ? <Skeleton active paragraph={{ rows: 2 }} /> : <IntegrationsPanel />,
-        },
     ];
 
     return (
-        <div style={{ margin: "0 auto", paddingBottom: dirty ? 56 : 8, position: "relative", zIndex: 1 }}>
+        <div
+            style={{
+                display: "flex",
+                flexDirection: "column",
+                height: "calc(100vh - 134px)",
+                minHeight: 540,
+                gap: 6,
+                overflow: "hidden",
+            }}
+        >
+            {/* TOP 36PX TACTICAL TELEMETRY & CONTROL RIBBON */}
             <div
                 style={{
-                    marginBottom: 8,
                     display: "flex",
-                    justifyContent: "space-between",
                     alignItems: "center",
-                    flexWrap: "wrap",
+                    justifyContent: "space-between",
                     gap: 8,
-                    background: t.cardBg,
-                    border: `1px solid ${t.cardBorder}`,
-                    borderLeft: "2px solid #fb923c",
-                    borderRadius: 0,
-                    padding: "8px 12px",
+                    padding: "5px 10px",
+                    background: darkMode ? "#0b0e13" : "#ffffff",
+                    border: `1px solid ${t.border}`,
+                    borderTop: `2px solid ${themeColor}`,
+                    flexShrink: 0,
+                    flexWrap: "wrap",
                 }}
             >
-                <div className="flex items-center flex-wrap gap-2 min-w-0">
-                    <span className="font-mono text-[10px] tracking-[0.14em] uppercase font-semibold" style={{ color: "#fb923c" }}>
+                {/* Left: Heading + Central AI Configuration + Live Runtime & Gateway Telemetry */}
+                <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                    <h3
+                        className="font-mono uppercase"
+                        style={{
+                            margin: 0,
+                            fontSize: 10,
+                            letterSpacing: "0.08em",
+                            padding: "2px 6px",
+                            background: `${themeColor}18`,
+                            border: `1px solid ${themeColor}55`,
+                            color: themeColor,
+                            fontWeight: 700,
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 5,
+                        }}
+                    >
+                        <SettingOutlined /> Settings
+                    </h3>
+                    <span
+                        className="font-mono uppercase"
+                        style={{
+                            fontSize: 9.5,
+                            color: t.textSecondary,
+                            letterSpacing: "0.06em",
+                            fontWeight: 600,
+                        }}
+                    >
                         Central AI Configuration
                     </span>
-                    <span style={{ color: t.cardBorder }}>|</span>
-                    <Text strong style={{ fontSize: 13, color: t.textPrimary }}>
-                        Single active LLM for the entire platform
-                    </Text>
-                    <Text className="hidden xl:inline" style={{ fontSize: 11, color: t.textSecondary }}>
-                        — CRM, ITSM, PM, AI Studio, and RAG use the active provider below.
-                    </Text>
+                    <span style={{ color: t.border }}>·</span>
+                    <span className="font-mono" style={{ fontSize: 10, color: t.textSecondary }}>
+                        LLM{" "}
+                        <strong style={{ color: t.textPrimary }}>
+                            {activeProvider ? PROVIDER_LABELS[activeProvider] : status?.llmProvider || "—"}
+                        </strong>
+                    </span>
+                    <span style={{ color: t.border }}>·</span>
+                    <span className="font-mono" style={{ fontSize: 10, color: t.textSecondary }}>
+                        EMBED{" "}
+                        <strong className="uppercase" style={{ color: "#38bdf8" }}>
+                            {status?.embeddingProvider || "auto"}
+                        </strong>
+                    </span>
+                    <span style={{ color: t.border }}>·</span>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            if (!showRightPane) setShowRightPane(true);
+                            setActiveTab("whatsapp");
+                        }}
+                        className="font-mono uppercase"
+                        style={{
+                            fontSize: 9.5,
+                            padding: "1px 6px",
+                            background: waSummary?.connected ? "rgba(34,197,94,0.12)" : "rgba(245,158,11,0.12)",
+                            border: `1px solid ${waSummary?.connected ? "rgba(34,197,94,0.4)" : "rgba(245,158,11,0.4)"}`,
+                            color: waSummary?.connected ? "#22c55e" : "#f59e0b",
+                            cursor: "pointer",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 4,
+                            fontWeight: 700,
+                        }}
+                    >
+                        <WhatsAppOutlined /> WA: {waSummary?.connected ? "WORKING" : waSummary?.status || "GATEWAY"}
+                    </button>
+
+                    {dirty && (
+                        <span
+                            className="font-mono uppercase"
+                            style={{
+                                fontSize: 9,
+                                padding: "1px 5px",
+                                background: "rgba(245,158,11,0.15)",
+                                border: "1px solid rgba(245,158,11,0.5)",
+                                color: "#f59e0b",
+                                fontWeight: 700,
+                            }}
+                        >
+                            UNSAVED CHANGES
+                        </span>
+                    )}
                 </div>
-                <Space size={6} wrap>
-                    <Button size="small" icon={<ReloadOutlined />} onClick={loadAll} disabled={loading} style={{ borderRadius: 0 }}>
+
+                {/* Right: Layout Toggles + Refresh + Save */}
+                <div style={{ display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap" }}>
+                    <Tooltip title={showLeftPane ? "Hide Active LLM Matrix" : "Show Active LLM Matrix"}>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                if (showLeftPane && !showRightPane) setShowRightPane(true);
+                                setShowLeftPane((v) => !v);
+                            }}
+                            className="font-mono uppercase"
+                            style={{
+                                fontSize: 9.5,
+                                padding: "2px 6px",
+                                border: `1px solid ${t.border}`,
+                                background: showLeftPane ? "transparent" : `${themeColor}1f`,
+                                color: showLeftPane ? t.textSecondary : themeColor,
+                                cursor: "pointer",
+                            }}
+                        >
+                            {showLeftPane ? "◀ HIDE MATRIX" : "◀ SHOW MATRIX"}
+                        </button>
+                    </Tooltip>
+
+                    <button
+                        type="button"
+                        onClick={handleResetLayout}
+                        className="font-mono uppercase"
+                        style={{
+                            fontSize: 9.5,
+                            padding: "2px 6px",
+                            border: `1px solid ${t.border}`,
+                            background: "transparent",
+                            color: t.textSecondary,
+                            cursor: "pointer",
+                        }}
+                    >
+                        RESET LAYOUT
+                    </button>
+
+                    <button
+                        type="button"
+                        onClick={() => {
+                            if (showLeftPane && showRightPane) {
+                                setShowLeftPane(false);
+                            } else {
+                                setShowLeftPane(true);
+                                setShowRightPane(true);
+                            }
+                        }}
+                        className="font-mono uppercase"
+                        style={{
+                            fontSize: 9.5,
+                            padding: "2px 6px",
+                            border: `1px solid ${!showLeftPane && showRightPane ? themeColor : t.border}`,
+                            background: !showLeftPane && showRightPane ? `${themeColor}1f` : "transparent",
+                            color: !showLeftPane && showRightPane ? themeColor : t.textSecondary,
+                            cursor: "pointer",
+                        }}
+                    >
+                        {!showLeftPane && showRightPane ? "SPLIT VIEW" : "FOCUS DECK"}
+                    </button>
+
+                    <Tooltip title={showRightPane ? "Hide Configuration Deck" : "Show Configuration Deck"}>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                if (showRightPane && !showLeftPane) setShowLeftPane(true);
+                                setShowRightPane((v) => !v);
+                            }}
+                            className="font-mono uppercase"
+                            style={{
+                                fontSize: 9.5,
+                                padding: "2px 6px",
+                                border: `1px solid ${t.border}`,
+                                background: showRightPane ? "transparent" : `${themeColor}1f`,
+                                color: showRightPane ? t.textSecondary : themeColor,
+                                cursor: "pointer",
+                            }}
+                        >
+                            {showRightPane ? "HIDE DECK ▶" : "◀ SHOW DECK"}
+                        </button>
+                    </Tooltip>
+
+                    {dirty && (
+                        <Button
+                            size="small"
+                            icon={<UndoOutlined />}
+                            onClick={() => {
+                                form.resetFields();
+                                setDirty(false);
+                                void loadAll();
+                            }}
+                            style={{ borderRadius: 0, fontSize: 10.5, height: 24 }}
+                        >
+                            Discard
+                        </Button>
+                    )}
+
+                    <Button
+                        size="small"
+                        icon={<ReloadOutlined />}
+                        onClick={loadAll}
+                        disabled={loading}
+                        style={{ borderRadius: 0, fontSize: 10.5, height: 24 }}
+                    >
                         Refresh
                     </Button>
+
                     <Button
                         size="small"
                         type="primary"
                         icon={<SaveOutlined />}
                         loading={saving}
                         onClick={() => form.submit()}
-                        style={{ borderRadius: 0 }}
+                        style={{ borderRadius: 0, fontSize: 10.5, height: 24, background: themeColor }}
                     >
                         Save Settings
                     </Button>
-                </Space>
+                </div>
             </div>
 
+            {/* 2-PANE VIEWPORT-LOCKED WORKSPACE (component={false} avoids nested HTML <form> tags) */}
             <Form
                 form={form}
+                component={false}
                 layout="vertical"
                 onFinish={handleSave}
                 onFinishFailed={() => message.error("Please complete the active provider fields first.")}
                 initialValues={DEFAULT_VALUES}
                 onValuesChange={() => setDirty(true)}
             >
-                {/* Always mounted — must not be inside a destroyed tab */}
+                {/* Always mounted hidden fields */}
                 <Form.Item name="default_llm_provider" hidden>
                     <input type="hidden" />
                 </Form.Item>
@@ -217,84 +477,173 @@ function AiStudioSettingsInner() {
                 <Form.Item name="groq_api_key_configured" hidden><input type="hidden" /></Form.Item>
                 <Form.Item name="openrouter_api_key_configured" hidden><input type="hidden" /></Form.Item>
 
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-2 items-start">
-                    <Card
-                        size="small"
-                        className="lg:col-span-5"
-                        style={panelCard}
-                        styles={{ body: { padding: 10 } }}
-                        title={
-                            <span className="font-mono text-[11px] uppercase tracking-[0.1em]" style={{ color: t.textPrimary }}>
-                                <RobotOutlined style={{ color: "#fb923c", marginRight: 6 }} /> Active LLM
-                            </span>
-                        }
-                    >
-                        {loading ? (
-                            <Skeleton active paragraph={{ rows: 3 }} />
-                        ) : (
-                            <>
-                                <Text style={{ display: "block", marginBottom: 8, fontSize: 11, color: t.textSecondary }}>
-                                    Select one provider. Only this provider is used at runtime.
-                                </Text>
-                                <ActiveProviderSelector status={status} />
-                                {activeProvider && (
-                                    <ProviderPanel
-                                        provider={activeProvider}
-                                        isActive
-                                        configured={
-                                            status?.providers.find((p) => p.provider === activeProvider)?.configured
-                                        }
-                                    />
-                                )}
-                            </>
-                        )}
-                    </Card>
-
-                    <Card
-                        size="small"
-                        className="lg:col-span-7"
-                        style={panelCard}
-                        styles={{ body: { padding: "4px 10px 10px 10px" } }}
-                    >
-                        <Tabs size="small" destroyInactiveTabPane={false} items={tabItems} />
-                    </Card>
-                </div>
-            </Form>
-
-            {dirty && (
                 <div
                     style={{
-                        position: "fixed",
-                        bottom: 0,
-                        left: 0,
-                        right: 0,
-                        padding: "12px 24px",
-                        background: t.cardBg,
-                        borderTop: `1px solid ${t.cardBorder}`,
+                        flex: 1,
+                        minHeight: 0,
                         display: "flex",
-                        justifyContent: "center",
-                        alignItems: "center",
-                        gap: 12,
-                        zIndex: 100,
-                        boxShadow: t.cardShadow,
+                        gap: 6,
+                        overflow: "hidden",
                     }}
                 >
-                    <Text type="warning" className="font-mono text-xs">Unsaved changes</Text>
-                    <Button
-                        style={{ borderRadius: 0 }}
-                        onClick={() => {
-                            form.resetFields();
-                            setDirty(false);
-                            loadAll();
-                        }}
-                    >
-                        Discard
-                    </Button>
-                    <Button type="primary" loading={saving} onClick={() => form.submit()} style={{ borderRadius: 0 }}>
-                        Save Settings
-                    </Button>
+                    {/* LEFT PANE: ACTIVE LLM MATRIX & PROVIDER COMMAND */}
+                    {showLeftPane && (
+                        <div
+                            style={{
+                                width: showRightPane ? 390 : "100%",
+                                flexShrink: 0,
+                                display: "flex",
+                                flexDirection: "column",
+                                background: darkMode ? "#0b0e13" : "#ffffff",
+                                border: `1px solid ${t.border}`,
+                                borderTop: `2px solid ${themeColor}`,
+                                overflow: "hidden",
+                            }}
+                        >
+                            {/* Sticky Left Pane Header */}
+                            <div
+                                style={{
+                                    padding: "6px 10px",
+                                    borderBottom: `1px solid ${t.border}`,
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "space-between",
+                                    background: darkMode ? "rgba(255,255,255,0.02)" : "#f8fafc",
+                                    flexShrink: 0,
+                                }}
+                            >
+                                <span
+                                    className="font-mono uppercase"
+                                    style={{ fontSize: 10.5, fontWeight: 700, color: t.textPrimary, letterSpacing: "0.06em" }}
+                                >
+                                    <RobotOutlined style={{ color: themeColor, marginRight: 6 }} />
+                                    Active LLM Runtime
+                                </span>
+                                <span
+                                    className="font-mono uppercase"
+                                    style={{
+                                        fontSize: 9,
+                                        padding: "0px 5px",
+                                        background: activeProviderReady ? "rgba(34,197,94,0.12)" : "rgba(245,158,11,0.14)",
+                                        color: activeProviderReady ? "#22c55e" : "#f59e0b",
+                                        display: "inline-flex",
+                                        alignItems: "center",
+                                        gap: 3,
+                                    }}
+                                >
+                                    {activeProviderReady ? <CheckCircleOutlined /> : <CloseCircleOutlined />}
+                                    {activeProviderReady ? "ONLINE" : "NEEDS KEY"}
+                                </span>
+                            </div>
+
+                            {/* Scrollable Left Pane Body */}
+                            <div
+                                style={{
+                                    flex: 1,
+                                    minHeight: 0,
+                                    overflowY: "auto",
+                                    padding: "8px 10px",
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    gap: 8,
+                                }}
+                            >
+                                <div style={{ fontSize: 11, color: t.textSecondary }}>
+                                    Single active LLM for the entire platform — CRM, ITSM, PM, AI Studio, and RAG use the active provider below.
+                                </div>
+
+                                {loading ? (
+                                    <Skeleton active paragraph={{ rows: 4 }} />
+                                ) : (
+                                    <>
+                                        <ActiveProviderSelector status={status} />
+                                        {activeProvider && (
+                                            <ProviderPanel
+                                                provider={activeProvider}
+                                                isActive
+                                                configured={activeProviderReady}
+                                            />
+                                        )}
+                                    </>
+                                )}
+
+                                {/* Compact WhatsApp Hermes Bridge Status Card inside Left Matrix */}
+                                <div
+                                    style={{
+                                        marginTop: "auto",
+                                        padding: "8px 10px",
+                                        background: darkMode ? "rgba(255,255,255,0.015)" : "#f8fafc",
+                                        border: `1px solid ${t.border}`,
+                                        borderLeft: `2px solid ${waSummary?.connected ? "#22c55e" : "#f59e0b"}`,
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "space-between",
+                                        gap: 8,
+                                    }}
+                                >
+                                    <div style={{ minWidth: 0 }}>
+                                        <div
+                                            className="font-mono uppercase"
+                                            style={{ fontSize: 9.5, fontWeight: 700, color: t.textPrimary, letterSpacing: "0.05em" }}
+                                        >
+                                            <WhatsAppOutlined style={{ color: "#22c55e", marginRight: 5 }} />
+                                            Hermes WhatsApp Gateway
+                                        </div>
+                                        <div className="font-mono" style={{ fontSize: 10, color: t.textSecondary }}>
+                                            {waSummary?.connected
+                                                ? `Paired: +${waSummary.businessPhone || "active"}`
+                                                : `Status: ${waSummary?.status || "Standby"}`}
+                                        </div>
+                                    </div>
+                                    <Button
+                                        size="small"
+                                        onClick={() => {
+                                            if (!showRightPane) setShowRightPane(true);
+                                            setActiveTab("whatsapp");
+                                        }}
+                                        style={{ borderRadius: 0, fontSize: 10, height: 22 }}
+                                    >
+                                        Configure WA →
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* RIGHT PANE: MULTI-SYSTEM CONFIGURATION & WHATSAPP GATEWAY DECK */}
+                    {showRightPane && (
+                        <div
+                            style={{
+                                flex: 1,
+                                minWidth: 0,
+                                display: "flex",
+                                flexDirection: "column",
+                                background: darkMode ? "#0b0e13" : "#ffffff",
+                                border: `1px solid ${t.border}`,
+                                borderTop: `2px solid ${activeTab === "whatsapp" ? "#22c55e" : "#38bdf8"}`,
+                                overflow: "hidden",
+                            }}
+                        >
+                            <div
+                                style={{
+                                    flex: 1,
+                                    minHeight: 0,
+                                    overflowY: "auto",
+                                    padding: "4px 10px 10px 10px",
+                                }}
+                            >
+                                <Tabs
+                                    size="small"
+                                    activeKey={activeTab}
+                                    onChange={setActiveTab}
+                                    destroyInactiveTabPane={false}
+                                    items={tabItems}
+                                />
+                            </div>
+                        </div>
+                    )}
                 </div>
-            )}
+            </Form>
         </div>
     );
 }
@@ -302,11 +651,13 @@ function AiStudioSettingsInner() {
 export default function AiStudioSettingsPage() {
     return (
         <CMSLayout
-            title="AI Models & Configuration"
-            subTitle="Central AI Configuration"
+            title="Settings"
+            subTitle="Central AI Configuration · LLM Providers · Vector Embeddings · WhatsApp Hermes Gateway"
             breadcrumb={[{ title: "AI Studio" }, { title: "Settings" }]}
         >
-            <AiStudioSettingsInner />
+            <Suspense fallback={<div style={{ padding: 20 }}>Loading settings...</div>}>
+                <AiStudioSettingsInner />
+            </Suspense>
         </CMSLayout>
     );
 }

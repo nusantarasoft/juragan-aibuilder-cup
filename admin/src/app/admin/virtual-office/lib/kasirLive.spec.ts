@@ -93,7 +93,7 @@ describe('mergeKasirIntoRoster', () => {
                 progress: 0.5,
                 startedAt: Date.now(),
                 moduleId: 'wa-conversations',
-                route: '/admin/ai-studio/percakapan-wa',
+                route: '/admin/ai-studio/messages',
                 steps: ['Proses'],
             },
         };

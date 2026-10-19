@@ -47,10 +47,10 @@ export const CORRIDOR_Z = -2.75;
 export const MEETING_DOOR: [number, number] = [11, -4.5];
 
 export const ZONES: Zone[] = [
-    { id: "engineering", name: "AI Studio & Gateway", tagline: "Studio · Settings & Models · WA Gateway", color: "#38bdf8", center: [-11, 6], size: [16, 14] },
+    { id: "engineering", name: "AI Studio & Settings", tagline: "Studio · Settings · WA Gateway", color: "#38bdf8", center: [-11, 6], size: [16, 14] },
     { id: "lounge", name: "Lounge", tagline: "Breaks & syncs", color: "#f472b6", center: [0, 6], size: [5, 14] },
-    { id: "research", name: "Knowledge & Marketing", tagline: "Knowledge Research · Marketing · Partner", color: "#a855f7", center: [11, 6], size: [16, 14] },
-    { id: "operations", name: "WhatsApp & Partner Ops", tagline: "WA Conversations · Partner · Agentic OS", color: "#22c55e", center: [-11, -9], size: [16, 9] },
+    { id: "research", name: "Knowledge & Showcase", tagline: "Knowledge Research · Showcase · Partner", color: "#a855f7", center: [11, 6], size: [16, 14] },
+    { id: "operations", name: "Messages & Partner Ops", tagline: "Messages · Partner · Agentic OS", color: "#22c55e", center: [-11, -9], size: [16, 9] },
     { id: "core", name: "Agent Core", tagline: "Orchestration", color: "#818cf8", center: [0, -9], size: [5, 9] },
     { id: "meeting", name: "War Room", tagline: "Multi-agent meetings", color: "#f59e0b", center: [11, -9], size: [16, 9] },
 ];
