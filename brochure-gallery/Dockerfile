@@ -1,4 +1,3 @@
-# syntax=docker/dockerfile:1
 # ===== Base Stage =====
 FROM node:20-alpine AS base
 RUN apk add --no-cache libc6-compat
@@ -7,8 +6,9 @@ WORKDIR /app
 # ===== Dependencies Stage =====
 FROM base AS deps
 COPY package.json ./
-RUN --mount=type=cache,target=/root/.npm \
-    npm install --legacy-peer-deps
+# Plain RUN (no BuildKit --mount): gcr.io/cloud-builders/docker in Cloud Build
+# often runs the legacy builder; --mount=type=cache fails without BuildKit/buildx.
+RUN npm install --legacy-peer-deps
 
 # ===== Builder Stage =====
 FROM base AS builder
@@ -33,8 +33,7 @@ ENV NEXT_PUBLIC_ADMIN_URL=${NEXT_PUBLIC_ADMIN_URL}
 ENV NEXT_PUBLIC_LANDING_URL=${NEXT_PUBLIC_LANDING_URL}
 ENV NEXT_PUBLIC_GALLERY_URL=${NEXT_PUBLIC_GALLERY_URL}
 
-RUN --mount=type=cache,target=/app/.next/cache \
-    npm run build
+RUN npm run build
 
 # ===== Runner Stage =====
 FROM base AS runner
