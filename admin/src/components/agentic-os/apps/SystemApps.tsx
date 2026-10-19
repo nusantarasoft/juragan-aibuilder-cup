@@ -303,10 +303,10 @@ export function OsSettingsApp() {
             <div className="grid gap-3 md:grid-cols-2">
                 <Section title="UI honesty (AI Studio)" icon={Sparkles}>
                     <Toggle
-                        checked={d.uiDemoMode}
+                        checked={Boolean(d.uiDemoMode)}
                         onChange={(v) => set("uiDemoMode", v)}
                         label="UI demo mode"
-                        hint="When on, Knowledge Graph and Label Studio show sample data with Demo badges (F1-4)."
+                        hint="When on, AI Studio and Virtual Office show sample data with Demo badges."
                     />
                 </Section>
                 <Section title="Autopilot (task queue)" icon={Sparkles}>

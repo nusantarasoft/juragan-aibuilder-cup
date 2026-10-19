@@ -21,7 +21,22 @@ When reads fail or no config: `available: false`, UI shows **data tidak tersedia
 
 | Surface | Behavior |
 |---------|----------|
-| Agentic OS → Overview / Agent Studio | Kasir card with **Live** + **AI Studio**; roster agents tagged **Demo** |
-| Virtual Office | Kasir avatar at desk `ops-1` with live metrics; other avatars **Demo** sim |
+| Agentic OS → Overview / Agent Studio | Kasir card with **Live** + **AI Studio**; 8 active Wayang agents (`nakula`, `arjuna`, `gatot`, `yudhis`, `drupadi`, `kresna`, `semar`, `petruk`) operating strictly on the 8 current system modules |
+| Virtual Office | Kasir avatar at desk `ops-1` with live metrics; 8 Wayang avatars across 3 floor zones (`AI Studio & Gateway`, `Knowledge & Marketing`, `WhatsApp & Partner Ops`) |
+
+## Active Agent Roster & System Modules
+
+All agents, playbooks, task templates, memory map signposts, routines, workflows, and goals operate strictly on the **8 active system modules**:
+
+| Module ID | Label | Route | Assigned Agents |
+|-----------|-------|-------|-----------------|
+| `ai-studio` | Studio | `/admin/ai-studio` | Nakula, Yudhistira |
+| `partner` | Partner | `/admin/ai-studio/partner` | Kresna, Petruk |
+| `knowledge` | Knowledge Research | `/admin/ai-studio/riset-knowledge` | Yudhistira, Drupadi, Semar |
+| `marketing` | Marketing Content | `/admin/ai-studio/konten-marketing` | Drupadi, Kresna |
+| `wa-conversations` | WA Conversations | `/admin/ai-studio/percakapan-wa` | Semar, Petruk |
+| `whatsapp-gateway` | WhatsApp Gateway | `/admin/ai-studio/ai-gateway` | Arjuna |
+| `settings` | Settings & Models | `/admin/ai-studio/settings` | Nakula, Arjuna, Gatotkaca |
+| `agentic-os` | Agentic OS | `/admin/agentic-os` | Gatotkaca, Petruk |
 
 `STUDIO_UMKM_DAILY_REPORT_ENABLED` stays `false`; this slice does not enable daily report cron or change Hermes/WA routing.

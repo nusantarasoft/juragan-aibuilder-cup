@@ -534,7 +534,7 @@ function ItemEditor({ item, areaId, section, onClose, onSaved }: { item?: OsMemo
             </Field>
             <Field label="Path / URL" hint="Admin route, file path or link">
                 <div className="flex gap-1.5">
-                    <TextInput value={d.path} onChange={(e) => set("path", e.target.value)} placeholder="/admin/itsm/tickets" />
+                    <TextInput value={d.path} onChange={(e) => set("path", e.target.value)} placeholder="/admin/ai-studio/percakapan-wa" />
                     {d.path.trim() && (
                         <Button icon={ExternalLink} title="Open" onClick={() => window.open(d.path.trim(), "_blank", "noopener")} />
                     )}

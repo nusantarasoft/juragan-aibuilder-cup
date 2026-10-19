@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useShallow } from "zustand/react/shallow";
 import { ExternalLink, Eye, Hand, LoaderCircle, Monitor, Pause, Play, RotateCcw, X } from "lucide-react";
 import { STATUS_META } from "../lib/floorplan";
-import { AGENT_SNAPSHOT_MESSAGE, AGENT_SNAPSHOT_REQUEST, MODULES, sessionUrl, stepIndex } from "../lib/modules";
+import { AGENT_SNAPSHOT_MESSAGE, AGENT_SNAPSHOT_REQUEST, getModuleInfo, MODULES, sessionUrl, stepIndex } from "../lib/modules";
 import { useOfficeStore } from "../lib/store";
 import type { Agent } from "../lib/types";
 import { ActivityList } from "./AgentRoster";
@@ -85,7 +85,7 @@ export function AgentScreenView() {
     const now = useNow(1000);
 
     const moduleId = agent ? agent.task?.moduleId ?? agent.modules[0] : undefined;
-    const route = agent ? agent.task?.route ?? MODULES[agent.modules[0]].route : "";
+    const route = agent ? agent.task?.route ?? getModuleInfo(agent.modules[0]).route : "";
     const src = agent ? sessionUrl(route, agent.id, true) : "";
 
     useEffect(() => setLoading(true), [src]);
@@ -94,7 +94,7 @@ export function AgentScreenView() {
     const log = useMemo(() => (agent ? activity.filter((e) => e.agentId === agent.id).slice(0, 20) : []), [activity, agent]);
 
     if (!agent || !moduleId) return null;
-    const mod = MODULES[moduleId];
+    const mod = getModuleInfo(moduleId);
     const running = agent.status === "working" || agent.status === "thinking";
     const step = agent.task ? agent.task.steps[stepIndex(agent.task.progress, agent.task.steps.length)] : null;
 

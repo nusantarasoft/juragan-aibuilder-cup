@@ -103,13 +103,13 @@ const ROUTINE_TEMPLATES: { name: string; description: string; kind: RoutineKind;
         outputTarget: "task",
     },
     {
-        name: "SLA risk scan",
-        description: "Spot tickets close to breaching SLA",
+        name: "WA unread chat scan",
+        description: "Spot unread WhatsApp customer inquiries awaiting reply",
         kind: "prompt",
         cron: "*/30 * * * *",
-        prompt: "Review the context and list anything at risk of breaching an SLA in the next 4 hours, with a suggested next action each.",
+        prompt: "Review the recent WA Conversations context and list any unread or pending customer threads that need attention, with a suggested reply action for each.",
         outputTarget: "activity",
-        module: "itsm",
+        module: "wa-conversations",
     },
     {
         name: "Weekly lessons learned",

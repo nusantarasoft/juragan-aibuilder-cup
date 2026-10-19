@@ -1,28 +1,17 @@
 /**
- * Catalog of existing Nusantarasoft modules that AI agents operate in.
- * Every agent task points at a real admin route so the user can "look over the
- * agent's shoulder" in the actual module page.
+ * Catalog of active Nusantarasoft modules that AI agents operate in.
+ * Aligned strictly with the current AI Studio + WhatsApp + Partner + Agentic OS system.
  */
 
 export type ModuleId =
-    | "itsm"
-    | "knowledge"
-    | "command-center"
-    | "ops"
-    | "devops"
-    | "infrastructure"
-    | "security"
-    | "dcim"
-    | "bms"
-    | "scada"
-    | "pm"
-    | "hr"
-    | "reports"
-    | "accounting"
-    | "crm"
-    | "news"
     | "ai-studio"
-    | "inventory";
+    | "partner"
+    | "knowledge"
+    | "marketing"
+    | "wa-conversations"
+    | "whatsapp-gateway"
+    | "settings"
+    | "agentic-os";
 
 export interface ModuleInfo {
     id: ModuleId;
@@ -37,97 +26,77 @@ export interface ModuleInfo {
 }
 
 export const MODULES: Record<ModuleId, ModuleInfo> = {
-    itsm: {
-        id: "itsm", name: "ITSM", route: "/admin/ai-studio", color: "#38bdf8",
-        keywords: ["ticket", "incident", "inc-", "service request", "sla", "itsm", "helpdesk", "change request"],
-        steps: ["Open the ticket queue", "Read ticket details & history", "Check related CMDB items", "Draft a resolution", "Update ticket status"],
+    "ai-studio": {
+        id: "ai-studio",
+        name: "Studio",
+        route: "/admin/ai-studio",
+        color: "#a78bfa",
+        keywords: ["studio", "notebook", "prompt", "rag", "embedding", "eval", "playbook", "ai studio"],
+        steps: ["Open AI Studio", "Load notebook & sources", "Run prompt evaluation", "Verify grounded citations", "Save notebook output"],
+    },
+    partner: {
+        id: "partner",
+        name: "Partner",
+        route: "/admin/ai-studio/partner",
+        color: "#34d399",
+        keywords: ["partner", "umkm", "store", "toko", "kasir", "catalog", "onboarding", "merchant", "sales"],
+        steps: ["Open Partner workspace", "Review store profile & catalog", "Check Kasir WA transactions", "Prepare partner recommendations"],
     },
     knowledge: {
-        id: "knowledge", name: "Knowledge Base", route: "/admin/ai-studio/riset-knowledge", color: "#2dd4bf",
-        keywords: ["kb", "knowledge", "article", "faq", "documentation", "docs"],
-        steps: ["Search existing articles", "Collect source notes", "Draft the article", "Tag & submit for review"],
+        id: "knowledge",
+        name: "Knowledge Research",
+        route: "/admin/ai-studio/riset-knowledge",
+        color: "#2dd4bf",
+        keywords: ["knowledge", "research", "riset", "kb", "article", "faq", "source", "scrape", "crawl", "docs"],
+        steps: ["Open Knowledge Research", "Crawl & verify reference sources", "Synthesize key findings", "Index chunks into notebook KB"],
     },
-    "command-center": {
-        id: "command-center", name: "Command Center", route: "/admin/agentic-os", color: "#818cf8",
-        keywords: ["command center", "situation", "overview", "war room", "status report", "briefing"],
-        steps: ["Open the Command Center", "Scan critical alerts", "Compare KPIs against baseline", "Publish a summary"],
+    marketing: {
+        id: "marketing",
+        name: "Marketing Content",
+        route: "/admin/ai-studio/konten-marketing",
+        color: "#fb7185",
+        keywords: ["marketing", "konten", "content", "copywriting", "campaign", "brochure", "social", "post", "promo"],
+        steps: ["Open Marketing Content", "Review brand voice & audience", "Draft campaign copy & visuals", "Queue content for review"],
     },
-    ops: {
-        id: "ops", name: "Ops Runbooks", route: "/admin/agentic-os", color: "#f97316",
-        keywords: ["runbook", "playbook", "restart", "remediate", "ops run"],
-        steps: ["Select the playbook", "Run pre-checks", "Execute the playbook", "Verify health checks", "Attach run log"],
+    "wa-conversations": {
+        id: "wa-conversations",
+        name: "WA Conversations",
+        route: "/admin/ai-studio/percakapan-wa",
+        color: "#60a5fa",
+        keywords: ["wa", "whatsapp", "percakapan", "chat", "inbox", "customer", "reply", "conversation", "handover"],
+        steps: ["Open WA Conversations inbox", "Triage unread customer threads", "Search KB for accurate answer", "Draft customer reply for approval"],
     },
-    devops: {
-        id: "devops", name: "DevOps", route: "/admin/agentic-os", color: "#84cc16",
-        keywords: ["deploy", "pipeline", "build", "docker", "ci", "release", "container", "test"],
-        steps: ["Open the pipeline", "Trigger the build", "Watch build stages", "Run smoke tests", "Promote the artifact"],
+    "whatsapp-gateway": {
+        id: "whatsapp-gateway",
+        name: "WhatsApp Gateway",
+        route: "/admin/ai-studio/ai-gateway",
+        color: "#38bdf8",
+        keywords: ["gateway", "waha", "session", "qr", "webhook", "pairing", "connection", "number"],
+        steps: ["Open WhatsApp Gateway", "Check active WAHA sessions", "Verify webhook delivery & latency", "Confirm session health"],
     },
-    infrastructure: {
-        id: "infrastructure", name: "Infrastructure", route: "/admin/ai-studio/ai-gateway", color: "#22d3ee",
-        keywords: ["kong", "5xx", "latency", "server", "prometheus", "grafana", "gateway", "uptime", "infra"],
-        steps: ["Open monitoring dashboards", "Correlate metrics & logs", "Identify the root cause", "Apply the fix", "Confirm recovery"],
+    settings: {
+        id: "settings",
+        name: "Settings & Models",
+        route: "/admin/ai-studio/settings",
+        color: "#f43f5e",
+        keywords: ["setting", "model", "provider", "gemini", "openai", "api key", "embedding", "quota", "guardrail"],
+        steps: ["Open Settings & Models", "Check LLM provider connectivity", "Audit token usage & latency", "Update model fallback order"],
     },
-    security: {
-        id: "security", name: "Security", route: "/admin/ai-studio/settings", color: "#f43f5e",
-        keywords: ["security", "cve", "vulnerab", "pentest", "audit trail", "login", "keycloak", "threat"],
-        steps: ["Load the latest scan", "Triage findings by severity", "Verify exploitability", "Raise remediation tickets"],
-    },
-    dcim: {
-        id: "dcim", name: "DCIM", route: "/admin/virtual-office", color: "#a3e635",
-        keywords: ["rack", "dcim", "capacity", "pdu", "data center", "datacenter"],
-        steps: ["Open capacity view", "Check power & cooling headroom", "Simulate placement", "Propose a plan"],
-    },
-    bms: {
-        id: "bms", name: "BMS", route: "/admin/virtual-office", color: "#facc15",
-        keywords: ["energy", "hvac", "building", "bms", "lighting", "elevator", "cctv"],
-        steps: ["Open building dashboard", "Analyse consumption trends", "Adjust setpoints & schedules", "Log the change"],
-    },
-    scada: {
-        id: "scada", name: "SCADA", route: "/admin/virtual-office", color: "#fb923c",
-        keywords: ["scada", "alarm", "sensor", "plc", "pump", "hmi"],
-        steps: ["Open active alarms", "Check sensor trends", "Acknowledge & annotate", "Dispatch field work order"],
-    },
-    pm: {
-        id: "pm", name: "Projects", route: "/admin/agentic-os", color: "#e879f9",
-        keywords: ["sprint", "project", "backlog", "board", "roadmap", "milestone", "task"],
-        steps: ["Open the project board", "Review card status", "Re-prioritise the backlog", "Notify assignees"],
-    },
-    hr: {
-        id: "hr", name: "HR", route: "/admin/agentic-os", color: "#f472b6",
-        keywords: ["candidate", "employee", "leave", "payroll", "recruit", "onboarding", "hr"],
-        steps: ["Open the HR pipeline", "Review profiles", "Score against criteria", "Schedule next steps"],
-    },
-    reports: {
-        id: "reports", name: "Reports", route: "/admin/ai-studio", color: "#60a5fa",
-        keywords: ["report", "chart", "kpi", "dashboard", "executive", "analy"],
-        steps: ["Open the report builder", "Query the data sources", "Build charts", "Write insights", "Schedule delivery"],
-    },
-    accounting: {
-        id: "accounting", name: "Accounting", route: "/admin/ai-studio/partner", color: "#34d399",
-        keywords: ["invoice", "ledger", "reconcil", "revenue", "budget", "payable", "receivable", "journal"],
-        steps: ["Open the ledger", "Match transactions", "Flag discrepancies", "Post adjusting entries"],
-    },
-    crm: {
-        id: "crm", name: "CRM", route: "/admin/ai-studio/partner", color: "#c084fc",
-        keywords: ["deal", "lead", "crm", "customer", "quote", "opportunit", "account"],
-        steps: ["Open the sales pipeline", "Enrich lead data", "Score & prioritise", "Draft follow-ups"],
-    },
-    news: {
-        id: "news", name: "News Intel", route: "/admin/ai-studio/riset-knowledge", color: "#fda4af",
-        keywords: ["news", "market", "sentiment", "competitor", "trend", "research"],
-        steps: ["Crawl latest sources", "Cluster topics", "Score sentiment", "Write the brief"],
-    },
-    "ai-studio": {
-        id: "ai-studio", name: "AI Studio", route: "/admin/ai-studio", color: "#a78bfa",
-        keywords: ["prompt", "model", "ai studio", "embedding", "knowledge graph", "eval", "agent"],
-        steps: ["Open AI Studio", "Load the dataset", "Run evaluations", "Compare results", "Save the best config"],
-    },
-    inventory: {
-        id: "inventory", name: "Inventory", route: "/admin/ai-studio/partner", color: "#fbbf24",
-        keywords: ["stock", "inventory", "warehouse", "spare part", "item", "procure"],
-        steps: ["Open stock levels", "Find items below reorder point", "Draft purchase requests", "Notify procurement"],
+    "agentic-os": {
+        id: "agentic-os",
+        name: "Agentic OS",
+        route: "/admin/agentic-os",
+        color: "#818cf8",
+        keywords: ["agentic", "workflow", "pulse", "routine", "governance", "approval", "memory", "goal", "agent"],
+        steps: ["Open Agentic OS", "Scan active agent queues & goals", "Check pending human approvals", "Publish orchestration summary"],
     },
 };
+
+/** Safe lookup that falls back to Studio if a legacy moduleId is encountered. */
+export function getModuleInfo(id?: string | null): ModuleInfo {
+    if (id && id in MODULES) return MODULES[id as ModuleId];
+    return MODULES["ai-studio"];
+}
 
 export interface TaskTemplate {
     moduleId: ModuleId;
@@ -136,59 +105,94 @@ export interface TaskTemplate {
     steps: string[];
 }
 
-/** Realistic task scripts per module. Agents pick from the modules they own. */
+/** Realistic task scripts per active module. Agents pick from the modules they own. */
 export const TASK_TEMPLATES: TaskTemplate[] = [
-    // ITSM
-    { moduleId: "itsm", route: "/admin/ai-studio", title: "Resolve INC-2041 (login loop)", steps: ["Open INC-2041 in the queue", "Review the user's session logs", "Link to known problem PRB-118", "Post workaround to requester", "Set status to Resolved"] },
-    { moduleId: "itsm", route: "/admin/ai-studio", title: "Triage 6 new service requests", steps: ["Filter unassigned requests", "Categorise by service", "Set priority from SLA matrix", "Assign resolver groups", "Notify requesters"] },
-    { moduleId: "itsm", route: "/admin/ai-studio", title: "Check SLA breaches for today", steps: ["Open the SLA monitor", "Find tickets at risk", "Escalate 2 breaching tickets", "Log escalation notes"] },
-    { moduleId: "itsm", route: "/admin/ai-studio", title: "Root-cause analysis for PRB-118", steps: ["Open PRB-118", "Group linked incidents", "Identify the common cause", "Propose a permanent fix"] },
-    // Knowledge
-    { moduleId: "knowledge", route: "/admin/ai-studio/riset-knowledge", title: "Draft KB article from INC-2041", steps: ["Collect resolution notes", "Draft the article", "Add screenshots & tags", "Submit for review"] },
-    // Command Center
-    { moduleId: "command-center", route: "/admin/agentic-os", title: "Morning situation report", steps: ["Open the Command Center", "Scan critical alerts", "Compare KPIs vs yesterday", "Publish summary to the team"] },
-    { moduleId: "command-center", route: "/admin/agentic-os", title: "Investigate red KPI: API latency", steps: ["Drill into the latency tile", "Correlate with deployments", "Ping the on-call agent", "Annotate the KPI"] },
-    // Ops
-    { moduleId: "ops", route: "/admin/agentic-os", title: "Run 'restart-kong' playbook", steps: ["Select playbook restart-kong", "Run pre-checks", "Execute the playbook", "Verify health checks", "Attach run log to incident"] },
-    { moduleId: "ops", route: "/admin/agentic-os", title: "Nightly system health review", steps: ["Open system health", "Check failed jobs", "Re-run 2 failed schedules", "Record findings"] },
-    // DevOps
-    { moduleId: "devops", route: "/admin/agentic-os", title: "Rebuild admin container & smoke test", steps: ["Trigger the admin pipeline", "Watch build stages", "Run smoke tests", "Promote to staging"] },
-    { moduleId: "devops", route: "/admin/agentic-os", title: "Fix failing test stage in pipeline #812", steps: ["Open pipeline #812", "Read the failing job log", "Patch the flaky test", "Re-run the pipeline"] },
-    { moduleId: "devops", route: "/admin/agentic-os", title: "Roll out release 3.8 to staging", steps: ["Open deployments", "Review the release diff", "Deploy to staging", "Verify canary metrics"] },
-    // Infrastructure
-    { moduleId: "infrastructure", route: "/admin/ai-studio/ai-gateway", title: "Investigate 5xx spike on Kong", steps: ["Open API gateway metrics", "Filter 5xx by route", "Inspect upstream health", "Raise rate limit on /graphql", "Confirm recovery"] },
-    { moduleId: "infrastructure", route: "/admin/ai-studio/ai-gateway", title: "Tune Prometheus alert thresholds", steps: ["Open alert rules", "Review noisy alerts", "Adjust thresholds", "Reload configuration"] },
-    // Security
-    { moduleId: "security", route: "/admin/ai-studio/settings", title: "Dependency audit — 2 critical CVEs", steps: ["Load the latest scan", "Triage findings by severity", "Verify exploitability", "Raise remediation tickets"] },
-    { moduleId: "security", route: "/admin/ai-studio/settings", title: "Review privileged logins this week", steps: ["Open the audit trail", "Filter admin sessions", "Flag unusual locations", "Notify the security lead"] },
-    // DCIM
-    { moduleId: "dcim", route: "/admin/virtual-office", title: "Plan capacity for 4 new racks", steps: ["Open capacity planner", "Check power headroom", "Check cooling headroom", "Propose rack positions"] },
-    { moduleId: "dcim", route: "/admin/virtual-office", title: "Audit power usage on PDU row B", steps: ["Open power view", "Compare PDU loads", "Flag overloaded circuits", "Suggest rebalancing"] },
-    // BMS
-    { moduleId: "bms", route: "/admin/virtual-office", title: "Optimise HVAC schedule for the weekend", steps: ["Open HVAC zones", "Review occupancy forecast", "Adjust setpoints", "Publish schedule"] },
-    { moduleId: "bms", route: "/admin/virtual-office", title: "Investigate energy spike in Tower A", steps: ["Open energy dashboard", "Drill into Tower A", "Find the anomalous meter", "Create a work order"] },
-    // SCADA
-    { moduleId: "scada", route: "/admin/virtual-office", title: "Acknowledge pump station alarms", steps: ["Open active alarms", "Check pressure trends", "Acknowledge & annotate", "Dispatch field technician"] },
-    // PM
-    { moduleId: "pm", route: "/admin/agentic-os", title: "Groom sprint 24 backlog", steps: ["Open the backlog", "Split oversized stories", "Estimate with history", "Re-order by priority"] },
-    { moduleId: "pm", route: "/admin/agentic-os", title: "Update roadmap for AI Studio", steps: ["Open the roadmap", "Move slipped milestones", "Add dependency links", "Share with stakeholders"] },
-    // HR
-    { moduleId: "hr", route: "/admin/agentic-os", title: "Screen 12 applicants for DevOps role", steps: ["Open the requisition", "Parse CVs", "Score against criteria", "Shortlist top 4"] },
-    // Reports
-    { moduleId: "reports", route: "/admin/ai-studio", title: "Build Q3 executive report", steps: ["Open executive reports", "Pull revenue & SLA data", "Build charts", "Write highlights", "Schedule delivery"] },
-    // Accounting
-    { moduleId: "accounting", route: "/admin/ai-studio/partner", title: "Reconcile September bank statements", steps: ["Import bank statement", "Auto-match transactions", "Review 9 unmatched items", "Post adjustments"] },
-    { moduleId: "accounting", route: "/admin/ai-studio/partner", title: "Flag overdue receivables", steps: ["Open receivables aging", "Filter > 60 days", "Draft reminder emails", "Update collection notes"] },
-    // CRM
-    { moduleId: "crm", route: "/admin/ai-studio/partner", title: "Score new leads in the pipeline", steps: ["Open the pipeline", "Enrich company data", "Score fit & intent", "Assign owners"] },
-    { moduleId: "crm", route: "/admin/ai-studio/partner", title: "Prepare quote for PT Maju Jaya", steps: ["Open quotes", "Select product bundle", "Apply volume discount", "Send for approval"] },
-    // News
-    { moduleId: "news", route: "/admin/ai-studio/riset-knowledge", title: "Competitive scan: CMS platforms in SEA", steps: ["Crawl latest sources", "Cluster competitor news", "Score sentiment", "Write the brief"] },
-    // AI Studio
-    { moduleId: "ai-studio", route: "/admin/ai-studio", title: "Evaluate prompts for the support bot", steps: ["Open AI Studio", "Load 50 test questions", "Run A/B prompts", "Save the winning prompt"] },
-    { moduleId: "ai-studio", route: "/admin/ai-studio", title: "Re-index the knowledge graph", steps: ["Open AI Studio", "Detect stale nodes", "Re-embed documents", "Validate relations"] },
-    // Inventory
-    { moduleId: "inventory", route: "/admin/ai-studio/partner", title: "Reorder low-stock spare parts", steps: ["Open stock levels", "Find items below reorder point", "Draft purchase requests", "Notify procurement"] },
+    // Studio
+    {
+        moduleId: "ai-studio",
+        route: "/admin/ai-studio",
+        title: "Evaluate RAG prompts for Partner assistant",
+        steps: ["Open Studio notebook", "Load 25 customer test questions", "Run groundedness evaluation", "Save winning system prompt"],
+    },
+    {
+        moduleId: "ai-studio",
+        route: "/admin/ai-studio",
+        title: "Re-index studio source chunks (768-dim)",
+        steps: ["Open Studio sources panel", "Detect unindexed documents", "Run Google AI 768-dim embeddings", "Verify semantic retrieval"],
+    },
+    // Partner
+    {
+        moduleId: "partner",
+        route: "/admin/ai-studio/partner",
+        title: "Review UMKM partner onboarding & catalog",
+        steps: ["Open Partner workspace", "Verify new store registrations", "Check product catalog completeness", "Approve store readiness"],
+    },
+    {
+        moduleId: "partner",
+        route: "/admin/ai-studio/partner",
+        title: "Audit daily Kasir WA sales summary",
+        steps: ["Open Partner sales view", "Compare pending vs confirmed orders", "Flag low-stock catalog items", "Prepare daily partner digest"],
+    },
+    // Knowledge Research
+    {
+        moduleId: "knowledge",
+        route: "/admin/ai-studio/riset-knowledge",
+        title: "Deep research: UMKM market trends & FAQ",
+        steps: ["Open Knowledge Research", "Collect verified industry sources", "Synthesize FAQ knowledge article", "Publish to shared notebook"],
+    },
+    {
+        moduleId: "knowledge",
+        route: "/admin/ai-studio/riset-knowledge",
+        title: "Curate KB articles from recent WA chats",
+        steps: ["Review resolved WA questions", "Extract recurring customer topics", "Draft structured KB entry", "Submit for human review"],
+    },
+    // Marketing Content
+    {
+        moduleId: "marketing",
+        route: "/admin/ai-studio/konten-marketing",
+        title: "Draft weekly WhatsApp & social promo campaign",
+        steps: ["Open Marketing Content", "Select target partner persona", "Generate campaign copy & visual brief", "Queue draft for approval"],
+    },
+    {
+        moduleId: "marketing",
+        route: "/admin/ai-studio/konten-marketing",
+        title: "Generate digital brochure copy for new catalog",
+        steps: ["Load top-selling partner products", "Write headline & benefit bullets", "Attach product media", "Save brochure draft"],
+    },
+    // WA Conversations
+    {
+        moduleId: "wa-conversations",
+        route: "/admin/ai-studio/percakapan-wa",
+        title: "Triage 6 unread WhatsApp customer chats",
+        steps: ["Open WA Conversations shared inbox", "Classify customer intent", "Retrieve answers from Knowledge Base", "Draft replies for human handover"],
+    },
+    {
+        moduleId: "wa-conversations",
+        route: "/admin/ai-studio/percakapan-wa",
+        title: "Follow up pending order confirmations on WA",
+        steps: ["Filter awaiting-confirmation threads", "Verify stock in Partner catalog", "Draft polite follow-up message", "Request human send approval"],
+    },
+    // WhatsApp Gateway
+    {
+        moduleId: "whatsapp-gateway",
+        route: "/admin/ai-studio/ai-gateway",
+        title: "Verify WAHA session health & webhook latency",
+        steps: ["Open WhatsApp Gateway", "Check session connection status", "Inspect webhook delivery logs", "Confirm 0 dropped messages"],
+    },
+    // Settings & Models
+    {
+        moduleId: "settings",
+        route: "/admin/ai-studio/settings",
+        title: "Audit LLM provider latency & token guardrails",
+        steps: ["Open Settings & Models", "Test Gemini & fallback model latency", "Review daily token consumption", "Record health status"],
+    },
+    // Agentic OS
+    {
+        moduleId: "agentic-os",
+        route: "/admin/agentic-os",
+        title: "Morning multi-agent situation report",
+        steps: ["Open Agentic OS Command Deck", "Scan overnight runs & approvals", "Check goal progress against gates", "Publish morning briefing"],
+    },
 ];
 
 export function templatesFor(moduleIds: ModuleId[]): TaskTemplate[] {
@@ -197,7 +201,7 @@ export function templatesFor(moduleIds: ModuleId[]): TaskTemplate[] {
 
 export function findTemplate(title: string): TaskTemplate {
     const t = TASK_TEMPLATES.find((x) => x.title === title);
-    if (!t) throw new Error(`Unknown task template: ${title}`);
+    if (!t) return TASK_TEMPLATES[0];
     return t;
 }
 

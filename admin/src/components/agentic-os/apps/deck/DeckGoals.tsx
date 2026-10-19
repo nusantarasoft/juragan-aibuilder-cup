@@ -145,7 +145,7 @@ export function GoalEditor({ goal, onClose, onSaved }: { goal: OsGoal | null; on
             }
         >
             <Field label="Title">
-                <TextInput autoFocus value={d.title ?? ""} onChange={(e) => set("title", e.target.value)} placeholder="e.g. Cut ITSM resolution time below 4h" />
+                <TextInput autoFocus value={d.title ?? ""} onChange={(e) => set("title", e.target.value)} placeholder="e.g. Keep WA Conversation response time under 2m" />
             </Field>
             <Field label="Why it matters" hint="optional">
                 <TextArea value={d.description ?? ""} onChange={(e) => set("description", e.target.value)} placeholder="Context agents and reviewers should know" />

@@ -126,85 +126,69 @@ const chain = (...pairs: [string, string][]): WfEdge[] => pairs.map(([s, t]) => 
 
 export const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
     {
-        id: "major-incident",
-        name: "Major incident response",
-        description: "Triage → commander approves → mitigation + customer update in parallel",
+        id: "wa-escalation",
+        name: "WhatsApp customer escalation",
+        description: "WA triage → Knowledge lookup → human approval → customer reply + Partner follow-up",
         build: (pick) =>
             autoLayout({
                 nodes: [
                     S,
-                    step("triage", pick(["itsm"]), "Triage the major incident", "itsm"),
-                    gate("approve", "Incident commander approves the plan"),
-                    step("mitigate", pick(["ops", "infrastructure", "devops"]), "Apply the mitigation", "ops"),
-                    step("comms", pick(["crm", "command-center", "reports"]), "Draft the customer update", "crm"),
+                    step("triage", pick(["wa-conversations"]), "Triage the customer inquiry", "wa-conversations"),
+                    gate("approve", "Operator approves the resolution plan"),
+                    step("gateway", pick(["whatsapp-gateway", "settings"]), "Verify WAHA session & webhook status", "whatsapp-gateway"),
+                    step("comms", pick(["wa-conversations", "partner"]), "Draft the customer WhatsApp reply", "wa-conversations"),
                     E,
                 ],
-                edges: chain(["start", "triage"], ["triage", "approve"], ["approve", "mitigate"], ["approve", "comms"], ["mitigate", "end"], ["comms", "end"]),
+                edges: chain(["start", "triage"], ["triage", "approve"], ["approve", "gateway"], ["approve", "comms"], ["gateway", "end"], ["comms", "end"]),
             }),
     },
     {
-        id: "kb-from-ticket",
-        name: "Ticket → knowledge article",
-        description: "Resolve a ticket, draft a KB article, human approves publishing",
+        id: "kb-from-wa",
+        name: "WA conversation → Knowledge article",
+        description: "Summarize resolved WA chat, draft a Knowledge Research article, human approves indexing",
         build: (pick) =>
             autoLayout({
                 nodes: [
                     S,
-                    step("resolve", pick(["itsm"]), "Summarise the ticket resolution", "itsm"),
-                    step("draft", pick(["knowledge", "itsm"]), "Draft a knowledge article", "knowledge"),
-                    gate("publish", "Knowledge manager approves publishing"),
+                    step("resolve", pick(["wa-conversations"]), "Summarize the resolved WA thread", "wa-conversations"),
+                    step("draft", pick(["knowledge", "ai-studio"]), "Draft a Knowledge Research article", "knowledge"),
+                    gate("publish", "Knowledge curator approves indexing"),
                     E,
                 ],
                 edges: chain(["start", "resolve"], ["resolve", "draft"], ["draft", "publish"], ["publish", "end"]),
             }),
     },
     {
-        id: "release",
-        name: "Release readiness",
-        description: "Security scan + pipeline check in parallel, then a go/no-go gate",
+        id: "partner-campaign",
+        name: "Partner marketing campaign launch",
+        description: "Partner catalog check + Knowledge research in parallel, then Marketing copy approval",
         build: (pick) =>
             autoLayout({
                 nodes: [
                     S,
-                    step("sec", pick(["security"]), "Scan the release for vulnerabilities", "security"),
-                    step("ci", pick(["devops"]), "Verify the pipeline and staging health", "devops"),
-                    gate("go", "Release manager go / no-go"),
-                    step("notes", pick(["reports", "pm"]), "Write the release notes", "reports"),
+                    step("catalog", pick(["partner"]), "Select top partner catalog products", "partner"),
+                    step("research", pick(["knowledge"]), "Research audience trends & hooks", "knowledge"),
+                    gate("go", "Marketing lead approves campaign brief"),
+                    step("copy", pick(["marketing"]), "Generate campaign copy & digital brochure", "marketing"),
                     E,
                 ],
-                edges: chain(["start", "sec"], ["start", "ci"], ["sec", "go"], ["ci", "go"], ["go", "notes"], ["notes", "end"]),
+                edges: chain(["start", "catalog"], ["start", "research"], ["catalog", "go"], ["research", "go"], ["go", "copy"], ["copy", "end"]),
             }),
     },
     {
-        id: "month-end",
-        name: "Month-end close",
-        description: "Reconcile → report → CFO sign-off",
+        id: "studio-rag-eval",
+        name: "Studio RAG & model readiness",
+        description: "Audit model settings → run Studio RAG evaluation → operator sign-off",
         build: (pick) =>
             autoLayout({
                 nodes: [
                     S,
-                    step("recon", pick(["accounting"]), "Reconcile the ledgers", "accounting"),
-                    step("report", pick(["reports", "accounting"]), "Prepare the month-end report", "reports"),
-                    gate("cfo", "CFO signs off"),
+                    step("models", pick(["settings"]), "Audit LLM provider & embedding settings", "settings"),
+                    step("eval", pick(["ai-studio"]), "Run Studio RAG groundedness evaluation", "ai-studio"),
+                    gate("signoff", "AI Studio lead sign-off"),
                     E,
                 ],
-                edges: chain(["start", "recon"], ["recon", "report"], ["report", "cfo"], ["cfo", "end"]),
-            }),
-    },
-    {
-        id: "facility-alarm",
-        name: "Facility alarm handling",
-        description: "Acknowledge the alarm → open a work order → verify recovery",
-        build: (pick) =>
-            autoLayout({
-                nodes: [
-                    S,
-                    step("ack", pick(["bms", "scada", "dcim"]), "Acknowledge and assess the alarm", "bms"),
-                    step("wo", pick(["itsm", "bms"]), "Open a work order for the technician", "itsm"),
-                    step("verify", pick(["dcim", "bms"]), "Verify the telemetry is back to normal", "dcim", { waitFor: "done" }),
-                    E,
-                ],
-                edges: chain(["start", "ack"], ["ack", "wo"], ["wo", "verify"], ["verify", "end"]),
+                edges: chain(["start", "models"], ["models", "eval"], ["eval", "signoff"], ["signoff", "end"]),
             }),
     },
 ];

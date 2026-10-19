@@ -8,24 +8,14 @@ const AUTOPILOT_COOLDOWN_MS = 45_000;
 const ACTIVE_STATUSES = ['queued', 'running', 'awaiting_approval', 'review'];
 
 const MODULE_LABELS: Record<string, string> = {
-    'accounting': 'Accounting',
-    'ai-studio': 'AI Studio',
-    'bms': 'BMS',
-    'command-center': 'Command Center',
-    'crm': 'CRM',
-    'dcim': 'DCIM',
-    'devops': 'DevOps',
-    'hr': 'HR',
-    'infrastructure': 'Infrastructure',
-    'inventory': 'Inventory',
-    'itsm': 'ITSM',
-    'knowledge': 'Knowledge Base',
-    'news': 'News Intel',
-    'ops': 'Ops Runbooks',
-    'pm': 'Projects',
-    'reports': 'Reports',
-    'scada': 'SCADA',
-    'security': 'Security',
+    'ai-studio': 'Studio',
+    'partner': 'Partner',
+    'knowledge': 'Knowledge Research',
+    'marketing': 'Marketing Content',
+    'wa-conversations': 'WA Conversations',
+    'whatsapp-gateway': 'WhatsApp Gateway',
+    'settings': 'Settings & Models',
+    'agentic-os': 'Agentic OS',
 };
 
 function moduleLabel(moduleId: string): string {

@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { create } from "zustand";
 import { AppWindow, Bot, Check, GripHorizontal, Maximize2, Minus, PanelLeft, PanelRight, X } from "lucide-react";
 import { STATUS_META } from "../lib/floorplan";
-import { MODULES, stepIndex, type ModuleId } from "../lib/modules";
+import { getModuleInfo, MODULES, stepIndex, type ModuleId } from "../lib/modules";
 import type { Agent, AgentStatus, AgentTask } from "../lib/types";
 
 export const ORANGE = "#fb923c";
@@ -40,7 +40,7 @@ export function Section({
 }
 
 export function ModuleChip({ moduleId, onClick, className }: { moduleId: ModuleId; onClick?: () => void; className?: string }) {
-    const m = MODULES[moduleId];
+    const m = getModuleInfo(moduleId);
     const Tag = onClick ? "button" : "span";
     return (
         <Tag
@@ -62,7 +62,7 @@ export function ModuleChip({ moduleId, onClick, className }: { moduleId: ModuleI
 /** Checklist of the scripted steps an agent performs inside a module. */
 export function StepList({ task, status, dense }: { task: AgentTask; status: AgentStatus; dense?: boolean }) {
     const current = stepIndex(task.progress, task.steps.length);
-    const color = MODULES[task.moduleId].color;
+    const color = getModuleInfo(task.moduleId).color;
     const running = status === "working" || status === "thinking";
     return (
         <ol className={cx("space-y-1 font-mono", dense && "space-y-0.5")}>

@@ -12,7 +12,7 @@
 
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
-    BarChart3, BookOpen, Boxes, Building2, Calculator, Factory, GitBranch, Handshake, KanbanSquare, Newspaper, Radar, Server, Shield, Sparkles, Ticket, Users, Warehouse, Wrench, type LucideIcon,
+    BookOpen, Bot, Handshake, Megaphone, MessageSquare, Radio, SlidersHorizontal, Sparkles, type LucideIcon,
 } from "lucide-react";
 import { LINK_COLOR, ORBIT, hash01, project, type Box, type DeckLink, type DeckModel, type DeckNode, type Layout, type Pt, type Pt3, type TimelineDecor } from "../../lib/deckGraph";
 
@@ -31,24 +31,14 @@ const SPIN = 0.00011;
 
 /** Lucide glyph per Nusantarasoft module (application ring). */
 export const MODULE_ICON: Record<string, LucideIcon> = {
-    itsm: Ticket,
-    knowledge: BookOpen,
-    "command-center": Radar,
-    ops: Wrench,
-    devops: GitBranch,
-    infrastructure: Server,
-    security: Shield,
-    dcim: Boxes,
-    bms: Building2,
-    scada: Factory,
-    pm: KanbanSquare,
-    hr: Users,
-    reports: BarChart3,
-    accounting: Calculator,
-    crm: Handshake,
-    news: Newspaper,
     "ai-studio": Sparkles,
-    inventory: Warehouse,
+    partner: Handshake,
+    knowledge: BookOpen,
+    marketing: Megaphone,
+    "wa-conversations": MessageSquare,
+    "whatsapp-gateway": Radio,
+    settings: SlidersHorizontal,
+    "agentic-os": Bot,
 };
 
 const CLOUD_COLORS = ["#fb923c", "#f97316", "#fdba74", "#ea580c", "#fed7aa"];

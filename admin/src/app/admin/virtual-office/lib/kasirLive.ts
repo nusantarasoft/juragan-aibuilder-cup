@@ -26,7 +26,7 @@ export function buildKasirAgent(snap: OsKasirLiveSnapshot): Agent {
         deskId: "ops-1",
         status,
         location: "desk",
-        modules: ["ai-studio"],
+        modules: ["wa-conversations", "whatsapp-gateway", "partner"],
         skills: ["Kasir WA", "Catat jual", "Stok", "Laporan"],
         stats: {
             tasksCompleted: snap.transactionsToday ?? 0,
@@ -51,8 +51,8 @@ export function buildKasirAgent(snap: OsKasirLiveSnapshot): Agent {
                       title: activityLine,
                       progress: 0.35,
                       startedAt: snap.lastActivityAt ? new Date(snap.lastActivityAt).getTime() : Date.now(),
-                      moduleId: "ai-studio",
-                      route: "/admin/ai-studio/ai-gateway",
+                      moduleId: "wa-conversations",
+                      route: "/admin/ai-studio/percakapan-wa",
                       steps: ["Terima chat WA", "Catat transaksi", "Update stok"],
                   }
                 : undefined,

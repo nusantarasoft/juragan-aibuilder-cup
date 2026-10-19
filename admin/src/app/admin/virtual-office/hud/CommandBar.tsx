@@ -8,11 +8,11 @@ import { LEVEL_ICON } from "./AgentRoster";
 import { GLASS, ModuleChip, ORANGE, cx } from "./shared";
 
 const SUGGESTIONS = [
-    "Triage new ITSM tickets",
-    "Morning Command Center briefing",
-    "Investigate the 5xx spike on Kong",
-    "Reconcile this week's invoices",
-    "Groom the sprint backlog",
+    "Triage unanswered WhatsApp customer chats",
+    "Evaluate system prompts for UMKM assistant",
+    "Index new UMKM FAQ & product docs",
+    "Draft weekly UMKM promo campaign",
+    "Verify WhatsApp Gateway session & webhook",
 ];
 
 /** Latest events floating above the command dock. */

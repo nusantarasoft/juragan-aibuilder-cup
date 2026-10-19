@@ -28,13 +28,13 @@ const toDraft = (p: OsPlaybook): Draft => ({
     enabled: p.enabled,
 });
 
-const blank = (moduleId: ModuleId = "itsm"): Draft => ({
+const blank = (moduleId: ModuleId = "ai-studio"): Draft => ({
     agentId: null,
     moduleId,
-    route: MODULES[moduleId].route,
+    route: MODULES[moduleId]?.route ?? "/admin/ai-studio",
     title: "",
     description: "",
-    steps: [...MODULES[moduleId].steps],
+    steps: [...(MODULES[moduleId]?.steps ?? MODULES["ai-studio"].steps)],
     priority: "normal",
     estimatedMinutes: 10,
     requiresApproval: false,
@@ -133,7 +133,7 @@ export function Playbooks({ initialPlaybookId, initialModuleId }: { initialPlayb
                             title="New playbook"
                             onClick={() => {
                                 setSelected("new");
-                                setDraft(blank(moduleFilter !== "all" ? (moduleFilter as ModuleId) : "itsm"));
+                                setDraft(blank(moduleFilter !== "all" ? (moduleFilter as ModuleId) : "ai-studio"));
                             }}
                         />
                     </div>
@@ -201,7 +201,7 @@ export function Playbooks({ initialPlaybookId, initialModuleId }: { initialPlayb
                         <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
                             <div className="grid gap-3 md:grid-cols-2">
                                 <Field label="Title" className="md:col-span-2">
-                                    <TextInput value={draft.title} onChange={(e) => set("title", e.target.value)} placeholder="e.g. Triage new ITSM tickets" />
+                                    <TextInput value={draft.title} onChange={(e) => set("title", e.target.value)} placeholder="e.g. Triage unanswered WhatsApp customer chats" />
                                 </Field>
                                 <Field label="Module">
                                     <Select

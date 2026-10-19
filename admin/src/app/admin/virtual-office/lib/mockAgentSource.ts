@@ -176,7 +176,7 @@ export function createMockAgentSource(getState: () => { agents: Agent[] }): Agen
         return pick([
             "On it. I'll fold that into my current plan and report back.",
             "Noted — drafting an approach now. I'll ping you if I need a decision.",
-            "Good call. Want me to open a ticket in ITSM so the team can track it?",
+            "Good call. Want me to queue a task in Agentic OS so the team can track it?",
             "Understood. I'll coordinate with the others in the Core if needed.",
         ]);
     };

@@ -354,7 +354,7 @@ export const MASCOT_PLAY_SPOTS: MascotPlaySpot[] = [
     {
         id: "engineering-north-pod",
         zone: "engineering",
-        name: "Infra North Pods",
+        name: "AI Studio North Pods",
         position: [-13.5, 11.5],
         yaw: 0,
         activities: MASCOT_MOODS.hyper.activities,
@@ -362,13 +362,13 @@ export const MASCOT_PLAY_SPOTS: MascotPlaySpot[] = [
     {
         id: "engineering-south-walk",
         zone: "engineering",
-        name: "DevOps Corridor Edge",
+        name: "Gateway Corridor Edge",
         position: [-11.0, 1.2],
         yaw: Math.PI,
         activities: MASCOT_MOODS.social.activities,
     },
 
-    // Business Insights / Research (center: [11, 6], size: [16, 14])
+    // Knowledge & Marketing / Research (center: [11, 6], size: [16, 14])
     {
         id: "research-holo",
         zone: "research",
@@ -380,7 +380,7 @@ export const MASCOT_PLAY_SPOTS: MascotPlaySpot[] = [
     {
         id: "research-east-aisle",
         zone: "research",
-        name: "Insights East Aisle",
+        name: "Marketing East Aisle",
         position: [16.8, 6.8],
         yaw: -Math.PI / 2,
         activities: MASCOT_MOODS.hyper.activities,
@@ -388,7 +388,7 @@ export const MASCOT_PLAY_SPOTS: MascotPlaySpot[] = [
     {
         id: "research-center-benches",
         zone: "research",
-        name: "Analytics Pod Walk",
+        name: "Knowledge Pod Walk",
         position: [11.0, 2.4],
         yaw: Math.PI,
         activities: MASCOT_MOODS.curious.activities,
@@ -402,11 +402,11 @@ export const MASCOT_PLAY_SPOTS: MascotPlaySpot[] = [
         activities: MASCOT_MOODS.playful.activities,
     },
 
-    // Service Desk / Operations (center: [-11, -9], size: [16, 9])
+    // WhatsApp & Partner Ops / Operations (center: [-11, -9], size: [16, 9])
     {
         id: "operations-desk",
         zone: "operations",
-        name: "Service Desk Plaza",
+        name: "WA Conversations Plaza",
         position: [-11.0, -6.0],
         yaw: Math.PI,
         activities: MASCOT_MOODS.social.activities,
@@ -414,7 +414,7 @@ export const MASCOT_PLAY_SPOTS: MascotPlaySpot[] = [
     {
         id: "operations-datawall",
         zone: "operations",
-        name: "Ops Telemetry Wall",
+        name: "Partner Telemetry Wall",
         position: [-11.0, -12.6],
         yaw: Math.PI,
         activities: MASCOT_MOODS.curious.activities,
@@ -422,7 +422,7 @@ export const MASCOT_PLAY_SPOTS: MascotPlaySpot[] = [
     {
         id: "operations-west-bay",
         zone: "operations",
-        name: "ITSM West Bay",
+        name: "Partner West Bay",
         position: [-17.5, -9.8],
         yaw: Math.PI / 2,
         activities: MASCOT_MOODS.grumpy.activities,
@@ -430,7 +430,7 @@ export const MASCOT_PLAY_SPOTS: MascotPlaySpot[] = [
     {
         id: "operations-east-aisle",
         zone: "operations",
-        name: "Command Center Aisle",
+        name: "Agentic OS Aisle",
         position: [-4.6, -9.8],
         yaw: -Math.PI / 2,
         activities: MASCOT_MOODS.hyper.activities,

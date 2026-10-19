@@ -74,7 +74,7 @@ function toOfficeAgent(
     else if (pulse) status = "thinking";
     else status = location === "meeting" ? "meeting" : "idle";
     const s = a.stats ?? {};
-    const pulseModule = pulse?.moduleId && isModule(pulse.moduleId) ? pulse.moduleId : modules[0] ?? "reports";
+    const pulseModule = pulse?.moduleId && isModule(pulse.moduleId) ? pulse.moduleId : modules[0] ?? "ai-studio";
     return {
         id: a.slug,
         dbId: a.id,
@@ -86,7 +86,7 @@ function toOfficeAgent(
         deskId,
         status,
         location: status === "meeting" && huddle ? "meeting" : active || (pulse && status === "thinking") || status === "offline" ? "desk" : location,
-        modules: modules.length ? modules : ["reports"],
+        modules: modules.length ? modules : ["ai-studio"],
         skills: a.skills,
         stats: { tasksCompleted: s.tasksCompleted ?? 0, successRate: s.successRate ?? 1, avgLatencyMs: s.avgLatencyMs ?? 1000, tokensToday: s.tokensToday ?? 0 },
         rosterKind: rosterKindForAgent(a.id, a.slug, { uiDemoMode, agent: a }),
@@ -98,7 +98,7 @@ function toOfficeAgent(
                   title: active.title,
                   progress: Math.max(0, Math.min(1, active.progress)),
                   startedAt: active.startedAt ? new Date(active.startedAt).getTime() : Date.now(),
-                  moduleId: isModule(active.moduleId) ? active.moduleId : modules[0] ?? "reports",
+                  moduleId: isModule(active.moduleId) ? active.moduleId : modules[0] ?? "ai-studio",
                   route: active.route,
                   steps: active.steps.length ? active.steps : ["Working"],
               }
@@ -284,7 +284,7 @@ export function createOsAgentSource(getState: () => { agents: Agent[] }): AgentD
         return pick([
             "Noted. Send it through the command bar and I'll add it to my queue.",
             "Understood — I'll keep it in mind for my next playbook run.",
-            "Good call. Want me to open a ticket in ITSM so the team can track it?",
+            "Good call. Want me to queue a task in Agentic OS so the team can track it?",
         ]);
     };
 

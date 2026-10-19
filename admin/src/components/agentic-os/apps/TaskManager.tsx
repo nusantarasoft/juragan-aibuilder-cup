@@ -68,9 +68,9 @@ function TaskForm({ task, defaultAgentId, onDone }: { task?: OsTask; defaultAgen
                   playbookId: "",
                   title: "",
                   description: "",
-                  moduleId: "itsm",
-                  route: MODULES.itsm.route,
-                  steps: [...MODULES.itsm.steps],
+                  moduleId: "ai-studio",
+                  route: MODULES["ai-studio"].route,
+                  steps: [...MODULES["ai-studio"].steps],
                   priority: "normal",
                   dueAt: "",
                   requiresApproval: false,
@@ -207,7 +207,7 @@ function TaskForm({ task, defaultAgentId, onDone }: { task?: OsTask; defaultAgen
                                         : { ...s, title };
                                 });
                             }}
-                            placeholder="e.g. Triage new ITSM tickets"
+                            placeholder="e.g. Triage unanswered WhatsApp customer chats"
                         />
                     </Field>
                     <Field label="Module">

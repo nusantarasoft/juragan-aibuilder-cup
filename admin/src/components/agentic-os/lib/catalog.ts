@@ -1,5 +1,6 @@
 /**
  * Agentic OS — static catalogs: tools, model providers, agent templates.
+ * Aligned strictly with the current AI Studio + Partner + WhatsApp + Agentic OS system.
  */
 
 import type { Effort, ModelTier, Permission } from "./types";
@@ -15,25 +16,25 @@ export interface ToolDef {
 }
 
 export const TOOL_CATALOG: ToolDef[] = [
-    { id: "module.read", name: "Read module pages", description: "Open and read any module it has access to", risk: "read", group: "Modules" },
-    { id: "module.draft", name: "Draft changes", description: "Prepare edits that a human applies", risk: "draft", group: "Modules" },
-    { id: "module.write", name: "Write to modules", description: "Create / update records directly", risk: "write", group: "Modules" },
+    { id: "module.read", name: "Read module pages", description: "Open and read any AI Studio / Partner module it has access to", risk: "read", group: "Modules" },
+    { id: "module.draft", name: "Draft changes", description: "Prepare notebook, catalog, or content drafts for human review", risk: "draft", group: "Modules" },
+    { id: "module.write", name: "Write to modules", description: "Create / update Studio or Partner records directly", risk: "write", group: "Modules" },
     { id: "playbook.run", name: "Run playbooks", description: "Execute assigned playbooks step by step", risk: "write", group: "Modules" },
-    { id: "kb.search", name: "Search knowledge", description: "Semantic search in the knowledge base & memory map", risk: "read", group: "Knowledge" },
-    { id: "kb.write", name: "Write knowledge", description: "Create KB articles and memory items", risk: "write", group: "Knowledge" },
-    { id: "ticket.create", name: "Create tickets", description: "Open ITSM tickets / work orders", risk: "write", group: "Modules" },
-    { id: "ticket.comment", name: "Comment on tickets", description: "Post internal notes on tickets", risk: "write", group: "Modules" },
-    { id: "email.draft", name: "Draft emails", description: "Write emails into drafts — never sends", risk: "draft", group: "Communication" },
-    { id: "email.send", name: "Send emails", description: "Send email on behalf of the team", risk: "send", group: "Communication" },
+    { id: "kb.search", name: "Search knowledge", description: "Semantic search in Studio RAG notebooks & memory map", risk: "read", group: "Knowledge" },
+    { id: "kb.write", name: "Write knowledge", description: "Create Knowledge Research notes and memory items", risk: "write", group: "Knowledge" },
+    { id: "web.search", name: "Web research", description: "Search and verify public web sources for Knowledge Research", risk: "read", group: "Knowledge" },
+    { id: "whatsapp.send", name: "WhatsApp messages", description: "Send WhatsApp messages via WAHA gateway", risk: "send", group: "Communication" },
     { id: "chat.notify", name: "Notify team", description: "Post notifications to the team inbox", risk: "send", group: "Communication" },
-    { id: "whatsapp.send", name: "WhatsApp messages", description: "Send WhatsApp messages via WAHA", risk: "send", group: "Communication" },
-    { id: "report.generate", name: "Generate reports", description: "Build charts & reports", risk: "write", group: "Data" },
-    { id: "db.query", name: "Query data", description: "Read-only SQL / analytics queries", risk: "read", group: "Data" },
-    { id: "pipeline.trigger", name: "Trigger pipelines", description: "Start CI/CD builds & deployments", risk: "write", group: "Engineering" },
-    { id: "runbook.execute", name: "Execute runbooks", description: "Run ops automation (restart, scale…)", risk: "write", group: "Engineering" },
+    { id: "email.draft", name: "Draft customer replies", description: "Prepare customer reply drafts — never sends automatically", risk: "draft", group: "Communication" },
+    { id: "email.send", name: "Send outbound messages", description: "Send approved outbound communications", risk: "send", group: "Communication" },
+    { id: "report.generate", name: "Generate insights", description: "Build Partner & Marketing performance summaries", risk: "write", group: "Data" },
+    { id: "db.query", name: "Query data", description: "Read-only analytics & catalog queries", risk: "read", group: "Data" },
+    { id: "runbook.execute", name: "Execute gateway checks", description: "Run WhatsApp Gateway & model health diagnostics", risk: "write", group: "Engineering" },
+    { id: "pipeline.trigger", name: "Trigger indexing", description: "Start RAG embedding & chunk re-indexing jobs", risk: "write", group: "Engineering" },
+    { id: "ticket.create", name: "Create follow-up tasks", description: "Open escalation tasks in Agentic OS", risk: "write", group: "Modules" },
+    { id: "ticket.comment", name: "Add review notes", description: "Post internal notes on WA threads or tasks", risk: "write", group: "Modules" },
     { id: "record.delete", name: "Delete records", description: "Remove records permanently", risk: "delete", group: "System" },
-    { id: "web.search", name: "Web research", description: "Search and read public web pages", risk: "read", group: "Knowledge" },
-    { id: "activity.log", name: "Activity log", description: "Write to the office activity feed", risk: "read", group: "System" },
+    { id: "activity.log", name: "Activity log", description: "Write to the Virtual Office activity feed", risk: "read", group: "System" },
 ];
 
 export const TOOL_BY_ID = Object.fromEntries(TOOL_CATALOG.map((t) => [t.id, t])) as Record<string, ToolDef>;
@@ -91,38 +92,38 @@ export interface AgentTemplate {
 
 export const AGENT_TEMPLATES: AgentTemplate[] = [
     {
-        id: "service-desk", name: "New Service Desk Agent", role: "Service Desk Agent", color: "#60a5fa", zone: "operations", modelTier: "medium",
-        modules: ["itsm", "knowledge"], skills: ["Triage", "SLA", "Customer empathy"], tools: ["module.read", "module.draft", "kb.search", "ticket.comment", "email.draft", "activity.log"],
-        persona: "You triage incoming tickets, propose resolutions from the knowledge base and keep requesters informed. You never close a ticket without a human.",
+        id: "wa-cs", name: "New WA Conversations Agent", role: "WA Conversations & CS Agent", color: "#60a5fa", zone: "operations", modelTier: "medium",
+        modules: ["wa-conversations", "knowledge"], skills: ["WA Shared Inbox", "CS Triage", "Reply Drafting"], tools: ["module.read", "module.draft", "kb.search", "email.draft", "activity.log"],
+        persona: "You triage incoming WhatsApp customer chats, retrieve accurate answers from the Knowledge Base, and draft helpful replies for human review.",
     },
     {
-        id: "devops", name: "New DevOps Agent", role: "DevOps Engineer", color: "#38bdf8", zone: "engineering", modelTier: "large",
-        modules: ["devops", "infrastructure", "ops"], skills: ["CI/CD", "Docker", "Observability"], tools: ["module.read", "module.draft", "pipeline.trigger", "runbook.execute", "kb.search", "activity.log"],
-        persona: "You keep pipelines green and services healthy. Before any deployment or restart you run pre-checks and you attach logs to the related incident.",
+        id: "partner-kasir", name: "New Partner & Kasir Agent", role: "Partner & UMKM Growth Specialist", color: "#34d399", zone: "research", modelTier: "medium",
+        modules: ["partner", "wa-conversations"], skills: ["Partner Onboarding", "Store Catalog", "Kasir WA"], tools: ["module.read", "module.draft", "db.query", "report.generate", "activity.log"],
+        persona: "You help UMKM partners manage their store catalog, review daily Kasir WhatsApp sales, and flag low-stock items.",
     },
     {
-        id: "finance", name: "New Finance Agent", role: "Finance Analyst", color: "#facc15", zone: "research", modelTier: "medium",
-        modules: ["accounting", "reports"], skills: ["Reconciliation", "Forecasting"], tools: ["module.read", "module.draft", "db.query", "report.generate", "activity.log"],
-        persona: "You reconcile ledgers, flag anomalies and prepare reports. You never post journal entries without approval.",
+        id: "knowledge-curator", name: "New Knowledge Research Agent", role: "Knowledge Research Curator", color: "#14b8a6", zone: "research", modelTier: "medium",
+        modules: ["knowledge", "ai-studio"], skills: ["Deep Research", "Web Scraping", "RAG Indexing"], tools: ["module.read", "module.draft", "kb.search", "kb.write", "web.search", "activity.log"],
+        persona: "You research verified sources, synthesize clear FAQ and knowledge articles, and keep Studio RAG notebooks grounded and up to date.",
     },
     {
-        id: "security", name: "New Security Agent", role: "Security Analyst", color: "#f43f5e", zone: "engineering", modelTier: "large",
-        modules: ["security", "infrastructure"], skills: ["Threat triage", "CVE analysis"], tools: ["module.read", "module.draft", "kb.search", "ticket.create", "activity.log"],
-        persona: "You triage security findings by real exploitability and raise remediation tickets with clear evidence.",
+        id: "marketing-content", name: "New Marketing Content Agent", role: "Marketing Content Strategist", color: "#fb7185", zone: "research", modelTier: "large",
+        modules: ["marketing", "partner"], skills: ["Copywriting", "Brochures", "Campaign Strategy"], tools: ["module.read", "module.draft", "web.search", "report.generate", "activity.log"],
+        persona: "You craft engaging WhatsApp promos, social campaigns, and digital brochure copy tailored to each UMKM partner's brand voice.",
     },
     {
-        id: "facilities", name: "New Facilities Agent", role: "Facilities Engineer", color: "#84cc16", zone: "engineering", modelTier: "small",
-        modules: ["bms", "dcim", "scada"], skills: ["HVAC", "Energy", "Alarms"], tools: ["module.read", "module.draft", "ticket.create", "activity.log"],
-        persona: "You watch building and data-center telemetry, acknowledge alarms and open work orders for field technicians.",
+        id: "wa-gateway", name: "New WhatsApp Gateway Agent", role: "WhatsApp Gateway Engineer", color: "#38bdf8", zone: "engineering", modelTier: "medium",
+        modules: ["whatsapp-gateway", "settings"], skills: ["WAHA Sessions", "Webhooks", "QR Pairing"], tools: ["module.read", "module.draft", "runbook.execute", "activity.log"],
+        persona: "You monitor WhatsApp Gateway (WAHA) session health, webhook delivery, and connection stability across partner stores.",
     },
     {
-        id: "sales", name: "New Sales Agent", role: "Sales & Market Analyst", color: "#fb7185", zone: "research", modelTier: "medium",
-        modules: ["crm", "news"], skills: ["Lead scoring", "Market research"], tools: ["module.read", "module.draft", "web.search", "email.draft", "activity.log"],
-        persona: "You enrich and score leads, watch competitors and draft follow-ups for the sales team to send.",
+        id: "studio-prompt", name: "New AI Studio Engineer", role: "AI Studio & Prompt Engineer", color: "#22d3ee", zone: "engineering", modelTier: "large",
+        modules: ["ai-studio", "settings"], skills: ["Prompt Engineering", "RAG Evals", "LLM Providers"], tools: ["module.read", "module.draft", "kb.search", "pipeline.trigger", "activity.log"],
+        persona: "You evaluate system prompts, audit RAG retrieval quality, and tune LLM model settings and token guardrails.",
     },
     {
-        id: "blank", name: "New Agent", role: "AI Agent", color: "#818cf8", zone: "research", modelTier: "medium",
-        modules: ["reports"], skills: [], tools: ["module.read", "activity.log"],
+        id: "blank", name: "New Agent", role: "AI Studio Agent", color: "#818cf8", zone: "research", modelTier: "medium",
+        modules: ["ai-studio"], skills: [], tools: ["module.read", "activity.log"],
         persona: "",
     },
 ];

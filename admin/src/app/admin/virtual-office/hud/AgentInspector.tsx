@@ -29,7 +29,7 @@ import {
 import { useOsUi } from "@/components/agentic-os/registry";
 import { STATUS_META, ZONES, ZONE_BY_ID, assignSpots, createSeatMemory } from "../lib/floorplan";
 import { MASCOT_ID, MASCOT_MOODS, MASCOT_MOOD_LIST, getMascotRankTitle, useMascotStore } from "../lib/mascotStore";
-import { MODULES, sessionUrl } from "../lib/modules";
+import { getModuleInfo, MODULES, sessionUrl } from "../lib/modules";
 import { useOfficeStore } from "../lib/store";
 import type { Agent, AgentCommand } from "../lib/types";
 import { ActivityList } from "./AgentRoster";
@@ -645,7 +645,7 @@ export function AgentInspector() {
                         </div>
                         <div className="mb-2 text-[12px] font-medium leading-snug text-white">{agent.task.title}</div>
                         <div className="mb-2 flex items-center gap-2">
-                            <ProgressBar value={agent.task.progress} color={MODULES[agent.task.moduleId].color} />
+                            <ProgressBar value={agent.task.progress} color={getModuleInfo(agent.task.moduleId).color} />
                             <span className="w-9 text-right text-[10.5px] tabular-nums text-slate-300">{Math.round(agent.task.progress * 100)}%</span>
                         </div>
                         <StepList task={agent.task} status={agent.status} dense />
@@ -664,7 +664,7 @@ export function AgentInspector() {
                     </button>
                     <button
                         type="button"
-                        onClick={() => router.push(sessionUrl(agent.task?.route ?? MODULES[agent.modules[0]].route, agent.id))}
+                        onClick={() => router.push(sessionUrl(agent.task?.route ?? getModuleInfo(agent.modules[0]).route, agent.id))}
                         className="inline-flex items-center justify-center gap-1.5 border border-white/15 px-2 py-1 text-[10.5px] text-slate-200 transition hover:border-white/35 hover:text-white"
                     >
                         <ExternalLink className="h-3 w-3" />
@@ -770,7 +770,7 @@ export function AgentInspector() {
                     <div className="mb-1 text-[9px] uppercase tracking-wider text-slate-500">Modules & skills</div>
                     <div className="flex flex-wrap gap-1">
                         {agent.modules.map((m) => (
-                            <ModuleChip key={m} moduleId={m} onClick={() => router.push(sessionUrl(MODULES[m].route, agent.id))} />
+                            <ModuleChip key={m} moduleId={m} onClick={() => router.push(sessionUrl(getModuleInfo(m).route, agent.id))} />
                         ))}
                         {agent.skills.map((s) => (
                             <span key={s} className="border border-white/10 bg-white/[0.02] px-1.5 py-0.5 text-[9.5px] text-slate-300">
