@@ -5,7 +5,11 @@ import { NS_AUTH_COOKIE } from "@/lib/authCookie";
 export function proxy(request: NextRequest) {
     const { pathname, search } = request.nextUrl;
 
-    if (!pathname.startsWith("/admin")) {
+    if (
+        !pathname.startsWith("/admin") ||
+        pathname === "/admin/login" ||
+        pathname === "/admin/sign-in"
+    ) {
         return NextResponse.next();
     }
 

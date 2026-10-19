@@ -1,14 +1,26 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Alert, Button, Card, Form, Input, Typography, Spin } from "antd";
-import { ShopOutlined, MailOutlined, LockOutlined, UserOutlined } from "@ant-design/icons";
+import { Alert, Button, ConfigProvider, Form, Input, Spin, theme } from "antd";
+import {
+    ShopOutlined,
+    MailOutlined,
+    LockOutlined,
+    UserOutlined,
+    ArrowRightOutlined,
+} from "@ant-design/icons";
+import { Handshake, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { graphql, storeAuthTokens } from "@/lib/graphqlClient";
 import { useAuth } from "@/context/AuthContext";
+import { useAdminLayout } from "@/components/layout/CMSLayoutContext";
+import { getVOTheme } from "@/components/layout/voTheme";
+import { AnimatedThemeToggler } from "@/components/magicui/animated-theme-toggler";
 
-const { Title, Text, Paragraph } = Typography;
+const MONO =
+    'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace';
+const ORANGE = "#fb923c";
 
 type RegisterResult = {
     registerTenant: {
@@ -37,6 +49,11 @@ declare global {
 export default function RegisterPage() {
     const router = useRouter();
     const { refreshSession } = useAuth();
+    const darkMode = useAdminLayout((s) => s.darkMode);
+    const setDarkMode = useAdminLayout((s) => s.setDarkMode);
+    const vo = getVOTheme(darkMode);
+    const light = !darkMode;
+
     const [loading, setLoading] = useState(false);
     const [captchaToken, setCaptchaToken] = useState<string>("");
     const [captchaMode, setCaptchaMode] = useState<string>("loading");
@@ -102,7 +119,7 @@ export default function RegisterPage() {
         setError(null);
         setSuccess(null);
         if (captchaMode !== "disabled" && !captchaToken.trim()) {
-            setError("Selesaikan verifikasi captcha sebelum mendaftar.");
+            setError("Please complete the captcha verification before registering.");
             setLoading(false);
             return;
         }
@@ -129,10 +146,10 @@ export default function RegisterPage() {
             if (r.accessToken && r.refreshToken && r.emailVerified) {
                 storeAuthTokens(r.accessToken, r.refreshToken);
                 await refreshSession();
-                router.replace("/admin/virtual-office");
+                router.replace("/admin/ai-studio/partner");
                 return;
             }
-            setSuccess(r.message || "Periksa email untuk verifikasi, lalu masuk.");
+            setSuccess(r.message || "Check your email to verify your account, then sign in.");
         } catch (e) {
             setError(e instanceof Error ? e.message : String(e));
         } finally {
@@ -141,71 +158,287 @@ export default function RegisterPage() {
     };
 
     return (
-        <div
-            style={{
-                minHeight: "100vh",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                background: "linear-gradient(135deg, #0f766e 0%, #134e4a 100%)",
-                padding: 24,
+        <ConfigProvider
+            theme={{
+                algorithm: darkMode ? theme.darkAlgorithm : theme.defaultAlgorithm,
+                token: {
+                    colorPrimary: "#10b981",
+                    borderRadius: 0,
+                    fontFamily: MONO,
+                    colorBgContainer: light ? "#ffffff" : "#0e131b",
+                    colorBorder: light ? "rgba(15, 23, 42, 0.16)" : "rgba(255, 255, 255, 0.14)",
+                },
             }}
         >
-            <Card style={{ width: "100%", maxWidth: 440, borderRadius: 12 }}>
-                <Title level={3} style={{ marginBottom: 4 }}>
-                    Daftar toko
-                </Title>
-                <Paragraph type="secondary">
-                    Trial 14 hari — Virtual Office kosong, rekrut agen setelah verifikasi email.
-                </Paragraph>
-                {error && <Alert type="error" message={error} style={{ marginBottom: 16 }} showIcon />}
-                {captchaError && (
-                    <Alert type="warning" message={captchaError} style={{ marginBottom: 16 }} showIcon />
-                )}
-                {success && (
-                    <Alert type="success" message={success} style={{ marginBottom: 16 }} showIcon />
-                )}
-                <Form layout="vertical" onFinish={onFinish} disabled={loading}>
-                    <Form.Item
-                        name="storeName"
-                        label="Nama toko"
-                        rules={[{ required: true, min: 2, message: "Nama toko wajib" }]}
-                    >
-                        <Input prefix={<ShopOutlined />} placeholder="Warung Bahagia" />
-                    </Form.Item>
-                    <Form.Item name="ownerName" label="Nama pemilik">
-                        <Input prefix={<UserOutlined />} placeholder="Optional" />
-                    </Form.Item>
-                    <Form.Item
-                        name="email"
-                        label="Email"
-                        rules={[{ required: true, type: "email" }]}
-                    >
-                        <Input prefix={<MailOutlined />} placeholder="owner@example.com" />
-                    </Form.Item>
-                    <Form.Item
-                        name="password"
-                        label="Password"
-                        rules={[{ required: true, min: 8, message: "Minimal 8 karakter" }]}
-                    >
-                        <Input.Password prefix={<LockOutlined />} />
-                    </Form.Item>
-                    {captchaMode === "turnstile" && <div ref={turnstileRef} style={{ marginBottom: 16 }} />}
-                    <Form.Item>
-                        <Button type="primary" htmlType="submit" block loading={loading}>
-                            Buat akun trial
-                        </Button>
-                    </Form.Item>
-                </Form>
-                <Text type="secondary">
-                    Sudah punya akun? <Link href="/login">Masuk</Link>
-                </Text>
-                {loading && (
-                    <div style={{ textAlign: "center", marginTop: 12 }}>
-                        <Spin />
+            <div
+                className="flex h-screen w-screen flex-col overflow-hidden font-mono select-none"
+                style={{
+                    background: vo.canvas,
+                    color: vo.text,
+                    fontFamily: MONO,
+                }}
+            >
+                <header
+                    style={{
+                        height: 36,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        padding: "0 12px",
+                        borderBottom: `1px solid ${vo.border}`,
+                        background: light ? "rgba(255, 255, 255, 0.94)" : "rgba(11, 14, 19, 0.95)",
+                        fontSize: 10,
+                        letterSpacing: "0.14em",
+                        flexShrink: 0,
+                    }}
+                >
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <img
+                            src="/logo.png"
+                            alt="Nusantarasoft"
+                            className="h-5 w-5 shrink-0 object-contain"
+                        />
+                        <span style={{ fontWeight: 700, letterSpacing: "0.22em", color: vo.text }}>
+                            NUSANTARASOFT
+                        </span>
+                        <span style={{ color: "#10b981", fontSize: 9.5 }}>· PARTNER ONBOARDING</span>
                     </div>
-                )}
-            </Card>
-        </div>
+
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <Link
+                            href="/login"
+                            style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                height: 22,
+                                padding: "0 8px",
+                                border: `1px solid ${vo.border}`,
+                                fontSize: 9.5,
+                                color: vo.textMuted,
+                                textDecoration: "none",
+                            }}
+                        >
+                            sign in
+                        </Link>
+                        <AnimatedThemeToggler
+                            isDark={darkMode}
+                            onThemeChange={(next) => setDarkMode(next)}
+                            size={13}
+                            className="!p-0 flex h-[22px] w-[22px] items-center justify-center !rounded-none border border-white/15 text-slate-300 transition hover:border-white/35 hover:text-white"
+                        />
+                    </div>
+                </header>
+
+                <div
+                    className="flex min-h-0 flex-1 items-center justify-center overflow-y-auto"
+                    style={{ padding: 8 }}
+                >
+                    <div
+                        style={{
+                            width: "100%",
+                            maxWidth: 440,
+                            background: vo.surface,
+                            border: `1px solid ${vo.border}`,
+                            borderTop: "2px solid #10b981",
+                            padding: 12,
+                        }}
+                    >
+                        <div
+                            style={{
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "space-between",
+                                paddingBottom: 8,
+                                borderBottom: `1px solid ${vo.borderSubtle}`,
+                                marginBottom: 10,
+                            }}
+                        >
+                            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                <Handshake className="h-4 w-4" style={{ color: "#10b981" }} />
+                                <span
+                                    style={{
+                                        fontSize: 11,
+                                        fontWeight: 800,
+                                        letterSpacing: "0.14em",
+                                        textTransform: "uppercase",
+                                    }}
+                                >
+                                    REGISTER PARTNER STORE
+                                </span>
+                            </div>
+                            <span
+                                style={{
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: 4,
+                                    fontSize: 8.5,
+                                    fontWeight: 700,
+                                    padding: "1px 5px",
+                                    border: "1px solid rgba(16, 185, 129, 0.45)",
+                                    background: "rgba(16, 185, 129, 0.12)",
+                                    color: "#10b981",
+                                }}
+                            >
+                                <ShieldCheck className="h-3 w-3" />
+                                <span>14-DAY TRIAL</span>
+                            </span>
+                        </div>
+
+                        <div style={{ fontSize: 10, color: vo.textMuted, marginBottom: 10 }}>
+                            Provision an isolated Partner & AI Studio workspace with WhatsApp Kasir and 3D Virtual HQ.
+                        </div>
+
+                        {error && (
+                            <Alert
+                                type="error"
+                                message={error}
+                                style={{ marginBottom: 10, borderRadius: 0, fontSize: 11, padding: "6px 10px" }}
+                                showIcon
+                            />
+                        )}
+                        {captchaError && (
+                            <Alert
+                                type="warning"
+                                message={captchaError}
+                                style={{ marginBottom: 10, borderRadius: 0, fontSize: 11, padding: "6px 10px" }}
+                                showIcon
+                            />
+                        )}
+                        {success && (
+                            <Alert
+                                type="success"
+                                message={success}
+                                style={{ marginBottom: 10, borderRadius: 0, fontSize: 11, padding: "6px 10px" }}
+                                showIcon
+                            />
+                        )}
+
+                        <Form layout="vertical" size="middle" onFinish={onFinish} disabled={loading}>
+                            <Form.Item
+                                name="storeName"
+                                label={
+                                    <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: vo.textMuted }}>
+                                        Partner / Store Name
+                                    </span>
+                                }
+                                style={{ marginBottom: 8 }}
+                                rules={[{ required: true, min: 2, message: "Store name is required" }]}
+                            >
+                                <Input
+                                    prefix={<ShopOutlined style={{ color: vo.textDim }} />}
+                                    placeholder="Nusantara Kopi & Roastery"
+                                    style={{ borderRadius: 0, fontSize: 12, height: 32 }}
+                                />
+                            </Form.Item>
+
+                            <Form.Item
+                                name="ownerName"
+                                label={
+                                    <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: vo.textMuted }}>
+                                        Owner Name
+                                    </span>
+                                }
+                                style={{ marginBottom: 8 }}
+                            >
+                                <Input
+                                    prefix={<UserOutlined style={{ color: vo.textDim }} />}
+                                    placeholder="Optional"
+                                    style={{ borderRadius: 0, fontSize: 12, height: 32 }}
+                                />
+                            </Form.Item>
+
+                            <Form.Item
+                                name="email"
+                                label={
+                                    <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: vo.textMuted }}>
+                                        Email
+                                    </span>
+                                }
+                                style={{ marginBottom: 8 }}
+                                rules={[{ required: true, type: "email", message: "Valid email is required" }]}
+                            >
+                                <Input
+                                    prefix={<MailOutlined style={{ color: vo.textDim }} />}
+                                    placeholder="owner@partner.id"
+                                    style={{ borderRadius: 0, fontSize: 12, height: 32 }}
+                                />
+                            </Form.Item>
+
+                            <Form.Item
+                                name="password"
+                                label={
+                                    <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: vo.textMuted }}>
+                                        Password
+                                    </span>
+                                }
+                                style={{ marginBottom: 10 }}
+                                rules={[{ required: true, min: 8, message: "Minimum 8 characters" }]}
+                            >
+                                <Input.Password
+                                    prefix={<LockOutlined style={{ color: vo.textDim }} />}
+                                    placeholder="Minimum 8 characters"
+                                    style={{ borderRadius: 0, fontSize: 12, height: 32 }}
+                                />
+                            </Form.Item>
+
+                            {captchaMode === "turnstile" && <div ref={turnstileRef} style={{ marginBottom: 10 }} />}
+
+                            <Form.Item style={{ marginBottom: 8 }}>
+                                <Button
+                                    type="primary"
+                                    htmlType="submit"
+                                    block
+                                    loading={loading}
+                                    icon={<ArrowRightOutlined />}
+                                    iconPosition="end"
+                                    style={{
+                                        height: 34,
+                                        borderRadius: 0,
+                                        fontWeight: 800,
+                                        fontSize: 11,
+                                        letterSpacing: "0.16em",
+                                        textTransform: "uppercase",
+                                    }}
+                                >
+                                    Create Partner Trial
+                                </Button>
+                            </Form.Item>
+                        </Form>
+
+                        <div
+                            style={{
+                                paddingTop: 8,
+                                borderTop: `1px solid ${vo.borderSubtle}`,
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "space-between",
+                                fontSize: 9.5,
+                                color: vo.textMuted,
+                            }}
+                        >
+                            <span>Already have an operator account?</span>
+                            <Link
+                                href="/login"
+                                style={{
+                                    color: ORANGE,
+                                    fontWeight: 700,
+                                    letterSpacing: "0.08em",
+                                    textTransform: "uppercase",
+                                    textDecoration: "none",
+                                }}
+                            >
+                                Sign In →
+                            </Link>
+                        </div>
+
+                        {loading && (
+                            <div style={{ textAlign: "center", marginTop: 8 }}>
+                                <Spin size="small" />
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </ConfigProvider>
     );
 }
