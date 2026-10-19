@@ -6,7 +6,7 @@ This repository deploys **three** HTTP services via [`cloudbuild.yaml`](../cloud
 
 **Out of scope:** `juragan-landing` / `landing-page/` is **not** deployed to Cloud Run (Akbar decision).
 
-Hermes / WhatsApp, Supabase (Kong), and S3 stay on the **VPS nusantarasoft**. Cloud Run only receives public URLs + secrets that point at that VPS. Do not provision GCP replacements for those deps in v1.
+Hermes / WhatsApp, Supabase (Kong), and S3 stay on the **VPS nusantarasoft**. Cloud Run only receives public URLs + Secret Manager refs that point at that VPS. Do not provision GCP replacements for those deps in v1.
 
 ## Architecture on Cloud Run
 
@@ -14,7 +14,7 @@ Hermes / WhatsApp, Supabase (Kong), and S3 stay on the **VPS nusantarasoft**. Cl
                     [VPS nusantarasoft]
                  Supabase/Kong · S3 · Hermes
                            │
-                           ▼ (env URLs + secrets)
+                           ▼ (env URLs + Secret Manager)
 GitHub / local ──► Cloud Build (cloudbuild.yaml) ──► Artifact Registry
                                                          │
                     ┌────────────────────────────────────┼────────┐
@@ -41,44 +41,101 @@ Default substitution `_AR_REPO=nusantarasoft` keeps the **legacy** Artifact Regi
 
 ---
 
-## Secrets (prefer Secret Manager)
+## Secrets (Secret Manager + `--set-secrets`)
 
-Do **not** put service-role keys, S3 credentials, or webhook HMAC in Cloud Build substitution variables (they show in build history).
+Do **not** put service-role keys, S3 credentials, anon keys, or webhook HMAC in Cloud Build substitution variables (they show in build history).
 
-Suggested secret names (create in project `juragan-aibuilder-cup`):
+### Exact secret ids (must match `cloudbuild.yaml`)
 
-| Secret Manager name | Injected env | Services |
-|---------------------|--------------|----------|
-| `supabase-anon-key` | `SUPABASE_ANON_KEY` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` | API (+ FE bake if needed) |
-| `supabase-service-key` | `SUPABASE_SERVICE_KEY` | `juragan-api` |
-| `s3-access-key` | `S3_ACCESS_KEY` | `juragan-api` |
-| `s3-secret-key` | `S3_SECRET_KEY` | `juragan-api` |
-| `whatsapp-webhook-hmac` | `WHATSAPP_WEBHOOK_HMAC_KEY` | API / Hermes bridge (VPS side often owns this) |
+| Secret Manager id | Injected env var(s) | Used by |
+|-------------------|---------------------|---------|
+| `supabase-anon-key` | `SUPABASE_ANON_KEY` (api); `NEXT_PUBLIC_SUPABASE_ANON_KEY` (admin + showcase bake + runtime) | all three |
+| `supabase-service-key` | `SUPABASE_SERVICE_KEY` | `juragan-api`, `juragan-showcase` |
+| `s3-access-key` | `S3_ACCESS_KEY` | all three |
+| `s3-secret-key` | `S3_SECRET_KEY` | all three |
+| `whatsapp-webhook-hmac-key` | `WHATSAPP_WEBHOOK_HMAC_KEY` | `juragan-api` only (optional) |
 
-Example create + attach:
+Fill values from the **live VPS / dashboards** — do not invent secrets.
+
+### Ops: create secrets (Akbar)
 
 ```bash
-# Create (pipe real value once; never commit it)
+PROJECT=juragan-aibuilder-cup
+# Values from VPS — paste once; never commit.
+printf '%s' "$SUPABASE_ANON_KEY" | gcloud secrets create supabase-anon-key \
+  --project="$PROJECT" --replication-policy=automatic --data-file=-
 printf '%s' "$SUPABASE_SERVICE_KEY" | gcloud secrets create supabase-service-key \
-  --project=juragan-aibuilder-cup --data-file=-
+  --project="$PROJECT" --replication-policy=automatic --data-file=-
+printf '%s' "$S3_ACCESS_KEY" | gcloud secrets create s3-access-key \
+  --project="$PROJECT" --replication-policy=automatic --data-file=-
+printf '%s' "$S3_SECRET_KEY" | gcloud secrets create s3-secret-key \
+  --project="$PROJECT" --replication-policy=automatic --data-file=-
 
-# On deploy (extend cloudbuild deploy-api step when ready):
-#   --set-secrets=SUPABASE_SERVICE_KEY=supabase-service-key:latest,\
-#     S3_ACCESS_KEY=s3-access-key:latest,S3_SECRET_KEY=s3-secret-key:latest
+# Optional WA HMAC (Hermes bridge):
+printf '%s' "$WHATSAPP_WEBHOOK_HMAC_KEY" | gcloud secrets create whatsapp-webhook-hmac-key \
+  --project="$PROJECT" --replication-policy=automatic --data-file=-
+
+# Add a new version later (secret already exists):
+# printf '%s' "$NEW_VALUE" | gcloud secrets versions add SECRET_ID --data-file=-
 ```
 
-Non-secret URLs (Supabase/Kong host, S3 endpoint, Hermes base URL) may stay as substitutions — point them at the **VPS**. Template: [`.env.cloudrun.example`](../.env.cloudrun.example).
+If a secret already exists, use `gcloud secrets versions add <id> --data-file=-` instead of `create`.
+
+### Ops: IAM (Cloud Build + Cloud Run)
+
+Cloud Build needs **Secret Manager Secret Accessor** to bake the anon key and to deploy with `--set-secrets`. Cloud Run runtime SAs also need accessor on the secrets they mount.
+
+```bash
+PROJECT=juragan-aibuilder-cup
+PROJECT_NUMBER=$(gcloud projects describe "$PROJECT" --format='value(projectNumber)')
+CB_SA="${PROJECT_NUMBER}@cloudbuild.gserviceaccount.com"
+# Default Compute SA used by Cloud Run unless customized:
+RUN_SA="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
+
+for SECRET in supabase-anon-key supabase-service-key s3-access-key s3-secret-key; do
+  gcloud secrets add-iam-policy-binding "$SECRET" --project="$PROJECT" \
+    --member="serviceAccount:${CB_SA}" --role="roles/secretmanager.secretAccessor"
+  gcloud secrets add-iam-policy-binding "$SECRET" --project="$PROJECT" \
+    --member="serviceAccount:${RUN_SA}" --role="roles/secretmanager.secretAccessor"
+done
+# If using optional WA HMAC, repeat for whatsapp-webhook-hmac-key.
+```
+
+Also grant the Cloud Build SA **Cloud Run Admin** + **Service Account User** (Cloud Build → Settings).
+
+### How `cloudbuild.yaml` wires them
+
+- **Runtime:** each `gcloud run deploy` uses `--set-secrets=ENV=secret-id:latest` (revision update, migration-safe).
+- **Build (Next.js):** `availableSecrets` exposes `supabase-anon-key` as `SM_SUPABASE_ANON_KEY` for admin/showcase `--build-arg`.
+- **Optional WA:** set substitution `_SECRET_WA_HMAC=whatsapp-webhook-hmac-key` on submit to attach HMAC on `juragan-api`.
+
+### Non-secret env (URLs / names — substitutions OK)
+
+| Var | Service | Notes |
+|-----|---------|-------|
+| `SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_URL` | api / FE | VPS Kong or public Supabase URL |
+| `S3_ENDPOINT` / `NEXT_PUBLIC_S3_*` | all | VPS MinIO/S3 endpoint |
+| `S3_BUCKET` / `S3_REGION` | all | bucket + region names |
+| `HERMES_BASE_URL` | api | Hermes on VPS |
+| `NEXT_PUBLIC_GRAPHQL_URL` / `GRAPHQL_API_URL` | admin | filled from `juragan-api` URL after deploy |
+| `NEXT_PUBLIC_ADMIN_URL` | showcase | filled from `juragan` URL after deploy |
+
+Template: [`.env.cloudrun.example`](../.env.cloudrun.example).
 
 ---
 
 ## Option A: Manual Cloud Build submit (recommended for v1)
 
+**Before first deploy:** create the four required secrets + IAM above.
+
 ```bash
-# From repo root — after filling VPS URLs (not inventing GCP deps)
+# From repo root — VPS URLs only (no keys on the CLI)
 export SUPABASE_URL="https://<vps-or-supabase-public>"
-export NEXT_PUBLIC_SUPABASE_ANON_KEY="<anon>"   # or use Secret Manager
 export S3_ENDPOINT="https://<vps-s3>"
+export S3_BUCKET="cms-media"
 export HERMES_BASE_URL="https://<vps-hermes>"
+# Optional WA HMAC on api:
+# export SECRET_WA_HMAC=whatsapp-webhook-hmac-key
 
 ./scripts/deploy-cloudrun.sh juragan-aibuilder-cup asia-southeast2
 ```
@@ -90,17 +147,17 @@ PowerShell:
   -ProjectId "juragan-aibuilder-cup" `
   -Region "asia-southeast2" `
   -SupabaseUrl "https://<vps-or-supabase-public>" `
-  -SupabaseAnonKey "<anon>" `
   -S3Endpoint "https://<vps-s3>" `
   -HermesBaseUrl "https://<vps-hermes>"
 ```
 
-Or:
+Or raw submit (URLs only — keys already in Secret Manager):
 
 ```bash
 gcloud builds submit --config=cloudbuild.yaml \
   --project=juragan-aibuilder-cup \
-  --substitutions=_REGION=asia-southeast2,_SUPABASE_URL=…,_NEXT_PUBLIC_SUPABASE_URL=…,_S3_ENDPOINT=…,_HERMES_BASE_URL=…
+  --substitutions=_REGION=asia-southeast2,_SUPABASE_URL=https://…,_NEXT_PUBLIC_SUPABASE_URL=https://…,_S3_ENDPOINT=https://…,_S3_BUCKET=cms-media,_HERMES_BASE_URL=https://…
+# Optional: ,_SECRET_WA_HMAC=whatsapp-webhook-hmac-key
 ```
 
 ---
@@ -114,9 +171,10 @@ gcloud builds submit --config=cloudbuild.yaml \
      --location=asia-southeast2 \
      --project=juragan-aibuilder-cup
    ```
-2. Grant Cloud Build SA **Cloud Run Admin** + **Service Account User** (+ Secret Manager accessor if using `--set-secrets`).
-3. Create a trigger on branch `juragan-aibuilder-cup` (or agreed branch) → config file `cloudbuild.yaml`.
-4. Substitutions: `_REGION`, `_AR_REPO`, VPS URL placeholders — **not** plaintext service keys.
+2. Create secrets + IAM (section above).
+3. Grant Cloud Build SA **Cloud Run Admin** + **Service Account User** + Secret Accessor.
+4. Create a trigger on branch `juragan-aibuilder-cup` (or agreed branch) → config file `cloudbuild.yaml`.
+5. Substitutions: `_REGION`, `_AR_REPO`, VPS **URL** placeholders only — **never** plaintext keys.
 
 ---
 
@@ -124,15 +182,15 @@ gcloud builds submit --config=cloudbuild.yaml \
 
 In **Cloud Run** → open the **existing** service → **Edit & deploy new revision** (do not delete the service):
 
-1. **`juragan-api`**: context `middleware/Dockerfile`, port `4001`, env pointing at VPS Supabase/S3/Hermes; prefer `--set-secrets` for keys; smoke `GET /health`.
-2. **`juragan`**: context `admin/Dockerfile`, port `3000`, `GRAPHQL_API_URL=https://<juragan-api>.run.app/graphql`. Runtime GraphQL proxy: `admin/src/app/api/graphql/route.ts`.
-3. **`juragan-showcase`**: context `brochure-gallery/Dockerfile`, port `3000`, admin public URL (+ optional external landing URL if used).
+1. **`juragan-api`**: context `middleware/Dockerfile`, port `4001`, env URLs at VPS; **References → Secret** for the four required secrets (+ optional WA HMAC); smoke `GET /health`.
+2. **`juragan`**: context `admin/Dockerfile`, port `3000`, `GRAPHQL_API_URL=https://<juragan-api>.run.app/graphql`; mount anon + S3 secrets. Runtime GraphQL proxy: `admin/src/app/api/graphql/route.ts`.
+3. **`juragan-showcase`**: context `brochure-gallery/Dockerfile`, port `3000`, admin public URL; mount anon + service + S3 secrets.
 
 Do **not** create a `juragan-landing` Cloud Run service for v1.
 
 ---
 
-## Smoke checklist (after a real deploy — not part of repo-align PRs)
+## Smoke checklist (after a real deploy — not part of repo config PRs)
 
 1. `curl -sS https://<juragan-api>…/health`
 2. Open `juragan` and `juragan-showcase` `*.run.app`

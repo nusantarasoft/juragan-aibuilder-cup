@@ -13,16 +13,22 @@
 # Deps (Supabase, S3, Hermes, Kong) stay on VPS nusantarasoft — point env at
 # those public URLs; do not provision GCP replacements in this pipeline.
 #
-# Secrets: prefer Secret Manager + --set-secrets (see docs/deploy-cloud-run.md).
-# Substitutions below use placeholders only — never put real keys in trigger
-# history. Example (after creating secrets):
-#   --set-secrets=SUPABASE_SERVICE_KEY=supabase-service-key:latest,\
-#     S3_ACCESS_KEY=s3-access-key:latest,S3_SECRET_KEY=s3-secret-key:latest
+# Secrets (GCP Secret Manager — create before first deploy; do not invent values):
+#   supabase-anon-key          → SUPABASE_ANON_KEY / NEXT_PUBLIC_SUPABASE_ANON_KEY
+#   supabase-service-key       → SUPABASE_SERVICE_KEY
+#   s3-access-key              → S3_ACCESS_KEY
+#   s3-secret-key              → S3_SECRET_KEY
+#   whatsapp-webhook-hmac-key  → WHATSAPP_WEBHOOK_HMAC_KEY (optional; set _SECRET_WA_HMAC)
+#
+# Runtime inject via --set-secrets. Non-secret URLs stay --set-env-vars
+# (SUPABASE_URL, S3_ENDPOINT, S3_BUCKET, S3_REGION, HERMES_BASE_URL, …).
+# Next.js bake: anon key fetched from Secret Manager during image build
+# (availableSecrets), never as a Cloud Build substitution.
 #
 # Manual submit (no GitHub→GCP auto-deploy required for v1):
 #   gcloud builds submit --config=cloudbuild.yaml \
 #     --project=juragan-aibuilder-cup \
-#     --substitutions=_REGION=asia-southeast2,_SUPABASE_URL=https://…,_NEXT_PUBLIC_SUPABASE_URL=https://…
+#     --substitutions=_REGION=asia-southeast2,_SUPABASE_URL=https://…,_NEXT_PUBLIC_SUPABASE_URL=https://…,_S3_ENDPOINT=https://…
 #
 # Artifact Registry: default repo name remains `nusantarasoft` (legacy brand).
 # Image paths stay folder-based (…/middleware, …/admin, …/brochure-gallery).
@@ -61,9 +67,13 @@ steps:
       - '-c'
       - |
         set -euo pipefail
-        # Sensitive keys: prefer --set-secrets over plaintext substitutions
-        # (SUPABASE_SERVICE_KEY, S3_ACCESS_KEY, S3_SECRET_KEY). Placeholders
-        # below are for non-secret URLs / public anon key wiring only.
+        SECRETS="SUPABASE_ANON_KEY=${_SECRET_SUPABASE_ANON}:latest"
+        SECRETS="$${SECRETS},SUPABASE_SERVICE_KEY=${_SECRET_SUPABASE_SERVICE}:latest"
+        SECRETS="$${SECRETS},S3_ACCESS_KEY=${_SECRET_S3_ACCESS}:latest"
+        SECRETS="$${SECRETS},S3_SECRET_KEY=${_SECRET_S3_SECRET}:latest"
+        if [ -n "${_SECRET_WA_HMAC}" ]; then
+          SECRETS="$${SECRETS},WHATSAPP_WEBHOOK_HMAC_KEY=${_SECRET_WA_HMAC}:latest"
+        fi
         gcloud run deploy "${_API_SERVICE}" \
           --image="${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/middleware:${_IMAGE_TAG}" \
           --region="${_REGION}" \
@@ -74,7 +84,8 @@ steps:
           --min-instances=0 \
           --max-instances=10 \
           --allow-unauthenticated \
-          --set-env-vars="NODE_ENV=production,SUPABASE_URL=${_SUPABASE_URL},SUPABASE_ANON_KEY=${_NEXT_PUBLIC_SUPABASE_ANON_KEY},S3_ENDPOINT=${_S3_ENDPOINT},S3_BUCKET=${_S3_BUCKET},HERMES_BASE_URL=${_HERMES_BASE_URL}"
+          --set-env-vars="NODE_ENV=production,SUPABASE_URL=${_SUPABASE_URL},S3_ENDPOINT=${_S3_ENDPOINT},S3_BUCKET=${_S3_BUCKET},S3_REGION=${_S3_REGION},HERMES_BASE_URL=${_HERMES_BASE_URL}" \
+          --set-secrets="$${SECRETS}"
 
         API_URL=$$(gcloud run services describe "${_API_SERVICE}" --region="${_REGION}" --format='value(status.url)')
         echo "juragan-api deployed at: $${API_URL}"
@@ -86,22 +97,23 @@ steps:
         echo "$${API_URL}" > /workspace/api_url.txt
 
   # ───────────────────────────────────────────────────────────────────────────
-  # 3. Build & Push juragan (admin Next.js) — needs GraphQL URL from API
+  # 3. Build & Push juragan (admin Next.js) — GraphQL URL + anon from SM
   # ───────────────────────────────────────────────────────────────────────────
   - id: 'build-admin'
     name: 'gcr.io/cloud-builders/docker'
     waitFor: ['deploy-api']
     entrypoint: 'bash'
+    secretEnv: ['SM_SUPABASE_ANON_KEY']
     args:
       - '-c'
       - |
         set -euo pipefail
         GRAPHQL_URL=$$(cat /workspace/graphql_url.txt)
-        echo "Building admin with NEXT_PUBLIC_GRAPHQL_URL=$${GRAPHQL_URL}"
+        echo "Building admin with NEXT_PUBLIC_GRAPHQL_URL=$${GRAPHQL_URL} (anon key from Secret Manager)"
         docker build \
           --build-arg NEXT_PUBLIC_GRAPHQL_URL="$${GRAPHQL_URL}" \
           --build-arg NEXT_PUBLIC_SUPABASE_URL="${_NEXT_PUBLIC_SUPABASE_URL}" \
-          --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY="${_NEXT_PUBLIC_SUPABASE_ANON_KEY}" \
+          --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY="$${SM_SUPABASE_ANON_KEY}" \
           --build-arg NEXT_PUBLIC_S3_ENDPOINT="${_S3_ENDPOINT}" \
           --build-arg NEXT_PUBLIC_S3_BUCKET="${_S3_BUCKET}" \
           -t "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/admin:${_IMAGE_TAG}" \
@@ -128,6 +140,9 @@ steps:
       - |
         set -euo pipefail
         GRAPHQL_URL=$$(cat /workspace/graphql_url.txt)
+        SECRETS="NEXT_PUBLIC_SUPABASE_ANON_KEY=${_SECRET_SUPABASE_ANON}:latest"
+        SECRETS="$${SECRETS},S3_ACCESS_KEY=${_SECRET_S3_ACCESS}:latest"
+        SECRETS="$${SECRETS},S3_SECRET_KEY=${_SECRET_S3_SECRET}:latest"
         gcloud run deploy "${_ADMIN_SERVICE}" \
           --image="${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/admin:${_IMAGE_TAG}" \
           --region="${_REGION}" \
@@ -138,28 +153,30 @@ steps:
           --min-instances=0 \
           --max-instances=10 \
           --allow-unauthenticated \
-          --set-env-vars="NODE_ENV=production,HOSTNAME=0.0.0.0,NEXT_PUBLIC_GRAPHQL_URL=$${GRAPHQL_URL},GRAPHQL_API_URL=$${GRAPHQL_URL},NEXT_PUBLIC_SUPABASE_URL=${_NEXT_PUBLIC_SUPABASE_URL},NEXT_PUBLIC_SUPABASE_ANON_KEY=${_NEXT_PUBLIC_SUPABASE_ANON_KEY},NEXT_PUBLIC_S3_ENDPOINT=${_S3_ENDPOINT},NEXT_PUBLIC_S3_BUCKET=${_S3_BUCKET}"
+          --set-env-vars="NODE_ENV=production,HOSTNAME=0.0.0.0,NEXT_PUBLIC_GRAPHQL_URL=$${GRAPHQL_URL},GRAPHQL_API_URL=$${GRAPHQL_URL},NEXT_PUBLIC_SUPABASE_URL=${_NEXT_PUBLIC_SUPABASE_URL},NEXT_PUBLIC_S3_ENDPOINT=${_S3_ENDPOINT},NEXT_PUBLIC_S3_BUCKET=${_S3_BUCKET},S3_ENDPOINT=${_S3_ENDPOINT},S3_BUCKET=${_S3_BUCKET},S3_REGION=${_S3_REGION}" \
+          --set-secrets="$${SECRETS}"
 
         ADMIN_URL=$$(gcloud run services describe "${_ADMIN_SERVICE}" --region="${_REGION}" --format='value(status.url)')
         echo "juragan deployed at: $${ADMIN_URL}"
         echo "$${ADMIN_URL}" > /workspace/admin_url.txt
 
   # ───────────────────────────────────────────────────────────────────────────
-  # 5. Build & Push juragan-showcase (brochure-gallery) — needs admin URL
+  # 5. Build & Push juragan-showcase — admin URL + anon from SM
   # ───────────────────────────────────────────────────────────────────────────
   - id: 'build-showcase'
     name: 'gcr.io/cloud-builders/docker'
     waitFor: ['deploy-admin']
     entrypoint: 'bash'
+    secretEnv: ['SM_SUPABASE_ANON_KEY']
     args:
       - '-c'
       - |
         set -euo pipefail
         ADMIN_URL=$$(cat /workspace/admin_url.txt)
-        echo "Building showcase with ADMIN_URL=$${ADMIN_URL}"
+        echo "Building showcase with ADMIN_URL=$${ADMIN_URL} (anon key from Secret Manager)"
         docker build \
           --build-arg NEXT_PUBLIC_SUPABASE_URL="${_NEXT_PUBLIC_SUPABASE_URL}" \
-          --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY="${_NEXT_PUBLIC_SUPABASE_ANON_KEY}" \
+          --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY="$${SM_SUPABASE_ANON_KEY}" \
           --build-arg NEXT_PUBLIC_S3_ENDPOINT="${_S3_ENDPOINT}" \
           --build-arg NEXT_PUBLIC_S3_BUCKET="${_S3_BUCKET}" \
           --build-arg NEXT_PUBLIC_ADMIN_URL="$${ADMIN_URL}" \
@@ -188,6 +205,10 @@ steps:
       - |
         set -euo pipefail
         ADMIN_URL=$$(cat /workspace/admin_url.txt)
+        SECRETS="NEXT_PUBLIC_SUPABASE_ANON_KEY=${_SECRET_SUPABASE_ANON}:latest"
+        SECRETS="$${SECRETS},SUPABASE_SERVICE_KEY=${_SECRET_SUPABASE_SERVICE}:latest"
+        SECRETS="$${SECRETS},S3_ACCESS_KEY=${_SECRET_S3_ACCESS}:latest"
+        SECRETS="$${SECRETS},S3_SECRET_KEY=${_SECRET_S3_SECRET}:latest"
         gcloud run deploy "${_SHOWCASE_SERVICE}" \
           --image="${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/brochure-gallery:${_IMAGE_TAG}" \
           --region="${_REGION}" \
@@ -198,7 +219,13 @@ steps:
           --min-instances=0 \
           --max-instances=10 \
           --allow-unauthenticated \
-          --set-env-vars="NODE_ENV=production,HOSTNAME=0.0.0.0,NEXT_PUBLIC_SUPABASE_URL=${_NEXT_PUBLIC_SUPABASE_URL},NEXT_PUBLIC_SUPABASE_ANON_KEY=${_NEXT_PUBLIC_SUPABASE_ANON_KEY},NEXT_PUBLIC_S3_ENDPOINT=${_S3_ENDPOINT},NEXT_PUBLIC_S3_BUCKET=${_S3_BUCKET},NEXT_PUBLIC_ADMIN_URL=$${ADMIN_URL},NEXT_PUBLIC_LANDING_URL=${_NEXT_PUBLIC_LANDING_URL}"
+          --set-env-vars="NODE_ENV=production,HOSTNAME=0.0.0.0,NEXT_PUBLIC_SUPABASE_URL=${_NEXT_PUBLIC_SUPABASE_URL},NEXT_PUBLIC_S3_ENDPOINT=${_S3_ENDPOINT},NEXT_PUBLIC_S3_BUCKET=${_S3_BUCKET},NEXT_PUBLIC_ADMIN_URL=$${ADMIN_URL},NEXT_PUBLIC_LANDING_URL=${_NEXT_PUBLIC_LANDING_URL},S3_ENDPOINT=${_S3_ENDPOINT},S3_BUCKET=${_S3_BUCKET},S3_REGION=${_S3_REGION}" \
+          --set-secrets="$${SECRETS}"
+
+availableSecrets:
+  secretManager:
+    - versionName: projects/$PROJECT_ID/secrets/supabase-anon-key/versions/latest
+      env: 'SM_SUPABASE_ANON_KEY'
 
 substitutions:
   _REGION: 'asia-southeast2'
@@ -215,11 +242,17 @@ substitutions:
   # Point these at VPS nusantarasoft (or public Supabase/S3 URLs) — not GCP replacements
   _SUPABASE_URL: 'https://your-supabase-or-vps-kong.example'
   _NEXT_PUBLIC_SUPABASE_URL: 'https://your-supabase-or-vps-kong.example'
-  # Public anon key only in substitutions if unavoidable; prefer Secret Manager for service role / S3 keys
-  _NEXT_PUBLIC_SUPABASE_ANON_KEY: 'replace-with-supabase-anon-key'
   _S3_ENDPOINT: 'https://your-vps-s3-or-gcs.example'
   _S3_BUCKET: 'cms-media'
+  _S3_REGION: 'asia-southeast2'
   _HERMES_BASE_URL: 'https://hermes.your-vps.example'
+  # Secret Manager secret *ids* (must match secrets created in GCP — no plaintext values)
+  _SECRET_SUPABASE_ANON: 'supabase-anon-key'
+  _SECRET_SUPABASE_SERVICE: 'supabase-service-key'
+  _SECRET_S3_ACCESS: 's3-access-key'
+  _SECRET_S3_SECRET: 's3-secret-key'
+  # Optional: set to whatsapp-webhook-hmac-key to attach WA HMAC on juragan-api
+  _SECRET_WA_HMAC: ''
 
 options:
   logging: CLOUD_LOGGING_ONLY
