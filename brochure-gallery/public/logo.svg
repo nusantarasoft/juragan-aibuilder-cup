@@ -1,5 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <!-- Outer circle -->
   <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" stroke-width="3"/>
+  <!-- Inner curved swoosh -->
   <path d="M 25 75 Q 25 25 50 25 Q 75 25 75 50" fill="none" stroke="currentColor" stroke-width="3"/>
+  <!-- Letter N with stylized stroke -->
   <path d="M 35 70 L 35 40 Q 40 30 50 45 L 55 55 Q 60 65 65 55 L 65 30" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

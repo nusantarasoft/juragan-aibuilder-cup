@@ -5,6 +5,14 @@ export const metadata: Metadata = {
   title: "Nusantarasoft — Tenant Brochure Showcase",
   description:
     "Interactive tenant brochure image gallery with highlight pins, QR cards, and instant image sharing.",
+  icons: {
+    icon: [
+      { url: "/logo.png", type: "image/png" },
+      { url: "/favicon.ico", sizes: "any" },
+    ],
+    shortcut: "/logo.png",
+    apple: "/apple-icon.png",
+  },
   openGraph: {
     title: "Nusantarasoft — Tenant Brochure Showcase",
     description:

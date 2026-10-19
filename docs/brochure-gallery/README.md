@@ -1,6 +1,6 @@
 # Tenant Brochure Showcase (`brochure-gallery`)
 
-`brochure-gallery` is a standalone Next.js 16 frontend container (`http://localhost:3004`) styled with the Nusantarasoft **Agentic OS (`VO_LIGHT` / `VO_DARK`)** design language. It defaults to **Light Mode** and persists the user's Light/Dark preference in browser `localStorage` (`brochure-gallery-theme`).
+`brochure-gallery` is a standalone Next.js 16 frontend container (`http://localhost:3004`) styled with the Nusantarasoft **Agentic OS (`VO_LIGHT` / `VO_DARK`)** design language and sharing the official `admin` brand logo (`/logo.png`) and favicon (`/favicon.ico`, `icon.png`, `apple-icon.png`). It defaults to **Light Mode** and persists the user's Light/Dark preference in browser `localStorage` (`brochure-gallery-theme`).
 
 ## Surface & Architecture Summary
 

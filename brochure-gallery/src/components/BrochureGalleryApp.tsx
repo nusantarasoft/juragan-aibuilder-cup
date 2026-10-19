@@ -484,16 +484,11 @@ export default function BrochureGalleryApp({
         <div className="mx-auto flex max-w-[1600px] flex-wrap items-center justify-between gap-3">
           {/* Brand Identity */}
           <div className="flex items-center gap-3">
-            <div
-              className="flex h-9 w-9 items-center justify-center border"
-              style={{
-                borderColor: vo.accent,
-                background: vo.selectedBg,
-                color: vo.accent,
-              }}
-            >
-              <Layers className="h-4 w-4" />
-            </div>
+            <img
+              src="/logo.png"
+              alt="Nusantarasoft"
+              className="h-7 w-7 shrink-0 object-contain"
+            />
 
             <div>
               <div className="flex items-center gap-2">
