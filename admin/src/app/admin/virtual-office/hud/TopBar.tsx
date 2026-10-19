@@ -80,7 +80,11 @@ export function TopBar() {
                 </IconButton>
 
                 <div className="flex items-center gap-1.5">
-                    <Hexagon className="h-3.5 w-3.5 shrink-0" color={ORANGE} strokeWidth={2.2} />
+                    <img
+                        src="/logo.png"
+                        alt="Nusantarasoft"
+                        className="h-5 w-5 shrink-0 object-contain"
+                    />
                     <span className="font-semibold tracking-[0.22em] text-white">VIRTUAL OFFICE</span>
                     <span className="hidden text-[9.5px] tracking-normal sm:inline" style={{ color: ORANGE }}>
                         · 3D HQ

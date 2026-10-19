@@ -31,7 +31,11 @@ function LoadingVeil() {
                 visible ? "opacity-100" : "opacity-0",
             )}
         >
-            <Hexagon className="h-8 w-8 animate-pulse" color={ORANGE} strokeWidth={2} />
+            <img
+                src="/logo.png"
+                alt="Nusantarasoft"
+                className="h-12 w-12 animate-pulse object-contain"
+            />
             <div className="text-[11px] uppercase tracking-[0.28em] text-slate-400">ENTERING VIRTUAL OFFICE · AGENTIC OS</div>
         </div>
     );

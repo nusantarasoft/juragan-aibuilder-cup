@@ -54,12 +54,12 @@ interface AnimNodeState {
     z: number;
 }
 
-// Compact 3D Orbit & Ring radii (fits comfortably in a 224x224 transparent corner HUD)
-const RING_MAIN_R = 80;
-const ORB_GLOBE_R = 72;
-const ORB_APP_RING_R = 88;
-const ORB_PULSE_R = 58;
-const ORB_PULSE_Y = -22;
+// Ultra-compact 3D Orbit & Ring radii (fits inside a 140x140 transparent corner HUD)
+const RING_MAIN_R = 54;
+const ORB_GLOBE_R = 48;
+const ORB_APP_RING_R = 58;
+const ORB_PULSE_R = 38;
+const ORB_PULSE_Y = -14;
 
 const PAGE_NODES: OrbPageNode[] = [
     {
@@ -73,7 +73,7 @@ const PAGE_NODES: OrbPageNode[] = [
         angleDeg: -90,
         orbitPos: {
             x: ORB_APP_RING_R * Math.cos(0),
-            y: -16,
+            y: -11,
             z: ORB_APP_RING_R * Math.sin(0),
         },
     },
@@ -88,7 +88,7 @@ const PAGE_NODES: OrbPageNode[] = [
         angleDeg: -90 + 360 / 7,
         orbitPos: {
             x: ORB_APP_RING_R * Math.cos((TAU * 1) / 7),
-            y: 18,
+            y: 12,
             z: ORB_APP_RING_R * Math.sin((TAU * 1) / 7),
         },
     },
@@ -103,7 +103,7 @@ const PAGE_NODES: OrbPageNode[] = [
         angleDeg: -90 + (360 * 2) / 7,
         orbitPos: {
             x: ORB_APP_RING_R * Math.cos((TAU * 2) / 7),
-            y: -22,
+            y: -14,
             z: ORB_APP_RING_R * Math.sin((TAU * 2) / 7),
         },
     },
@@ -118,7 +118,7 @@ const PAGE_NODES: OrbPageNode[] = [
         angleDeg: -90 + (360 * 3) / 7,
         orbitPos: {
             x: ORB_APP_RING_R * Math.cos((TAU * 3) / 7),
-            y: 20,
+            y: 13,
             z: ORB_APP_RING_R * Math.sin((TAU * 3) / 7),
         },
     },
@@ -133,7 +133,7 @@ const PAGE_NODES: OrbPageNode[] = [
         angleDeg: -90 + (360 * 4) / 7,
         orbitPos: {
             x: ORB_APP_RING_R * Math.cos((TAU * 4) / 7),
-            y: -18,
+            y: -12,
             z: ORB_APP_RING_R * Math.sin((TAU * 4) / 7),
         },
     },
@@ -148,7 +148,7 @@ const PAGE_NODES: OrbPageNode[] = [
         angleDeg: -90 + (360 * 5) / 7,
         orbitPos: {
             x: ORB_APP_RING_R * Math.cos((TAU * 5) / 7),
-            y: 22,
+            y: 14,
             z: ORB_APP_RING_R * Math.sin((TAU * 5) / 7),
         },
     },
@@ -163,7 +163,7 @@ const PAGE_NODES: OrbPageNode[] = [
         angleDeg: -90 + (360 * 6) / 7,
         orbitPos: {
             x: ORB_APP_RING_R * Math.cos((TAU * 6) / 7),
-            y: -14,
+            y: -9,
             z: ORB_APP_RING_R * Math.sin((TAU * 6) / 7),
         },
     },
@@ -171,7 +171,7 @@ const PAGE_NODES: OrbPageNode[] = [
 
 /** Deterministic orange particle nebula around the core (from Agentic OS DeckGraph). */
 const CoreCloud = React.memo(function CoreCloud({
-    radius = 34,
+    radius = 23,
     gradientId,
 }: {
     radius?: number;
@@ -180,15 +180,15 @@ const CoreCloud = React.memo(function CoreCloud({
     const layers = useMemo(
         () =>
             [0, 1, 2].map((layer) =>
-                Array.from({ length: 42 }, (_, i) => {
-                    const key = `orb-mini-c${layer}:${i}`;
+                Array.from({ length: 32 }, (_, i) => {
+                    const key = `orb-xs-c${layer}:${i}`;
                     const a = hash01(key, 1) * TAU;
                     const r = radius * Math.pow(hash01(key, 2), 0.75) * (0.35 + (0.65 * (layer + 1)) / 3);
                     return {
                         x: Math.cos(a) * r,
                         y: Math.sin(a) * r,
-                        s: 0.45 + hash01(key, 3) * 0.85,
-                        o: 0.3 + hash01(key, 4) * 0.48,
+                        s: 0.35 + hash01(key, 3) * 0.65,
+                        o: 0.28 + hash01(key, 4) * 0.45,
                         c: CLOUD_COLORS[Math.floor(hash01(key, 5) * CLOUD_COLORS.length)],
                     };
                 }),
@@ -228,7 +228,7 @@ const RingTicks = React.memo(function RingTicks({
     light: boolean;
 }) {
     return (
-        <g pointerEvents="none" opacity={light ? 0.48 : 0.4}>
+        <g pointerEvents="none" opacity={light ? 0.46 : 0.38}>
             <animateTransform
                 attributeName="transform"
                 type="rotate"
@@ -237,9 +237,9 @@ const RingTicks = React.memo(function RingTicks({
                 dur={`${160 + index * 35}s`}
                 repeatCount="indefinite"
             />
-            {Array.from({ length: 72 }, (_, t) => {
-                const a = (t / 72) * TAU;
-                const r2 = r + (t % 6 === 0 ? 4.5 : 2);
+            {Array.from({ length: 60 }, (_, t) => {
+                const a = (t / 60) * TAU;
+                const r2 = r + (t % 5 === 0 ? 3.2 : 1.4);
                 return (
                     <line
                         key={t}
@@ -248,7 +248,7 @@ const RingTicks = React.memo(function RingTicks({
                         x2={Math.cos(a) * r2}
                         y2={Math.sin(a) * r2}
                         stroke={light ? "#475569" : "#94a3b8"}
-                        strokeWidth={0.75}
+                        strokeWidth={0.65}
                     />
                 );
             })}
@@ -273,11 +273,11 @@ function OrbitGlobeDeco({
     const path = (pts: Pt3[]) =>
         pts
             .map((p, i) => {
-                const q = project(p, yaw, tilt, 420);
+                const q = project(p, yaw, tilt, 300);
                 return `${i ? "L" : "M"}${q.x.toFixed(1)},${q.y.toFixed(1)}`;
             })
             .join("");
-    const ring = (fn: (a: number) => Pt3, n = 56) =>
+    const ring = (fn: (a: number) => Pt3, n = 48) =>
         path(Array.from({ length: n + 1 }, (_, i) => fn((i / n) * TAU)));
 
     const meridians = Array.from({ length: 6 }, (_, m) => {
@@ -302,7 +302,7 @@ function OrbitGlobeDeco({
                     d={d}
                     stroke={light ? "#334155" : "#94a3b8"}
                     strokeOpacity={light ? 0.24 : 0.16}
-                    strokeWidth={0.75}
+                    strokeWidth={0.65}
                 />
             ))}
             {parallels.map((d, i) => (
@@ -311,21 +311,21 @@ function OrbitGlobeDeco({
                     d={d}
                     stroke={light ? "#334155" : "#94a3b8"}
                     strokeOpacity={i === 2 ? (light ? 0.34 : 0.24) : light ? 0.18 : 0.12}
-                    strokeWidth={0.75}
+                    strokeWidth={0.65}
                 />
             ))}
             <path
-                d={ring((a) => ({ x: ORB_APP_RING_R * Math.cos(a), y: 0, z: ORB_APP_RING_R * Math.sin(a) }), 72)}
+                d={ring((a) => ({ x: ORB_APP_RING_R * Math.cos(a), y: 0, z: ORB_APP_RING_R * Math.sin(a) }), 60)}
                 stroke={light ? "#475569" : "#cbd5e1"}
                 strokeOpacity={light ? 0.55 : 0.42}
-                strokeWidth={1}
-                strokeDasharray="4 3"
+                strokeWidth={0.85}
+                strokeDasharray="3 2.5"
             />
             <path
                 d={ring((a) => ({ x: ORB_PULSE_R * Math.cos(a), y: ORB_PULSE_Y, z: ORB_PULSE_R * Math.sin(a) }))}
                 stroke="#fb923c"
                 strokeOpacity={light ? 0.6 : 0.5}
-                strokeWidth={0.95}
+                strokeWidth={0.8}
             />
         </g>
     );
@@ -358,18 +358,18 @@ export default function FloatingOrbMenu({ darkMode = true }: { darkMode?: boolea
     // Ambient satellite dots (memory/skill particles in both Rings and 3D Orbit)
     const satellites = useMemo<SatelliteDot[]>(() => {
         const palette = ["#fb923c", "#38bdf8", "#10b981", "#a855f7", "#f59e0b", "#22d3ee"];
-        return Array.from({ length: 22 }, (_, i) => {
-            const key = `sat-mini:${i}`;
-            const ringR = i < 12 ? 42 + hash01(key, 1) * 14 : 92 + hash01(key, 2) * 12;
-            const ang = (i / 22) * TAU + hash01(key, 3) * 0.35;
-            const u = 1 - (2 * (i + 0.5)) / 22;
+        return Array.from({ length: 18 }, (_, i) => {
+            const key = `sat-xs:${i}`;
+            const ringR = i < 10 ? 28 + hash01(key, 1) * 10 : 62 + hash01(key, 2) * 8;
+            const ang = (i / 18) * TAU + hash01(key, 3) * 0.35;
+            const u = 1 - (2 * (i + 0.5)) / 18;
             const rr = Math.sqrt(Math.max(0, 1 - u * u));
             const theta = Math.PI * (1 + Math.sqrt(5)) * i;
             const sphereR = ORB_GLOBE_R * (0.75 + hash01(key, 4) * 0.24);
             return {
                 id: key,
                 color: palette[i % palette.length],
-                size: 1.3 + hash01(key, 5) * 1.1,
+                size: 1.0 + hash01(key, 5) * 0.85,
                 ringX: Math.cos(ang) * ringR,
                 ringY: Math.sin(ang) * ringR,
                 orbitPos: {
@@ -461,8 +461,8 @@ export default function FloatingOrbMenu({ darkMode = true }: { darkMode?: boolea
         if (Math.abs(dx) + Math.abs(dy) > 2) d.moved = true;
         if (!d.moved) return;
 
-        yawRef.current += dx * 0.0085;
-        tiltRef.current = Math.max(-0.3, Math.min(1.05, tiltRef.current + dy * 0.0065));
+        yawRef.current += dx * 0.009;
+        tiltRef.current = Math.max(-0.3, Math.min(1.05, tiltRef.current + dy * 0.007));
         d.cx = e.clientX;
         d.cy = e.clientY;
         setFrameTick((n) => (n + 1) % 1_000_000);
@@ -485,7 +485,7 @@ export default function FloatingOrbMenu({ darkMode = true }: { darkMode?: boolea
             const rx = Math.cos(rad) * RING_MAIN_R;
             const ry = Math.sin(rad) * RING_MAIN_R;
 
-            const q = project(node.orbitPos, yawRef.current, tiltRef.current, 420);
+            const q = project(node.orbitPos, yawRef.current, tiltRef.current, 300);
             const depth = Math.max(0, Math.min(1, (q.z + ORB_APP_RING_R * 1.1) / (ORB_APP_RING_R * 2.2)));
             const orbitScale = q.k;
             const orbitOpacity = 0.42 + 0.58 * depth;
@@ -524,12 +524,12 @@ export default function FloatingOrbMenu({ darkMode = true }: { darkMode?: boolea
             className="font-mono select-none"
             style={{
                 position: "relative",
-                width: 216,
-                height: 216,
+                width: 140,
+                height: 140,
                 fontFamily: MONO,
                 background: "transparent",
                 pointerEvents: "none",
-                opacity: isFocused ? 0.98 : 0.78,
+                opacity: isFocused ? 0.98 : 0.76,
                 transition: "opacity 0.2s ease",
             }}
         >
@@ -538,14 +538,14 @@ export default function FloatingOrbMenu({ darkMode = true }: { darkMode?: boolea
                 <div
                     style={{
                         position: "absolute",
-                        top: -22,
+                        top: -18,
                         left: "50%",
                         transform: "translateX(-50%)",
                         whiteSpace: "nowrap",
-                        padding: "2px 7px",
-                        fontSize: 8.5,
+                        padding: "1.5px 6px",
+                        fontSize: 7.5,
                         fontWeight: 700,
-                        letterSpacing: "0.14em",
+                        letterSpacing: "0.12em",
                         textTransform: "uppercase",
                         background: light ? "rgba(255, 255, 255, 0.88)" : "rgba(11, 14, 19, 0.86)",
                         border: `1px solid ${
@@ -568,13 +568,13 @@ export default function FloatingOrbMenu({ darkMode = true }: { darkMode?: boolea
                     {hoveredNode
                         ? `[${hoveredNode.code}] ${hoveredNode.label}`
                         : mode === "rings"
-                          ? "CLICK CENTER → 3D ORBIT"
-                          : "CLICK CENTER → RINGS"}
+                          ? "CLICK → 3D ORBIT"
+                          : "CLICK → RINGS"}
                 </div>
             )}
 
             <svg
-                viewBox="-115 -115 230 230"
+                viewBox="-78 -78 156 156"
                 className="h-full w-full overflow-visible select-none"
                 style={{
                     background: "transparent",
@@ -583,8 +583,8 @@ export default function FloatingOrbMenu({ darkMode = true }: { darkMode?: boolea
             >
                 <defs>
                     <radialGradient id="orb-transparent-core-glow">
-                        <stop offset="0%" stopColor="#f97316" stopOpacity={light ? "0.22" : "0.28"} />
-                        <stop offset="55%" stopColor="#c2410c" stopOpacity={light ? "0.06" : "0.09"} />
+                        <stop offset="0%" stopColor="#f97316" stopOpacity={light ? "0.2" : "0.26"} />
+                        <stop offset="55%" stopColor="#c2410c" stopOpacity={light ? "0.05" : "0.08"} />
                         <stop offset="100%" stopColor="#7c2d12" stopOpacity="0" />
                     </radialGradient>
                 </defs>
@@ -592,7 +592,7 @@ export default function FloatingOrbMenu({ darkMode = true }: { darkMode?: boolea
                 {/* Invisible drag capture disc ONLY active in 3D Orbit mode for rotating the globe */}
                 {mode === "orbit" && (
                     <circle
-                        r={ORB_APP_RING_R + 12}
+                        r={ORB_APP_RING_R + 8}
                         fill="transparent"
                         className="cursor-move"
                         style={{ pointerEvents: "auto" }}
@@ -606,9 +606,9 @@ export default function FloatingOrbMenu({ darkMode = true }: { darkMode?: boolea
                 {ringsAlpha > 0.02 && (
                     <g opacity={ringsAlpha} pointerEvents="none">
                         {[
-                            { r: 42, strong: false, dash: true },
+                            { r: 28, strong: false, dash: true },
                             { r: RING_MAIN_R, strong: true, dash: false },
-                            { r: 100, strong: false, dash: true },
+                            { r: 67, strong: false, dash: true },
                         ].map((g, i) => (
                             <g key={i}>
                                 <circle
@@ -623,8 +623,8 @@ export default function FloatingOrbMenu({ darkMode = true }: { darkMode?: boolea
                                               ? "rgba(15, 23, 42, 0.14)"
                                               : "rgba(148, 163, 184, 0.14)"
                                     }
-                                    strokeWidth={g.strong ? 1.1 : 0.8}
-                                    strokeDasharray={g.dash ? "2.5 5" : undefined}
+                                    strokeWidth={g.strong ? 0.95 : 0.7}
+                                    strokeDasharray={g.dash ? "2 4" : undefined}
                                 >
                                     {g.dash && (
                                         <animateTransform
@@ -643,11 +643,11 @@ export default function FloatingOrbMenu({ darkMode = true }: { darkMode?: boolea
 
                         {/* Outer segmented tactical bezel arc */}
                         <circle
-                            r={107}
+                            r={72}
                             fill="none"
-                            stroke={light ? "rgba(15, 23, 42, 0.16)" : "rgba(148, 163, 184, 0.15)"}
-                            strokeWidth={2}
-                            strokeDasharray="34 10 3 10"
+                            stroke={light ? "rgba(15, 23, 42, 0.15)" : "rgba(148, 163, 184, 0.14)"}
+                            strokeWidth={1.5}
+                            strokeDasharray="24 8 2 8"
                         >
                             <animateTransform
                                 attributeName="transform"
@@ -670,16 +670,16 @@ export default function FloatingOrbMenu({ darkMode = true }: { darkMode?: boolea
                 />
 
                 {/* 3. CORE ORANGE NEBULA CLOUD */}
-                <CoreCloud radius={34} gradientId="orb-transparent-core-glow" />
+                <CoreCloud radius={23} gradientId="orb-transparent-core-glow" />
 
                 {/* 4. AMBIENT SATELLITE DOTS (Skills & Memory Particles) */}
                 <g pointerEvents="none">
                     {satellites.map((sat) => {
-                        const q = project(sat.orbitPos, yawRef.current, tiltRef.current, 420);
+                        const q = project(sat.orbitPos, yawRef.current, tiltRef.current, 300);
                         const depth = Math.max(0, Math.min(1, (q.z + ORB_GLOBE_R) / (ORB_GLOBE_R * 2)));
                         const x = lerp(sat.ringX, q.x, blend);
                         const y = lerp(sat.ringY, q.y, blend);
-                        const op = lerp(0.5, 0.18 + 0.62 * depth, blend);
+                        const op = lerp(0.48, 0.16 + 0.6 * depth, blend);
                         return (
                             <circle
                                 key={sat.id}
@@ -708,12 +708,12 @@ export default function FloatingOrbMenu({ darkMode = true }: { darkMode?: boolea
                                     d={d}
                                     stroke={node.color}
                                     strokeOpacity={strokeOp}
-                                    strokeWidth={isHovered || isCurrent ? 1.25 : 0.75}
-                                    strokeDasharray={isHovered || isCurrent ? undefined : "2.5 3.5"}
+                                    strokeWidth={isHovered || isCurrent ? 1.1 : 0.65}
+                                    strokeDasharray={isHovered || isCurrent ? undefined : "2 3"}
                                 />
                                 {(isHovered || isCurrent || i % 2 === 0) && (
                                     <circle
-                                        r={isHovered ? 2.3 : 1.7}
+                                        r={isHovered ? 1.8 : 1.3}
                                         fill={node.color}
                                         opacity={p.o * 0.9}
                                     >
@@ -736,7 +736,7 @@ export default function FloatingOrbMenu({ darkMode = true }: { darkMode?: boolea
                     const Icon = node.icon;
                     const isHovered = hoverId === node.id;
                     const isCurrent = activePageId === node.id;
-                    const scale = p.s * (isHovered ? 1.18 : 1);
+                    const scale = p.s * (isHovered ? 1.2 : 1);
 
                     return (
                         <g
@@ -757,20 +757,20 @@ export default function FloatingOrbMenu({ darkMode = true }: { darkMode?: boolea
                             <g transform={`scale(${scale})`}>
                                 {(isCurrent || isHovered) && (
                                     <circle
-                                        r={14.5}
+                                        r={10.5}
                                         fill="none"
                                         stroke={node.color}
-                                        strokeWidth={1.1}
-                                        strokeDasharray={isCurrent ? "2.5 2" : undefined}
+                                        strokeWidth={0.95}
+                                        strokeDasharray={isCurrent ? "2 1.5" : undefined}
                                         strokeOpacity={0.9}
                                     />
                                 )}
                                 {isCurrent && (
                                     <circle
-                                        r={12.5}
+                                        r={9}
                                         fill="none"
                                         stroke={node.color}
-                                        strokeWidth={1.1}
+                                        strokeWidth={0.95}
                                         className="animate-ping"
                                         style={{ transformBox: "fill-box", transformOrigin: "center" }}
                                     />
@@ -778,21 +778,21 @@ export default function FloatingOrbMenu({ darkMode = true }: { darkMode?: boolea
 
                                 {/* Semi-transparent node button disc */}
                                 <circle
-                                    r={11}
+                                    r={8}
                                     fill={light ? "rgba(255, 255, 255, 0.78)" : "rgba(11, 14, 19, 0.74)"}
                                     stroke={node.color}
-                                    strokeWidth={isHovered || isCurrent ? 1.6 : 1.15}
+                                    strokeWidth={isHovered || isCurrent ? 1.3 : 1}
                                 />
                                 <circle
-                                    r={9}
+                                    r={6.5}
                                     fill={node.color}
                                     fillOpacity={isHovered ? 0.28 : isCurrent ? 0.18 : 0.08}
                                 />
                                 <Icon
-                                    x={-5}
-                                    y={-5}
-                                    width={10}
-                                    height={10}
+                                    x={-3.8}
+                                    y={-3.8}
+                                    width={7.6}
+                                    height={7.6}
                                     color={node.color}
                                     strokeWidth={2}
                                 />
@@ -800,17 +800,17 @@ export default function FloatingOrbMenu({ darkMode = true }: { darkMode?: boolea
 
                             {/* Micro label below each node */}
                             <text
-                                y={17.5 * scale}
+                                y={12.8 * scale}
                                 textAnchor="middle"
-                                fontSize={6.8}
+                                fontSize={5.2}
                                 fontWeight={700}
-                                letterSpacing={0.8}
+                                letterSpacing={0.6}
                                 fill={isHovered || isCurrent ? node.color : light ? "#1e293b" : "#cbd5e1"}
                                 fontFamily={MONO}
                                 pointerEvents="none"
                                 style={{ paintOrder: "stroke" }}
                                 stroke={light ? "rgba(248, 250, 252, 0.85)" : "rgba(5, 8, 22, 0.85)"}
-                                strokeWidth={2.2}
+                                strokeWidth={1.8}
                             >
                                 {node.shortLabel}
                             </text>
@@ -831,43 +831,28 @@ export default function FloatingOrbMenu({ darkMode = true }: { darkMode?: boolea
                         toggleCenterMode();
                     }}
                 >
-                    {/* Outer interactive ring around core */}
                     <circle
-                        r={22}
+                        r={16}
                         fill="none"
                         stroke={mode === "orbit" ? "#38bdf8" : "#fb923c"}
-                        strokeWidth={coreHovered ? 1.4 : 0.9}
-                        strokeDasharray="4 2.5"
+                        strokeWidth={coreHovered ? 1.2 : 0.8}
+                        strokeDasharray="3 2"
                         strokeOpacity={coreHovered ? 0.95 : 0.65}
                     />
                     <circle
-                        r={18.5}
-                        fill={light ? "rgba(255, 255, 255, 0.82)" : "rgba(11, 14, 19, 0.78)"}
+                        r={13}
+                        fill={light ? "rgba(255, 255, 255, 0.82)" : "rgba(11, 14, 19, 0.76)"}
                         stroke={mode === "orbit" ? "#38bdf8" : "#fb923c"}
-                        strokeWidth={1.3}
+                        strokeWidth={1.1}
                     />
-                    <text
-                        textAnchor="middle"
-                        y={-1.5}
-                        fontSize={6.5}
-                        fontWeight={800}
-                        letterSpacing={1.1}
-                        fill={mode === "orbit" ? "#38bdf8" : "#fb923c"}
-                        fontFamily={MONO}
-                    >
-                        {mode === "orbit" ? "3D" : "RING"}
-                    </text>
-                    <text
-                        textAnchor="middle"
-                        y={6}
-                        fontSize={5.5}
-                        fontWeight={700}
-                        letterSpacing={0.9}
-                        fill={light ? "#334155" : "#94a3b8"}
-                        fontFamily={MONO}
-                    >
-                        {mode === "orbit" ? "ORBIT" : "CORE"}
-                    </text>
+                    <image
+                        href="/logo.png"
+                        x={-9}
+                        y={-9}
+                        width={18}
+                        height={18}
+                        preserveAspectRatio="xMidYMid meet"
+                    />
                 </g>
             </svg>
         </div>

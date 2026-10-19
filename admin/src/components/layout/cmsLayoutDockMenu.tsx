@@ -231,28 +231,28 @@ export const ALL_DOCK_META: Record<string, { color: string; code: string; route?
 const appList = [
     {
         key: "cms",
-        icon: "https://gw.alipayobjects.com/zos/rmsportal/KDpgvguMpGfqaHPjicRK.svg",
+        icon: "/logo.png",
         title: "AI Studio",
         desc: "AI Studio & Knowledge Hub",
         url: "/admin/ai-studio",
     },
     {
         key: "vo",
-        icon: "https://gw.alipayobjects.com/zos/bmw-prod/d3e3eb39-1cd7-4aa5-827c-877deced6b7e/kvx8snxc_w283_h280.png",
+        icon: "/logo.png",
         title: "Virtual Office",
         desc: "3D AI Agent HQ",
         url: "/admin/virtual-office",
     },
     {
         key: "landing",
-        icon: "https://gw.alipayobjects.com/zos/antfincdn/upvrAjAPQX/Logo_Tech%252520UI.svg",
+        icon: "/logo.png",
         title: "Landing Page",
         desc: "Public Website",
         url: "/",
     },
     {
         key: "brochure-gallery",
-        icon: "https://gw.alipayobjects.com/zos/rmsportal/KDpgvguMpGfqaHPjicRK.svg",
+        icon: "/logo.png",
         title: "Brochure Vault",
         desc: "Tenant Brochure Gallery (:3004)",
         url: "http://localhost:3004",

@@ -1235,7 +1235,11 @@ export function CommandDeck({ onOpen, exit, toolbar, bottomInset = 0 }: DeckShel
                 <main data-testid="deck-main" className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
                     <div className="shrink-0 px-5 pb-2 pt-3 text-center">
                         <div className="flex items-center justify-center gap-2">
-                            <Hexagon className="h-4 w-4" color={ORANGE} strokeWidth={2.2} />
+                            <img
+                                src="/logo.png"
+                                alt="Nusantarasoft"
+                                className="h-6 w-6 shrink-0 object-contain"
+                            />
                             <span className="text-[20px] font-medium leading-none tracking-[0.25em] text-white">AI OS</span>
                             <span className="text-[13px]" style={{ color: ORANGE }}>
                                 Agentic OS

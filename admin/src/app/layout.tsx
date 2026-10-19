@@ -15,6 +15,14 @@ export const metadata: Metadata = {
   title: "Nusantarasoft CMS",
   description: "Content Management System with Interactive Page Builder",
   manifest: "/manifest.json",
+  icons: {
+    icon: [
+      { url: "/logo.png", type: "image/png" },
+      { url: "/favicon.ico", sizes: "any" },
+    ],
+    shortcut: "/logo.png",
+    apple: "/icons/icon-192.png",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
