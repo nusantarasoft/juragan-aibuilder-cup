@@ -720,6 +720,7 @@ MIT
   - **Showcase (`/admin/ai-studio/showcase`)**: 2-pane Tactical Showcase Studio & Live Card Inspector Deck with HUD image preview and brochure gallery publishing.
   - **Messages (`/admin/ai-studio/messages`)**: 2-pane Operator WhatsApp Comms & Human Takeover Dispatch Deck with live 5s polling and quick-reply templates.
   - **Settings (`/admin/ai-studio/settings`)**: Combined Central AI Configuration (Active LLM Provider Matrix, Standby Vault, Vector Embeddings) and Hermes WhatsApp Gateway (QR Device Pairing & SME Bot Configuration).
+- **Orbital Ring & 3D Orbit Floating Navigator (`FloatingOrbMenu.tsx`)** — Replaced the floating button on Admin pages with an interactive Agentic OS Ring & 3D Orbit HUD navigator featuring smooth tweening between concentric `RINGS` and interactive drag-to-rotate `3D ORBIT` globe modes with direct orbital node buttons for Studio, Partner, Knowledge Research, Showcase, Messages, Settings, and Virtual Office.
 - **Agentic OS & 3D Virtual Office Alignment** — Synchronized all Wayang agents, playbooks, memory map signposts, routines, workflows, and goals with the active AI Studio modules.
 - **Google Cloud Run + Secret Manager Deployment** — Multi-service Cloud Build & Cloud Run pipeline (`cloudbuild.yaml`, `scripts/deploy-cloudrun.ps1`, `scripts/deploy-cloudrun.sh`, `docs/deploy-cloud-run.md`).
 

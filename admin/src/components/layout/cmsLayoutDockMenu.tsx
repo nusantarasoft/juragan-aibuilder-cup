@@ -212,13 +212,13 @@ export const BOTTOM_DOCK_WIDGETS = [
 
 export const ALL_DOCK_META: Record<string, { color: string; code: string; route?: string; desc: string }> = {
     notes: { color: "#fb923c", code: "NT", route: "/admin/ai-studio", desc: "Persistent scratchpad & operator notes" },
-    tasks: { color: "#10b981", code: "TK", route: "/admin/agentic-os", desc: "Tactical task queue & sprint checklist" },
+    tasks: { color: "#10b981", code: "TK", route: "/admin/ai-studio/partner", desc: "Tactical task queue & partner checklist" },
     files: { color: "#38bdf8", code: "FL", route: "/admin/ai-studio/knowledge-research", desc: "Knowledge vault & workspace asset browser" },
     messages: { color: "#a855f7", code: "MG", route: "/admin/ai-studio/messages", desc: "Realtime WA channels & operator dispatch" },
     analytics: { color: "#38bdf8", code: "AN", route: "/admin/ai-studio", desc: "Live telemetry & usage stream" },
     calculator: { color: "#fb923c", code: "CL", desc: "Precision numeric evaluator" },
     terminal: { color: "#10b981", code: "TM", route: "/admin/ai-studio", desc: "AI Studio & prompt runner" },
-    robot: { color: "#a855f7", code: "AI", route: "/admin/agentic-os", desc: "Autonomous agent assistant" },
+    robot: { color: "#a855f7", code: "AI", route: "/admin/ai-studio", desc: "Autonomous agent assistant" },
     snake: { color: "#22c55e", code: "SN", desc: "Grid arcade simulation" },
     pong: { color: "#ec4899", code: "PG", desc: "Vector paddle simulation" },
     athan: { color: "#f59e0b", code: "AT", desc: "Prayer schedule & Qibla telemetry" },
@@ -235,13 +235,6 @@ const appList = [
         title: "AI Studio",
         desc: "AI Studio & Knowledge Hub",
         url: "/admin/ai-studio",
-    },
-    {
-        key: "aos",
-        icon: "https://gw.alipayobjects.com/zos/antfincdn/upvrAjAPQX/Logo_Tech%252520UI.svg",
-        title: "Agentic OS",
-        desc: "Mission-Control AI OS",
-        url: "/admin/agentic-os",
     },
     {
         key: "vo",
@@ -304,8 +297,8 @@ export const getInnerMenuRoutes = (segment: string, pinned: any[], starred: any[
         case "recent":
             return [
                 { path: "/admin/ai-studio", name: "AI Studio", icon: <FileTextOutlined /> },
+                { path: "/admin/ai-studio/partner", name: "Partner", icon: <FileTextOutlined /> },
                 { path: "/admin/virtual-office", name: "Virtual Office", icon: <FileTextOutlined /> },
-                { path: "/admin/agentic-os", name: "Agentic OS", icon: <FileTextOutlined /> },
             ];
         case "newfile":
             return [
@@ -327,8 +320,8 @@ export const getInnerMenuRoutes = (segment: string, pinned: any[], starred: any[
         case "history":
             return [
                 { path: "/admin/ai-studio", name: "Opened AI Studio", icon: <HistoryOutlined /> },
+                { path: "/admin/ai-studio/messages", name: "Checked Messages", icon: <HistoryOutlined /> },
                 { path: "/admin/virtual-office", name: "Visited Virtual Office", icon: <HistoryOutlined /> },
-                { path: "/admin/agentic-os", name: "Opened Agentic OS", icon: <HistoryOutlined /> },
             ];
         default:
             return [];

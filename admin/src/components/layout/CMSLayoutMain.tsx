@@ -806,15 +806,6 @@ export default function CMSLayoutMain({
 
                             <button
                                 type="button"
-                                onClick={() => navigateTo("/admin/agentic-os")}
-                                className="hidden h-[22px] items-center gap-1 border border-sky-400/40 bg-sky-500/10 px-2 text-[9.5px] tracking-normal text-sky-200 transition hover:border-sky-300/70 hover:text-white sm:flex"
-                            >
-                                <Cpu className="h-3 w-3" />
-                                <span>agentic os</span>
-                            </button>
-
-                            <button
-                                type="button"
                                 onClick={() => navigateTo("/admin/virtual-office")}
                                 className="flex h-[22px] items-center gap-1 border border-orange-400/40 bg-orange-500/10 px-2 text-[9.5px] tracking-normal text-orange-100 transition hover:border-orange-300/70 hover:text-white"
                             >
@@ -1287,14 +1278,13 @@ export default function CMSLayoutMain({
                 darkMode={darkMode}
             />
 
-            {/* Floating Action Button Cluster - Bottom Right */}
+            {/* Floating Ring & 3D Orbit Navigator - Bottom Right */}
             <div
-                className="hidden md:block"
                 style={{
                     position: "fixed",
-                    bottom: 32,
-                    right: 32,
-                    zIndex: 50,
+                    bottom: 20,
+                    right: 20,
+                    zIndex: 9998,
                 }}
             >
                 <FloatingOrbMenu darkMode={darkMode} />
