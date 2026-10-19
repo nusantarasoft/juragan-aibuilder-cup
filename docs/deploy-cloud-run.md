@@ -2,7 +2,9 @@
 
 Project: **`juragan-aibuilder-cup`** · Region: **`asia-southeast2`**
 
-This repository deploys **four** HTTP services via [`cloudbuild.yaml`](../cloudbuild.yaml). Manual `gcloud builds submit` / console deploy is fine for v1 — GitHub→GCP auto-deploy is optional later.
+This repository deploys **three** HTTP services via [`cloudbuild.yaml`](../cloudbuild.yaml). Manual `gcloud builds submit` / console deploy is fine for v1 — GitHub→GCP auto-deploy is optional later.
+
+**Out of scope:** `juragan-landing` / `landing-page/` is **not** deployed to Cloud Run (Akbar decision).
 
 Hermes / WhatsApp, Supabase (Kong), and S3 stay on the **VPS nusantarasoft**. Cloud Run only receives public URLs + secrets that point at that VPS. Do not provision GCP replacements for those deps in v1.
 
@@ -15,18 +17,13 @@ Hermes / WhatsApp, Supabase (Kong), and S3 stay on the **VPS nusantarasoft**. Cl
                            ▼ (env URLs + secrets)
 GitHub / local ──► Cloud Build (cloudbuild.yaml) ──► Artifact Registry
                                                          │
-                    ┌────────────────────────────────────┼────────────────┐
-                    ▼                                    ▼                ▼
-              juragan-api                          juragan          juragan-landing
-              (middleware/)                        (admin/)         (landing-page/)
-                    │                                    │
-                    └──────────────┬─────────────────────┘
-                                   ▼
-                           juragan-showcase
-                           (brochure-gallery/)
+                    ┌────────────────────────────────────┼────────┐
+                    ▼                                    ▼        ▼
+              juragan-api                          juragan   juragan-showcase
+              (middleware/)                        (admin/)  (brochure-gallery/)
 ```
 
-Deploy order in `cloudbuild.yaml`: **API → (admin ∥ landing) → showcase**. Each `gcloud run deploy` targets the **existing** service name (revision update) — do not delete/recreate live services.
+Deploy order in `cloudbuild.yaml`: **API → admin → showcase**. Each `gcloud run deploy` targets the **existing** service name (revision update) — do not delete/recreate live services.
 
 ### Services
 
@@ -34,14 +31,13 @@ Deploy order in `cloudbuild.yaml`: **API → (admin ∥ landing) → showcase**.
 |-------------------|--------|------------|------|-------|
 | `juragan-api` | [`./middleware`](../middleware) | [`middleware/Dockerfile`](../middleware/Dockerfile) | `4001` | NestJS GraphQL; `GET /health`; CORS `*.run.app` |
 | `juragan` | [`./admin`](../admin) | [`admin/Dockerfile`](../admin/Dockerfile) | `3000` | Product entry / FE; bakes `NEXT_PUBLIC_GRAPHQL_URL` from API URL |
-| `juragan-landing` | [`./landing-page`](../landing-page) | [`landing-page/Dockerfile`](../landing-page/Dockerfile) | `3000` | Optional `NEXT_PUBLIC_CMS_API_URL`, `NEXT_PUBLIC_KASIR_WA_URL` |
-| `juragan-showcase` | [`./brochure-gallery`](../brochure-gallery) | [`brochure-gallery/Dockerfile`](../brochure-gallery/Dockerfile) | `3000` | Bakes admin + landing URLs; Supabase/S3 public |
+| `juragan-showcase` | [`./brochure-gallery`](../brochure-gallery) | [`brochure-gallery/Dockerfile`](../brochure-gallery/Dockerfile) | `3000` | Bakes admin URL + optional `_NEXT_PUBLIC_LANDING_URL`; Supabase/S3 public |
 
-**Not on Cloud Run (v1):** Hermes / WA transport — Docker Compose on VPS.
+**Not on Cloud Run (v1):** Hermes / WA transport (VPS); **`landing-page/`** (out of scope).
 
 ### Artifact Registry
 
-Default substitution `_AR_REPO=nusantarasoft` keeps the **legacy** Artifact Registry repository name. Image paths stay folder-based (`…/middleware`, `…/admin`, `…/landing-page`, `…/brochure-gallery`). Renaming AR to `juragan` is optional ops work, not required for this align.
+Default substitution `_AR_REPO=nusantarasoft` keeps the **legacy** Artifact Registry repository name. Image paths stay folder-based (`…/middleware`, `…/admin`, `…/brochure-gallery`). Renaming AR to `juragan` is optional ops work, not required for this align.
 
 ---
 
@@ -130,15 +126,16 @@ In **Cloud Run** → open the **existing** service → **Edit & deploy new revis
 
 1. **`juragan-api`**: context `middleware/Dockerfile`, port `4001`, env pointing at VPS Supabase/S3/Hermes; prefer `--set-secrets` for keys; smoke `GET /health`.
 2. **`juragan`**: context `admin/Dockerfile`, port `3000`, `GRAPHQL_API_URL=https://<juragan-api>.run.app/graphql`. Runtime GraphQL proxy: `admin/src/app/api/graphql/route.ts`.
-3. **`juragan-landing`**: context `landing-page/Dockerfile`, port `3000`.
-4. **`juragan-showcase`**: context `brochure-gallery/Dockerfile`, port `3000`, admin + landing public URLs.
+3. **`juragan-showcase`**: context `brochure-gallery/Dockerfile`, port `3000`, admin public URL (+ optional external landing URL if used).
+
+Do **not** create a `juragan-landing` Cloud Run service for v1.
 
 ---
 
 ## Smoke checklist (after a real deploy — not part of repo-align PRs)
 
 1. `curl -sS https://<juragan-api>…/health`
-2. Open `juragan`, `juragan-landing`, `juragan-showcase` `*.run.app`
+2. Open `juragan` and `juragan-showcase` `*.run.app`
 3. GraphQL login from `juragan` against `juragan-api`
 4. Confirm Hermes WA still answered from **VPS**, not Cloud Run
 

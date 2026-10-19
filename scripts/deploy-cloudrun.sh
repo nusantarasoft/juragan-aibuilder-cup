@@ -2,10 +2,11 @@
 set -euo pipefail
 
 # ═════════════════════════════════════════════════════════════════════════════
-# Deploy Juragan (4 Cloud Run services) via Cloud Build
+# Deploy Juragan (3 Cloud Run services) via Cloud Build
 # Service map:
 #   juragan-api ← middleware/ · juragan ← admin/
-#   juragan-landing ← landing-page/ · juragan-showcase ← brochure-gallery/
+#   juragan-showcase ← brochure-gallery/
+# Out of scope: juragan-landing / landing-page/ (not deployed)
 # Deps (Supabase / S3 / Hermes / Kong) stay on VPS nusantarasoft — set URLs below.
 #
 # Usage:
@@ -48,10 +49,10 @@ fi
 
 SHORT_SHA="$(git rev-parse --short HEAD 2>/dev/null || echo 'manual')"
 
-echo "==> 4. Submitting Cloud Build (cloudbuild.yaml) → juragan-api, juragan, juragan-landing, juragan-showcase..."
+echo "==> 4. Submitting Cloud Build (cloudbuild.yaml) → juragan-api, juragan, juragan-showcase..."
 echo "    Sensitive keys should already live in Secret Manager; this submit passes URLs + public anon only."
 gcloud builds submit --config=cloudbuild.yaml \
   --substitutions="_REGION=${REGION},_AR_REPO=${AR_REPO},_IMAGE_TAG=${SHORT_SHA},_SUPABASE_URL=${SUPABASE_URL},_NEXT_PUBLIC_SUPABASE_URL=${SUPABASE_URL},_NEXT_PUBLIC_SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY},_S3_ENDPOINT=${S3_ENDPOINT},_S3_BUCKET=${S3_BUCKET},_HERMES_BASE_URL=${HERMES_BASE_URL}"
 
-echo "==> Done! Cloud Run services in ${REGION} (expect: juragan, juragan-api, juragan-landing, juragan-showcase):"
+echo "==> Done! Cloud Run services in ${REGION} (expect: juragan, juragan-api, juragan-showcase):"
 gcloud run services list --region="${REGION}"

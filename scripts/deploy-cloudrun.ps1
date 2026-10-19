@@ -1,9 +1,10 @@
 <#
 .SYNOPSIS
     Prepares Google Cloud APIs, Artifact Registry, and submits Cloud Build to deploy
-    four Juragan Cloud Run services:
+    three Juragan Cloud Run services:
       juragan-api ← middleware/ · juragan ← admin/
-      juragan-landing ← landing-page/ · juragan-showcase ← brochure-gallery/
+      juragan-showcase ← brochure-gallery/
+    Out of scope: juragan-landing / landing-page/ (not deployed).
     Deps (Supabase / S3 / Hermes / Kong) stay on VPS nusantarasoft.
     Artifact Registry repo may keep the legacy name `nusantarasoft`.
 
@@ -46,7 +47,7 @@ if (-not $repoExists) {
         --description="Juragan Cloud Run images (AR repo may keep legacy nusantarasoft name)"
 }
 
-Write-Host "==> 4. Submitting Cloud Build → juragan-api, juragan, juragan-landing, juragan-showcase..." -ForegroundColor Cyan
+Write-Host "==> 4. Submitting Cloud Build → juragan-api, juragan, juragan-showcase..." -ForegroundColor Cyan
 Write-Host "    Prefer Secret Manager for service-role / S3 keys (see docs/deploy-cloud-run.md)." -ForegroundColor DarkGray
 $shortSha = (git rev-parse --short HEAD 2>$null)
 if (-not $shortSha) { $shortSha = "manual" }
@@ -54,5 +55,5 @@ if (-not $shortSha) { $shortSha = "manual" }
 gcloud builds submit --config=cloudbuild.yaml `
     --substitutions="_REGION=$Region,_AR_REPO=$ArRepo,_IMAGE_TAG=$shortSha,_SUPABASE_URL=$SupabaseUrl,_NEXT_PUBLIC_SUPABASE_URL=$SupabaseUrl,_NEXT_PUBLIC_SUPABASE_ANON_KEY=$SupabaseAnonKey,_S3_ENDPOINT=$S3Endpoint,_S3_BUCKET=$S3Bucket,_HERMES_BASE_URL=$HermesBaseUrl"
 
-Write-Host "==> Done! Cloud Run services (expect juragan*):" -ForegroundColor Green
+Write-Host "==> Done! Cloud Run services (expect juragan, juragan-api, juragan-showcase):" -ForegroundColor Green
 gcloud run services list --region=$Region

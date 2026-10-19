@@ -1,13 +1,14 @@
 # ═════════════════════════════════════════════════════════════════════════════
-# Google Cloud Build — Deploy four Juragan services to Google Cloud Run
+# Google Cloud Build — Deploy three Juragan services to Google Cloud Run
 # ═════════════════════════════════════════════════════════════════════════════
 # Project (example): juragan-aibuilder-cup · Region: asia-southeast2
 #
 # Service map (migration-safe: deploy updates existing service names):
 #   juragan-api      ← middleware/
 #   juragan          ← admin/
-#   juragan-landing  ← landing-page/
 #   juragan-showcase ← brochure-gallery/
+#
+# Out of scope (Akbar): juragan-landing / landing-page/ — NOT deployed to Cloud Run.
 #
 # Deps (Supabase, S3, Hermes, Kong) stay on VPS nusantarasoft — point env at
 # those public URLs; do not provision GCP replacements in this pipeline.
@@ -24,7 +25,7 @@
 #     --substitutions=_REGION=asia-southeast2,_SUPABASE_URL=https://…,_NEXT_PUBLIC_SUPABASE_URL=https://…
 #
 # Artifact Registry: default repo name remains `nusantarasoft` (legacy brand).
-# Image paths stay folder-based (…/middleware, …/admin, …/landing-page, …/brochure-gallery).
+# Image paths stay folder-based (…/middleware, …/admin, …/brochure-gallery).
 # ═════════════════════════════════════════════════════════════════════════════
 
 steps:
@@ -144,75 +145,25 @@ steps:
         echo "$${ADMIN_URL}" > /workspace/admin_url.txt
 
   # ───────────────────────────────────────────────────────────────────────────
-  # 5. Build & Push juragan-landing (can start after API; no bake deps)
-  # ───────────────────────────────────────────────────────────────────────────
-  - id: 'build-landing'
-    name: 'gcr.io/cloud-builders/docker'
-    waitFor: ['deploy-api']
-    args:
-      - 'build'
-      - '-t'
-      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/landing-page:${_IMAGE_TAG}'
-      - '-t'
-      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/landing-page:latest'
-      - './landing-page'
-
-  - id: 'push-landing'
-    name: 'gcr.io/cloud-builders/docker'
-    waitFor: ['build-landing']
-    args:
-      - 'push'
-      - '--all-tags'
-      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/landing-page'
-
-  # ───────────────────────────────────────────────────────────────────────────
-  # 6. Deploy juragan-landing
-  # ───────────────────────────────────────────────────────────────────────────
-  - id: 'deploy-landing'
-    name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
-    waitFor: ['push-landing']
-    entrypoint: 'bash'
-    args:
-      - '-c'
-      - |
-        set -euo pipefail
-        gcloud run deploy "${_LANDING_SERVICE}" \
-          --image="${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/landing-page:${_IMAGE_TAG}" \
-          --region="${_REGION}" \
-          --platform=managed \
-          --port=3000 \
-          --memory=1Gi \
-          --cpu=1 \
-          --min-instances=0 \
-          --max-instances=10 \
-          --allow-unauthenticated \
-          --set-env-vars="NODE_ENV=production,HOSTNAME=0.0.0.0,NEXT_PUBLIC_CMS_API_URL=${_NEXT_PUBLIC_CMS_API_URL},NEXT_PUBLIC_KASIR_WA_URL=${_NEXT_PUBLIC_KASIR_WA_URL}"
-
-        LANDING_URL=$$(gcloud run services describe "${_LANDING_SERVICE}" --region="${_REGION}" --format='value(status.url)')
-        echo "juragan-landing deployed at: $${LANDING_URL}"
-        echo "$${LANDING_URL}" > /workspace/landing_url.txt
-
-  # ───────────────────────────────────────────────────────────────────────────
-  # 7. Build & Push juragan-showcase (brochure-gallery) — needs admin + landing URLs
+  # 5. Build & Push juragan-showcase (brochure-gallery) — needs admin URL
   # ───────────────────────────────────────────────────────────────────────────
   - id: 'build-showcase'
     name: 'gcr.io/cloud-builders/docker'
-    waitFor: ['deploy-admin', 'deploy-landing']
+    waitFor: ['deploy-admin']
     entrypoint: 'bash'
     args:
       - '-c'
       - |
         set -euo pipefail
         ADMIN_URL=$$(cat /workspace/admin_url.txt)
-        LANDING_URL=$$(cat /workspace/landing_url.txt)
-        echo "Building showcase with ADMIN_URL=$${ADMIN_URL} LANDING_URL=$${LANDING_URL}"
+        echo "Building showcase with ADMIN_URL=$${ADMIN_URL}"
         docker build \
           --build-arg NEXT_PUBLIC_SUPABASE_URL="${_NEXT_PUBLIC_SUPABASE_URL}" \
           --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY="${_NEXT_PUBLIC_SUPABASE_ANON_KEY}" \
           --build-arg NEXT_PUBLIC_S3_ENDPOINT="${_S3_ENDPOINT}" \
           --build-arg NEXT_PUBLIC_S3_BUCKET="${_S3_BUCKET}" \
           --build-arg NEXT_PUBLIC_ADMIN_URL="$${ADMIN_URL}" \
-          --build-arg NEXT_PUBLIC_LANDING_URL="$${LANDING_URL}" \
+          --build-arg NEXT_PUBLIC_LANDING_URL="${_NEXT_PUBLIC_LANDING_URL}" \
           -t "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/brochure-gallery:${_IMAGE_TAG}" \
           -t "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/brochure-gallery:latest" \
           ./brochure-gallery
@@ -226,7 +177,7 @@ steps:
       - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/brochure-gallery'
 
   # ───────────────────────────────────────────────────────────────────────────
-  # 8. Deploy juragan-showcase
+  # 6. Deploy juragan-showcase
   # ───────────────────────────────────────────────────────────────────────────
   - id: 'deploy-showcase'
     name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
@@ -237,7 +188,6 @@ steps:
       - |
         set -euo pipefail
         ADMIN_URL=$$(cat /workspace/admin_url.txt)
-        LANDING_URL=$$(cat /workspace/landing_url.txt)
         gcloud run deploy "${_SHOWCASE_SERVICE}" \
           --image="${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/brochure-gallery:${_IMAGE_TAG}" \
           --region="${_REGION}" \
@@ -248,7 +198,7 @@ steps:
           --min-instances=0 \
           --max-instances=10 \
           --allow-unauthenticated \
-          --set-env-vars="NODE_ENV=production,HOSTNAME=0.0.0.0,NEXT_PUBLIC_SUPABASE_URL=${_NEXT_PUBLIC_SUPABASE_URL},NEXT_PUBLIC_SUPABASE_ANON_KEY=${_NEXT_PUBLIC_SUPABASE_ANON_KEY},NEXT_PUBLIC_S3_ENDPOINT=${_S3_ENDPOINT},NEXT_PUBLIC_S3_BUCKET=${_S3_BUCKET},NEXT_PUBLIC_ADMIN_URL=$${ADMIN_URL},NEXT_PUBLIC_LANDING_URL=$${LANDING_URL}"
+          --set-env-vars="NODE_ENV=production,HOSTNAME=0.0.0.0,NEXT_PUBLIC_SUPABASE_URL=${_NEXT_PUBLIC_SUPABASE_URL},NEXT_PUBLIC_SUPABASE_ANON_KEY=${_NEXT_PUBLIC_SUPABASE_ANON_KEY},NEXT_PUBLIC_S3_ENDPOINT=${_S3_ENDPOINT},NEXT_PUBLIC_S3_BUCKET=${_S3_BUCKET},NEXT_PUBLIC_ADMIN_URL=$${ADMIN_URL},NEXT_PUBLIC_LANDING_URL=${_NEXT_PUBLIC_LANDING_URL}"
 
 substitutions:
   _REGION: 'asia-southeast2'
@@ -258,9 +208,10 @@ substitutions:
   # Cloud Run service names (must match live services — migration-safe updates)
   _API_SERVICE: 'juragan-api'
   _ADMIN_SERVICE: 'juragan'
-  _LANDING_SERVICE: 'juragan-landing'
   _SHOWCASE_SERVICE: 'juragan-showcase'
   _NEXT_PUBLIC_GRAPHQL_URL: ''
+  # Optional external marketing/landing URL for showcase bake (no Cloud Run landing service)
+  _NEXT_PUBLIC_LANDING_URL: ''
   # Point these at VPS nusantarasoft (or public Supabase/S3 URLs) — not GCP replacements
   _SUPABASE_URL: 'https://your-supabase-or-vps-kong.example'
   _NEXT_PUBLIC_SUPABASE_URL: 'https://your-supabase-or-vps-kong.example'
@@ -269,8 +220,6 @@ substitutions:
   _S3_ENDPOINT: 'https://your-vps-s3-or-gcs.example'
   _S3_BUCKET: 'cms-media'
   _HERMES_BASE_URL: 'https://hermes.your-vps.example'
-  _NEXT_PUBLIC_CMS_API_URL: ''
-  _NEXT_PUBLIC_KASIR_WA_URL: ''
 
 options:
   logging: CLOUD_LOGGING_ONLY
