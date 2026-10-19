@@ -1283,17 +1283,7 @@ export default function CMSLayoutMain({
             />
 
             {/* Floating Ring & 3D Orbit Navigator - Bottom Right */}
-            <div
-                style={{
-                    position: "fixed",
-                    bottom: 12,
-                    right: 16,
-                    zIndex: 9998,
-                    pointerEvents: "none",
-                }}
-            >
-                <FloatingOrbMenu darkMode={darkMode} />
-            </div>
+            <FloatingOrbMenu darkMode={darkMode} />
 
             {/* Agentic OS Styling for Menus, PageContainer, ProCard, Tables, and Controls */}
             <CMSLayoutGlobalStyles darkMode={darkMode} vo={vo} />

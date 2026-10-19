@@ -1169,7 +1169,7 @@ export function CommandDeck({ onOpen, exit, toolbar, bottomInset = 0 }: DeckShel
         <div ref={rootRef} className="flex h-full min-h-0 flex-col overflow-hidden bg-[#0b0e13] font-mono text-slate-300 selection:bg-slate-700">
             {/* Status bar */}
             <div className="flex h-9 shrink-0 items-center justify-between gap-4 whitespace-nowrap border-b border-white/[0.07] px-4 text-[10px] tracking-[0.15em] [&_button]:shrink-0">
-                <div className="flex min-w-0 items-center gap-4 overflow-hidden">
+                <div className="flex min-w-0 items-center gap-3 overflow-hidden">
                     {!exit && (
                         <button
                             type="button"
@@ -1180,6 +1180,21 @@ export function CommandDeck({ onOpen, exit, toolbar, bottomInset = 0 }: DeckShel
                             <ArrowLeft className="h-3.5 w-3.5" />
                         </button>
                     )}
+                    <div
+                        onClick={() => (window.location.href = "/admin/ai-studio")}
+                        className="flex cursor-pointer items-center gap-1.5"
+                    >
+                        <img
+                            src="/logo.png"
+                            alt="Nusantarasoft"
+                            className="h-5 w-5 shrink-0 object-contain"
+                        />
+                        <span className="font-semibold tracking-[0.22em] text-white">NUSANTARASOFT</span>
+                        <span className="hidden text-[9.5px] tracking-normal sm:inline" style={{ color: ORANGE }}>
+                            · AGENTIC OS
+                        </span>
+                    </div>
+                    <span className="h-3.5 w-px bg-white/10" />
                     <span className="flex items-center gap-1.5">
                         <Dot color={coreState.c} pulse={coreState.t === "RUNNING"} />
                         <span className="text-slate-500">CORE</span>·<span className="text-slate-100">{coreState.t}</span>
@@ -1235,17 +1250,11 @@ export function CommandDeck({ onOpen, exit, toolbar, bottomInset = 0 }: DeckShel
                 <main data-testid="deck-main" className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
                     <div className="shrink-0 px-5 pb-2 pt-3 text-center">
                         <div className="flex items-center justify-center gap-2">
-                            <img
-                                src="/logo.png"
-                                alt="Nusantarasoft"
-                                className="h-6 w-6 shrink-0 object-contain"
-                            />
-                            <span className="text-[20px] font-medium leading-none tracking-[0.25em] text-white">AI OS</span>
-                            <span className="text-[13px]" style={{ color: ORANGE }}>
+                            <span className="text-[18px] font-medium leading-none tracking-[0.2em]" style={{ color: ORANGE }}>
                                 Agentic OS
                             </span>
                         </div>
-                        <div className="mt-1 text-[9px] tracking-[0.35em] text-slate-500">NUSANTARASOFT · LIVE DATA</div>
+                        <div className="mt-1 text-[9px] tracking-[0.35em] text-slate-500">LIVE DATA</div>
                     </div>
 
                     {/* Tabs + tools on one line (scrolls sideways when narrow), counts on the right */}
