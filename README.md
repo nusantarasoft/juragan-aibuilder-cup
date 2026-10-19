@@ -18,7 +18,7 @@ NusantaraSoft is a full-stack AI platform combining a **NotebookLM-style RAG Stu
 | **Unified Settings & WA Gateway (`/admin/ai-studio/settings`)** | Multi-provider LLM matrix (Google Gemini, Vertex AI, OpenAI, Anthropic, DeepSeek, Groq, Ollama), vector embedding configuration, and Hermes WhatsApp Gateway QR pairing. |
 | **Agentic OS (`/admin/agentic-os`)** | **MAPS** architecture (**M**emory Map, **A**gent Studio & Workflows, **P**ulse Scheduler & Caps, **S**creen Deck & Governance Approvals) backed by a persistent Postgres task runner. |
 | **3D Virtual Office (`/admin/virtual-office`)** | Real-time Three.js / React Three Fiber 3D headquarters where 8 Wayang AI agents + the live `Kasir UMKM` employee walk between zones, execute playbooks on live module screens, and collaborate in the War Room. |
-| **Brochure Gallery (`:3004`) & Landing Page (`:3000`)** | Public-facing showcase gallery for UMKM partner brochures and platform landing page. |
+| **Brochure Gallery (`:3004`)** | Public-facing showcase gallery for UMKM partner digital brochures. |
 
 ---
 
@@ -29,7 +29,6 @@ NusantaraSoft is a full-stack AI platform combining a **NotebookLM-style RAG Stu
 ```mermaid
 graph TB
     subgraph "Client & Public Surfaces"
-        LP["Landing Page<br/>Next.js :3000"]
         BROCHURE["Brochure Gallery<br/>Next.js :3004"]
         ADMIN["Admin CMS · AI Studio · Agentic OS · 3D Office<br/>Next.js 16 :3003"]
         WA_USER["WhatsApp Customers & UMKM Owners"]
@@ -55,7 +54,6 @@ graph TB
         EMBED["Embedding Pipeline<br/>768-dim Vector Indexing"]
     end
 
-    LP --> MW
     BROCHURE --> MW
     ADMIN --> MW
     ADMIN --> KONG
@@ -126,7 +124,6 @@ Admin Application (:3003)
 └── Virtual Office (3D Wayang Agent HQ)               /admin/virtual-office
 
 Public & Partner Applications
-├── Landing Page                                      http://localhost:3000
 └── Brochure Gallery                                  http://localhost:3004
 ```
 
@@ -175,7 +172,6 @@ juragan-aibuilder-cup/
 │       ├── auth/                       # Supabase GoTrue JWT & role resolution
 │       └── media/                      # MinIO S3 & pgVector media pipeline
 ├── brochure-gallery/      # Next.js Digital Brochure & Showcase Gallery (:3004)
-├── landing-page/          # Next.js Public Website (:3000)
 ├── supabase/              # Consolidated PostgreSQL + pgVector SQL files
 │   ├── migrations/                     # Ordered schema & Agentic OS migrations
 │   ├── modules/                        # Modular SQL schemas
@@ -205,7 +201,7 @@ cp .env.example .env
 
 ```bash
 # Start core backend & application services
-docker compose up -d postgres kong auth rest realtime storage minio middleware admin landing-page brochure-gallery
+docker compose up -d postgres kong auth rest realtime storage minio middleware admin brochure-gallery
 
 # Rebuild and restart Admin & Middleware after code changes
 docker compose build middleware admin
@@ -220,7 +216,6 @@ docker compose up -d --no-deps middleware admin
 | **Agentic OS** | `http://localhost:3003/admin/agentic-os` | Multi-agent OS (Memory, Studio, Pulse, Deck) |
 | **3D Virtual Office** | `http://localhost:3003/admin/virtual-office` | Interactive 3D Wayang Agent Headquarters |
 | **Middleware GraphQL** | `http://localhost:4001/graphql` | NestJS GraphQL API & Health (`/health`) |
-| **Landing Page** | `http://localhost:3000` | Public landing website |
 | **Brochure Gallery** | `http://localhost:3004` | Public UMKM digital brochure showcase |
 | **Supabase API Gateway** | `http://localhost:8000` | Kong gateway for Auth, PostgREST, Realtime |
 | **MinIO Console** | `http://localhost:9001` | S3-compatible object storage console |

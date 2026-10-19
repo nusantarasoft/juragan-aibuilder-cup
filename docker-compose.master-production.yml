@@ -673,36 +673,6 @@ services:
       retries: 5
       start_period: 60s
 
-  landing-page:
-    build:
-      context: ./landing-page
-      dockerfile: Dockerfile
-    image: nsoft3/landing-page:master-production
-    container_name: nsoft3-landing-page
-    restart: unless-stopped
-    logging:
-      driver: json-file
-      options: { max-size: "10m", max-file: "3" }
-    deploy:
-      resources:
-        limits: { memory: 512m }
-        reservations: { memory: 128m }
-    environment:
-      - NODE_ENV=production
-      - NEXT_PUBLIC_CMS_API_URL=http://31.97.66.39:3013
-      - NEXT_PUBLIC_SUPABASE_URL=http://31.97.66.39:8090/supabase
-      - NEXT_PUBLIC_SUPABASE_ANON_KEY=${ANON_KEY}
-    networks: [nsoft3-net]
-    depends_on:
-      - middleware
-      - kong
-    healthcheck:
-      test: ["CMD-SHELL", "node -e \"require('http').get('http://127.0.0.1:3000', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))\""]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 60s
-
   # Hermes Agent — live WhatsApp transport (pipe-only kasir). Docs: docs/aistudio/umkm-wa/system/hermes-local.md
   hermes:
     image: ${HERMES_IMAGE:-nousresearch/hermes-agent:v2026.8.27}
@@ -788,7 +758,6 @@ services:
       - ./volumes/nginx/nginx.master-production.conf:/etc/nginx/nginx.conf:ro
     networks: [nsoft3-net]
     depends_on:
-      - landing-page
       - middleware
       - kong
     healthcheck:

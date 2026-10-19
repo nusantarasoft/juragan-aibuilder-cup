@@ -1546,44 +1546,6 @@ services:
       retries: 5
       start_period: 60s
 
-  # Landing Page - Public Website (renders CMS-built pages)
-  landing-page:
-    build:
-      context: ./landing-page
-      dockerfile: Dockerfile
-    container_name: landing-page
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          memory: 512m
-        reservations:
-          memory: 256m
-    ports:
-      - "3000:3000"
-    environment:
-      - NODE_ENV=production
-      - NEXT_PUBLIC_CMS_API_URL=http://admin:3000
-      - NEXT_PUBLIC_SUPABASE_URL=http://kong:8000
-      - NEXT_PUBLIC_SUPABASE_ANON_KEY=${ANON_KEY}
-    networks:
-      - management-network
-    depends_on:
-      - middleware
-      - kong
-    healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "node -e \"require('http').get('http://127.0.0.1:3000', (r) =>
-            process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () =>
-            process.exit(1))\""
-        ]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 60s
-
   labelstudio:
     image: heartexlabs/label-studio:latest
     container_name: labelstudio

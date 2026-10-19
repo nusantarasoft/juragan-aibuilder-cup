@@ -74,24 +74,6 @@ services:
         delay: 10s
         order: start-first
 
-  landing-page:
-    restart: always
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
-    deploy:
-      resources:
-        limits:
-          memory: 1g
-        reservations:
-          memory: 512m
-      update_config:
-        parallelism: 1
-        delay: 10s
-        order: start-first
-
   postgres:
     restart: always
     logging:
