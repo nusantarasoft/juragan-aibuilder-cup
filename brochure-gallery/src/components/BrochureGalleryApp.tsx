@@ -10,6 +10,7 @@ import {
   Flame,
   Layers,
   LayoutGrid,
+  LogIn,
   MapPin,
   Maximize2,
   MessageCircle,
@@ -544,8 +545,23 @@ export default function BrochureGalleryApp({
             )}
           </div>
 
-          {/* Right Controls: View Switcher + Light/Dark Toggle */}
+          {/* Right Controls: Login Button + View Switcher + Light/Dark Toggle */}
           <div className="flex items-center gap-2">
+            {/* Juragan Login Button */}
+            <a
+              href="https://juragan-764486166630.asia-southeast2.run.app/login"
+              className="flex h-8 items-center gap-1.5 border px-3 text-[11px] font-extrabold uppercase tracking-wider transition-opacity hover:opacity-90"
+              style={{
+                background: vo.accent,
+                borderColor: vo.accent,
+                color: "#080a0f",
+              }}
+              title="Sign in to Juragan AI Studio"
+            >
+              <LogIn className="h-3.5 w-3.5" />
+              <span>LOGIN</span>
+            </a>
+
             {/* Showcase View Mode Toggle */}
             <div className="flex items-center border" style={{ borderColor: vo.borderStrong }}>
               {(
