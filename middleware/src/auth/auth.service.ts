@@ -22,7 +22,7 @@ export class AuthService {
         const { data } = await this.supabaseService
             .getAdminClient()
             .from('user_profiles')
-            .select('role, status')
+            .select('*')
             .eq('id', userId)
             .maybeSingle();
 
