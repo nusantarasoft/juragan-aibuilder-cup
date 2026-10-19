@@ -11,10 +11,10 @@ const MODULE_LABELS: Record<string, string> = {
     'ai-studio': 'Studio',
     'partner': 'Partner',
     'knowledge': 'Knowledge Research',
-    'marketing': 'Marketing Content',
-    'wa-conversations': 'WA Conversations',
-    'whatsapp-gateway': 'WhatsApp Gateway',
-    'settings': 'Settings & Models',
+    'marketing': 'Showcase',
+    'wa-conversations': 'Messages',
+    'whatsapp-gateway': 'Settings (WhatsApp Gateway)',
+    'settings': 'Settings',
     'agentic-os': 'Agentic OS',
 };
 
