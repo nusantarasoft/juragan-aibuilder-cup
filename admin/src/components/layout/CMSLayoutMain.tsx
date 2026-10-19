@@ -1282,9 +1282,10 @@ export default function CMSLayoutMain({
             <div
                 style={{
                     position: "fixed",
-                    bottom: 20,
-                    right: 20,
+                    bottom: 12,
+                    right: 16,
                     zIndex: 9998,
+                    pointerEvents: "none",
                 }}
             >
                 <FloatingOrbMenu darkMode={darkMode} />
