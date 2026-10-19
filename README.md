@@ -216,47 +216,60 @@ sequenceDiagram
 
 ---
 
+### Active Admin Surfaces & AI Studio Routes
+
+```text
+Admin CMS (:3003)
+├── AI Studio (/admin/ai-studio)
+│   ├── Studio (Notebook RAG & Multi-Output Deck)     /admin/ai-studio
+│   ├── Partner (UMKM Store Command & WA Kasir)       /admin/ai-studio/partner
+│   ├── Knowledge Research (RAG Research Pipeline)    /admin/ai-studio/knowledge-research
+│   ├── Showcase (HUD Showcase Studio & Card Deck)    /admin/ai-studio/showcase
+│   ├── Messages (Realtime WA Inbox & Human Takeover) /admin/ai-studio/messages
+│   └── Settings (LLM Models, Embeddings & WA Gateway)/admin/ai-studio/settings
+├── Agentic OS (Mission-Control Multi-Agent OS)       /admin/agentic-os
+└── Virtual Office (3D Wayang Agent HQ)               /admin/virtual-office
+
+Public & Partner Surfaces
+├── Landing Page (:3000)
+└── Brochure Gallery (:3004)
+```
+
+---
+
 ### Directory Structure
 
-```
-nusantarasoft/
-├── admin/                 # Next.js Admin CMS Dashboard
+```text
+juragan-aibuilder-cup/
+├── admin/                 # Next.js 16 Admin CMS, AI Studio, Agentic OS & 3D Virtual Office (:3003)
 │   └── src/
-│       ├── app/admin/     # App Router pages (176+ routes)
-│       │   ├── dashboard/ # Main dashboard
-│       │   ├── news/      # News & Media Intelligence (8 pages)
-│       │   ├── audit/     # Audit & Compliance (3 pages)
-│       │   ├── datasets/  # Big Data / Dremio
-│       │   ├── crm/       # CRM Intelligence
-│       │   ├── accounting/# Accounting Suite
-│       │   ├── hr/        # HR Management
-│       │   └── ...        # +15 more module groups
-│       ├── components/    # 500+ React components
-│       ├── hooks/         # Custom React hooks
-│       └── lib/           # GraphQL client, services, exportUtils
-├── middleware/            # NestJS GraphQL API Server
+│       ├── app/admin/
+│       │   ├── ai-studio/
+│       │   │   ├── partner/            # UMKM Partner Command & Kasir WA
+│       │   │   ├── knowledge-research/ # Knowledge Research & Notebook Synthesis
+│       │   │   ├── showcase/           # Tactical Showcase Studio & Card Inspector
+│       │   │   ├── messages/           # Operator WhatsApp Comms & Takeover Deck
+│       │   │   └── settings/           # Unified LLM Models, Embeddings & WhatsApp Gateway
+│       │   ├── agentic-os/             # Mission-Control Agentic OS Command Deck
+│       │   └── virtual-office/         # 3D Wayang AI Agent HQ (Three.js / R3F)
+│       ├── components/    # Tactical HUD layout, Agentic OS apps, Studio panels
+│       └── lib/           # GraphQL client, Studio & WhatsApp services
+├── middleware/            # NestJS + GraphQL API Server (:4001)
 │   └── src/
-│       ├── auth/          # Authentication resolvers
-│       ├── media/         # Media management module
-│       ├── news/          # News Intelligence (crawler, sentiment)
-│       ├── dremio/        # Big Data integration
-│       ├── accounting/    # Accounting backend
-│       ├── rag/           # RAG/AI integration
-│       ├── pages/         # CMS pages module
-│       └── webhooks/      # Label Studio webhooks
-├── landing-page/          # Next.js Public Website
-│   └── src/
-│       ├── app/           # App Router pages
-│       └── components/    # UI components
-├── volumes/               # Docker persistent data & configs
-│   ├── db/                # PostgreSQL init scripts
-│   │   └── news_intelligence.sql # News module migration (16 tables)
-│   ├── functions/         # Supabase Edge Functions
-│   ├── api/               # Kong configuration
-│   └── bind9/             # DNS zone files
-├── docker-compose.yml     # Main orchestration (30+ services)
-├── docker-compose.full.yml# Full stack (65+ services)
-└── .env                   # Environment variables
+│       ├── studio/        # AI Studio, RAG Notebooks, UMKM Partner, Showcase & Settings
+│       ├── whatsapp/      # Hermes WhatsApp Gateway bridge & operator takeover
+│       ├── agentic-os/    # Autonomous agent orchestration, tasks, routines & memory
+│       ├── ai/            # Multi-provider LLM & embedding runtime
+│       ├── auth/          # Supabase GoTrue JWT & RBAC resolvers
+│       └── media/         # MinIO S3 & pgVector media pipeline
+├── brochure-gallery/      # Next.js Tenant Digital Brochure & Showcase Gallery (:3004)
+├── landing-page/          # Next.js Public Website (:3000)
+├── supabase/              # PostgreSQL 15 + pgVector migrations
+├── docs/                  # Architecture, AI Studio, UMKM WA & Cloud Run documentation
+├── diagrams/              # L1–L4 system & sequence diagrams
+├── scripts/               # Local dev, Docker stack & GCP Cloud Run deploy scripts
+├── cloudbuild.yaml        # Google Cloud Build + Cloud Run multi-service pipeline
+└── docker-compose.yml     # Main Docker orchestration
 ```
 
 ---
@@ -698,6 +711,17 @@ MIT
 ---
 
 ## 📋 Changelog
+
+### v3.2.0 (2026-10-19)
+- **Tactical HUD AI Studio Suite** — Unified zero-waste, viewport-locked Tactical HUD interface across all AI Studio workspaces:
+  - **Studio (`/admin/ai-studio`)**: 3-column Notebook RAG, Sources, Free Chat, Studio Outputs & Notes with layout focus/reset controls.
+  - **Partner (`/admin/ai-studio/partner`)**: 2-pane UMKM Partner Command Matrix & Inspector Deck with live WhatsApp Kasir simulator, product catalog drawer, and sales verification.
+  - **Knowledge Research (`/admin/ai-studio/knowledge-research`)**: 2-pane RAG Research & Synthesis Pipeline with live stage telemetry and markdown brief inspector.
+  - **Showcase (`/admin/ai-studio/showcase`)**: 2-pane Tactical Showcase Studio & Live Card Inspector Deck with HUD image preview and brochure gallery publishing.
+  - **Messages (`/admin/ai-studio/messages`)**: 2-pane Operator WhatsApp Comms & Human Takeover Dispatch Deck with live 5s polling and quick-reply templates.
+  - **Settings (`/admin/ai-studio/settings`)**: Combined Central AI Configuration (Active LLM Provider Matrix, Standby Vault, Vector Embeddings) and Hermes WhatsApp Gateway (QR Device Pairing & SME Bot Configuration).
+- **Agentic OS & 3D Virtual Office Alignment** — Synchronized all Wayang agents, playbooks, memory map signposts, routines, workflows, and goals with the active AI Studio modules.
+- **Google Cloud Run + Secret Manager Deployment** — Multi-service Cloud Build & Cloud Run pipeline (`cloudbuild.yaml`, `scripts/deploy-cloudrun.ps1`, `scripts/deploy-cloudrun.sh`, `docs/deploy-cloud-run.md`).
 
 ### v3.1.0 (2026-06-14)
 - **Playwright E2E Integration** — Added full end-to-end headless testing pipeline to `admin/playwright.config.ts`. Tests Auth, Global Navigation, and the Command Palette to ensure monolithic CI/CD stability.
