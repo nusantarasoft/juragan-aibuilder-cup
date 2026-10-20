@@ -6,7 +6,7 @@
 
 | Surface / Endpoint | URL / Port | Purpose |
 |--------------------|------------|---------|
-| **Public Showcase App** | `http://localhost:3004` (`brochure-gallery:3000`) | Streamlined tenant brochure showcase (`Grid` & `3D Stage` views, category filters, highlight pin inspector, Light/Dark mode persisted in `localStorage`, and image sharing) |
+| **Public Showcase App** | `http://localhost:3004` (`brochure-gallery:3000`) | Streamlined tenant brochure showcase with a **top WhatsApp-first onboarding carousel** (DAFTAR → nama toko/YA → STATUS → cek stok → gallery; wa.me `+62 811-924-689`), then `Grid` & `3D Stage` views, category filters, highlight pin inspector, Light/Dark mode persisted in `localStorage`, and image sharing. Header LOGIN remains for partner/admin CMS (`NEXT_PUBLIC_ADMIN_URL`) |
 | **Brochure Permalink** | `http://localhost:3004/b/[slug]` | Direct shareable deep-link with server-rendered OpenGraph & Twitter `summary_large_image` cards |
 | **External Widget Embed** | `http://localhost:3004/embed/[slug]` | Frameless embeddable brochure card for external `<iframe>` integrations |
 | **Poster SVG Renderer** | `http://localhost:3004/api/brochure-svg/[slug]` | High-resolution brochure SVG poster renderer with CORS (`Access-Control-Allow-Origin: *`) & MinIO S3 sync |
@@ -41,8 +41,23 @@ Compose: `docker-compose.master-production.yml` service `brochure-gallery`. Rede
 4. **High-Res Poster & QR Booth Downloads**: Download standalone PNG poster, composite Share Card with QR code, or standalone QR sticker.
 5. **Embed Anywhere**: Copyable `<iframe>` widget, HTML card snippet, and Markdown badge.
 
+## Public onboarding carousel
+
+Above the brochure grid / 3D stage, new visitors see a **5-step WhatsApp-first carousel** for SMEs (aligned with [`docs/aistudio/umkm-wa/business/pitch.md`](../aistudio/umkm-wa/business/pitch.md) + penawaran). Showcase **UI copy is English** (international competition); owner **command phrases** stay as Hermes expects (`DAFTAR`, `YA`, `STATUS`, `cek stok`). Does **not** send signup through web `/register`.
+
+| # | Step title (EN UI) | Progress label | CTA label | Owner phrase | CTA target |
+|---|--------------------|----------------|-----------|--------------|------------|
+| 1 | Message the business number & type **DAFTAR** | Start on WhatsApp | Chat & DAFTAR | `DAFTAR` | `https://wa.me/62811924689?text=DAFTAR` |
+| 2 | Send your shop name, then **YA** | Finish in chat | Continue on WhatsApp | shop name → `YA` | same wa.me (prefill `DAFTAR`) |
+| 3 | Check the queue with **STATUS** | Await approval | Check STATUS | `STATUS` (await approve ≤24h) | `https://wa.me/62811924689?text=STATUS` |
+| 4 | Run the register via chat | Shop is live | Try cek stok | `cek stok` (= shop live) | `https://wa.me/62811924689?text=cek%20stok` |
+| 5 | Browse the brochure catalog | Explore the showcase | Go to Gallery | explore showcase | `#gallery` (same page) |
+
+Chrome: eyebrow **Juragan · WhatsApp First**, headline **How to get started**. Official number from product docs (`+62 811-924-689`); optional override `NEXT_PUBLIC_KASIR_WA_URL`. Header **LOGIN** still goes to `{NEXT_PUBLIC_ADMIN_URL}/login` for partner/admin CMS — not the SME signup path. Component: `brochure-gallery/src/components/OnboardingCarousel.tsx` · helper `src/lib/kasirWaUrl.ts`.
+
 ## Diagrams
 
 - Index: [`diagrams/brochure-gallery/README.md`](../../diagrams/brochure-gallery/README.md)
 - Business Flow (L0): [`diagrams/brochure-gallery/business/L0-omni-share-flow.svg`](../../diagrams/brochure-gallery/business/L0-omni-share-flow.svg)
+- Onboarding entry (L0b): [`diagrams/brochure-gallery/business/L0b-showcase-onboarding.svg`](../../diagrams/brochure-gallery/business/L0b-showcase-onboarding.svg)
 - System Architecture (L1): [`diagrams/brochure-gallery/system/L1-brochure-gallery-flow.svg`](../../diagrams/brochure-gallery/system/L1-brochure-gallery-flow.svg)

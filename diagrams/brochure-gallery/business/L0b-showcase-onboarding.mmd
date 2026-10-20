@@ -1,0 +1,14 @@
+flowchart TD
+    Visitor["New visitor on public Showcase"] --> Carousel["Onboarding carousel\nWhatsApp-first SME · EN UI"]
+    Carousel --> S1["1 Message WA + type DAFTAR\nwa.me/62811924689"]
+    Carousel --> S2["2 Shop name → YA\nsame chat"]
+    Carousel --> S3["3 STATUS / await approval\n≤24h · admin CMS"]
+    Carousel --> S4["4 Run register via chat\ncek stok = shop live"]
+    Carousel --> S5["5 Browse brochure catalog\n#gallery on showcase"]
+    S1 --> WA["NS business WhatsApp\n+62 811-924-689"]
+    S2 --> WA
+    S3 --> WA
+    S4 --> WA
+    S3 -.-> Admin["Admin AI Studio\napprove SME queue"]
+    S5 --> Gallery["Grid / 3D Stage\nInspect · Share · WA CTA"]
+    HeaderLogin["Header LOGIN\npartner/admin CMS only"] -.-> AdminCMS["NEXT_PUBLIC_ADMIN_URL/login"]

@@ -32,6 +32,8 @@ import {
 } from "@/lib/shareUtils";
 import ShareModal from "./ShareModal";
 import BrochureLightboxModal from "./BrochureLightboxModal";
+import OnboardingCarousel from "./OnboardingCarousel";
+import { adminPath } from "@/lib/adminUrl";
 
 interface BrochureGalleryAppProps {
   initialBrochures?: TenantBrochure[];
@@ -547,9 +549,9 @@ export default function BrochureGalleryApp({
 
           {/* Right Controls: Login Button + View Switcher + Light/Dark Toggle */}
           <div className="flex items-center gap-2">
-            {/* Juragan Login Button */}
+            {/* Juragan Login Button — uses baked NEXT_PUBLIC_ADMIN_URL */}
             <a
-              href="https://juragan-764486166630.asia-southeast2.run.app/login"
+              href={adminPath("/login")}
               className="flex h-8 items-center gap-1.5 border px-3 text-[11px] font-extrabold uppercase tracking-wider transition-opacity hover:opacity-90"
               style={{
                 background: vo.accent,
@@ -613,12 +615,15 @@ export default function BrochureGalleryApp({
       </header>
 
       {/* ═══════════════════════════════════════════════════════════════════════
-          2. CATEGORY FILTER BAR & SHOWCASE STAGE
+          2. ONBOARDING CAROUSEL (above gallery) + CATEGORY / SHOWCASE STAGE
          ═══════════════════════════════════════════════════════════════════════ */}
       <main className="mx-auto max-w-[1600px] space-y-5 px-4 py-5">
-        {/* Category Pills */}
+        <OnboardingCarousel vo={vo} darkMode={darkMode} />
+
+        {/* Category Pills — gallery anchor for onboarding “Go to Gallery” CTA */}
         <section
-          className="flex flex-wrap items-center justify-between gap-3 border p-3"
+          id="gallery"
+          className="flex flex-wrap items-center justify-between gap-3 border p-3 scroll-mt-20"
           style={{
             background: vo.surfaceStrong,
             borderColor: vo.borderStrong,
