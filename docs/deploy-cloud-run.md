@@ -118,7 +118,7 @@ Also grant the Cloud Build SA **Cloud Run Admin** + **Service Account User** (Cl
 | `S3_BUCKET` / `S3_REGION` | all | bucket + region names |
 | `HERMES_BASE_URL` | api | Hermes on VPS |
 | `NEXT_PUBLIC_GRAPHQL_URL` / `GRAPHQL_API_URL` | admin | filled from `juragan-api` URL after deploy |
-| `NEXT_PUBLIC_ADMIN_URL` | showcase | filled from `juragan` URL after deploy |
+| `NEXT_PUBLIC_ADMIN_URL` | showcase | filled from `juragan` URL after deploy; powers showcase header LOGIN + onboarding carousel CTAs (`/register`, `/login`, `/admin/ai-studio`, `/admin/virtual-office`) |
 
 Template: [`.env.cloudrun.example`](../.env.cloudrun.example).
 

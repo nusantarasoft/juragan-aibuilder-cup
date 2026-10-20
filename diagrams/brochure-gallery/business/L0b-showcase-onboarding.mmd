@@ -1,0 +1,12 @@
+flowchart TD
+    Visitor["Visitor baru di Showcase publik"] --> Carousel["Onboarding carousel\n(atas galeri brosur)"]
+    Carousel --> S1["1 Daftar trial\n/register"]
+    Carousel --> S2["2 Masuk akun\n/login"]
+    Carousel --> S3["3 Jelajahi katalog\n#gallery di showcase"]
+    Carousel --> S4["4 Buka AI Studio\n/admin/ai-studio"]
+    Carousel --> S5["5 Virtual Office\n/admin/virtual-office"]
+    S1 --> Admin["Admin Cloud Run\nNEXT_PUBLIC_ADMIN_URL"]
+    S2 --> Admin
+    S4 --> Admin
+    S5 --> Admin
+    S3 --> Gallery["Grid / 3D Stage\nInspect · Share · WA CTA"]

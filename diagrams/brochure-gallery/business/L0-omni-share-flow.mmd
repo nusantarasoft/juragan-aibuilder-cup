@@ -1,5 +1,7 @@
 flowchart LR
-    Visitor["Visitor / Customer"] --> Gallery["Tenant Brochure Showcase (:3004)\nGrid & 3D Stage · Light Mode Default"]
+    Visitor["Visitor / Customer"] --> Onboard["Onboarding carousel\nDaftar → Login → Galeri → Studio → VO"]
+    Onboard --> Gallery["Tenant Brochure Showcase (:3004)\nGrid & 3D Stage · Light Mode Default"]
+    Onboard --> Admin["Admin CTAs via NEXT_PUBLIC_ADMIN_URL\n/register · /login · /admin/*"]
     Gallery --> Inspect["Inspect Brochure & Pins\nHighlights · Prices · Voucher"]
     Inspect --> ShareStudio["Universal Share Studio"]
     ShareStudio --> Social["Social & Chat\nWhatsApp · Telegram · X · FB · LinkedIn · Email"]
