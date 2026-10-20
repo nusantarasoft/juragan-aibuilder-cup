@@ -3,16 +3,16 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
+  CheckCircle2,
   ChevronLeft,
   ChevronRight,
   Compass,
-  LayoutDashboard,
-  LogIn,
-  Sparkles,
-  UserPlus,
+  MessageCircle,
+  Package,
+  Store,
 } from "lucide-react";
 import type { VOTheme } from "@/lib/voTheme";
-import { adminPath } from "@/lib/adminUrl";
+import { kasirWaLink } from "@/lib/kasirWaUrl";
 
 export type OnboardingStep = {
   id: string;
@@ -25,57 +25,58 @@ export type OnboardingStep = {
   icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
 };
 
+/** UMKM public onboarding — WhatsApp-first (docs/aistudio/umkm-wa pitch + penawaran). */
 function buildSteps(): OnboardingStep[] {
   return [
     {
-      id: "register",
-      stepLabel: "Mulai di sini",
-      title: "Daftar trial Juragan",
-      body: "UMKM baru? Aktifkan trial 14 hari lewat halaman register — tanpa perlu sudah punya akun.",
-      ctaLabel: "Daftar Trial",
-      href: adminPath("/register"),
+      id: "wa-daftar",
+      stepLabel: "Mulai di WhatsApp",
+      title: "Chat nomor bisnis & ketik DAFTAR",
+      body: "UMKM daftar lewat chat — bukan form web. Buka WhatsApp ke +62 811-924-689, ketik DAFTAR. Bot akan minta nama toko.",
+      ctaLabel: "Chat & DAFTAR",
+      href: kasirWaLink("DAFTAR"),
       external: true,
-      icon: UserPlus,
+      icon: MessageCircle,
     },
     {
-      id: "login",
-      stepLabel: "Sudah punya akun",
-      title: "Masuk ke Juragan",
-      body: "Login ke AI Studio admin untuk mengelola toko, agen, dan konten marketing Anda.",
-      ctaLabel: "Masuk / Login",
-      href: adminPath("/login"),
+      id: "wa-nama-toko",
+      stepLabel: "Lengkapi di chat",
+      title: "Kirim nama toko, lalu YA",
+      body: "Balas dengan nama toko Anda, lalu konfirmasi YA. Satu nomor = satu toko. Tidak ada OTP atau bayar di dalam chat.",
+      ctaLabel: "Lanjut di WhatsApp",
+      href: kasirWaLink("DAFTAR"),
       external: true,
-      icon: LogIn,
+      icon: Store,
+    },
+    {
+      id: "wa-status",
+      stepLabel: "Tunggu approve",
+      title: "Cek antrean dengan STATUS",
+      body: "Admin menyetujui di AI Studio (biasanya hari yang sama / ≤24 jam). Sambil menunggu, ketik STATUS di chat yang sama.",
+      ctaLabel: "Cek STATUS",
+      href: kasirWaLink("STATUS"),
+      external: true,
+      icon: CheckCircle2,
+    },
+    {
+      id: "wa-kasir",
+      stepLabel: "Toko hidup",
+      title: "Pakai kasir lewat chat",
+      body: "Setelah disetujui, coba cek stok — kalau dijawab, toko sudah hidup. Lanjut jual, laporan, tutup toko, atau tanya tips — semua di WhatsApp.",
+      ctaLabel: "Coba cek stok",
+      href: kasirWaLink("cek stok"),
+      external: true,
+      icon: Package,
     },
     {
       id: "catalog",
-      stepLabel: "Jelajahi dulu",
+      stepLabel: "Jelajahi showcase",
       title: "Lihat katalog brosur",
-      body: "Scroll ke galeri di bawah: contoh brosur tenant, pin highlight, dan cara bagikan ke WhatsApp.",
+      body: "Scroll ke galeri di bawah untuk contoh brosur tenant dan bagikan ke WhatsApp. LOGIN di header khusus partner/admin yang sudah punya akun CMS.",
       ctaLabel: "Ke Galeri",
       href: "#gallery",
       external: false,
       icon: Compass,
-    },
-    {
-      id: "studio",
-      stepLabel: "Setelah login",
-      title: "Buka AI Studio",
-      body: "Studio adalah pusat kerja: notebook, konten marketing, partner UMKM, dan showcase material.",
-      ctaLabel: "Buka AI Studio",
-      href: adminPath("/admin/ai-studio"),
-      external: true,
-      icon: Sparkles,
-    },
-    {
-      id: "admin",
-      stepLabel: "Kelola toko",
-      title: "Virtual Office & Admin",
-      body: "Masuk Virtual Office untuk permukaan operasional toko — agen, workspace, dan kontrol admin.",
-      ctaLabel: "Buka Virtual Office",
-      href: adminPath("/admin/virtual-office"),
-      external: true,
-      icon: LayoutDashboard,
     },
   ];
 }
@@ -124,7 +125,7 @@ export default function OnboardingCarousel({ vo, darkMode }: OnboardingCarouselP
 
   return (
     <section
-      aria-label="Panduan onboarding Juragan"
+      aria-label="Panduan onboarding Juragan via WhatsApp"
       className="relative overflow-hidden border"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
@@ -154,7 +155,7 @@ export default function OnboardingCarousel({ vo, darkMode }: OnboardingCarouselP
               className="text-[10px] font-bold uppercase tracking-[0.28em]"
               style={{ color: vo.accent }}
             >
-              Juragan · Panduan Awal
+              Juragan · WhatsApp Dulu
             </p>
             <h2
               className="mt-2 font-sans text-xl font-black tracking-tight sm:text-2xl"
@@ -163,8 +164,8 @@ export default function OnboardingCarousel({ vo, darkMode }: OnboardingCarouselP
               Cara mulai pakai produk
             </h2>
             <p className="mt-2 max-w-sm text-xs leading-relaxed" style={{ color: vo.textMuted }}>
-              Dari daftar trial sampai buka studio — lima langkah singkat untuk UMKM & partner
-              Nusantarasoft.
+              Daftar & kasir lewat WhatsApp — lima langkah singkat untuk pemilik toko. Tanpa app
+              baru, tanpa form register web.
             </p>
           </div>
 

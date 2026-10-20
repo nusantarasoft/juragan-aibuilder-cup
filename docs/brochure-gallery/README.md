@@ -6,7 +6,7 @@
 
 | Surface / Endpoint | URL / Port | Purpose |
 |--------------------|------------|---------|
-| **Public Showcase App** | `http://localhost:3004` (`brochure-gallery:3000`) | Streamlined tenant brochure showcase with a **top onboarding carousel** (register → login → gallery → AI Studio → Virtual Office via `NEXT_PUBLIC_ADMIN_URL`), then `Grid` & `3D Stage` views, category filters, highlight pin inspector, Light/Dark mode persisted in `localStorage`, and image sharing |
+| **Public Showcase App** | `http://localhost:3004` (`brochure-gallery:3000`) | Streamlined tenant brochure showcase with a **top WhatsApp-first onboarding carousel** (DAFTAR → nama toko/YA → STATUS → cek stok → gallery; wa.me `+62 811-924-689`), then `Grid` & `3D Stage` views, category filters, highlight pin inspector, Light/Dark mode persisted in `localStorage`, and image sharing. Header LOGIN remains for partner/admin CMS (`NEXT_PUBLIC_ADMIN_URL`) |
 | **Brochure Permalink** | `http://localhost:3004/b/[slug]` | Direct shareable deep-link with server-rendered OpenGraph & Twitter `summary_large_image` cards |
 | **External Widget Embed** | `http://localhost:3004/embed/[slug]` | Frameless embeddable brochure card for external `<iframe>` integrations |
 | **Poster SVG Renderer** | `http://localhost:3004/api/brochure-svg/[slug]` | High-resolution brochure SVG poster renderer with CORS (`Access-Control-Allow-Origin: *`) & MinIO S3 sync |
@@ -43,15 +43,17 @@ Compose: `docker-compose.master-production.yml` service `brochure-gallery`. Rede
 
 ## Public onboarding carousel
 
-Above the brochure grid / 3D stage, new visitors see a **5-step Indonesian-friendly carousel** (Juragan / Nusantarasoft UMKM):
+Above the brochure grid / 3D stage, new visitors see a **5-step WhatsApp-first carousel** for UMKM (aligned with [`docs/aistudio/umkm-wa/business/pitch.md`](../aistudio/umkm-wa/business/pitch.md) + penawaran). **Tidak** mengarahkan daftar lewat `/register` web.
 
-1. **Daftar trial** → `{NEXT_PUBLIC_ADMIN_URL}/register` (same trial path as admin login “Initialize 14-Day Trial”)
-2. **Masuk / Login** → `{NEXT_PUBLIC_ADMIN_URL}/login`
-3. **Jelajahi katalog** → in-page `#gallery` (smooth scroll to category + brochures)
-4. **Buka AI Studio** → `{NEXT_PUBLIC_ADMIN_URL}/admin/ai-studio`
-5. **Virtual Office** → `{NEXT_PUBLIC_ADMIN_URL}/admin/virtual-office`
+| # | Step | Owner phrase / aksi | CTA target |
+|---|------|---------------------|------------|
+| 1 | Chat nomor bisnis & ketik **DAFTAR** | `DAFTAR` | `https://wa.me/62811924689?text=DAFTAR` |
+| 2 | Kirim nama toko, lalu **YA** | nama toko → `YA` | same wa.me (prefill `DAFTAR`) |
+| 3 | Cek antrean dengan **STATUS** | `STATUS` (tunggu approve ≤24 jam) | `https://wa.me/62811924689?text=STATUS` |
+| 4 | Pakai kasir lewat chat | `cek stok` (= toko hidup) | `https://wa.me/62811924689?text=cek%20stok` |
+| 5 | Lihat katalog brosur | jelajahi showcase | `#gallery` (same page) |
 
-Header **LOGIN** also uses `NEXT_PUBLIC_ADMIN_URL` (no hardcoded Cloud Run host). Component: `brochure-gallery/src/components/OnboardingCarousel.tsx`.
+Nomor/link resmi dari produk docs (`+62 811-924-689`); override opsional `NEXT_PUBLIC_KASIR_WA_URL`. Header **LOGIN** tetap ke `{NEXT_PUBLIC_ADMIN_URL}/login` untuk partner/admin CMS — bukan jalur daftar UMKM. Component: `brochure-gallery/src/components/OnboardingCarousel.tsx` · helper `src/lib/kasirWaUrl.ts`.
 
 ## Diagrams
 
