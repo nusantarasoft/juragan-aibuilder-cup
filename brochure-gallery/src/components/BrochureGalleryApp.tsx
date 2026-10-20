@@ -620,7 +620,7 @@ export default function BrochureGalleryApp({
       <main className="mx-auto max-w-[1600px] space-y-5 px-4 py-5">
         <OnboardingCarousel vo={vo} darkMode={darkMode} />
 
-        {/* Category Pills — gallery anchor for onboarding “Ke Galeri” CTA */}
+        {/* Category Pills — gallery anchor for onboarding “Go to Gallery” CTA */}
         <section
           id="gallery"
           className="flex flex-wrap items-center justify-between gap-3 border p-3 scroll-mt-20"

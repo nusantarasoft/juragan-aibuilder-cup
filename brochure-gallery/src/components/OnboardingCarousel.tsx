@@ -30,9 +30,9 @@ function buildSteps(): OnboardingStep[] {
   return [
     {
       id: "wa-daftar",
-      stepLabel: "Mulai di WhatsApp",
-      title: "Chat nomor bisnis & ketik DAFTAR",
-      body: "UMKM daftar lewat chat — bukan form web. Buka WhatsApp ke +62 811-924-689, ketik DAFTAR. Bot akan minta nama toko.",
+      stepLabel: "Start on WhatsApp",
+      title: "Message the business number & type DAFTAR",
+      body: "SMEs register via chat — not a web form. Open WhatsApp to +62 811-924-689 and type DAFTAR (Register). The bot will ask for your shop name.",
       ctaLabel: "Chat & DAFTAR",
       href: kasirWaLink("DAFTAR"),
       external: true,
@@ -40,40 +40,40 @@ function buildSteps(): OnboardingStep[] {
     },
     {
       id: "wa-nama-toko",
-      stepLabel: "Lengkapi di chat",
-      title: "Kirim nama toko, lalu YA",
-      body: "Balas dengan nama toko Anda, lalu konfirmasi YA. Satu nomor = satu toko. Tidak ada OTP atau bayar di dalam chat.",
-      ctaLabel: "Lanjut di WhatsApp",
+      stepLabel: "Finish in chat",
+      title: "Send your shop name, then YA",
+      body: "Reply with your shop name, then confirm with YA (Yes). One number = one shop. No OTP and no payment inside the chat.",
+      ctaLabel: "Continue on WhatsApp",
       href: kasirWaLink("DAFTAR"),
       external: true,
       icon: Store,
     },
     {
       id: "wa-status",
-      stepLabel: "Tunggu approve",
-      title: "Cek antrean dengan STATUS",
-      body: "Admin menyetujui di AI Studio (biasanya hari yang sama / ≤24 jam). Sambil menunggu, ketik STATUS di chat yang sama.",
-      ctaLabel: "Cek STATUS",
+      stepLabel: "Await approval",
+      title: "Check the queue with STATUS",
+      body: "An admin approves in AI Studio (usually same day / ≤24 hours). While you wait, type STATUS in the same chat.",
+      ctaLabel: "Check STATUS",
       href: kasirWaLink("STATUS"),
       external: true,
       icon: CheckCircle2,
     },
     {
       id: "wa-kasir",
-      stepLabel: "Toko hidup",
-      title: "Pakai kasir lewat chat",
-      body: "Setelah disetujui, coba cek stok — kalau dijawab, toko sudah hidup. Lanjut jual, laporan, tutup toko, atau tanya tips — semua di WhatsApp.",
-      ctaLabel: "Coba cek stok",
+      stepLabel: "Shop is live",
+      title: "Run the register via chat",
+      body: "After approval, try cek stok (check stock) — if you get an answer, the shop is live. Keep selling, reporting, closing the day, or asking for tips — all on WhatsApp.",
+      ctaLabel: "Try cek stok",
       href: kasirWaLink("cek stok"),
       external: true,
       icon: Package,
     },
     {
       id: "catalog",
-      stepLabel: "Jelajahi showcase",
-      title: "Lihat katalog brosur",
-      body: "Scroll ke galeri di bawah untuk contoh brosur tenant dan bagikan ke WhatsApp. LOGIN di header khusus partner/admin yang sudah punya akun CMS.",
-      ctaLabel: "Ke Galeri",
+      stepLabel: "Explore the showcase",
+      title: "Browse the brochure catalog",
+      body: "Scroll to the gallery below for tenant brochure examples and share them on WhatsApp. Header LOGIN is for partners/admins who already have a CMS account.",
+      ctaLabel: "Go to Gallery",
       href: "#gallery",
       external: false,
       icon: Compass,
@@ -125,7 +125,7 @@ export default function OnboardingCarousel({ vo, darkMode }: OnboardingCarouselP
 
   return (
     <section
-      aria-label="Panduan onboarding Juragan via WhatsApp"
+      aria-label="Juragan onboarding guide via WhatsApp"
       className="relative overflow-hidden border"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
@@ -155,22 +155,22 @@ export default function OnboardingCarousel({ vo, darkMode }: OnboardingCarouselP
               className="text-[10px] font-bold uppercase tracking-[0.28em]"
               style={{ color: vo.accent }}
             >
-              Juragan · WhatsApp Dulu
+              Juragan · WhatsApp First
             </p>
             <h2
               className="mt-2 font-sans text-xl font-black tracking-tight sm:text-2xl"
               style={{ color: vo.text }}
             >
-              Cara mulai pakai produk
+              How to get started
             </h2>
             <p className="mt-2 max-w-sm text-xs leading-relaxed" style={{ color: vo.textMuted }}>
-              Daftar & kasir lewat WhatsApp — lima langkah singkat untuk pemilik toko. Tanpa app
-              baru, tanpa form register web.
+              Register and run your store via WhatsApp — five short steps for shop owners. No new
+              app, no web registration form.
             </p>
           </div>
 
           {/* Step rail */}
-          <div className="flex items-center gap-2" role="tablist" aria-label="Langkah onboarding">
+          <div className="flex items-center gap-2" role="tablist" aria-label="Onboarding steps">
             {steps.map((s, i) => {
               const active = i === index;
               return (
@@ -179,7 +179,7 @@ export default function OnboardingCarousel({ vo, darkMode }: OnboardingCarouselP
                   type="button"
                   role="tab"
                   aria-selected={active}
-                  aria-label={`Langkah ${i + 1}: ${s.title}`}
+                  aria-label={`Step ${i + 1}: ${s.title}`}
                   onClick={() => go(i, i > index ? 1 : -1)}
                   className="h-1.5 flex-1 transition-all duration-300"
                   style={{
@@ -252,7 +252,7 @@ export default function OnboardingCarousel({ vo, darkMode }: OnboardingCarouselP
                   onClick={() => go(index - 1, -1)}
                   className="flex h-10 w-10 items-center justify-center border transition-opacity hover:opacity-80"
                   style={{ borderColor: vo.borderStrong, color: vo.text }}
-                  aria-label="Langkah sebelumnya"
+                  aria-label="Previous step"
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </button>
@@ -261,7 +261,7 @@ export default function OnboardingCarousel({ vo, darkMode }: OnboardingCarouselP
                   onClick={() => go(index + 1, 1)}
                   className="flex h-10 w-10 items-center justify-center border transition-opacity hover:opacity-80"
                   style={{ borderColor: vo.borderStrong, color: vo.text }}
-                  aria-label="Langkah berikutnya"
+                  aria-label="Next step"
                 >
                   <ChevronRight className="h-4 w-4" />
                 </button>
